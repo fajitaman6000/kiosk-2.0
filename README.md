@@ -5,4 +5,6 @@ The admin program is run by the game master
 The kiosk program is run in the room
 
 
-Made by Robert to replace the current program
+
+
+Made by Robert to replace everything.
