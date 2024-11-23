@@ -4,7 +4,7 @@ The admin program is run by the game master
 # Kiosk
 The kiosk program is run in the room
 
-
+---
 
 
 Made by Robert to replace everything.
