@@ -1,10 +1,10 @@
 
 from PIL import Image, ImageTk
 # video_client.py
-import cv2
+import cv2 # type: ignore
 import socket
 import struct
-import numpy as np
+import numpy as np # type: ignore
 import threading
 from time import time
 

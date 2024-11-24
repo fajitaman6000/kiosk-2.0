@@ -1,11 +1,11 @@
 # video_server.py (add to kiosk side)
 from PIL import Image, ImageTk
 # video_server.py
-import cv2
+import cv2 # type: ignore
 import socket
 import struct
 import threading
-import numpy as np
+import numpy as np # type: ignore
 import time
 
 class VideoServer:
