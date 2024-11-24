@@ -41,20 +41,24 @@ class AdminInterfaceBuilder:
         for widget in self.stats_frame.winfo_children():
             widget.destroy()
         
-        # Create main container with grid layout
+        # Main container with grid layout
         stats_container = tk.Frame(self.stats_frame)
         stats_container.pack(fill='both', expand=True, padx=10, pady=5)
         
+        # Left side panel for stats and controls
+        left_panel = tk.Frame(stats_container)
+        left_panel.pack(side='left', fill='y', padx=(0, 10))
+        
         # Stats label for hints
-        stats_frame = tk.Frame(stats_container)
-        stats_frame.pack(side='left', fill='y', padx=(0,10))
+        stats_frame = tk.Frame(left_panel)
+        stats_frame.pack(fill='x', pady=(0, 10))
         
         self.stats_elements['hints_label'] = tk.Label(stats_frame, justify='left')
         self.stats_elements['hints_label'].pack(anchor='w')
 
         # Timer controls
-        timer_frame = tk.LabelFrame(stats_container, text="Room Timer", bg='black')
-        timer_frame.pack(side='left', padx=10, fill='y')
+        timer_frame = tk.LabelFrame(left_panel, text="Room Timer", bg='black')
+        timer_frame.pack(fill='x', pady=5)
 
         # Current time display
         self.stats_elements['current_time'] = tk.Label(
@@ -92,33 +96,13 @@ class AdminInterfaceBuilder:
             text="Set Time",
             command=lambda: self.set_timer(computer_name)
         ).pack(side='left', padx=5)
+
+        # Hint controls
+        hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
+        hint_frame.pack(fill='x', pady=10)
         
-        # Video feed panel
-        video_frame = tk.Frame(stats_container, bg='black', width=320, height=240)
-        video_frame.pack(side='right', padx=5, pady=5)
-        video_frame.pack_propagate(False)
-        
-        self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
-        self.stats_elements['video_label'].pack(fill='both', expand=True)
-        
-        # Camera control buttons
-        camera_controls = tk.Frame(stats_container)
-        camera_controls.pack(side='right', fill='y', padx=5)
-        
-        self.stats_elements['camera_btn'] = tk.Button(
-            camera_controls, 
-            text="Start Camera",
-            command=lambda: self.toggle_camera(computer_name)
-        )
-        self.stats_elements['camera_btn'].pack(pady=5)
-        
-        # Hint controls at bottom
-        hint_frame = tk.Frame(self.stats_frame)
-        hint_frame.pack(fill='x', pady=10, padx=10, side='bottom')
-        
-        tk.Label(hint_frame, text="Custom text hint:").pack(anchor='w')
         self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=40)
-        self.stats_elements['msg_entry'].pack(fill='x', pady=5)
+        self.stats_elements['msg_entry'].pack(fill='x', pady=5, padx=5)
         
         self.stats_elements['send_btn'] = tk.Button(
             hint_frame, 
@@ -126,16 +110,37 @@ class AdminInterfaceBuilder:
             command=lambda: self.send_hint(computer_name)
         )
         self.stats_elements['send_btn'].pack(pady=5)
-        
-        # Store the computer name for video updates
-        self.stats_elements['current_computer'] = computer_name
 
-         # Add space between camera and video controls
-        ttk.Separator(stats_container, orient='horizontal').pack(fill='x', pady=10)
+        # Right side panel for video
+        right_panel = tk.Frame(stats_container)
+        right_panel.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        
+        # Video feed panel with fixed size
+        video_frame = tk.Frame(right_panel, bg='black', width=320, height=240)
+        video_frame.pack(expand=True, pady=5)
+        video_frame.pack_propagate(False)
+        
+        self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
+        self.stats_elements['video_label'].pack(fill='both', expand=True)
+        
+        # Camera and video controls
+        control_panel = tk.Frame(right_panel)
+        control_panel.pack(fill='x', pady=5)
+        
+        # Camera controls
+        camera_frame = tk.LabelFrame(control_panel, text="Camera Controls")
+        camera_frame.pack(side='left', padx=5, fill='x', expand=True)
+        
+        self.stats_elements['camera_btn'] = tk.Button(
+            camera_frame, 
+            text="Start Camera",
+            command=lambda: self.toggle_camera(computer_name)
+        )
+        self.stats_elements['camera_btn'].pack(pady=5, padx=5)
         
         # Video playback controls
-        video_control_frame = tk.LabelFrame(stats_container, text="Video Controls")
-        video_control_frame.pack(side='right', fill='y', padx=5)
+        video_control_frame = tk.LabelFrame(control_panel, text="Video Controls")
+        video_control_frame.pack(side='right', padx=5, fill='x', expand=True)
         
         video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
         self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
@@ -147,13 +152,16 @@ class AdminInterfaceBuilder:
             state='readonly',
             width=15
         )
-        video_dropdown.pack(pady=5)
+        video_dropdown.pack(pady=5, padx=5)
         
         tk.Button(
             video_control_frame,
             text="Play Video",
             command=lambda: self.play_video(computer_name)
-        ).pack(pady=5)
+        ).pack(pady=5, padx=5)
+        
+        # Store the computer name for video updates
+        self.stats_elements['current_computer'] = computer_name
 
     def play_video(self, computer_name):
         video_type = self.stats_elements['video_type'].get().lower().split()[0]
