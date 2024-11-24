@@ -79,3 +79,14 @@ class NetworkBroadcastHandler:
             message['minutes'] = minutes
         print(f"Sending timer command: {message}")  # Debug
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+
+    # Add to NetworkBroadcastHandler class
+    def send_video_command(self, computer_name, video_type, minutes):
+        message = {
+            'type': 'video_command',
+            'computer_name': computer_name,
+            'video_type': video_type,
+            'minutes': minutes
+        }
+        print(f"Sending video command: {message}")  # Debug line
+        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))

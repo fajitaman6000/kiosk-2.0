@@ -130,6 +130,41 @@ class AdminInterfaceBuilder:
         # Store the computer name for video updates
         self.stats_elements['current_computer'] = computer_name
 
+         # Add space between camera and video controls
+        ttk.Separator(stats_container, orient='horizontal').pack(fill='x', pady=10)
+        
+        # Video playback controls
+        video_control_frame = tk.LabelFrame(stats_container, text="Video Controls")
+        video_control_frame.pack(side='right', fill='y', padx=5)
+        
+        video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
+        self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
+        
+        video_dropdown = ttk.Combobox(
+            video_control_frame,
+            textvariable=self.stats_elements['video_type'],
+            values=video_options,
+            state='readonly',
+            width=15
+        )
+        video_dropdown.pack(pady=5)
+        
+        tk.Button(
+            video_control_frame,
+            text="Play Video",
+            command=lambda: self.play_video(computer_name)
+        ).pack(pady=5)
+
+    def play_video(self, computer_name):
+        video_type = self.stats_elements['video_type'].get().lower().split()[0]
+        # Get time from timer entry, default to 45 if empty or invalid
+        try:
+            minutes = int(self.stats_elements['time_entry'].get())
+        except (ValueError, AttributeError):
+            minutes = 45
+            
+        self.app.network_handler.send_video_command(computer_name, video_type, minutes)
+
     def toggle_timer(self, computer_name):
         is_running = self.stats_elements['timer_button'].cget('text') == "Stop Room"
         new_text = "Start Room" if is_running else "Stop Room"
