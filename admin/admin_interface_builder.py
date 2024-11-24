@@ -57,7 +57,7 @@ class AdminInterfaceBuilder:
         self.stats_elements['hints_label'].pack(anchor='w')
 
         # Timer controls
-        timer_frame = tk.LabelFrame(left_panel, text="Room Timer", bg='black')
+        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", bg='black', fg='white')
         timer_frame.pack(fill='x', pady=5)
 
         # Current time display
@@ -77,18 +77,48 @@ class AdminInterfaceBuilder:
         timer_controls = tk.Frame(timer_frame, bg='black')
         timer_controls.pack(fill='x', padx=5, pady=5)
 
+        # Timer and video controls combined
+        control_buttons_frame = tk.Frame(timer_controls, bg='black')
+        control_buttons_frame.pack(fill='x', pady=5)
+        
+        button_frame = tk.Frame(control_buttons_frame, bg='black')
+        button_frame.pack(side='left', padx=5)
+        
         self.stats_elements['timer_button'] = tk.Button(
-            timer_controls,
+            button_frame,
             text="Start Room",
             command=lambda: self.toggle_timer(computer_name)
         )
         self.stats_elements['timer_button'].pack(side='left', padx=5)
 
+        # Video options with swapped order
+        video_frame = tk.Frame(control_buttons_frame, bg='black')
+        video_frame.pack(side='left', padx=5)
+        
+        tk.Button(
+            video_frame,
+            text="Start Room with Video",
+            command=lambda: self.play_video(computer_name)
+        ).pack(side='left', padx=30)
+        
+        video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
+        self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
+        
+        video_dropdown = ttk.Combobox(
+            video_frame,
+            textvariable=self.stats_elements['video_type'],
+            values=video_options,
+            state='readonly',
+            width=10
+        )
+        video_dropdown.pack(side='left', padx=5)
+
+        # Time setting controls
         time_set_frame = tk.Frame(timer_controls, bg='black')
-        time_set_frame.pack(side='left', padx=5)
+        time_set_frame.pack(fill='x', pady=5)
 
         self.stats_elements['time_entry'] = tk.Entry(time_set_frame, width=3)
-        self.stats_elements['time_entry'].pack(side='left')
+        self.stats_elements['time_entry'].pack(side='left', padx=5)
         tk.Label(time_set_frame, text="min", fg='white', bg='black').pack(side='left')
 
         tk.Button(
@@ -123,42 +153,16 @@ class AdminInterfaceBuilder:
         self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
         self.stats_elements['video_label'].pack(fill='both', expand=True)
         
-        # Camera and video controls
-        control_panel = tk.Frame(right_panel)
-        control_panel.pack(fill='x', pady=5)
-        
-        # Camera controls
-        camera_frame = tk.LabelFrame(control_panel, text="Camera Controls")
-        camera_frame.pack(side='left', padx=5, fill='x', expand=True)
+        # Camera controls directly below video feed
+        camera_frame = tk.Frame(right_panel)
+        camera_frame.pack(pady=5)
         
         self.stats_elements['camera_btn'] = tk.Button(
             camera_frame, 
             text="Start Camera",
             command=lambda: self.toggle_camera(computer_name)
         )
-        self.stats_elements['camera_btn'].pack(pady=5, padx=5)
-        
-        # Video playback controls
-        video_control_frame = tk.LabelFrame(control_panel, text="Video Controls")
-        video_control_frame.pack(side='right', padx=5, fill='x', expand=True)
-        
-        video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
-        self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
-        
-        video_dropdown = ttk.Combobox(
-            video_control_frame,
-            textvariable=self.stats_elements['video_type'],
-            values=video_options,
-            state='readonly',
-            width=15
-        )
-        video_dropdown.pack(pady=5, padx=5)
-        
-        tk.Button(
-            video_control_frame,
-            text="Play Video",
-            command=lambda: self.play_video(computer_name)
-        ).pack(pady=5, padx=5)
+        self.stats_elements['camera_btn'].pack()
         
         # Store the computer name for video updates
         self.stats_elements['current_computer'] = computer_name
