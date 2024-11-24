@@ -90,16 +90,16 @@ class KioskUI:
         self.message_handler.timer.lift_to_top()
             
     def create_help_button(self):
-        if self.help_button is None:
-            self.help_button = tk.Button(
-                self.root,
-                text="REQUEST NEW HINT",
-                command=self.message_handler.request_help,
-                height=5, width=30,
-                font=('Arial', 24),
-                bg='blue', fg='white'
-            )
-            self.help_button.pack(pady=50)
+        if self.help_button is None and not self.hint_cooldown:
+                self.help_button = tk.Button(
+                    self.root,
+                    text="REQUEST NEW HINT",
+                    command=self.message_handler.request_help,
+                    height=5, width=30,
+                    font=('Arial', 24),
+                    bg='blue', fg='white'
+                )
+                self.help_button.pack(pady=50)
             
     def show_hint(self, text):
         self.current_hint = text
