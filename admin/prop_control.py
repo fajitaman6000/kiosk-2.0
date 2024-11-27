@@ -42,7 +42,6 @@ class PropControl:
         self.canvas.bind("<Configure>", self.on_canvas_configure)
         
         # Connect to MQTT
-        self.setup_ui()
         self.setup_mqtt()
 
     def on_frame_configure(self, event=None):
@@ -52,26 +51,6 @@ class PropControl:
     def on_canvas_configure(self, event):
         """When canvas is resized, resize the inner frame to match"""
         self.canvas.itemconfig(self.canvas_frame, width=event.width)
-
-    def setup_ui(self):
-        self.status_label = ttk.Label(self.app.root, text="Connecting to prop server...")
-        self.status_label.pack()
-
-        self.frame = ttk.LabelFrame(self.app.root, text="Prop Controls")
-        self.frame.pack(fill='both', expand=True, padx=10, pady=5)
-        
-        self.canvas = tk.Canvas(self.frame)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
-        self.props_frame = ttk.Frame(self.canvas)
-        
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.scrollbar.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-        
-        self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
-        
-        self.props_frame.bind("<Configure>", self.on_frame_configure)
-        self.canvas.bind("<Configure>", self.on_canvas_configure)
 
     def setup_mqtt(self):
         print(f"Attempting to connect to MQTT broker at {self.MQTT_ADDR}:{self.MQTT_PORT}")
