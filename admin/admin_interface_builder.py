@@ -423,6 +423,11 @@ class AdminInterfaceBuilder:
         
         self.setup_stats_panel(computer_name)
         self.update_stats_display(computer_name)
+        
+        # Notify PropControl about room change
+        if computer_name in self.app.kiosk_tracker.kiosk_assignments:
+            room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+            self.app.prop_control.connect_to_room(room_num)
 
     def update_stats_display(self, computer_name):
         if computer_name in self.app.kiosk_tracker.kiosk_stats:
