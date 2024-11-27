@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import traceback
 import sys
+from prop_control import PropControl
 
 from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
@@ -33,6 +34,7 @@ try:
             self.kiosk_tracker = KioskStateTracker(self)
             self.network_handler = NetworkBroadcastHandler(self)
             self.interface_builder = AdminInterfaceBuilder(self)
+            self.prop_control = PropControl(self)  # Add this line
             
             # Start network handling
             self.network_handler.start()

@@ -12,5 +12,4 @@ save hint to private (local to profile),
 save hint to global/default (admin only),
 set hint color,
 hint folders,
-play specific video based on guest history/tardiness
 move ERP to app
