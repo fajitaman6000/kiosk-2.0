@@ -398,36 +398,46 @@ class AdminInterfaceBuilder:
                 self.stats_elements = {key: None for key in self.stats_elements}
 
     def select_kiosk(self, computer_name):
-        self.selected_kiosk = computer_name
-        
-        if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-            room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-            room_name = self.app.rooms[room_num]
-            title = f"{room_name} ({computer_name})"
-        else:
-            title = f"Unassigned ({computer_name})"
-        self.stats_frame.configure(text=title)
-        
-        # Update highlighting
-        for cn, data in self.connected_kiosks.items():
-            if cn == computer_name:
-                data['frame'].configure(bg='lightblue')
-                for widget in data['frame'].winfo_children():
-                    if not isinstance(widget, ttk.Combobox):
-                        widget.configure(bg='lightblue')
+        try:
+            print(f"\nSelecting kiosk: {computer_name}")
+            self.selected_kiosk = computer_name
+            
+            if computer_name in self.app.kiosk_tracker.kiosk_assignments:
+                room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+                room_name = self.app.rooms[room_num]
+                title = f"{room_name} ({computer_name})"
+                print(f"Room assigned: {room_name} (#{room_num})")
             else:
-                data['frame'].configure(bg='SystemButtonFace')
-                for widget in data['frame'].winfo_children():
-                    if not isinstance(widget, ttk.Combobox):
-                        widget.configure(bg='SystemButtonFace')
-        
-        self.setup_stats_panel(computer_name)
-        self.update_stats_display(computer_name)
-        
-        # Notify PropControl about room change
-        if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-            room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-            self.app.prop_control.connect_to_room(room_num)
+                title = f"Unassigned ({computer_name})"
+                print("No room assigned")
+            self.stats_frame.configure(text=title)
+            
+            # Update highlighting
+            for cn, data in self.connected_kiosks.items():
+                if cn == computer_name:
+                    data['frame'].configure(bg='lightblue')
+                    for widget in data['frame'].winfo_children():
+                        if not isinstance(widget, ttk.Combobox):
+                            widget.configure(bg='lightblue')
+                else:
+                    data['frame'].configure(bg='SystemButtonFace')
+                    for widget in data['frame'].winfo_children():
+                        if not isinstance(widget, ttk.Combobox):
+                            widget.configure(bg='SystemButtonFace')
+            
+            self.setup_stats_panel(computer_name)
+            self.update_stats_display(computer_name)
+            
+            # Notify PropControl about room change (with safety check)
+            if hasattr(self.app, 'prop_control') and self.app.prop_control:
+                if computer_name in self.app.kiosk_tracker.kiosk_assignments:
+                    room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+                    print(f"Notifying prop control about room change to {room_num}")
+                    self.app.root.after(100, lambda: self.app.prop_control.connect_to_room(room_num))
+                else:
+                    print("No room assignment, skipping prop control notification")
+        except Exception as e:
+            print(f"Error in select_kiosk: {e}")
 
     def update_stats_display(self, computer_name):
         if computer_name in self.app.kiosk_tracker.kiosk_stats:
