@@ -63,8 +63,8 @@ class AdminInterfaceBuilder:
         # Current time display
         self.stats_elements['current_time'] = tk.Label(
             timer_frame,
-            text="60:00",
-            font=('Arial', 24, 'bold'),
+            text="45:00",
+            font=('Arial', 20, 'bold'),
             fg='white',
             bg='black',
             highlightbackground='white',
@@ -99,7 +99,7 @@ class AdminInterfaceBuilder:
             video_frame,
             text="Start Room with Video",
             command=lambda: self.play_video(computer_name)
-        ).pack(side='left', padx=30)
+        ).pack(side='left', padx=10)
         
         video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
         self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
@@ -111,7 +111,7 @@ class AdminInterfaceBuilder:
             state='readonly',
             width=10
         )
-        video_dropdown.pack(side='left', padx=5)
+        video_dropdown.pack(side='left', padx=2)
 
         # Time setting controls
         time_set_frame = tk.Frame(timer_controls, bg='black')
@@ -131,7 +131,7 @@ class AdminInterfaceBuilder:
         hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
         hint_frame.pack(fill='x', pady=10)
         
-        self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=40)
+        self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
         self.stats_elements['msg_entry'].pack(fill='x', pady=5, padx=5)
         
         self.stats_elements['send_btn'] = tk.Button(
