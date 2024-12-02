@@ -92,7 +92,7 @@ class PropControl:
         
         # Special buttons frame (will be populated based on room)
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific Controls")
-        self.special_frame.pack(fill='x', padx=5, pady=5)
+        self.special_frame.pack(fill='x', padx=5, pady=10)
         
         # Props display area with scrolling
         self.canvas = tk.Canvas(self.frame)
@@ -159,7 +159,7 @@ class PropControl:
             
         # Update status
         room_name = self.app.rooms.get(room_number, "Unknown Room")
-        self.status_label.config(text=f"Connected to {room_name} props")
+        self.status_label.config(text=f"Connected to {room_name}")
         
         # Set up special buttons for this room
         self.setup_special_buttons(room_number)
@@ -243,76 +243,91 @@ class PropControl:
             return
 
         if prop_id not in self.props:
+            # Calculate column position (3 columns)
+            num_props = len(self.props)
+            row = num_props // 3
+            col = num_props % 3
+
             # Create new prop display
             prop_frame = ttk.Frame(self.props_frame)
-            prop_frame.pack(fill='x', pady=2, padx=5)
+            prop_frame.grid(row=row, column=col, padx=0, pady=0, sticky='nsew')
             
-            header_frame = ttk.Frame(prop_frame)
-            header_frame.pack(fill='x', pady=2)
+            # Configure column weights
+            self.props_frame.grid_columnconfigure(0, weight=1)
+            self.props_frame.grid_columnconfigure(1, weight=1)
+            self.props_frame.grid_columnconfigure(2, weight=1)
             
-            name_label = ttk.Label(header_frame, text=prop_data["strName"])
-            name_label.pack(side='left')
+            # Create prop card with border and padding
+            card_frame = ttk.Frame(prop_frame, relief="solid", borderwidth=2)
+            card_frame.pack(fill='both', expand=True, padx=2, pady=2)
             
-            status_frame = ttk.Frame(prop_frame)
-            status_frame.pack(fill='x', pady=2)
+            # Prop name in bold
+            name_label = ttk.Label(card_frame, text=prop_data["strName"], font=('TkDefaultFont', 10, 'bold'))
+            name_label.pack(fill='x', padx=5, pady=1)
             
-            # Create status label with color based on status
+            # Status with color
             status_text = prop_data["strStatus"]
             status_color = {
                 "Not activated": "#808080",  # Grey
                 "Not Activated": "#808080",  # Grey
                 "Activated": "#ff0000",      # Red
                 "Finished": "#0000ff"        # Blue
-            }.get(status_text, "black")      # Default to black if status not found
+            }.get(status_text, "black")
             
-            status_label = ttk.Label(status_frame, text=status_text, foreground=status_color)
-            status_label.pack(side='left')
+            status_label = ttk.Label(card_frame, text=status_text, foreground=status_color)
+            status_label.pack(fill='x', padx=5)
             
-            button_frame = ttk.Frame(prop_frame)
-            button_frame.pack(fill='x', pady=2)
+            # Control buttons in a horizontal frame
+            button_frame = ttk.Frame(card_frame)
+            button_frame.pack(fill='x', padx=5, pady=5)
             
+            # Control buttons with improved spacing
             reset_btn = tk.Button(
                 button_frame,
                 text="RESET",
                 command=lambda: self.send_command(prop_id, "reset"),
-                bg='#cc362b',  # Red
-                fg='white'
+                bg='#cc362b',
+                fg='white',
+                width=8
             )
-            reset_btn.pack(side='left', padx=5)
+            reset_btn.pack(side='left', padx=2)
             
             activate_btn = tk.Button(
                 button_frame,
                 text="ACTIVATE",
                 command=lambda: self.send_command(prop_id, "activate"),
-                bg='#ff8c00', # Orange
-                fg='white'
+                bg='#ff8c00',
+                fg='white',
+                width=8
             )
-            activate_btn.pack(side='left', padx=5)
+            activate_btn.pack(side='left', padx=2)
             
             finish_btn = tk.Button(
                 button_frame,
                 text="FINISH",
                 command=lambda: self.send_command(prop_id, "finish"),
-                bg='#28a745', # Green
-                fg='white'
+                bg='#28a745',
+                fg='white',
+                width=8
             )
-            finish_btn.pack(side='left', padx=5)
+            finish_btn.pack(side='left', padx=2)
             
             self.props[prop_id] = {
                 'frame': prop_frame,
+                'card_frame': card_frame,
                 'status_label': status_label,
                 'info': prop_data
             }
         else:
-            # Update existing prop with color
+            # Update existing prop status
             current_status = self.props[prop_id]['info']['strStatus']
             new_status = prop_data['strStatus']
             if current_status != new_status:
                 status_color = {
-                    "Not activated": "#808080",  # Grey
-                    "Activated": "#ff0000",      # Red
-                    "Finished": "#0000ff"        # Blue
-                }.get(new_status, "black")      # Default to black if status not found
+                    "Not activated": "#808080",
+                    "Activated": "#ff0000",
+                    "Finished": "#0000ff"
+                }.get(new_status, "black")
                 
                 self.props[prop_id]['status_label'].config(text=new_status, foreground=status_color)
                 self.props[prop_id]['info'] = prop_data
@@ -348,10 +363,22 @@ class PropControl:
             print(f"Failed to send special command: {e}")
 
     def on_frame_configure(self, event=None):
+        """Reconfigure the canvas scrolling region"""
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        
+        # Ensure props_frame spans the full width
+        width = self.canvas.winfo_width()
+        self.canvas.itemconfig(self.canvas_frame, width=width)
 
     def on_canvas_configure(self, event):
-        self.canvas.itemconfig(self.canvas_frame, width=event.width)
+        """Handle canvas resize"""
+        width = event.width
+        self.canvas.itemconfig(self.canvas_frame, width=width)
+        
+        # Recalculate column widths
+        col_width = (width - 40) // 3  # Subtract padding and divide by 3 columns
+        for i in range(3):
+            self.props_frame.grid_columnconfigure(i, minsize=col_width)
         
     def shutdown(self):
         for client in self.mqtt_clients.values():
