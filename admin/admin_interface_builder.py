@@ -147,7 +147,7 @@ class AdminInterfaceBuilder:
         
         # Video feed panel with fixed size
         video_frame = tk.Frame(right_panel, bg='black', width=320, height=240)
-        video_frame.pack(expand=True, pady=5)
+        video_frame.pack(expand=True, pady=1)
         video_frame.pack_propagate(False)
         
         self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
@@ -155,7 +155,7 @@ class AdminInterfaceBuilder:
         
         # Camera controls directly below video feed
         camera_frame = tk.Frame(right_panel)
-        camera_frame.pack(pady=5)
+        camera_frame.pack(pady=1)
         
         self.stats_elements['camera_btn'] = tk.Button(
             camera_frame, 
@@ -337,7 +337,7 @@ class AdminInterfaceBuilder:
             dropdown.set('')
             name_label.config(text=self.app.rooms[selected_room])
         
-        assign_btn = tk.Button(frame, text="Assign Room", command=assign_room)
+        assign_btn = tk.Button(frame, text="Assign Room", command=assign_room, bg='#28a745', fg='white')
         assign_btn.pack(side='left', padx=5)
         
         self.connected_kiosks[computer_name] = {

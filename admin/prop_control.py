@@ -60,8 +60,8 @@ class PropControl:
         self.MQTT_PASS = "indestroom"
         
         # Add status label for connection state
-        self.status_label = ttk.Label(app.root, text="Waiting for room selection...")
-        self.status_label.pack()
+        # self.status_label = ttk.Label(app.root, text="Waiting for room selection...")
+        # self.status_label.pack()
 
         # Create prop control panel
         self.frame = ttk.LabelFrame(app.root, text="Prop Controls")
@@ -158,8 +158,8 @@ class PropControl:
             widget.destroy()
             
         # Update status
-        room_name = self.app.rooms.get(room_number, "Unknown Room")
-        self.status_label.config(text=f"Connected to {room_name}")
+        # room_name = self.app.rooms.get(room_number, "Unknown Room")
+        # self.status_label.config(text=f"Connected to {room_name}")
         
         # Set up special buttons for this room
         self.setup_special_buttons(room_number)
@@ -310,6 +310,7 @@ class PropControl:
                 fg='white',
                 width=8
             )
+            
             finish_btn.pack(side='left', padx=2)
             
             self.props[prop_id] = {
