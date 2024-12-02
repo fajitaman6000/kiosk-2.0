@@ -72,17 +72,21 @@ class PropControl:
         self.global_controls.pack(fill='x', padx=5, pady=5)
         
         # Create Start Game and Reset All buttons
-        self.start_button = ttk.Button(
+        self.start_button = tk.Button(
             self.global_controls,
             text="START GAME",
-            command=self.start_game
+            command=self.start_game,
+            bg='#285aed',   # Blue
+            fg='white'
         )
         self.start_button.pack(side='left', padx=5)
-        
-        self.reset_button = ttk.Button(
+
+        self.reset_button = tk.Button(
             self.global_controls,
             text="RESET ALL",
-            command=self.reset_all
+            command=self.reset_all,
+            bg='#db42ad',   # Pink
+            fg='white'
         )
         self.reset_button.pack(side='left', padx=5)
         
@@ -252,30 +256,45 @@ class PropControl:
             status_frame = ttk.Frame(prop_frame)
             status_frame.pack(fill='x', pady=2)
             
-            status_label = ttk.Label(status_frame, text=prop_data["strStatus"])
+            # Create status label with color based on status
+            status_text = prop_data["strStatus"]
+            status_color = {
+                "Not activated": "#808080",  # Grey
+                "Not Activated": "#808080",  # Grey
+                "Activated": "#ff0000",      # Red
+                "Finished": "#0000ff"        # Blue
+            }.get(status_text, "black")      # Default to black if status not found
+            
+            status_label = ttk.Label(status_frame, text=status_text, foreground=status_color)
             status_label.pack(side='left')
             
             button_frame = ttk.Frame(prop_frame)
             button_frame.pack(fill='x', pady=2)
             
-            reset_btn = ttk.Button(
+            reset_btn = tk.Button(
                 button_frame,
                 text="RESET",
-                command=lambda: self.send_command(prop_id, "reset")
+                command=lambda: self.send_command(prop_id, "reset"),
+                bg='#cc362b',  # Red
+                fg='white'
             )
             reset_btn.pack(side='left', padx=5)
             
-            activate_btn = ttk.Button(
+            activate_btn = tk.Button(
                 button_frame,
                 text="ACTIVATE",
-                command=lambda: self.send_command(prop_id, "activate")
+                command=lambda: self.send_command(prop_id, "activate"),
+                bg='#ff8c00', # Orange
+                fg='white'
             )
             activate_btn.pack(side='left', padx=5)
             
-            finish_btn = ttk.Button(
+            finish_btn = tk.Button(
                 button_frame,
                 text="FINISH",
-                command=lambda: self.send_command(prop_id, "finish")
+                command=lambda: self.send_command(prop_id, "finish"),
+                bg='#28a745', # Green
+                fg='white'
             )
             finish_btn.pack(side='left', padx=5)
             
@@ -285,11 +304,17 @@ class PropControl:
                 'info': prop_data
             }
         else:
-            # Update existing prop
+            # Update existing prop with color
             current_status = self.props[prop_id]['info']['strStatus']
             new_status = prop_data['strStatus']
             if current_status != new_status:
-                self.props[prop_id]['status_label'].config(text=new_status)
+                status_color = {
+                    "Not activated": "#808080",  # Grey
+                    "Activated": "#ff0000",      # Red
+                    "Finished": "#0000ff"        # Blue
+                }.get(new_status, "black")      # Default to black if status not found
+                
+                self.props[prop_id]['status_label'].config(text=new_status, foreground=status_color)
                 self.props[prop_id]['info'] = prop_data
 
         self.on_frame_configure()
