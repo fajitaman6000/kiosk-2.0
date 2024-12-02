@@ -57,6 +57,25 @@ class PropControl:
         self.frame = ttk.LabelFrame(app.root, text="Prop Controls")
         self.frame.pack(fill='both', expand=True, padx=10, pady=5)
         
+        # Add global control buttons at the top
+        self.global_controls = ttk.Frame(self.frame)
+        self.global_controls.pack(fill='x', padx=5, pady=5)
+        
+        # Create Start Game and Reset All buttons
+        self.start_button = ttk.Button(
+            self.global_controls,
+            text="START GAME",
+            command=self.start_game
+        )
+        self.start_button.pack(side='left', padx=5)
+        
+        self.reset_button = ttk.Button(
+            self.global_controls,
+            text="RESET ALL",
+            command=self.reset_all
+        )
+        self.reset_button.pack(side='left', padx=5)
+        
         # Special buttons frame (will be populated based on room)
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific Controls")
         self.special_frame.pack(fill='x', padx=5, pady=5)
@@ -290,3 +309,35 @@ class PropControl:
         for client in self.mqtt_clients.values():
             client.loop_stop()
             client.disconnect()
+
+    def start_game(self):
+        """Send start game command to current room"""
+        if self.current_room is None or self.current_room not in self.mqtt_clients:
+            print("No active room selected")
+            return
+            
+        client = self.mqtt_clients[self.current_room]
+        try:
+            client.publish("/er/cmd", "start")
+            print(f"Start game command sent to room {self.current_room}")
+            # Log the action
+            if hasattr(self.app, 'kiosk_tracker'):
+                self.app.kiosk_tracker.log_action(f"Started game in room {self.current_room}")
+        except Exception as e:
+            print(f"Failed to send start game command: {e}")
+
+    def reset_all(self):
+        """Send reset all command to current room"""
+        if self.current_room is None or self.current_room not in self.mqtt_clients:
+            print("No active room selected")
+            return
+            
+        client = self.mqtt_clients[self.current_room]
+        try:
+            client.publish("/er/cmd", "reset")
+            print(f"Reset all command sent to room {self.current_room}")
+            # Log the action
+            if hasattr(self.app, 'kiosk_tracker'):
+                self.app.kiosk_tracker.log_action(f"Reset all props in room {self.current_room}")
+        except Exception as e:
+            print(f"Failed to send reset all command: {e}")

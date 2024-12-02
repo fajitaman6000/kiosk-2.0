@@ -12,4 +12,6 @@ save hint to private (local to profile),
 save hint to global/default (admin only),
 set hint color,
 hint folders,
-move ERP to app
+green dot next to started rooms based on presence of activated/finished props
+colored text in a few places (activated, finished, etc)
+turn 90 degrees
