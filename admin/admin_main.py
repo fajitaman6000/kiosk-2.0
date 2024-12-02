@@ -16,7 +16,7 @@ try:
     class AdminApplication:
         def __init__(self):
             self.root = tk.Tk()
-            self.root.title("Kiosk Control Center")
+            self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
             self.root.geometry("900x600")
             
             # Room definitions
