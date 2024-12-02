@@ -25,7 +25,17 @@ class PropControl:
             },
             1: {  # Casino Heist
                 'ip': '192.168.0.49',
-                'special_buttons': []
+                'special_buttons': [
+                    ('SWITCH TO MORNING AFTER', 'quest/stag'),
+                    ('SWITCH TO CASINO', 'quest/robbery')
+                ]
+            },
+            2: {  # Morning After
+                'ip': '192.168.0.49',
+                'special_buttons': [
+                    ('SWITCH TO MORNING AFTER', 'quest/stag'),
+                    ('SWITCH TO CASINO', 'quest/robbery')
+                ]
             },
             6: {  # Atlantis Rising
                 'ip': '192.168.0.14',
@@ -173,7 +183,6 @@ class PropControl:
                 client.subscribe(topic)
 
     def setup_special_buttons(self, room_number):
-        """Set up special buttons for the selected room"""
         for widget in self.special_frame.winfo_children():
             widget.destroy()
             
@@ -183,12 +192,26 @@ class PropControl:
         buttons_frame = ttk.Frame(self.special_frame)
         buttons_frame.pack(fill='x', padx=5, pady=5)
         
-        for button_text, prop_name in self.room_configs[room_number]['special_buttons']:
-            ttk.Button(
-                buttons_frame, 
-                text=button_text,
-                command=lambda pn=prop_name: self.send_special_command(pn, "on")
-            ).pack(side='left', padx=5)
+        button_style = {'background': '#ffcccc'}  # Pale red background
+        
+        for button_text, command_name in self.room_configs[room_number]['special_buttons']:
+            if command_name.startswith('quest/'):
+                quest_type = command_name.split('/')[1]
+                btn = tk.Button(
+                    buttons_frame, 
+                    text=button_text,
+                    command=lambda qt=quest_type: self.send_quest_command(qt),
+                    **button_style
+                )
+                btn.pack(side='left', padx=5)
+            else:
+                btn = tk.Button(
+                    buttons_frame, 
+                    text=button_text,
+                    command=lambda pn=command_name: self.send_special_command(pn, "on"),
+                    **button_style
+                )
+                btn.pack(side='left', padx=5)
 
     def on_message(self, client, userdata, msg, room_number):
         """Handle message from a specific room's client"""
@@ -341,3 +364,18 @@ class PropControl:
                 self.app.kiosk_tracker.log_action(f"Reset all props in room {self.current_room}")
         except Exception as e:
             print(f"Failed to send reset all command: {e}")
+
+    def send_quest_command(self, quest_type):
+        if self.current_room is None or self.current_room not in self.mqtt_clients:
+            print("No active room selected")
+            return
+            
+        client = self.mqtt_clients[self.current_room]
+        topic = "/er/quest"
+        try:
+            client.publish(topic, quest_type)
+            print(f"Quest command '{quest_type}' sent successfully to room {self.current_room}")
+            if hasattr(self.app, 'kiosk_tracker'):
+                self.app.kiosk_tracker.log_action(f"Sent quest command '{quest_type}' to room {self.current_room}")
+        except Exception as e:
+            print(f"Failed to send quest command: {e}")
