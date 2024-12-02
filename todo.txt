@@ -16,3 +16,4 @@ green dot next to started rooms based on presence of activated/finished props
 colored text in a few places (activated, finished, etc)
 turn 90 degrees
 clear hints requested when starting timer
+setting the room should reset the panel without havign to click on it afterward
