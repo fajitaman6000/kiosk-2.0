@@ -8,8 +8,10 @@ from networking import KioskNetwork
 from ui import KioskUI
 from config import ROOM_CONFIG
 from video_server import VideoServer
+from audio_server import AudioServer
 from pathlib import Path
 import subprocess
+
 
 class KioskApp:
     def __init__(self):
@@ -43,6 +45,10 @@ class KioskApp:
         self.network.start_threads()
         
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        self.audio_server = AudioServer()
+        print("Starting audio server...")
+        self.audio_server.start()
         
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -231,6 +237,7 @@ class KioskApp:
             self.current_video_process.terminate()
         self.network.shutdown()
         self.video_server.stop()
+        self.audio_server.stop()
         self.root.destroy()
         sys.exit(0)
         

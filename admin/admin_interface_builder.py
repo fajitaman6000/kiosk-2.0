@@ -2,8 +2,10 @@ import tkinter as tk
 from tkinter import ttk
 import time
 from video_client import VideoClient
+from audio_client import AudioClient
 import cv2 # type: ignore
 from PIL import Image, ImageTk
+
 import threading
 
 class AdminInterfaceBuilder:
@@ -141,7 +143,7 @@ class AdminInterfaceBuilder:
         )
         self.stats_elements['send_btn'].pack(pady=5)
 
-        # Right side panel for video
+        # Right side panel for video and audio
         right_panel = tk.Frame(stats_container)
         right_panel.pack(side='right', fill='both', expand=True, padx=(10, 0))
         
@@ -153,19 +155,42 @@ class AdminInterfaceBuilder:
         self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
         self.stats_elements['video_label'].pack(fill='both', expand=True)
         
-        # Camera controls directly below video feed
-        camera_frame = tk.Frame(right_panel)
-        camera_frame.pack(pady=1)
+        # Control frame for camera and audio buttons
+        control_frame = tk.Frame(right_panel)
+        control_frame.pack(pady=1)
         
+        # Camera controls
         self.stats_elements['camera_btn'] = tk.Button(
-            camera_frame, 
+            control_frame, 
             text="Start Camera",
             command=lambda: self.toggle_camera(computer_name)
         )
-        self.stats_elements['camera_btn'].pack()
+        self.stats_elements['camera_btn'].pack(side='left', padx=5)
+
+        # Audio controls
+        self.stats_elements['listen_btn'] = tk.Button(
+            control_frame,
+            text="Start Listening",
+            command=lambda: self.toggle_audio(computer_name)
+        )
+        self.stats_elements['listen_btn'].pack(side='left', padx=5)
         
-        # Store the computer name for video updates
+        self.stats_elements['speak_btn'] = tk.Button(
+            control_frame,
+            text="Push to Talk",
+            command=lambda: self.toggle_speaking(computer_name),
+            state='disabled'  # Initially disabled until listening is active
+        )
+        self.stats_elements['speak_btn'].pack(side='left', padx=5)
+        
+        # Store the computer name for video/audio updates
         self.stats_elements['current_computer'] = computer_name
+
+        # Initialize audio client if not already done
+        if not hasattr(self, 'audio_client'):
+            self.audio_client = AudioClient()
+            self.audio_active = False
+            self.speaking = False
 
     def play_video(self, computer_name):
         video_type = self.stats_elements['video_type'].get().lower().split()[0]
@@ -496,3 +521,44 @@ class AdminInterfaceBuilder:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
         
         self.stats_elements['msg_entry'].delete(0, 'end')
+
+    def toggle_audio(self, computer_name):
+        """Toggle audio listening from kiosk"""
+        if getattr(self, 'audio_active', False):
+            # Stop audio
+            self.audio_client.disconnect()
+            self.audio_active = False
+            self.stats_elements['listen_btn'].config(text="Start Listening")
+            self.stats_elements['speak_btn'].config(state='disabled')
+        else:
+            # Start audio
+            self.stats_elements['listen_btn'].config(text="Connecting...")
+            
+            def connect():
+                if self.audio_client.connect(computer_name):
+                    self.audio_active = True
+                    self.stats_elements['listen_btn'].config(text="Stop Listening")
+                    self.stats_elements['speak_btn'].config(state='normal')
+                else:
+                    self.stats_elements['listen_btn'].config(text="Start Listening")
+                    self.stats_elements['speak_btn'].config(state='disabled')
+            
+            threading.Thread(target=connect, daemon=True).start()
+
+    def toggle_speaking(self, computer_name):
+        """Toggle speaking to kiosk"""
+        if not self.audio_active:
+            return
+            
+        if getattr(self, 'speaking', False):
+            # Stop speaking
+            self.audio_client.stop_speaking()
+            self.speaking = False
+            self.stats_elements['speak_btn'].config(text="Push to Talk")
+        else:
+            # Start speaking
+            if self.audio_client.start_speaking():
+                self.speaking = True
+                self.stats_elements['speak_btn'].config(text="Disable Microphone")
+            else:
+                self.stats_elements['speak_btn'].config(text="Enable Microphone")
