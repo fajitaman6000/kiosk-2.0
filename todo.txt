@@ -13,8 +13,7 @@ save hint to global/default (admin only),
 set hint color,
 hint folders,
 green dot next to started rooms based on presence of activated/finished props
-colored text in a few places (activated, finished, etc)
 turn 90 degrees
 clear hints requested when starting timer
 setting the room should reset the panel without havign to click on it afterward
-restart .bats moved into application
+restarter pc-specific instead of hardcoded IPs
