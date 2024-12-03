@@ -9,6 +9,9 @@ class NetworkBroadcastHandler:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(('', 12345))
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            
+            # Create separate socket for reboot signals
+            self.reboot_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         except Exception as e:
             print(f"Network Error: {e}")
             print("This might be because:")
@@ -17,6 +20,18 @@ class NetworkBroadcastHandler:
             raise
             
         self.listen_thread = None
+        
+        # Room to IP mapping for reboot functionality
+        self.room_ips = {
+            6: "192.168.0.67",  # Atlantis
+            1: "192.168.0.33",  # Casino
+            2: "192.168.0.33",  # Morning After (same as Casino)
+            5: "192.168.0.31",  # Haunted
+            7: "192.168.0.32",  # Time Machine
+            3: "192.168.0.35",  # Wizard
+            4: "192.168.0.30"   # Zombie
+        }
+        self.REBOOT_PORT = 5005
         
     def start(self):
         self.listen_thread = Thread(target=self.listen_for_messages, daemon=True)
@@ -90,3 +105,21 @@ class NetworkBroadcastHandler:
         }
         print(f"Sending video command: {message}")  # Debug line
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+    
+    def send_reboot_signal(self, computer_name):
+        """Send reboot signal to specific kiosk"""
+        if computer_name not in self.app.kiosk_tracker.kiosk_assignments:
+            print(f"Cannot reboot {computer_name}: no room assigned")
+            return
+            
+        room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+        if room_number not in self.room_ips:
+            print(f"No IP configured for room {room_number}")
+            return
+            
+        target_ip = self.room_ips[room_number]
+        try:
+            self.reboot_socket.sendto(b"reboot", (target_ip, self.REBOOT_PORT))
+            print(f"Reboot signal sent to {computer_name} (Room {room_number}, IP: {target_ip})")
+        except Exception as e:
+            print(f"Failed to send reboot signal: {e}")

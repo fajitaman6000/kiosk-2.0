@@ -332,19 +332,30 @@ class AdminInterfaceBuilder:
             if not room_var.get():
                 return
             selected_room = next(num for num, name in self.app.rooms.items() 
-                              if name == room_var.get())
+                            if name == room_var.get())
             self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room)
             dropdown.set('')
             name_label.config(text=self.app.rooms[selected_room])
         
-        assign_btn = tk.Button(frame, text="Assign Room", command=assign_room, bg='#28a745', fg='white')
+        assign_btn = tk.Button(frame, text="Assign Room", command=assign_room)
         assign_btn.pack(side='left', padx=5)
+        
+        # Add reboot button with padding to prevent accidental clicks
+        reboot_btn = tk.Button(
+            frame, 
+            text="Reboot Kiosk",
+            command=lambda: self.app.network_handler.send_reboot_signal(computer_name),
+            bg='#FF6B6B',  # Light red background
+            fg='white'
+        )
+        reboot_btn.pack(side='left', padx=(20, 5))  # Extra left padding
         
         self.connected_kiosks[computer_name] = {
             'frame': frame,
             'help_label': help_label,
             'dropdown': dropdown,
             'assign_btn': assign_btn,
+            'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
             'computer_label': computer_label
