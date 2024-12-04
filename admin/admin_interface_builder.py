@@ -436,6 +436,29 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         try:
             print(f"\nSelecting kiosk: {computer_name}")
+            
+            # Clean up existing audio/video streams before switching
+            if hasattr(self, 'camera_active') and self.camera_active:
+                self.video_client.disconnect()
+                self.camera_active = False
+                if 'camera_btn' in self.stats_elements:
+                    self.stats_elements['camera_btn'].config(text="Start Camera")
+                if 'video_label' in self.stats_elements:
+                    self.stats_elements['video_label'].config(image='')
+                    
+            if hasattr(self, 'audio_active') and self.audio_active:
+                if hasattr(self, 'speaking') and self.speaking:
+                    self.audio_client.stop_speaking()
+                    self.speaking = False
+                    if 'speak_btn' in self.stats_elements:
+                        self.stats_elements['speak_btn'].config(text="Enable Microphone")
+                self.audio_client.disconnect()
+                self.audio_active = False
+                if 'listen_btn' in self.stats_elements:
+                    self.stats_elements['listen_btn'].config(text="Start Listening")
+                if 'speak_btn' in self.stats_elements:
+                    self.stats_elements['speak_btn'].config(state='disabled')
+            
             self.selected_kiosk = computer_name
             
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
