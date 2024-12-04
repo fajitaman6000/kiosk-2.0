@@ -5,8 +5,8 @@ from video_client import VideoClient
 from audio_client import AudioClient
 import cv2 # type: ignore
 from PIL import Image, ImageTk
-
 import threading
+
 
 class AdminInterfaceBuilder:
     def __init__(self, app):
@@ -177,7 +177,7 @@ class AdminInterfaceBuilder:
         
         self.stats_elements['speak_btn'] = tk.Button(
             control_frame,
-            text="Push to Talk",
+            text="Enable Microphone",
             command=lambda: self.toggle_speaking(computer_name),
             state='disabled'  # Initially disabled until listening is active
         )
@@ -525,40 +525,54 @@ class AdminInterfaceBuilder:
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
         if getattr(self, 'audio_active', False):
-            # Stop audio
-            self.audio_client.disconnect()
-            self.audio_active = False
-            self.stats_elements['listen_btn'].config(text="Start Listening")
-            self.stats_elements['speak_btn'].config(state='disabled')
+            try:
+                # Stop audio
+                self.audio_client.disconnect()
+                self.audio_active = False
+                self.stats_elements['listen_btn'].config(text="Start Listening")
+                self.stats_elements['speak_btn'].config(state='disabled')
+            except Exception as e:
+                print(f"Error stopping audio: {e}")
         else:
             # Start audio
             self.stats_elements['listen_btn'].config(text="Connecting...")
             
             def connect():
-                if self.audio_client.connect(computer_name):
-                    self.audio_active = True
-                    self.stats_elements['listen_btn'].config(text="Stop Listening")
-                    self.stats_elements['speak_btn'].config(state='normal')
-                else:
+                try:
+                    if self.audio_client.connect(computer_name):
+                        self.audio_active = True
+                        self.stats_elements['listen_btn'].config(text="Stop Listening")
+                        self.stats_elements['speak_btn'].config(state='normal')
+                    else:
+                        self.stats_elements['listen_btn'].config(text="Start Listening")
+                        self.stats_elements['speak_btn'].config(state='disabled')
+                except Exception as e:
+                    print(f"Error connecting audio: {e}")
                     self.stats_elements['listen_btn'].config(text="Start Listening")
                     self.stats_elements['speak_btn'].config(state='disabled')
             
             threading.Thread(target=connect, daemon=True).start()
 
     def toggle_speaking(self, computer_name):
-        """Toggle speaking to kiosk"""
+        """Toggle microphone for speaking to kiosk"""
         if not self.audio_active:
             return
             
         if getattr(self, 'speaking', False):
-            # Stop speaking
-            self.audio_client.stop_speaking()
-            self.speaking = False
-            self.stats_elements['speak_btn'].config(text="Push to Talk")
+            try:
+                # Stop speaking
+                self.audio_client.stop_speaking()
+                self.speaking = False
+                self.stats_elements['speak_btn'].config(text="Enable Microphone")
+            except Exception as e:
+                print(f"Error stopping microphone: {e}")
         else:
             # Start speaking
-            if self.audio_client.start_speaking():
-                self.speaking = True
-                self.stats_elements['speak_btn'].config(text="Disable Microphone")
-            else:
-                self.stats_elements['speak_btn'].config(text="Enable Microphone")
+            try:
+                if self.audio_client.start_speaking():
+                    self.speaking = True
+                    self.stats_elements['speak_btn'].config(text="Disable Microphone")
+                else:
+                    self.stats_elements['speak_btn'].config(text="Enable Microphone")
+            except Exception as e:
+                print(f"Error enabling microphone: {e}")

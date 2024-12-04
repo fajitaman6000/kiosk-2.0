@@ -17,3 +17,4 @@ turn 90 degrees
 clear hints requested when starting timer
 setting the room should reset the panel without havign to click on it afterward
 restarter pc-specific instead of hardcoded IPs
+make entire interface red or soemthing when microphone is enabled
