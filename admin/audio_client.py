@@ -6,12 +6,12 @@ import struct
 import numpy as np
 
 class AudioClient:
-    
     def __init__(self):
         self.running = False
         self.current_socket = None
         self.audio = pyaudio.PyAudio()
-        self.stream = None
+        self.input_stream = None
+        self.output_stream = None
         self.speaking = False
         
         # Audio parameters
@@ -32,8 +32,8 @@ class AudioClient:
             self.current_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             self.running = True
             
-            # Start playback stream
-            self.stream = self.audio.open(
+            # Initialize output stream for receiving audio
+            self.output_stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
                 rate=self.RATE,
@@ -41,13 +41,13 @@ class AudioClient:
                 frames_per_buffer=self.CHUNK
             )
             
-            # Start receiving thread with exception handling
+            # Start receiving thread
             def safe_receive():
                 try:
                     self.receive_audio()
                 except Exception as e:
                     print(f"Receive thread error: {e}")
-                    self.disconnect()  # Clean disconnect on error
+                    self.disconnect()
             
             threading.Thread(target=safe_receive, daemon=True).start()
             return True
@@ -58,9 +58,9 @@ class AudioClient:
             
     def receive_audio(self):
         print("Starting audio reception")
-        while self.running and not self.speaking:
+        while self.running:
             try:
-                # Get chunk size
+                # Get frame size
                 size_data = self._recv_exactly(struct.calcsize("Q"))
                 if not size_data:
                     print("No size data received")
@@ -72,14 +72,15 @@ class AudioClient:
                 if not audio_data:
                     print("No audio data received")
                     break
-                    
-                # Play audio
-                if self.stream and self.stream.is_active():
+                
+                # Always play received audio through output stream
+                if self.output_stream and self.output_stream.is_active():
                     try:
-                        self.stream.write(bytes(audio_data))
+                        self.output_stream.write(bytes(audio_data))
                     except Exception as e:
                         print(f"Error playing audio: {e}")
                         continue
+                        
             except socket.error as e:
                 print(f"Socket error in receive loop: {e}")
                 break
@@ -88,6 +89,7 @@ class AudioClient:
                 if not self.running:
                     break
                 continue
+                
         print("Audio reception ended")
         
     def start_speaking(self):
@@ -96,14 +98,8 @@ class AudioClient:
             return False
             
         try:
-            self.speaking = True
-            
-            # Create recording stream
-            if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
-            
-            self.stream = self.audio.open(
+            # Create input stream for microphone
+            self.input_stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
                 rate=self.RATE,
@@ -111,13 +107,15 @@ class AudioClient:
                 frames_per_buffer=self.CHUNK
             )
             
-            # Start sending thread with exception handling
+            self.speaking = True
+            
+            # Start sending thread
             def safe_send():
                 try:
                     self.send_audio()
                 except Exception as e:
                     print(f"Send thread error: {e}")
-                    self.stop_speaking()  # Clean stop on error
+                    self.stop_speaking()
             
             threading.Thread(target=safe_send, daemon=True).start()
             return True
@@ -131,40 +129,20 @@ class AudioClient:
         print("Stopping microphone")
         self.speaking = False
         
-        try:
-            if self.stream:
-                self.stream.stop_stream()
-                self.stream.close()
-                self.stream = None
-            
-            # Restart receiving stream
-            self.stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                output=True,
-                frames_per_buffer=self.CHUNK
-            )
-            
-            # Restart receive thread
-            def safe_receive():
-                try:
-                    self.receive_audio()
-                except Exception as e:
-                    print(f"Receive thread error: {e}")
-                    self.disconnect()
-            
-            threading.Thread(target=safe_receive, daemon=True).start()
-        except Exception as e:
-            print(f"Error stopping microphone: {e}")
-            self.disconnect()  # Clean disconnect on error
+        if self.input_stream:
+            try:
+                self.input_stream.stop_stream()
+                self.input_stream.close()
+                self.input_stream = None
+            except Exception as e:
+                print(f"Error closing input stream: {e}")
         
     def send_audio(self):
         """Send audio data to kiosk"""
         print("Starting audio transmission")
         while self.running and self.speaking:
             try:
-                data = self.stream.read(self.CHUNK, exception_on_overflow=False)
+                data = self.input_stream.read(self.CHUNK, exception_on_overflow=False)
                 if data:
                     size = len(data)
                     try:
@@ -178,19 +156,37 @@ class AudioClient:
                 break
         print("Audio transmission ended")
         
+    def _recv_exactly(self, size):
+        """Helper to receive exact number of bytes"""
+        data = bytearray()
+        while len(data) < size:
+            packet = self.current_socket.recv(min(size - len(data), 4096))
+            if not packet:
+                return None
+            data.extend(packet)
+        return data
+        
     def disconnect(self):
         """Clean up resources"""
         print("Disconnecting audio client...")
         self.running = False
         self.speaking = False
         
-        if self.stream:
+        if self.input_stream:
             try:
-                self.stream.stop_stream()
-                self.stream.close()
+                self.input_stream.stop_stream()
+                self.input_stream.close()
             except:
                 pass
-            self.stream = None
+            self.input_stream = None
+            
+        if self.output_stream:
+            try:
+                self.output_stream.stop_stream()
+                self.output_stream.close()
+            except:
+                pass
+            self.output_stream = None
                 
         if self.current_socket:
             try:
