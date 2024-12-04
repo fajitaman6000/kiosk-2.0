@@ -46,6 +46,9 @@ class KioskStateTracker:
         
         # Send network message
         self.app.network_handler.send_room_assignment(computer_name, room_number)
+
+        # Update controls upon kiosk selection
+        self.app.root.after(100, lambda: self.app.interface_builder.select_kiosk(computer_name))
         
     def check_timeouts(self):
         current_time = time.time()
