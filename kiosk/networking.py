@@ -33,14 +33,18 @@ class KioskNetwork:
     def announce_presence(self):
         while self.running:
             try:
+                # Get complete stats including saved room assignment
                 stats = self.message_handler.get_stats()
+                
+                # Always announce presence, regardless of room assignment
                 message = {
                     'type': 'kiosk_announce',
                     **stats
                 }
                 self.send_message(message)
                 time.sleep(1)  # Update every second
-            except:
+            except Exception as e:
+                print(f"Error in announce_presence: {e}")
                 break
                 
     def listen_for_messages(self):

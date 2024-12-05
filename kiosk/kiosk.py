@@ -10,6 +10,7 @@ from config import ROOM_CONFIG
 from video_server import VideoServer
 from audio_server import AudioServer
 from pathlib import Path
+from room_persistence import RoomPersistence
 import subprocess
 
 
@@ -49,7 +50,27 @@ class KioskApp:
         self.audio_server = AudioServer()
         print("Starting audio server...")
         self.audio_server.start()
+
+        self.room_persistence = RoomPersistence()
+        self.assigned_room = self.room_persistence.load_room_assignment()
         
+        # Initialize UI with saved room if available
+        if self.assigned_room:
+            self.root.after(100, lambda: self.ui.setup_room_interface(self.assigned_room))
+        else:
+            self.ui.setup_waiting_screen()
+
+    def handle_message(self, msg):
+        if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
+            self.assigned_room = msg['room']
+            # Save room assignment persistently
+            self.room_persistence.save_room_assignment(msg['room'])
+            self.start_time = time.time()
+            self.ui.hint_cooldown = False
+            self.ui.current_hint = None
+            self.ui.clear_all_labels()
+            self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
+
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
         is_fullscreen = self.root.attributes('-fullscreen')
