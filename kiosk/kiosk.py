@@ -16,6 +16,7 @@ import subprocess
 
 class KioskApp:
     def __init__(self):
+        print("\nStarting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
         self.root = tk.Tk()
@@ -51,8 +52,13 @@ class KioskApp:
         print("Starting audio server...")
         self.audio_server.start()
 
+        print(f"Computer name: {self.computer_name}")
+        print("Creating RoomPersistence...")
         self.room_persistence = RoomPersistence()
+        print("Loading saved room...")
         self.assigned_room = self.room_persistence.load_room_assignment()
+        print(f"Loaded room assignment: {self.assigned_room}")
+
         
         # Initialize UI with saved room if available
         if self.assigned_room:
@@ -62,14 +68,28 @@ class KioskApp:
 
     def handle_message(self, msg):
         if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
+            print(f"\nReceived room assignment message: {msg}")
             self.assigned_room = msg['room']
             # Save room assignment persistently
-            self.room_persistence.save_room_assignment(msg['room'])
+            save_success = self.room_persistence.save_room_assignment(msg['room'])
+            print(f"Room assignment save {'successful' if save_success else 'failed'}")
+            
             self.start_time = time.time()
             self.ui.hint_cooldown = False
             self.ui.current_hint = None
             self.ui.clear_all_labels()
             self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
+            
+        elif msg['type'] == 'hint' and self.assigned_room:
+            if msg.get('room') == self.assigned_room:
+                self.root.after(0, lambda t=msg['text']: self.show_hint(t))
+                
+        elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
+            minutes = msg.get('minutes')
+            self.timer.handle_command(msg['command'], minutes)
+            
+        elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
+            self.play_video(msg['video_type'], msg['minutes'])
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -81,17 +101,24 @@ class KioskApp:
             self.root.config(cursor="none")
 
     def get_stats(self):
-        return {
+        stats = {
             'computer_name': self.computer_name,
             'room': self.assigned_room,
             'total_hints': self.hints_requested,
             'timer_time': self.timer.time_remaining,
             'timer_running': self.timer.is_running
         }
+        print(f"\nGetting stats: {stats}")
+        return stats
         
     def handle_message(self, msg):
+        print(f"\nReceived message: {msg}")
         if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
+            print(f"Processing room assignment: {msg['room']}")            
             self.assigned_room = msg['room']
+            print("Saving room assignment...")
+            save_result = self.room_persistence.save_room_assignment(msg['room'])
+            print(f"Save result: {save_result}")
             self.start_time = time.time()
             self.ui.hint_cooldown = False
             self.ui.current_hint = None

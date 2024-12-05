@@ -38,35 +38,49 @@ class NetworkBroadcastHandler:
         self.listen_thread.start()
         
     def listen_for_messages(self):
-        print("Started listening for kiosks...")
-        while True:
-            try:
-                data, addr = self.socket.recvfrom(1024)
-                msg = json.loads(data.decode())
-                print(f"Received: {msg}")  # Debug message
-                
-                if msg['type'] == 'kiosk_announce':
-                    computer_name = msg['computer_name']
-                    self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
-                    self.app.root.after(0, lambda cn=computer_name: 
-                        self.app.interface_builder.add_kiosk_to_ui(cn))
-                
-                elif msg['type'] == 'help_request':
-                    computer_name = msg['computer_name']
-                    if computer_name in self.app.interface_builder.connected_kiosks:
-                        self.app.kiosk_tracker.add_help_request(computer_name)
-                        def mark_help():
-                            if computer_name in self.app.interface_builder.connected_kiosks:
-                                self.app.interface_builder.mark_help_requested(computer_name)
-                        self.app.root.after(0, mark_help)
-                
-                elif msg['type'] == 'kiosk_disconnect':
-                    computer_name = msg['computer_name']
-                    self.app.root.after(0, lambda n=computer_name: 
-                        self.app.interface_builder.remove_kiosk(n))
+            print("Started listening for kiosks...")
+            while True:
+                try:
+                    data, addr = self.socket.recvfrom(1024)
+                    msg = json.loads(data.decode())
+                    print(f"\nReceived message from {addr}:")
+                    print(f"Message content: {msg}")
+                    
+                    if msg['type'] == 'kiosk_announce':
+                        computer_name = msg['computer_name']
+                        room = msg.get('room')
+                        print(f"Processing kiosk announcement:")
+                        print(f"Computer: {computer_name}")
+                        print(f"Room: {room}")
+                        print(f"Current assignments: {self.app.kiosk_tracker.kiosk_assignments}")
                         
-            except Exception as e:
-                print(f"Error in listen_for_messages: {e}")
+                        if room is not None:
+                            print(f"Setting room assignment: {computer_name} -> {room}")
+                            self.app.kiosk_tracker.kiosk_assignments[computer_name] = room
+                            if hasattr(self.app.interface_builder, 'update_kiosk_display'):
+                                print("Updating kiosk display...")
+                                self.app.interface_builder.update_kiosk_display(computer_name)
+                        
+                        self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
+                        self.app.root.after(0, lambda cn=computer_name: 
+                            self.app.interface_builder.add_kiosk_to_ui(cn))
+                    
+                    elif msg['type'] == 'help_request':
+                        computer_name = msg['computer_name']
+                        if computer_name in self.app.interface_builder.connected_kiosks:
+                            self.app.kiosk_tracker.add_help_request(computer_name)
+                            def mark_help():
+                                if computer_name in self.app.interface_builder.connected_kiosks:
+                                    self.app.interface_builder.mark_help_requested(computer_name)
+                            self.app.root.after(0, mark_help)
+                    
+                    elif msg['type'] == 'kiosk_disconnect':
+                        computer_name = msg['computer_name']
+                        self.app.root.after(0, lambda n=computer_name: 
+                            self.app.interface_builder.remove_kiosk(n))
+                            
+                except Exception as e:
+                    print(f"Error in listen_for_messages: {e}")
                 
     def send_hint(self, room_number, hint_text):
         message = {
