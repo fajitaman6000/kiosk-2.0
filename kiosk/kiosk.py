@@ -108,7 +108,10 @@ class KioskApp:
             'timer_time': self.timer.time_remaining,
             'timer_running': self.timer.is_running
         }
-        print(f"\nGetting stats: {stats}")
+        # Only log if stats have changed from last time
+        if not hasattr(self, '_last_stats') or self._last_stats != stats:
+            print(f"\nStats updated: {stats}")
+            self._last_stats = stats.copy()
         return stats
         
     def handle_message(self, msg):
@@ -146,7 +149,7 @@ class KioskApp:
             if self.ui.request_pending_label is None:
                 self.ui.request_pending_label = tk.Label(
                     self.root,
-                    text="Hint requested",
+                    text="Hint Requested, please wait...",
                     fg='yellow', bg='black',
                     font=('Arial', 24)
                 )
@@ -198,52 +201,62 @@ class KioskApp:
         print(f"Video directory exists: {video_dir.exists()}")
         print(f"Video directory absolute path: {video_dir.absolute()}")
         
-        video_file = video_dir / f"{video_type}.mp4"
-        print(f"Looking for video file: {video_file.absolute()}")
+        # Define video paths upfront
+        video_file = video_dir / f"{video_type}.mp4" if video_type != 'game' else None
+        game_video = None
+        
+        # Get room-specific game video name from config if room is assigned
+        if self.assigned_room is not None and self.assigned_room in ROOM_CONFIG['backgrounds']:
+            game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
+            game_video = video_dir / game_video_name
+            print(f"Looking for room-specific game video: {game_video}")
+        else:
+            print("No room assigned or invalid room number - skipping room-specific game video")
 
-        if not video_file.exists():
-            print(f"video: {video_type} not found")
-            self.root.deiconify()  # Restore UI if video not found
-            return
-
-        game_video = video_dir / "game.mp4"
-
-        try:# VLC arguments for both test and full playback
+        try:
+            # VLC arguments for video playback
             vlc_args = [
                 vlc_exe,
                 '--fullscreen',
                 '--no-repeat',
                 '--no-loop',
                 '--play-and-exit',
-                '--no-video-deco',        # No window decoration
-                '--no-embedded-video',    # Don't embed in a window
-                '--no-video-title-show',  # No title
-                '--no-spu',              # No subtitles
-                '--no-osd',              # No on-screen display
-                '--no-interact',         # No interaction
-                str(video_file.absolute())
+                '--no-video-deco',        
+                '--no-embedded-video',    
+                '--no-video-title-show',  
+                '--no-spu',              
+                '--no-osd',              
+                '--no-interact',
+                '--video-filter=transform{type=270}',
             ]
 
-            # Play the selected video
-            print(f"Playing first video: {video_file}")
-            self.current_video_process = subprocess.Popen(
-                vlc_args,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-            # Wait for first video with timeout
-            try:
-                self.current_video_process.wait(timeout=300)  # 5 minute timeout
-            except subprocess.TimeoutExpired:
-                self.current_video_process.terminate()
+            # If not "game", play the intro video first
+            if video_type != 'game':
+                print(f"Looking for intro video file: {video_file.absolute()}")
+                if not video_file.exists():
+                    print(f"video: {video_type} not found")
+                    self.root.deiconify()  # Restore UI if video not found
+                    return
 
-            # If not "game intro only" and game video exists, play game video
-            if video_type != 'game' and game_video.exists():
-                vlc_args[-1] = str(game_video.absolute())  # Replace video path
-                print(f"Playing game video: {game_video}")
+                # Play the intro video
+                print(f"Playing intro video: {video_file}")
                 self.current_video_process = subprocess.Popen(
-                    vlc_args,
+                    vlc_args + [str(video_file.absolute())],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
+                
+                # Wait for intro video with timeout
+                try:
+                    self.current_video_process.wait(timeout=300)  # 5 minute timeout
+                except subprocess.TimeoutExpired:
+                    self.current_video_process.terminate()
+
+            # Play room-specific game video if it exists
+            if game_video and game_video.exists():
+                print(f"Playing room-specific game video: {game_video}")
+                self.current_video_process = subprocess.Popen(
+                    vlc_args + [str(game_video.absolute())],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
                 )
@@ -251,6 +264,8 @@ class KioskApp:
                     self.current_video_process.wait(timeout=300)
                 except subprocess.TimeoutExpired:
                     self.current_video_process.terminate()
+            else:
+                print("Room-specific game video not found")
 
             print("Videos complete, restoring UI")
             # Restore UI

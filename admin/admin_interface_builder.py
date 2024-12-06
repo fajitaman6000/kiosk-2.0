@@ -6,6 +6,7 @@ from audio_client import AudioClient
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
+import os
 
 
 class AdminInterfaceBuilder:
@@ -40,6 +41,7 @@ class AdminInterfaceBuilder:
         self.stats_frame.pack(fill='both', expand=True, pady=10)
 
     def setup_stats_panel(self, computer_name):
+        # Clear existing widgets
         for widget in self.stats_frame.winfo_children():
             widget.destroy()
         
@@ -51,14 +53,14 @@ class AdminInterfaceBuilder:
         left_panel = tk.Frame(stats_container)
         left_panel.pack(side='left', fill='y', padx=(0, 10))
         
-        # Stats label for hints
+        # Stats frame for hints
         stats_frame = tk.Frame(left_panel)
         stats_frame.pack(fill='x', pady=(0, 10))
         
         self.stats_elements['hints_label'] = tk.Label(stats_frame, justify='left')
         self.stats_elements['hints_label'].pack(anchor='w')
 
-        # Timer controls
+        # Timer controls section
         timer_frame = tk.LabelFrame(left_panel, text="Room Controls", bg='black', fg='white')
         timer_frame.pack(fill='x', pady=5)
 
@@ -76,36 +78,80 @@ class AdminInterfaceBuilder:
         )
         self.stats_elements['current_time'].pack(pady=5)
 
-        timer_controls = tk.Frame(timer_frame, bg='black')
-        timer_controls.pack(fill='x', padx=5, pady=5)
-
         # Timer and video controls combined
-        control_buttons_frame = tk.Frame(timer_controls, bg='black')
+        control_buttons_frame = tk.Frame(timer_frame, bg='black')
         control_buttons_frame.pack(fill='x', pady=5)
         
+        # Load all required icons
+        icon_dir = os.path.join("admin_icons")
+        try:
+            play_icon = Image.open(os.path.join(icon_dir, "play.png"))
+            play_icon = play_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            play_icon = ImageTk.PhotoImage(play_icon)
+            
+            stop_icon = Image.open(os.path.join(icon_dir, "stop.png"))
+            stop_icon = stop_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            stop_icon = ImageTk.PhotoImage(stop_icon)
+            
+            video_icon = Image.open(os.path.join(icon_dir, "video.png"))
+            video_icon = video_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            video_icon = ImageTk.PhotoImage(video_icon)
+            
+            clock_icon = Image.open(os.path.join(icon_dir, "clock.png"))
+            clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            clock_icon = ImageTk.PhotoImage(clock_icon)
+        except Exception as e:
+            print(f"Error loading icons: {e}")
+            play_icon = stop_icon = video_icon = clock_icon = None
+        
+        # Timer button frame
         button_frame = tk.Frame(control_buttons_frame, bg='black')
         button_frame.pack(side='left', padx=5)
         
-        self.stats_elements['timer_button'] = tk.Button(
+        # Create start/stop room button with icon
+        timer_button = tk.Button(
             button_frame,
-            text="Start Room",
-            command=lambda: self.toggle_timer(computer_name)
+            image=play_icon if play_icon else None,
+            text="" if play_icon else "Start Room",
+            command=lambda: self.toggle_timer(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
         )
-        self.stats_elements['timer_button'].pack(side='left', padx=5)
+        # Store both icons with the button for later use
+        if play_icon and stop_icon:
+            timer_button.play_icon = play_icon
+            timer_button.stop_icon = stop_icon
+        timer_button.pack(side='left', padx=(5, 20))  # Increased right padding
+        self.stats_elements['timer_button'] = timer_button
 
-        # Video options with swapped order
+        # Video frame with icon button and dropdown
         video_frame = tk.Frame(control_buttons_frame, bg='black')
         video_frame.pack(side='left', padx=5)
         
-        tk.Button(
+        # Video button with icon
+        video_btn = tk.Button(
             video_frame,
-            text="Start Room with Video",
-            command=lambda: self.play_video(computer_name)
-        ).pack(side='left', padx=10)
+            image=video_icon if video_icon else None,
+            text="" if video_icon else "Start Room with Video",
+            command=lambda: self.play_video(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
+        )
+        if video_icon:
+            video_btn.image = video_icon
+        video_btn.pack(side='left', padx=2)
         
-        video_options = ['Intro', 'Late', 'Recent Player', 'Game Intro Only']
+        # Video options dropdown
+        video_options = ['Intro', 'Late', 'Recent Player', 'Game']
         self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
-        
         video_dropdown = ttk.Combobox(
             video_frame,
             textvariable=self.stats_elements['video_type'],
@@ -116,18 +162,29 @@ class AdminInterfaceBuilder:
         video_dropdown.pack(side='left', padx=2)
 
         # Time setting controls
-        time_set_frame = tk.Frame(timer_controls, bg='black')
+        time_set_frame = tk.Frame(timer_frame, bg='black')
         time_set_frame.pack(fill='x', pady=5)
 
         self.stats_elements['time_entry'] = tk.Entry(time_set_frame, width=3)
         self.stats_elements['time_entry'].pack(side='left', padx=5)
         tk.Label(time_set_frame, text="min", fg='white', bg='black').pack(side='left')
 
-        tk.Button(
+        # Set time button with icon
+        set_time_btn = tk.Button(
             time_set_frame,
-            text="Set Time",
-            command=lambda: self.set_timer(computer_name)
-        ).pack(side='left', padx=5)
+            image=clock_icon if clock_icon else None,
+            text="" if clock_icon else "Set Time",
+            command=lambda: self.set_timer(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
+        )
+        if clock_icon:
+            set_time_btn.image = clock_icon
+        set_time_btn.pack(side='left', padx=5)
 
         # Hint controls
         hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
@@ -186,12 +243,6 @@ class AdminInterfaceBuilder:
         # Store the computer name for video/audio updates
         self.stats_elements['current_computer'] = computer_name
 
-        # Initialize audio client if not already done
-        if not hasattr(self, 'audio_client'):
-            self.audio_client = AudioClient()
-            self.audio_active = False
-            self.speaking = False
-
     def play_video(self, computer_name):
         video_type = self.stats_elements['video_type'].get().lower().split()[0]
         # Get time from timer entry, default to 45 if empty or invalid
@@ -203,9 +254,27 @@ class AdminInterfaceBuilder:
         self.app.network_handler.send_video_command(computer_name, video_type, minutes)
 
     def toggle_timer(self, computer_name):
-        is_running = self.stats_elements['timer_button'].cget('text') == "Stop Room"
-        new_text = "Start Room" if is_running else "Stop Room"
-        self.stats_elements['timer_button'].config(text=new_text)
+        if 'timer_button' not in self.stats_elements:
+            return
+            
+        timer_button = self.stats_elements['timer_button']
+        is_running = timer_button.cget('text') == "Stop Room"
+        
+        # Switch icons before sending command
+        if hasattr(timer_button, 'play_icon') and hasattr(timer_button, 'stop_icon'):
+            if is_running:
+                timer_button.config(
+                    image=timer_button.play_icon,
+                    text="Start Room"
+                )
+            else:
+                timer_button.config(
+                    image=timer_button.stop_icon,
+                    text="Stop Room"
+                )
+        else:
+            # Fallback to text-only if icons aren't available
+            timer_button.config(text="Start Room" if is_running else "Stop Room")
         
         command = "stop" if is_running else "start"
         self.app.network_handler.send_timer_command(computer_name, command)
@@ -499,33 +568,72 @@ class AdminInterfaceBuilder:
             print(f"Error in select_kiosk: {e}")
 
     def update_stats_display(self, computer_name):
-        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+        try:
+            if computer_name not in self.app.kiosk_tracker.kiosk_stats:
+                return
+                
             stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
             
-            self.stats_elements['hints_label'].config(
-                text=f"Hints requested: {stats.get('total_hints', 0)}"
-            )
+            # Only proceed if we have valid UI elements
+            if not self.stats_elements:
+                print("Stats elements not initialized yet")
+                return
+                
+            # Update hints label if it exists
+            if self.stats_elements.get('hints_label'):
+                self.stats_elements['hints_label'].config(
+                    text=f"Hints requested: {stats.get('total_hints', 0)}"
+                )
             
             # Update timer display
             timer_time = stats.get('timer_time', 3600)
             timer_minutes = int(timer_time // 60)
             timer_seconds = int(timer_time % 60)
-            if 'current_time' in self.stats_elements:
+            if self.stats_elements.get('current_time'):
                 self.stats_elements['current_time'].config(
                     text=f"{timer_minutes:02d}:{timer_seconds:02d}"
                 )
             
-            # Update timer button state
-            if 'timer_button' in self.stats_elements:
+            # Update timer button state and icon
+            timer_button = self.stats_elements.get('timer_button')
+            if timer_button and timer_button.winfo_exists():
                 is_running = stats.get('timer_running', False)
-                self.stats_elements['timer_button'].config(
-                    text="Stop Room" if is_running else "Start Room"
-                )
+                
+                if hasattr(timer_button, 'stop_icon') and hasattr(timer_button, 'play_icon'):
+                    try:
+                        # Update icon based on current timer state
+                        if is_running and timer_button.cget('text') != "Stop Room":
+                            timer_button.config(
+                                image=timer_button.stop_icon,
+                                text="Stop Room"
+                            )
+                        elif not is_running and timer_button.cget('text') != "Start Room":
+                            timer_button.config(
+                                image=timer_button.play_icon,
+                                text="Start Room"
+                            )
+                    except tk.TclError:
+                        print("Timer button was destroyed")
+                        return
+                else:
+                    try:
+                        # Fallback to text-only if icons aren't available
+                        if is_running and timer_button.cget('text') != "Stop Room":
+                            timer_button.config(text="Stop Room")
+                        elif not is_running and timer_button.cget('text') != "Start Room":
+                            timer_button.config(text="Start Room")
+                    except tk.TclError:
+                        print("Timer button was destroyed")
+                        return
             
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-                self.stats_elements['send_btn'].config(state='normal')
+                if self.stats_elements.get('send_btn'):
+                    self.stats_elements['send_btn'].config(state='normal')
             else:
-                self.stats_elements['send_btn'].config(state='disabled')
+                if self.stats_elements.get('send_btn'):
+                    self.stats_elements['send_btn'].config(state='disabled')
+        except Exception as e:
+            print(f"Error updating stats display: {e}")
 
     def send_hint(self, computer_name):
         if not self.stats_elements['msg_entry'] or not computer_name in self.app.kiosk_tracker.kiosk_assignments:

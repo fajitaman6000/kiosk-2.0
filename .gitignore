@@ -1,4 +1,25 @@
+# Video files
 *.mp4
 **/*.mp4
+videos/
 **/videos/
+
+# Ignore videos regardless of case
+*.MP4
+**/*.MP4
+
+# Ignore videos in any subdirectory
+/**/videos/*
+/**/videos/*.mp4
+/**/videos/*.MP4
+
+# Ignore video directories at any level
+[Vv]ideos/
+**/[Vv]ideos/
+
+# Python-related ignores
+__pycache__/
 **/__pycache__/
+*.py[cod]
+*$py.class
+.Python
