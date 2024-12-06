@@ -1,1 +1,2 @@
 kiosk/videos/*.mp4
+__pycache__/
