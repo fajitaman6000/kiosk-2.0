@@ -22,6 +22,7 @@ class AdminInterfaceBuilder:
             'camera_btn': None
         }
         self.video_client = VideoClient()
+        self.audio_client = AudioClient()  # Initialize audio client
         self.setup_ui()
         
         # Start timer update loop using app's root
@@ -213,33 +214,98 @@ class AdminInterfaceBuilder:
         self.stats_elements['video_label'].pack(fill='both', expand=True)
         
         # Control frame for camera and audio buttons
-        control_frame = tk.Frame(right_panel)
+        control_frame = tk.Frame(right_panel, bg='systemButtonFace')  # Match system background
         control_frame.pack(pady=1)
-        
-        # Camera controls
-        self.stats_elements['camera_btn'] = tk.Button(
-            control_frame, 
-            text="Start Camera",
-            command=lambda: self.toggle_camera(computer_name)
-        )
-        self.stats_elements['camera_btn'].pack(side='left', padx=5)
 
-        # Audio controls
-        self.stats_elements['listen_btn'] = tk.Button(
+        # Load additional icons for video/audio controls
+        try:
+            camera_icon = Image.open(os.path.join(icon_dir, "start_camera.png"))
+            camera_icon = camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            camera_icon = ImageTk.PhotoImage(camera_icon)
+            
+            stop_camera_icon = Image.open(os.path.join(icon_dir, "stop_camera.png"))
+            stop_camera_icon = stop_camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            stop_camera_icon = ImageTk.PhotoImage(stop_camera_icon)
+            
+            listen_icon = Image.open(os.path.join(icon_dir, "start_listening.png"))
+            listen_icon = listen_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            listen_icon = ImageTk.PhotoImage(listen_icon)
+            
+            stop_listening_icon = Image.open(os.path.join(icon_dir, "stop_listening.png"))
+            stop_listening_icon = stop_listening_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            stop_listening_icon = ImageTk.PhotoImage(stop_listening_icon)
+            
+            enable_mic_icon = Image.open(os.path.join(icon_dir, "enable_microphone.png"))
+            enable_mic_icon = enable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            enable_mic_icon = ImageTk.PhotoImage(enable_mic_icon)
+            
+            disable_mic_icon = Image.open(os.path.join(icon_dir, "disable_microphone.png"))
+            disable_mic_icon = disable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            disable_mic_icon = ImageTk.PhotoImage(disable_mic_icon)
+        except Exception as e:
+            print(f"Error loading video/audio control icons: {e}")
+            camera_icon = stop_camera_icon = listen_icon = stop_listening_icon = enable_mic_icon = disable_mic_icon = None
+
+        # Camera controls with icon
+        camera_btn = tk.Button(
             control_frame,
-            text="Start Listening",
-            command=lambda: self.toggle_audio(computer_name)
+            image=camera_icon if camera_icon else None,
+            text="" if camera_icon else "Start Camera",
+            command=lambda: self.toggle_camera(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='systemButtonFace',  # Match system background
+            activebackground='systemButtonFace'  # Match system background when clicked
         )
-        self.stats_elements['listen_btn'].pack(side='left', padx=5)
-        
-        self.stats_elements['speak_btn'] = tk.Button(
+        if camera_icon and stop_camera_icon:
+            camera_btn.camera_icon = camera_icon
+            camera_btn.stop_camera_icon = stop_camera_icon
+        camera_btn.pack(side='left', padx=5)
+
+        # Audio listening controls with icon
+        listen_btn = tk.Button(
             control_frame,
-            text="Enable Microphone",
+            image=listen_icon if listen_icon else None,
+            text="" if listen_icon else "Start Listening",
+            command=lambda: self.toggle_audio(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='systemButtonFace',
+            activebackground='systemButtonFace'
+        )
+        if listen_icon and stop_listening_icon:
+            listen_btn.listen_icon = listen_icon
+            listen_btn.stop_listening_icon = stop_listening_icon
+        listen_btn.pack(side='left', padx=5)
+
+        # Microphone controls with icon
+        speak_btn = tk.Button(
+            control_frame,
+            image=enable_mic_icon if enable_mic_icon else None,
+            text="" if enable_mic_icon else "Enable Microphone",
             command=lambda: self.toggle_speaking(computer_name),
-            state='disabled'  # Initially disabled until listening is active
+            state='disabled',
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='systemButtonFace',
+            activebackground='systemButtonFace'
         )
-        self.stats_elements['speak_btn'].pack(side='left', padx=5)
-        
+        if enable_mic_icon and disable_mic_icon:
+            speak_btn.enable_mic_icon = enable_mic_icon
+            speak_btn.disable_mic_icon = disable_mic_icon
+        speak_btn.pack(side='left', padx=5)
+
+        # Store buttons in stats_elements
+        self.stats_elements['camera_btn'] = camera_btn
+        self.stats_elements['listen_btn'] = listen_btn
+        self.stats_elements['speak_btn'] = speak_btn
+
         # Store the computer name for video/audio updates
         self.stats_elements['current_computer'] = computer_name
 
@@ -301,11 +367,18 @@ class AdminInterfaceBuilder:
         self.app.root.after(1000, self.update_timer_display)
 
     def toggle_camera(self, computer_name):
+        """Toggle camera feed from kiosk"""
         if getattr(self, 'camera_active', False):
             # Stop camera
             self.video_client.disconnect()
             self.camera_active = False
-            self.stats_elements['camera_btn'].config(text="Start Camera")
+            if hasattr(self.stats_elements['camera_btn'], 'camera_icon'):
+                self.stats_elements['camera_btn'].config(
+                    image=self.stats_elements['camera_btn'].camera_icon,
+                    text="Start Camera"
+                )
+            else:
+                self.stats_elements['camera_btn'].config(text="Start Camera")
             if 'video_label' in self.stats_elements:
                 self.stats_elements['video_label'].config(image='')
         else:
@@ -315,10 +388,22 @@ class AdminInterfaceBuilder:
             def connect():
                 if self.video_client.connect(computer_name):
                     self.camera_active = True
-                    self.stats_elements['camera_btn'].config(text="Stop Camera")
+                    if hasattr(self.stats_elements['camera_btn'], 'stop_camera_icon'):
+                        self.stats_elements['camera_btn'].config(
+                            image=self.stats_elements['camera_btn'].stop_camera_icon,
+                            text="Stop Camera"
+                        )
+                    else:
+                        self.stats_elements['camera_btn'].config(text="Stop Camera")
                     self.update_video_feed()
                 else:
-                    self.stats_elements['camera_btn'].config(text="Start Camera")
+                    if hasattr(self.stats_elements['camera_btn'], 'camera_icon'):
+                        self.stats_elements['camera_btn'].config(
+                            image=self.stats_elements['camera_btn'].camera_icon,
+                            text="Start Camera"
+                        )
+                    else:
+                        self.stats_elements['camera_btn'].config(text="Start Camera")
                     if 'video_label' in self.stats_elements:
                         self.stats_elements['video_label'].config(
                             text="Camera connection failed",
@@ -655,12 +740,21 @@ class AdminInterfaceBuilder:
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
+        if not hasattr(self, 'audio_client'):
+            self.audio_client = AudioClient()
+            
         if getattr(self, 'audio_active', False):
             try:
                 # Stop audio
                 self.audio_client.disconnect()
                 self.audio_active = False
-                self.stats_elements['listen_btn'].config(text="Start Listening")
+                if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
+                    self.stats_elements['listen_btn'].config(
+                        image=self.stats_elements['listen_btn'].listen_icon,
+                        text="Start Listening"
+                    )
+                else:
+                    self.stats_elements['listen_btn'].config(text="Start Listening")
                 self.stats_elements['speak_btn'].config(state='disabled')
             except Exception as e:
                 print(f"Error stopping audio: {e}")
@@ -672,14 +766,32 @@ class AdminInterfaceBuilder:
                 try:
                     if self.audio_client.connect(computer_name):
                         self.audio_active = True
-                        self.stats_elements['listen_btn'].config(text="Stop Listening")
+                        if hasattr(self.stats_elements['listen_btn'], 'stop_listening_icon'):
+                            self.stats_elements['listen_btn'].config(
+                                image=self.stats_elements['listen_btn'].stop_listening_icon,
+                                text="Stop Listening"
+                            )
+                        else:
+                            self.stats_elements['listen_btn'].config(text="Stop Listening")
                         self.stats_elements['speak_btn'].config(state='normal')
                     else:
-                        self.stats_elements['listen_btn'].config(text="Start Listening")
+                        if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
+                            self.stats_elements['listen_btn'].config(
+                                image=self.stats_elements['listen_btn'].listen_icon,
+                                text="Start Listening"
+                            )
+                        else:
+                            self.stats_elements['listen_btn'].config(text="Start Listening")
                         self.stats_elements['speak_btn'].config(state='disabled')
                 except Exception as e:
                     print(f"Error connecting audio: {e}")
-                    self.stats_elements['listen_btn'].config(text="Start Listening")
+                    if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
+                        self.stats_elements['listen_btn'].config(
+                            image=self.stats_elements['listen_btn'].listen_icon,
+                            text="Start Listening"
+                        )
+                    else:
+                        self.stats_elements['listen_btn'].config(text="Start Listening")
                     self.stats_elements['speak_btn'].config(state='disabled')
             
             threading.Thread(target=connect, daemon=True).start()
@@ -694,7 +806,24 @@ class AdminInterfaceBuilder:
                 # Stop speaking
                 self.audio_client.stop_speaking()
                 self.speaking = False
-                self.stats_elements['speak_btn'].config(text="Enable Microphone")
+                # Reset background color of the entire interface
+                self.app.root.configure(bg='systemButtonFace')
+                for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
+                    frame.configure(bg='systemButtonFace')
+                # Reset button appearance
+                if hasattr(self.stats_elements['speak_btn'], 'enable_mic_icon'):
+                    self.stats_elements['speak_btn'].config(
+                        image=self.stats_elements['speak_btn'].enable_mic_icon,
+                        text="Enable Microphone",
+                        bg='systemButtonFace',
+                        activebackground='systemButtonFace'
+                    )
+                else:
+                    self.stats_elements['speak_btn'].config(
+                        text="Enable Microphone",
+                        bg='systemButtonFace',
+                        activebackground='systemButtonFace'
+                    )
             except Exception as e:
                 print(f"Error stopping microphone: {e}")
         else:
@@ -702,8 +831,31 @@ class AdminInterfaceBuilder:
             try:
                 if self.audio_client.start_speaking():
                     self.speaking = True
-                    self.stats_elements['speak_btn'].config(text="Disable Microphone")
+                    # Set red background for the entire interface
+                    self.app.root.configure(bg='#ffcccc')  # Light red
+                    for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
+                        frame.configure(bg='#ffcccc')
+                    # Update button appearance
+                    if hasattr(self.stats_elements['speak_btn'], 'disable_mic_icon'):
+                        self.stats_elements['speak_btn'].config(
+                            image=self.stats_elements['speak_btn'].disable_mic_icon,
+                            text="Disable Microphone",
+                            bg='#ffcccc',
+                            activebackground='#ffcccc'
+                        )
+                    else:
+                        self.stats_elements['speak_btn'].config(
+                            text="Disable Microphone",
+                            bg='#ffcccc',
+                            activebackground='#ffcccc'
+                        )
                 else:
-                    self.stats_elements['speak_btn'].config(text="Enable Microphone")
+                    if hasattr(self.stats_elements['speak_btn'], 'enable_mic_icon'):
+                        self.stats_elements['speak_btn'].config(
+                            image=self.stats_elements['speak_btn'].enable_mic_icon,
+                            text="Enable Microphone"
+                        )
+                    else:
+                        self.stats_elements['speak_btn'].config(text="Enable Microphone")
             except Exception as e:
                 print(f"Error enabling microphone: {e}")

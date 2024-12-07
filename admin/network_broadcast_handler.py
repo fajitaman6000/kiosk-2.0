@@ -1,3 +1,4 @@
+# network_broadcast_handler.py
 import socket
 import json
 from threading import Thread
@@ -5,6 +6,9 @@ from threading import Thread
 class NetworkBroadcastHandler:
     def __init__(self, app):
         self.app = app
+        self.last_message = {}  # Initialize message cache
+        self.running = True     # Add running flag
+        
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(('', 12345))
@@ -38,48 +42,59 @@ class NetworkBroadcastHandler:
         self.listen_thread.start()
         
     def listen_for_messages(self):
-            print("Started listening for kiosks...")
-            while True:
-                try:
-                    data, addr = self.socket.recvfrom(1024)
-                    msg = json.loads(data.decode())
-                    print(f"\nReceived message from {addr}:")
-                    print(f"Message content: {msg}")
+        print("Started listening for kiosks...")
+        while self.running:
+            try:
+                data, addr = self.socket.recvfrom(1024)
+                msg = json.loads(data.decode())
+                
+                # Only print if message content has changed
+                computer_name = msg.get('computer_name')
+                if computer_name:
+                    last_msg = self.last_message.get(computer_name, {})
+                    if msg != last_msg:
+                        print(f"\nReceived updated message from {addr}:")
+                        print(f"Message content: {msg}")
+                        self.last_message[computer_name] = msg.copy()
+                
+                if msg['type'] == 'kiosk_announce':
+                    computer_name = msg['computer_name']
+                    room = msg.get('room')
                     
-                    if msg['type'] == 'kiosk_announce':
-                        computer_name = msg['computer_name']
-                        room = msg.get('room')
-                        print(f"Processing kiosk announcement:")
-                        print(f"Computer: {computer_name}")
-                        print(f"Room: {room}")
-                        print(f"Current assignments: {self.app.kiosk_tracker.kiosk_assignments}")
-                        
-                        if room is not None:
-                            print(f"Setting room assignment: {computer_name} -> {room}")
-                            self.app.kiosk_tracker.kiosk_assignments[computer_name] = room
-                            if hasattr(self.app.interface_builder, 'update_kiosk_display'):
-                                print("Updating kiosk display...")
-                                self.app.interface_builder.update_kiosk_display(computer_name)
-                        
-                        self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
-                        self.app.root.after(0, lambda cn=computer_name: 
-                            self.app.interface_builder.add_kiosk_to_ui(cn))
+                    # Only print room assignment changes
+                    current_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+                    if room != current_room:
+                        print(f"Processing room change for {computer_name}:")
+                        print(f"Previous room: {current_room}")
+                        print(f"New room: {room}")
                     
-                    elif msg['type'] == 'help_request':
-                        computer_name = msg['computer_name']
-                        if computer_name in self.app.interface_builder.connected_kiosks:
-                            self.app.kiosk_tracker.add_help_request(computer_name)
-                            def mark_help():
-                                if computer_name in self.app.interface_builder.connected_kiosks:
-                                    self.app.interface_builder.mark_help_requested(computer_name)
-                            self.app.root.after(0, mark_help)
+                    if room is not None:
+                        self.app.kiosk_tracker.kiosk_assignments[computer_name] = room
+                        if hasattr(self.app.interface_builder, 'update_kiosk_display'):
+                            self.app.interface_builder.update_kiosk_display(computer_name)
                     
-                    elif msg['type'] == 'kiosk_disconnect':
-                        computer_name = msg['computer_name']
-                        self.app.root.after(0, lambda n=computer_name: 
-                            self.app.interface_builder.remove_kiosk(n))
+                    self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
+                    self.app.root.after(0, lambda cn=computer_name: 
+                        self.app.interface_builder.add_kiosk_to_ui(cn))
+                    
+                elif msg['type'] == 'help_request':
+                    computer_name = msg['computer_name']
+                    if computer_name in self.app.interface_builder.connected_kiosks:
+                        self.app.kiosk_tracker.add_help_request(computer_name)
+                        def mark_help():
+                            if computer_name in self.app.interface_builder.connected_kiosks:
+                                self.app.interface_builder.mark_help_requested(computer_name)
+                        self.app.root.after(0, mark_help)
+                
+                elif msg['type'] == 'kiosk_disconnect':
+                    computer_name = msg['computer_name']
+                    if computer_name in self.last_message:
+                        del self.last_message[computer_name]
+                    self.app.root.after(0, lambda n=computer_name: 
+                        self.app.interface_builder.remove_kiosk(n))
                             
-                except Exception as e:
+            except Exception as e:
+                if self.running:
                     print(f"Error in listen_for_messages: {e}")
                 
     def send_hint(self, room_number, hint_text):
@@ -106,10 +121,8 @@ class NetworkBroadcastHandler:
         }
         if minutes is not None:
             message['minutes'] = minutes
-        print(f"Sending timer command: {message}")  # Debug
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
 
-    # Add to NetworkBroadcastHandler class
     def send_video_command(self, computer_name, video_type, minutes):
         message = {
             'type': 'video_command',
@@ -117,11 +130,9 @@ class NetworkBroadcastHandler:
             'video_type': video_type,
             'minutes': minutes
         }
-        print(f"Sending video command: {message}")  # Debug line
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
     
     def send_reboot_signal(self, computer_name):
-        """Send reboot signal to specific kiosk"""
         if computer_name not in self.app.kiosk_tracker.kiosk_assignments:
             print(f"Cannot reboot {computer_name}: no room assigned")
             return
