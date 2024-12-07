@@ -4,6 +4,7 @@ import paho.mqtt.client as mqtt
 import json
 import time
 import random
+import threading
 
 class PropControl:
     def __init__(self, app):
@@ -11,6 +12,7 @@ class PropControl:
         self.props = {}  # strId -> prop info
         self.mqtt_clients = {}  # room_number -> mqtt client
         self.current_room = None
+        self.connection_states = {}  # room_number -> connection state
         
         # Room-specific MQTT configurations
         self.room_configs = {
@@ -59,10 +61,6 @@ class PropControl:
         self.MQTT_USER = "indestroom"
         self.MQTT_PASS = "indestroom"
         
-        # Add status label for connection state
-        # self.status_label = ttk.Label(app.root, text="Waiting for room selection...")
-        # self.status_label.pack()
-
         # Create prop control panel
         self.frame = ttk.LabelFrame(app.root, text="Prop Controls")
         self.frame.pack(fill='both', expand=True, padx=10, pady=5)
@@ -112,7 +110,11 @@ class PropControl:
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
 
-        # Initialize MQTT clients for each room
+        # Status message label for connection state
+        self.status_label = tk.Label(self.props_frame, text="", font=('Arial', 12))
+        self.status_label.pack(fill='x', padx=5, pady=5)
+
+        # Initialize MQTT clients for all rooms
         for room_number in self.room_configs:
             self.initialize_mqtt_client(room_number)
 
@@ -135,13 +137,65 @@ class PropControl:
         client.on_message = lambda c, u, msg: self.on_message(c, u, msg, room_number)
         client.on_disconnect = lambda c, u, rc: self.on_disconnect(c, u, rc, room_number)
         
-        try:
-            client.ws_set_options(path="/mqtt")
-            client.connect(config['ip'], self.MQTT_PORT, 60)
-            client.loop_start()
-            self.mqtt_clients[room_number] = client
-        except Exception as e:
-            print(f"Failed to connect to room {room_number}: {e}")
+        def connect_async():
+            try:
+                client.ws_set_options(path="/mqtt")
+                # Set shorter timeouts to prevent blocking
+                client.connect_async(config['ip'], self.MQTT_PORT, keepalive=5)
+                client.loop_start()
+                self.mqtt_clients[room_number] = client
+                self.connection_states[room_number] = "Connecting..."
+                
+                # Only update UI if this is the current room
+                if room_number == self.current_room:
+                    self.app.root.after(0, lambda: self.update_connection_state(room_number, "Connecting..."))
+                
+                # Schedule timeout check
+                self.app.root.after(5000, lambda: self.check_connection_timeout(room_number))
+                
+            except Exception as e:
+                print(f"Failed to connect to room {room_number}: {e}")
+                error_msg = f"Connection failed. Retrying in 10 seconds..."
+                self.connection_states[room_number] = error_msg
+                
+                # Only update UI if this is the current room
+                if room_number == self.current_room:
+                    self.app.root.after(0, lambda: self.update_connection_state(room_number, error_msg))
+                
+                # Schedule retry using after() instead of direct call
+                self.app.root.after(10000, lambda: self.retry_connection(room_number))
+        
+        # Start connection attempt in separate thread
+        threading.Thread(target=connect_async, daemon=True).start()
+
+    def check_connection_timeout(self, room_number):
+        """Check if connection attempt has timed out"""
+        if room_number in self.mqtt_clients:
+            client = self.mqtt_clients[room_number]
+            if not client.is_connected():
+                print(f"Connection to room {room_number} timed out")
+                room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+                timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
+                self.connection_states[room_number] = timeout_msg
+                
+                # Only update UI if this is the current room
+                if room_number == self.current_room:
+                    self.app.root.after(0, lambda: self.update_connection_state(room_number, timeout_msg))
+                
+                # Clean up failed connection in a separate thread
+                def cleanup():
+                    try:
+                        client.loop_stop()
+                        client.disconnect()
+                        if room_number in self.mqtt_clients:
+                            del self.mqtt_clients[room_number]
+                    except Exception as e:
+                        print(f"Error cleaning up client for room {room_number}: {e}")
+                
+                threading.Thread(target=cleanup, daemon=True).start()
+                
+                # Schedule retry using after()
+                self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def connect_to_room(self, room_number):
         """Switch to controlling a different room"""
@@ -155,14 +209,36 @@ class PropControl:
         # Clear existing props display
         self.props = {}
         for widget in self.props_frame.winfo_children():
-            widget.destroy()
+            if widget != self.status_label:  # Keep the status label
+                widget.destroy()
             
-        # Update status
-        # room_name = self.app.rooms.get(room_number, "Unknown Room")
-        # self.status_label.config(text=f"Connected to {room_name}")
-        
         # Set up special buttons for this room
         self.setup_special_buttons(room_number)
+        
+        # Display current connection state
+        if room_number in self.connection_states:
+            self.update_connection_state(room_number, self.connection_states[room_number])
+
+    def retry_connection(self, room_number):
+        """Retry connecting to a room's MQTT server without blocking"""
+        print(f"Retrying connection to room {room_number}")
+        
+        # Start a new connection attempt in a separate thread
+        def do_retry():
+            # Clean up any existing client first
+            if room_number in self.mqtt_clients:
+                try:
+                    old_client = self.mqtt_clients[room_number]
+                    old_client.loop_stop()
+                    old_client.disconnect()
+                    del self.mqtt_clients[room_number]
+                except Exception as e:
+                    print(f"Error cleaning up old client for room {room_number}: {e}")
+            
+            # Initialize new connection
+            self.initialize_mqtt_client(room_number)
+        
+        threading.Thread(target=do_retry, daemon=True).start()
 
     def on_connect(self, client, userdata, flags, rc, room_number):
         """Handle connection for a specific room's client"""
@@ -178,6 +254,7 @@ class PropControl:
         print(f"Room {room_number} MQTT status: {status}")
         
         if rc == 0:
+            self.update_connection_state(room_number, "Connected")
             topics = [
                 "/er/ping", "/er/name", "/er/cmd", "/er/riddles/info",
                 "/er/music/info", "/er/music/soundlist", "/game/period",
@@ -185,6 +262,57 @@ class PropControl:
             ]
             for topic in topics:
                 client.subscribe(topic)
+        else:
+            self.update_connection_state(room_number, f"Connection failed: {status}. Retrying in 10 seconds...")
+            # Schedule retry
+            self.app.root.after(10000, lambda: self.retry_connection(room_number))
+
+    def update_connection_state(self, room_number, state):
+        """Update the connection state display"""
+        self.connection_states[room_number] = state
+        if room_number == self.current_room:
+            # Determine text color based on state
+            if "failed" in state.lower() or "timed out" in state.lower():
+                text_color = 'red'
+                # Clear props display
+                for widget in self.props_frame.winfo_children():
+                    if widget != self.status_label:
+                        widget.destroy()
+                self.props = {}
+            elif "connecting" in state.lower():
+                text_color = 'black'
+            else:
+                text_color = 'black'
+
+            # Update label with simplified text and color
+            self.status_label.config(
+                text=state,
+                fg=text_color
+            )
+
+    def connect_to_room(self, room_number):
+        """Switch to controlling a different room"""
+        print(f"\nSwitching to room {room_number}")
+        
+        if room_number == self.current_room:
+            return
+            
+        self.current_room = room_number
+        
+        # Clear existing props display
+        self.props = {}
+        for widget in self.props_frame.winfo_children():
+            if widget != self.status_label:  # Keep the status label
+                widget.destroy()
+            
+        # Set up special buttons for this room
+        self.setup_special_buttons(room_number)
+        
+        # Display current connection state or initialize new connection
+        if room_number in self.connection_states:
+            self.update_connection_state(room_number, self.connection_states[room_number])
+        else:
+            self.initialize_mqtt_client(room_number)
 
     def setup_special_buttons(self, room_number):
         for widget in self.special_frame.winfo_children():
@@ -234,8 +362,12 @@ class PropControl:
     def on_disconnect(self, client, userdata, rc, room_number):
         """Handle disconnection for a specific room's client"""
         print(f"Room {room_number} disconnected with code: {rc}")
-        if room_number == self.current_room:
-            self.status_label.config(text=f"Disconnected from {self.app.rooms[room_number]} props")
+        room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+        if rc != 0:  # Unexpected disconnect
+            self.update_connection_state(room_number, 
+                f"Connection to {room_name} props lost. Retrying in 10 seconds...")
+            # Schedule retry
+            self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def handle_prop_update(self, prop_data):
         prop_id = prop_data.get("strId")
