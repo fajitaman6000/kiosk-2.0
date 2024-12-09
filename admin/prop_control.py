@@ -3,6 +3,7 @@ from tkinter import ttk
 import paho.mqtt.client as mqtt
 import json
 import time
+from datetime import datetime, timedelta
 import random
 import threading
 
@@ -125,6 +126,40 @@ class PropControl:
         # Initialize MQTT clients for all rooms
         for room_number in self.room_configs:
             self.initialize_mqtt_client(room_number)
+
+    def update_prop_status(self, prop_id):
+        """Update the status display of a prop, including offline state"""
+        if prop_id not in self.props:
+            return
+            
+        prop = self.props[prop_id]
+        current_time = time.time()
+        
+        # Get time since last update
+        last_update = prop.get('last_update', current_time)
+        time_diff = current_time - last_update
+        
+        # Check if prop is offline (no updates for 2 seconds)
+        if time_diff > 2:
+            offline_duration = timedelta(seconds=int(time_diff))
+            status_text = f"Offline... {offline_duration}"
+            status_color = "#808080"  # Grey for offline
+        else:
+            status_text = prop['info']['strStatus']
+            status_color = {
+                "Not activated": "#808080",  # Grey
+                "Not Activated": "#808080",  # Grey
+                "Activated": "#ff0000",      # Red
+                "Finished": "#0000ff"        # Blue
+            }.get(status_text, "black")
+        
+        try:
+            prop['status_label'].config(
+                text=status_text,
+                foreground=status_color
+            )
+        except tk.TclError:
+            print(f"Widget for prop {prop_id} was destroyed")
 
     def initialize_mqtt_client(self, room_number):
         """Create and connect MQTT client for a room"""
@@ -382,15 +417,7 @@ class PropControl:
             name_label.pack(fill='x', padx=5, pady=1)
             
             # Status with color
-            status_text = prop_data["strStatus"]
-            status_color = {
-                "Not activated": "#808080",  # Grey
-                "Not Activated": "#808080",  # Grey
-                "Activated": "#ff0000",      # Red
-                "Finished": "#0000ff"        # Blue
-            }.get(status_text, "black")
-            
-            status_label = ttk.Label(card_frame, text=status_text, foreground=status_color)
+            status_label = ttk.Label(card_frame, text=prop_data["strStatus"])
             status_label.pack(fill='x', padx=5)
             
             # Control buttons in a horizontal frame
@@ -433,26 +460,26 @@ class PropControl:
                 'frame': prop_frame,
                 'card_frame': card_frame,
                 'status_label': status_label,
-                'info': prop_data
+                'info': prop_data,
+                'last_update': time.time()  # Add timestamp
             }
+
+            # Start periodic status updates for this prop
+            self.schedule_status_update(prop_id)
         else:
-            # Update existing prop status
-            current_status = self.props[prop_id]['info']['strStatus']
-            new_status = prop_data['strStatus']
-            if current_status != new_status:
-                status_color = {
-                    "Not activated": "#808080",
-                    "Activated": "#ff0000",
-                    "Finished": "#0000ff"
-                }.get(new_status, "black")
-                
-                self.props[prop_id]['status_label'].config(
-                    text=new_status, 
-                    foreground=status_color
-                )
-                self.props[prop_id]['info'] = prop_data
+            # Update existing prop info and timestamp
+            self.props[prop_id]['info'] = prop_data
+            self.props[prop_id]['last_update'] = time.time()
+            self.update_prop_status(prop_id)
 
         self.on_frame_configure()
+
+    def schedule_status_update(self, prop_id):
+        """Schedule periodic updates of prop status"""
+        if prop_id in self.props:
+            self.update_prop_status(prop_id)
+            # Schedule next update in 1 second
+            self.app.root.after(1000, lambda: self.schedule_status_update(prop_id))
 
     def send_command(self, prop_id, command):
         """Send command to standard props"""
