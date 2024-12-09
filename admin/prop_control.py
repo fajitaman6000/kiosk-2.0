@@ -151,11 +151,6 @@ class PropControl:
                 client.connect_async(config['ip'], self.MQTT_PORT, keepalive=5)
                 client.loop_start()
                 self.mqtt_clients[room_number] = client
-                self.connection_states[room_number] = "Connecting..."
-                
-                # Only update UI if this is the current room and status_label exists
-                if room_number == self.current_room and hasattr(self, 'status_label'):
-                    self.status_label.config(text="Connecting...", fg='black')
                 
                 # Schedule timeout check
                 self.app.root.after(5000, lambda: self.check_connection_timeout(room_number))
@@ -165,7 +160,6 @@ class PropControl:
                 error_msg = f"Connection failed. Retrying in 10 seconds..."
                 self.connection_states[room_number] = error_msg
                 
-                # Only update UI if this is the current room and status_label exists
                 if room_number == self.current_room and hasattr(self, 'status_label'):
                     self.status_label.config(text=error_msg, fg='red')
                 
@@ -257,19 +251,12 @@ class PropControl:
 
     def on_connect(self, client, userdata, flags, rc, room_number):
         """Handle connection for a specific room's client"""
-        status = {
-            0: "Connected successfully",
-            1: "Connection refused - incorrect protocol version",
-            2: "Connection refused - invalid client identifier",
-            3: "Connection refused - server unavailable",
-            4: "Connection refused - bad username or password",
-            5: "Connection refused - not authorized"
-        }.get(rc, f"Unknown error (code {rc})")
-        
-        print(f"Room {room_number} MQTT status: {status}")
-        
         if rc == 0:
-            self.update_connection_state(room_number, "Connected")
+            # Clear any status messages on successful connection
+            if room_number == self.current_room and hasattr(self, 'status_label'):
+                self.status_label.config(text="")
+                
+            # Subscribe to topics
             topics = [
                 "/er/ping", "/er/name", "/er/cmd", "/er/riddles/info",
                 "/er/music/info", "/er/music/soundlist", "/game/period",
@@ -278,31 +265,41 @@ class PropControl:
             for topic in topics:
                 client.subscribe(topic)
         else:
-            self.update_connection_state(room_number, f"Connection failed: {status}. Retrying in 10 seconds...")
+            # Show error messages
+            status = {
+                1: "Connection refused - incorrect protocol version",
+                2: "Connection refused - invalid client identifier",
+                3: "Connection refused - server unavailable",
+                4: "Connection refused - bad username or password",
+                5: "Connection refused - not authorized"
+            }.get(rc, f"Unknown error (code {rc})")
+            
+            error_msg = f"Connection failed: {status}. Retrying in 10 seconds..."
+            if room_number == self.current_room and hasattr(self, 'status_label'):
+                self.status_label.config(text=error_msg, fg='red')
+            
             # Schedule retry
             self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def update_connection_state(self, room_number, state):
-        """Update the connection state display"""
+        """Update the connection state display - only shows error states"""
         self.connection_states[room_number] = state
+        
         if room_number == self.current_room and hasattr(self, 'status_label'):
-            # Determine text color based on state
-            if "failed" in state.lower() or "timed out" in state.lower():
-                text_color = 'red'
-                # Clear props display
+            if any(error in state.lower() for error in ["failed", "timed out", "connecting", "lost"]):
+                # Show error states in red
+                self.status_label.config(
+                    text=state,
+                    fg='red'
+                )
+                # Clear props display on connection issues
                 for widget in self.props_frame.winfo_children():
                     if widget != self.status_frame:  # Keep the status frame
                         widget.destroy()
                 self.props = {}
-            elif "connecting" in state.lower():
-                text_color = 'black'
             else:
-                text_color = 'black'
-
-            self.status_label.config(
-                text=state,
-                fg=text_color
-            )
+                # Always hide the status label for non-error states
+                self.status_label.config(text="")
 
     def setup_special_buttons(self, room_number):
         for widget in self.special_frame.winfo_children():
