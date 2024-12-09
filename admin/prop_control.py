@@ -20,10 +20,10 @@ class PropControl:
             4: {  # Zombie Outbreak
                 'ip': '192.168.0.12',
                 'special_buttons': [
-                    ('KITCHEN', 'kitchen'),
-                    ('BARREL', 'barrel'),
-                    ('CAGE', 'cage'),
-                    ('DOOR', 'door')
+                    ('KITCHEN', 'kitchen'),  # Will map to pnevmo1
+                    ('BARREL', 'barrel'),    # Will map to pnevmo2
+                    ('CAGE', 'cage'),        # Will map to pnevmo3
+                    ('DOOR', 'door')         # Will map to pnevmo4
                 ]
             },
             1: {  # Casino Heist
@@ -496,18 +496,39 @@ class PropControl:
             print(f"Failed to send command: {e}")
 
     def send_special_command(self, prop_name, command):
-        """Send command to special props"""
+        """Send command to special pneumatic props"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("No active room selected")
+            print(f"\nNo active room selected")
+            return
+            
+        # Map the friendly names to their actual MQTT topics
+        prop_map = {
+            'barrel': 'pnevmo2',
+            'kitchen': 'pnevmo1',
+            'cage': 'pnevmo3',
+            'door': 'pnevmo4'
+        }
+        
+        # Get the actual topic name for this prop
+        if prop_name not in prop_map:
+            print(f"\nUnknown prop: {prop_name}")
             return
             
         client = self.mqtt_clients[self.current_room]
-        topic = f"/er/{prop_name}/cmd"
+        topic = f"/er/{prop_map[prop_name]}"
+        
         try:
-            client.publish(topic, command)
-            print(f"Special command sent successfully to room {self.current_room}")
+            print(f"\nSending pneumatic prop command:")
+            print(f"Room: {self.current_room}")
+            print(f"Prop: {prop_name}")
+            print(f"Topic: {topic}")
+            
+            # Send the exact command the props expect
+            client.publish(topic, "trigger", qos=0, retain=False)
+            print(f"Command sent successfully to {prop_name}")
+            
         except Exception as e:
-            print(f"Failed to send special command: {e}")
+            print(f"\nFailed to send command: {e}")
 
     def on_frame_configure(self, event=None):
         """Reconfigure the canvas scrolling region"""

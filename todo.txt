@@ -17,3 +17,4 @@ turn 90 degrees
 clear hints requested when starting timer
 restarter pc-specific instead of hardcoded IPs
 make entire interface red or soemthing when microphone is enabled
+last hint given (admin-side)
