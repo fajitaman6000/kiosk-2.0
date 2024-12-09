@@ -94,18 +94,18 @@ class PropControl:
         
         # Props display area with scrolling
         self.canvas = tk.Canvas(self.frame)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
+        self.scrollbar = ttk.Scrollbar(self.frame, orient="horizontal", command=self.canvas.xview)
         self.props_frame = ttk.Frame(self.canvas)
-        
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        
+
+        self.canvas.configure(xscrollcommand=self.scrollbar.set)
+
         # Pack scrolling components
-        self.scrollbar.pack(side="right", fill="y")
+        self.scrollbar.pack(side="bottom", fill="x")
         self.canvas.pack(side="left", fill="both", expand=True)
-        
+
         # Create window in canvas for props
         self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
-        
+
         # Configure canvas scrolling
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
@@ -370,31 +370,23 @@ class PropControl:
             self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def handle_prop_update(self, prop_data):
+        """Handle updates to prop status and create/update the UI elements"""
         prop_id = prop_data.get("strId")
         if not prop_id:
             return
 
         if prop_id not in self.props:
-            # Calculate column position (3 columns)
-            num_props = len(self.props)
-            row = num_props // 3
-            col = num_props % 3
-
-            # Create new prop display
-            prop_frame = ttk.Frame(self.props_frame)
-            prop_frame.grid(row=row, column=col, padx=0, pady=0, sticky='nsew')
-            
-            # Configure column weights
-            self.props_frame.grid_columnconfigure(0, weight=1)
-            self.props_frame.grid_columnconfigure(1, weight=1)
-            self.props_frame.grid_columnconfigure(2, weight=1)
+            # Create container frame for the prop if it doesn't exist
+            container_frame = ttk.Frame(self.props_frame)
+            container_frame.pack(side='left', fill='both', expand=True, padx=2, pady=2)
             
             # Create prop card with border and padding
-            card_frame = ttk.Frame(prop_frame, relief="solid", borderwidth=2)
-            card_frame.pack(fill='both', expand=True, padx=2, pady=2)
+            card_frame = ttk.Frame(container_frame, relief="solid", borderwidth=2)
+            card_frame.pack(fill='both', expand=True)
             
             # Prop name in bold
-            name_label = ttk.Label(card_frame, text=prop_data["strName"], font=('TkDefaultFont', 10, 'bold'))
+            name_label = ttk.Label(card_frame, text=prop_data["strName"], 
+                                font=('TkDefaultFont', 10, 'bold'))
             name_label.pack(fill='x', padx=5, pady=1)
             
             # Status with color
@@ -442,11 +434,11 @@ class PropControl:
                 fg='white',
                 width=8
             )
-            
             finish_btn.pack(side='left', padx=2)
             
+            # Store references to UI elements
             self.props[prop_id] = {
-                'frame': prop_frame,
+                'frame': container_frame,
                 'card_frame': card_frame,
                 'status_label': status_label,
                 'info': prop_data
@@ -462,7 +454,10 @@ class PropControl:
                     "Finished": "#0000ff"
                 }.get(new_status, "black")
                 
-                self.props[prop_id]['status_label'].config(text=new_status, foreground=status_color)
+                self.props[prop_id]['status_label'].config(
+                    text=new_status, 
+                    foreground=status_color
+                )
                 self.props[prop_id]['info'] = prop_data
 
         self.on_frame_configure()
