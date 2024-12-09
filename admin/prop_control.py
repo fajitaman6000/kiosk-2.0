@@ -94,25 +94,33 @@ class PropControl:
         
         # Props display area with scrolling
         self.canvas = tk.Canvas(self.frame)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="horizontal", command=self.canvas.xview)
+        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.props_frame = ttk.Frame(self.canvas)
-
-        self.canvas.configure(xscrollcommand=self.scrollbar.set)
-
+        
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
         # Pack scrolling components
-        self.scrollbar.pack(side="bottom", fill="x")
+        self.scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
-
+        
         # Create window in canvas for props
         self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
-
+        
         # Configure canvas scrolling
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
 
+        # Create a separate frame for the status label
+        self.status_frame = ttk.Frame(self.props_frame)
+        self.status_frame.grid(row=0, column=0, columnspan=3, sticky='ew')
+        
         # Status message label for connection state
-        self.status_label = tk.Label(self.props_frame, text="", font=('Arial', 12))
+        self.status_label = tk.Label(self.status_frame, text="", font=('Arial', 12))
         self.status_label.pack(fill='x', padx=5, pady=5)
+
+        # Configure grid columns for props
+        for i in range(3):
+            self.props_frame.grid_columnconfigure(i, weight=1)
 
         # Initialize MQTT clients for all rooms
         for room_number in self.room_configs:
@@ -376,13 +384,18 @@ class PropControl:
             return
 
         if prop_id not in self.props:
-            # Create container frame for the prop if it doesn't exist
-            container_frame = ttk.Frame(self.props_frame)
-            container_frame.pack(side='left', fill='both', expand=True, padx=2, pady=2)
+            # Calculate column position (3 columns)
+            num_props = len(self.props)
+            row = (num_props // 3) + 1  # +1 to account for status_frame at row 0
+            col = num_props % 3
+
+            # Create new prop display
+            prop_frame = ttk.Frame(self.props_frame)
+            prop_frame.grid(row=row, column=col, padx=0, pady=0, sticky='nsew')
             
             # Create prop card with border and padding
-            card_frame = ttk.Frame(container_frame, relief="solid", borderwidth=2)
-            card_frame.pack(fill='both', expand=True)
+            card_frame = ttk.Frame(prop_frame, relief="solid", borderwidth=2)
+            card_frame.pack(fill='both', expand=True, padx=2, pady=2)
             
             # Prop name in bold
             name_label = ttk.Label(card_frame, text=prop_data["strName"], 
@@ -438,7 +451,7 @@ class PropControl:
             
             # Store references to UI elements
             self.props[prop_id] = {
-                'frame': container_frame,
+                'frame': prop_frame,
                 'card_frame': card_frame,
                 'status_label': status_label,
                 'info': prop_data
