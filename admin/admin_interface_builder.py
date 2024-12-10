@@ -3,6 +3,7 @@ from tkinter import ttk
 import time
 from video_client import VideoClient
 from audio_client import AudioClient
+from classic_audio_hints import ClassicAudioHints
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
@@ -51,7 +52,40 @@ class AdminInterfaceBuilder:
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=10)
 
+    def setup_audio_hints(self):
+        """Set up the Classic Audio Hints panel"""
+        print("\n=== AUDIO HINTS SETUP START ===")
+        
+        def on_room_change(room_name):
+            print(f"\n=== ROOM CHANGE CALLBACK ===")
+            print(f"Audio hints room change called for: {room_name}")
+            print(f"Selected kiosk: {self.selected_kiosk}")
+            print(f"Has assignments: {self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments}")
+            
+            if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
+                room_num = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
+                print(f"Room number: {room_num}")
+                room_dirs = {
+                    6: "atlantis",
+                    1: "casino",
+                    5: "haunted",
+                    2: "MA",
+                    7: "time",
+                    3: "wizard",
+                    4: "zombie"
+                }
+                if room_num in room_dirs:
+                    print(f"Mapped to directory: {room_dirs[room_num]}")
+                    self.audio_hints.update_room(room_dirs[room_num])
+            print("=== ROOM CHANGE CALLBACK END ===\n")
+        
+        # Create ClassicAudioHints instance
+        print("Creating new ClassicAudioHints instance...")
+        self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change)
+        print("=== AUDIO HINTS SETUP END ===\n")
+
     def setup_stats_panel(self, computer_name):
+        """Setup the stats panel interface"""
         # Clear existing widgets
         for widget in self.stats_frame.winfo_children():
             widget.destroy()
@@ -210,6 +244,7 @@ class AdminInterfaceBuilder:
             command=lambda: self.send_hint(computer_name)
         )
         self.stats_elements['send_btn'].pack(pady=5)
+        self.setup_audio_hints()
 
         # Right side panel for video and audio
         right_panel = tk.Frame(stats_container)
@@ -609,8 +644,9 @@ class AdminInterfaceBuilder:
                 self.stats_elements = {key: None for key in self.stats_elements}
 
     def select_kiosk(self, computer_name):
+        """Handle selection of a kiosk and setup of its interface"""
         try:
-            print(f"\nSelecting kiosk: {computer_name}")
+            print(f"\n=== KIOSK SELECTION START: {computer_name} ===")
             
             # Clean up existing audio/video streams before switching
             if hasattr(self, 'camera_active') and self.camera_active:
@@ -634,6 +670,9 @@ class AdminInterfaceBuilder:
                 if 'speak_btn' in self.stats_elements:
                     self.stats_elements['speak_btn'].config(state='disabled')
             
+            # Setup stats panel and audio hints first
+            self.setup_stats_panel(computer_name)
+            
             self.selected_kiosk = computer_name
             
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
@@ -641,9 +680,40 @@ class AdminInterfaceBuilder:
                 room_name = self.app.rooms[room_num]
                 title = f"{room_name} ({computer_name})"
                 print(f"Room assigned: {room_name} (#{room_num})")
+                
+                # Map room number to directory name for audio hints
+                print("\n=== AUDIO HINTS UPDATE START ===")
+                room_dirs = {
+                    6: "atlantis",
+                    1: "casino",
+                    5: "haunted",
+                    2: "MA",
+                    7: "time",
+                    3: "wizard",
+                    4: "zombie"
+                }
+                
+                print(f"Current working directory: {os.getcwd()}")
+                if room_num in room_dirs:
+                    room_dir = room_dirs[room_num]
+                    print(f"Selected room directory: {room_dir}")
+                    audio_path = os.path.join("audio_hints", room_dir)
+                    print(f"Audio path relative to working dir: {audio_path}")
+                    print(f"Full audio path: {os.path.abspath(audio_path)}")
+                    print(f"Path exists: {os.path.exists(audio_path)}")
+                    if os.path.exists(audio_path):
+                        print(f"Directory contents: {os.listdir(audio_path)}")
+                    
+                    if hasattr(self, 'audio_hints'):
+                        print("Audio hints object exists, updating room")
+                        self.audio_hints.update_room(room_dir)
+                    else:
+                        print("WARNING: No audio_hints object found!")
+                print("=== AUDIO HINTS UPDATE END ===\n")
             else:
                 title = f"Unassigned ({computer_name})"
                 print("No room assigned")
+            
             self.stats_frame.configure(text=title)
             
             # Update highlighting
@@ -659,7 +729,6 @@ class AdminInterfaceBuilder:
                         if not isinstance(widget, ttk.Combobox):
                             widget.configure(bg='SystemButtonFace')
             
-            self.setup_stats_panel(computer_name)
             self.update_stats_display(computer_name)
             
             # Notify PropControl about room change (with safety check)
@@ -670,9 +739,12 @@ class AdminInterfaceBuilder:
                     self.app.root.after(100, lambda: self.app.prop_control.connect_to_room(room_num))
                 else:
                     print("No room assignment, skipping prop control notification")
+                    
+            print(f"=== KIOSK SELECTION END: {computer_name} ===\n")
+            
         except Exception as e:
             print(f"Error in select_kiosk: {e}")
-
+            
     def update_stats_display(self, computer_name):
         try:
             if computer_name not in self.app.kiosk_tracker.kiosk_stats:

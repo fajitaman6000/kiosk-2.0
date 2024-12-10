@@ -3,6 +3,7 @@ from tkinter import ttk
 import traceback
 import sys
 from prop_control import PropControl
+import os  # Add this import
 
 from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
@@ -15,6 +16,10 @@ def show_error_and_wait():
 try:
     class AdminApplication:
         def __init__(self):
+            # Ensure we're in the correct directory
+            os.chdir(os.path.dirname(os.path.abspath(__file__)))
+            print(f"Working directory set to: {os.getcwd()}")
+            
             self.root = tk.Tk()
             self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
             self.root.geometry("900x600")

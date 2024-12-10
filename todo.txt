@@ -15,7 +15,7 @@ hint folders,
 green dot next to started rooms based on presence of activated/finished props
 turn 90 degrees
 clear hints requested when starting timer
-restarter pc-specific instead of hardcoded IPs
+restarter moved to kiosk app
 make entire interface red or soemthing when microphone is enabled
 last hint given (admin-side)
 blink upon room finish based on final prop state
