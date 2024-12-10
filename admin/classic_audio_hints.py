@@ -15,50 +15,51 @@ class ClassicAudioHints:
         # Initialize pygame mixer for audio playback
         pygame.mixer.init()
         
-        # Create main frame
+        # Create main frame with fixed width
         self.frame = ttk.LabelFrame(parent, text="Classic Audio Hints")
         self.frame.pack(fill='x', padx=5, pady=5)
         
-        # Create container for list boxes
+        # Create fixed-width inner container
         self.list_container = ttk.Frame(self.frame)
-        self.list_container.pack(fill='x', padx=5, pady=5)
+        self.list_container.pack(padx=5, pady=5)  # Remove fill='x' to prevent expansion
         
-        # Configure proportional grid columns
-        self.list_container.grid_columnconfigure(0, weight=1)  # Props list
-        self.list_container.grid_columnconfigure(1, weight=1)  # Audio files list
-        
-        # Create prop listbox with fixed width
+        # Create prop dropdown section with fixed width
         self.prop_frame = ttk.Frame(self.list_container)
-        self.prop_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
-        prop_label = ttk.Label(self.prop_frame, text="Props:", font=('Arial', 10, 'bold'))
-        prop_label.pack(anchor='w')
-        self.prop_listbox = tk.Listbox(
-            self.prop_frame, 
-            height=10,
-            width=30,  # Fixed width
-            selectmode=tk.SINGLE,
-            exportselection=False,
-            bg='white',
-            fg='black'
-        )
-        self.prop_listbox.pack(fill='both', expand=True)
-        self.prop_listbox.bind('<<ListboxSelect>>', self.on_prop_select)
+        self.prop_frame.pack(pady=(0, 5))
+        prop_label = ttk.Label(self.prop_frame, text="Select Prop:", font=('Arial', 10, 'bold'))
+        prop_label.pack(side='left', padx=(0, 5))
         
-        # Create audio file listbox with fixed width
+        # Create prop dropdown (Combobox)
+        self.prop_var = tk.StringVar()
+        self.prop_dropdown = ttk.Combobox(
+            self.prop_frame,
+            textvariable=self.prop_var,
+            state='readonly',
+            width=30
+        )
+        self.prop_dropdown.pack(side='left')
+        self.prop_dropdown.bind('<<ComboboxSelected>>', self.on_prop_select)
+        
+        # Create audio file section with fixed width
         self.audio_frame = ttk.Frame(self.list_container)
-        self.audio_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
+        self.audio_frame.pack(pady=5)  # Remove fill='x' to prevent expansion
         audio_label = ttk.Label(self.audio_frame, text="Audio Files:", font=('Arial', 10, 'bold'))
         audio_label.pack(anchor='w')
+        
+        # Fixed-width listbox container
+        listbox_container = ttk.Frame(self.audio_frame)
+        listbox_container.pack()  # No expansion
+        
         self.audio_listbox = tk.Listbox(
-            self.audio_frame, 
-            height=10,
-            width=30,  # Fixed width
+            listbox_container, 
+            height=6,
+            width=40,
             selectmode=tk.SINGLE,
             exportselection=False,
             bg='white',
             fg='black'
         )
-        self.audio_listbox.pack(fill='both', expand=True)
+        self.audio_listbox.pack()  # No expansion
         self.audio_listbox.bind('<<ListboxSelect>>', self.on_audio_select)
         
         # Create control buttons frame (initially hidden)
@@ -85,7 +86,7 @@ class ClassicAudioHints:
         # Store current room and clear existing lists
         self.current_room = room_name
         self.show_lists()
-        self.prop_listbox.delete(0, tk.END)
+        self.prop_dropdown['values'] = ()  # Clear dropdown
         self.audio_listbox.delete(0, tk.END)
         
         # Get absolute paths
@@ -122,15 +123,9 @@ class ClassicAudioHints:
                 print(os.listdir(room_path))
                 return
                 
-            # Add props to listbox
-            for prop in sorted(props):
-                prop_path = os.path.join(room_path, prop)
-                print(f"Verifying prop path: {prop_path}")
-                print(f"Prop path exists: {os.path.exists(prop_path)}")
-                if os.path.exists(prop_path):
-                    self.prop_listbox.insert(tk.END, prop)
-                    
-            print(f"Successfully added {len(props)} props to listbox")
+            # Update dropdown with sorted props
+            self.prop_dropdown['values'] = sorted(props)
+            print(f"Successfully added {len(props)} props to dropdown")
             
         except Exception as e:
             print(f"ERROR reading props: {str(e)}")
@@ -138,21 +133,20 @@ class ClassicAudioHints:
             print(traceback.format_exc())
             
         print("=== AUDIO HINTS UPDATE END ===")
-
-    def on_prop_select(self, event):
-        """Handle prop selection"""
-        self.audio_listbox.delete(0, tk.END)
-        selection = self.prop_listbox.curselection()
         
-        if not selection:
+    def on_prop_select(self, event):
+        """Handle prop selection from dropdown"""
+        self.audio_listbox.delete(0, tk.END)
+        selected_prop = self.prop_var.get()
+        
+        if not selected_prop:
             return
             
-        prop_name = self.prop_listbox.get(selection[0])
-        prop_path = os.path.join(self.audio_root, self.current_room, prop_name)
+        prop_path = os.path.join(self.audio_root, self.current_room, selected_prop)
         
         if os.path.exists(prop_path):
             audio_files = [f for f in os.listdir(prop_path) 
-                          if f.lower().endswith('.mp3')]
+                        if f.lower().endswith('.mp3')]
             for audio in sorted(audio_files):
                 self.audio_listbox.insert(tk.END, audio)
 
@@ -162,37 +156,36 @@ class ClassicAudioHints:
         if not selection:
             return
             
-        prop_selection = self.prop_listbox.curselection()
-        if not prop_selection:
+        audio_name = self.audio_listbox.get(selection[0])
+        selected_prop = self.prop_var.get()
+        
+        if not selected_prop:
             return
             
-        prop_name = self.prop_listbox.get(prop_selection[0])
-        audio_name = self.audio_listbox.get(selection[0])
-        
         self.current_audio_file = os.path.join(
             self.audio_root,
             self.current_room,
-            prop_name,
+            selected_prop,
             audio_name
         )
         
         # Update selected file label
         self.selected_file_label.config(text=f"Selected: {audio_name}")
         
-        # Hide list boxes and show control buttons
+        # Show control buttons
         self.show_controls()
 
     def show_controls(self):
-        """Show control buttons and hide list boxes"""
-        self.prop_frame.grid_remove()
-        self.audio_frame.grid_remove()
-        self.control_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
+        """Show control buttons and hide lists"""
+        self.prop_frame.pack_forget()
+        self.audio_frame.pack_forget()
+        self.control_frame.pack(pady=5)
 
     def show_lists(self):
-        """Show list boxes and hide control buttons"""
-        self.control_frame.grid_remove()
-        self.prop_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
-        self.audio_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
+        """Show dropdown and audio list, hide control buttons"""
+        self.control_frame.pack_forget()
+        self.prop_frame.pack(pady=(0, 5))
+        self.audio_frame.pack(pady=5)
         
         # Clear selected file label
         self.selected_file_label.config(text="")
