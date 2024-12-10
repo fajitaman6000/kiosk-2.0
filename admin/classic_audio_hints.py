@@ -5,7 +5,7 @@ from tkinter import ttk
 
 class ClassicAudioHints:
     def __init__(self, parent, room_change_callback):
-        print("\n=== INITIALIZING CLASSIC AUDIO HINTS ===")  # Debug line
+        print("\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
         self.parent = parent
         self.room_change_callback = room_change_callback
         self.current_room = None
@@ -15,61 +15,67 @@ class ClassicAudioHints:
         # Initialize pygame mixer for audio playback
         pygame.mixer.init()
         
-        # Create main frame with a distinctive border for debugging
+        # Create main frame
         self.frame = ttk.LabelFrame(parent, text="Classic Audio Hints")
         self.frame.pack(fill='x', padx=5, pady=5)
-        print("Main frame created and packed")  # Debug line
         
-        # Create container for list boxes with light gray background for visibility
+        # Create container for list boxes
         self.list_container = ttk.Frame(self.frame)
         self.list_container.pack(fill='x', padx=5, pady=5)
-        print("List container created and packed")  # Debug line
         
-        # Create prop listbox with more obvious styling
+        # Configure proportional grid columns
+        self.list_container.grid_columnconfigure(0, weight=1)  # Props list
+        self.list_container.grid_columnconfigure(1, weight=1)  # Audio files list
+        
+        # Create prop listbox with fixed width
         self.prop_frame = ttk.Frame(self.list_container)
-        self.prop_frame.pack(side='left', fill='both', expand=True)
+        self.prop_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
         prop_label = ttk.Label(self.prop_frame, text="Props:", font=('Arial', 10, 'bold'))
         prop_label.pack(anchor='w')
         self.prop_listbox = tk.Listbox(
             self.prop_frame, 
             height=10,
+            width=30,  # Fixed width
             selectmode=tk.SINGLE,
-            exportselection=False,  # Keep selection visible when switching focus
-            bg='white',  # Explicit background color
-            fg='black'   # Explicit text color
+            exportselection=False,
+            bg='white',
+            fg='black'
         )
         self.prop_listbox.pack(fill='both', expand=True)
         self.prop_listbox.bind('<<ListboxSelect>>', self.on_prop_select)
-        print("Prop listbox created and packed")  # Debug line
         
-        # Create audio file listbox with similar styling
+        # Create audio file listbox with fixed width
         self.audio_frame = ttk.Frame(self.list_container)
-        self.audio_frame.pack(side='left', fill='both', expand=True, padx=(5, 0))
+        self.audio_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
         audio_label = ttk.Label(self.audio_frame, text="Audio Files:", font=('Arial', 10, 'bold'))
         audio_label.pack(anchor='w')
         self.audio_listbox = tk.Listbox(
             self.audio_frame, 
             height=10,
+            width=30,  # Fixed width
             selectmode=tk.SINGLE,
-            exportselection=False,  # Keep selection visible when switching focus
-            bg='white',  # Explicit background color
-            fg='black'   # Explicit text color
+            exportselection=False,
+            bg='white',
+            fg='black'
         )
         self.audio_listbox.pack(fill='both', expand=True)
         self.audio_listbox.bind('<<ListboxSelect>>', self.on_audio_select)
-        print("Audio listbox created and packed")  # Debug line
         
         # Create control buttons frame (initially hidden)
         self.control_frame = ttk.Frame(self.list_container)
+        
+        # Add selected file label
+        self.selected_file_label = ttk.Label(self.control_frame, font=('Arial', 10))
+        self.selected_file_label.pack(side='left', padx=5)
+        
         self.preview_btn = ttk.Button(self.control_frame, text="Preview", command=self.preview_audio)
         self.preview_btn.pack(side='left', padx=5)
         self.send_btn = ttk.Button(self.control_frame, text="Send", command=self.send_audio)
         self.send_btn.pack(side='left', padx=5)
         self.back_btn = ttk.Button(self.control_frame, text="Back", command=self.show_lists)
         self.back_btn.pack(side='left', padx=5)
-        print("Control buttons created")  # Debug line
         
-        print("=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")  # Debug line
+        print("=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
 
     def update_room(self, room_name):
         """Update the prop list for the selected room with enhanced path checking and logging"""
@@ -170,20 +176,26 @@ class ClassicAudioHints:
             audio_name
         )
         
+        # Update selected file label
+        self.selected_file_label.config(text=f"Selected: {audio_name}")
+        
         # Hide list boxes and show control buttons
         self.show_controls()
 
     def show_controls(self):
         """Show control buttons and hide list boxes"""
-        self.prop_frame.pack_forget()
-        self.audio_frame.pack_forget()
-        self.control_frame.pack(fill='x', padx=5, pady=5)
+        self.prop_frame.grid_remove()
+        self.audio_frame.grid_remove()
+        self.control_frame.grid(row=0, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
 
     def show_lists(self):
         """Show list boxes and hide control buttons"""
-        self.control_frame.pack_forget()
-        self.prop_frame.pack(side='left', fill='both', expand=True)
-        self.audio_frame.pack(side='left', fill='both', expand=True, padx=(5, 0))
+        self.control_frame.grid_remove()
+        self.prop_frame.grid(row=0, column=0, sticky='nsew', padx=(0, 5))
+        self.audio_frame.grid(row=0, column=1, sticky='nsew', padx=(5, 0))
+        
+        # Clear selected file label
+        self.selected_file_label.config(text="")
         
         # Stop any playing audio
         pygame.mixer.music.stop()
