@@ -27,6 +27,16 @@ class AdminInterfaceBuilder:
         
         # Start timer update loop using app's root
         self.app.root.after(1000, self.update_timer_display)
+
+    ROOM_COLORS = {
+        4: "#006400",  # Zombie - dark green
+        2: "#FF1493",  # Morning After - dark pink 
+        1: "#8B0000",  # Casino - dark red
+        6: "#377d94",  # Atlantis - light blue
+        7: "#FF8C00",  # Time Machine - orange
+        3: "#9240a8",  # Wizard - dark teal
+        5: "#808080",  # Haunted - grey
+    }
         
     def setup_ui(self):
         self.main_container = tk.Frame(self.app.root)
@@ -462,6 +472,7 @@ class AdminInterfaceBuilder:
         self.app.root.after(1000, self.update_stats_timer)
 
     def add_kiosk_to_ui(self, computer_name):
+        """Add or update a kiosk in the UI with room-specific colors"""
         current_time = time.time()
         
         if computer_name in self.connected_kiosks:
@@ -474,9 +485,14 @@ class AdminInterfaceBuilder:
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
             room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
             room_name = self.app.rooms[room_num]
+            
+            # Get room color from mapping, default to black if not found
+            room_color = self.ROOM_COLORS.get(room_num, "black")
+            
             name_label = tk.Label(frame, 
                 text=room_name,
-                font=('Arial', 12, 'bold'))
+                font=('Arial', 12, 'bold'),
+                fg=room_color)  # Apply room-specific color
             name_label.pack(side='left', padx=5)
             computer_label = tk.Label(frame,
                 text=f"({computer_name})",
@@ -514,7 +530,10 @@ class AdminInterfaceBuilder:
                             if name == room_var.get())
             self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room)
             dropdown.set('')
-            name_label.config(text=self.app.rooms[selected_room])
+            name_label.config(
+                text=self.app.rooms[selected_room],
+                fg=self.ROOM_COLORS.get(selected_room, "black")  # Update color on assignment
+            )
         
         assign_btn = tk.Button(frame, text="Assign Room", command=assign_room)
         assign_btn.pack(side='left', padx=5)
@@ -544,11 +563,13 @@ class AdminInterfaceBuilder:
             self.select_kiosk(computer_name)
 
     def update_kiosk_display(self, computer_name):
+        """Update kiosk display including room-specific colors"""
         if computer_name in self.connected_kiosks:
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
                 room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
                 self.connected_kiosks[computer_name]['name_label'].config(
-                    text=self.app.rooms[room_num]
+                    text=self.app.rooms[room_num],
+                    fg=self.ROOM_COLORS.get(room_num, "black")  # Apply room color
                 )
                 
                 if computer_name == self.selected_kiosk:
