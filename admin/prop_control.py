@@ -62,13 +62,17 @@ class PropControl:
         self.MQTT_USER = "indestroom"
         self.MQTT_PASS = "indestroom"
         
-        # Create prop control panel
-        self.frame = ttk.LabelFrame(app.root, text="Prop Controls")
-        self.frame.pack(fill='both', expand=True, padx=10, pady=5)
+        # Create left side panel for prop controls
+        self.frame = ttk.Frame(app.root)
+        self.frame.pack(side='left', fill='y', padx=5, pady=5)
         
-        # Add global control buttons at the top
+        # Title label
+        title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
+        title_label.pack(fill='x', pady=(0, 10))
+        
+        # Global controls section
         self.global_controls = ttk.Frame(self.frame)
-        self.global_controls.pack(fill='x', padx=5, pady=5)
+        self.global_controls.pack(fill='x', pady=(0, 10))
         
         # Create Start Game and Reset All buttons
         self.start_button = tk.Button(
@@ -78,7 +82,7 @@ class PropControl:
             bg='#285aed',   # Blue
             fg='white'
         )
-        self.start_button.pack(side='left', padx=5)
+        self.start_button.pack(fill='x', pady=2)
 
         self.reset_button = tk.Button(
             self.global_controls,
@@ -87,13 +91,13 @@ class PropControl:
             bg='#db42ad',   # Pink
             fg='white'
         )
-        self.reset_button.pack(side='left', padx=5)
+        self.reset_button.pack(fill='x', pady=2)
         
-        # Special buttons frame (will be populated based on room)
-        self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific Controls")
-        self.special_frame.pack(fill='x', padx=5, pady=10)
+        # Special buttons section
+        self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
+        self.special_frame.pack(fill='x', pady=5)
         
-        # Props display area with scrolling
+        # Scrollable props section
         self.canvas = tk.Canvas(self.frame)
         self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.props_frame = ttk.Frame(self.canvas)
@@ -111,24 +115,16 @@ class PropControl:
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
 
-        # Create a separate frame for the status label
-        self.status_frame = ttk.Frame(self.props_frame)
-        self.status_frame.grid(row=0, column=0, columnspan=3, sticky='ew')
-        
         # Status message label for connection state
-        self.status_label = tk.Label(self.status_frame, text="", font=('Arial', 12))
-        self.status_label.pack(fill='x', padx=5, pady=5)
-
-        # Configure grid columns for props
-        for i in range(3):
-            self.props_frame.grid_columnconfigure(i, weight=1)
+        self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
+        self.status_label.pack(fill='x', pady=5)
 
         # Initialize MQTT clients for all rooms
         for room_number in self.room_configs:
             self.initialize_mqtt_client(room_number)
 
     def update_prop_status(self, prop_id):
-        """Update the status display of a prop, including offline state"""
+        """Update the status display of a prop"""
         if prop_id not in self.props:
             return
             
@@ -141,8 +137,6 @@ class PropControl:
         
         # Check if prop is offline (no updates for 2 seconds)
         if time_diff > 2:
-            offline_duration = timedelta(seconds=int(time_diff))
-            status_text = f"Offline... {offline_duration}"
             status_color = "#808080"  # Grey for offline
         else:
             status_text = prop['info']['strStatus']
@@ -154,10 +148,7 @@ class PropControl:
             }.get(status_text, "black")
         
         try:
-            prop['status_label'].config(
-                text=status_text,
-                foreground=status_color
-            )
+            prop['status_label'].config(foreground=status_color)
         except tk.TclError:
             print(f"Widget for prop {prop_id} was destroyed")
 
@@ -264,11 +255,10 @@ class PropControl:
         self.current_room = room_number
         
         # Clear existing props display
-        self.props = {}
+        self.props = {}  # Clear props dictionary
         for widget in self.props_frame.winfo_children():
-            if widget != self.status_frame:  # Keep the status frame
-                widget.destroy()
-                
+            widget.destroy()
+            
         # Set up special buttons for this room
         self.setup_special_buttons(room_number)
         
@@ -398,81 +388,68 @@ class PropControl:
             return
 
         if prop_id not in self.props:
-            # Calculate column position (3 columns)
-            num_props = len(self.props)
-            row = (num_props // 3) + 1  # +1 to account for status_frame at row 0
-            col = num_props % 3
-
             # Create new prop display
             prop_frame = ttk.Frame(self.props_frame)
-            prop_frame.grid(row=row, column=col, padx=0, pady=0, sticky='nsew')
+            prop_frame.pack(fill='x', pady=1)
             
-            # Create prop card with border and padding
-            card_frame = ttk.Frame(prop_frame, relief="solid", borderwidth=2)
-            card_frame.pack(fill='both', expand=True, padx=2, pady=2)
+            # Button frame for control buttons
+            button_frame = ttk.Frame(prop_frame)
+            button_frame.pack(side='left', padx=(0, 5))
             
-            # Prop name in bold
-            name_label = ttk.Label(card_frame, text=prop_data["strName"], 
-                                font=('TkDefaultFont', 10, 'bold'))
-            name_label.pack(fill='x', padx=5, pady=1)
-            
-            # Status with color
-            status_label = ttk.Label(card_frame, text=prop_data["strStatus"])
-            status_label.pack(fill='x', padx=5)
-            
-            # Control buttons in a horizontal frame
-            button_frame = ttk.Frame(card_frame)
-            button_frame.pack(fill='x', padx=5, pady=5)
-            
-            # Control buttons with improved spacing
+            # Control buttons as small squares
+            button_size = 20  # Size in pixels
             reset_btn = tk.Button(
                 button_frame,
-                text="RESET",
+                text="",
                 command=lambda: self.send_command(prop_id, "reset"),
-                bg='#cc362b',
-                fg='white',
-                width=8
+                bg='#cc362b',  # Red
+                width=1,
+                height=1
             )
-            reset_btn.pack(side='left', padx=2)
+            reset_btn.pack(side='left', padx=1)
             
             activate_btn = tk.Button(
                 button_frame,
-                text="ACTIVATE",
+                text="",
                 command=lambda: self.send_command(prop_id, "activate"),
-                bg='#ff8c00',
-                fg='white',
-                width=8
+                bg='#ff8c00',  # Orange
+                width=1,
+                height=1
             )
-            activate_btn.pack(side='left', padx=2)
+            activate_btn.pack(side='left', padx=1)
             
             finish_btn = tk.Button(
                 button_frame,
-                text="FINISH",
+                text="",
                 command=lambda: self.send_command(prop_id, "finish"),
-                bg='#28a745',
-                fg='white',
-                width=8
+                bg='#28a745',  # Green
+                width=1,
+                height=1
             )
-            finish_btn.pack(side='left', padx=2)
+            finish_btn.pack(side='left', padx=1)
             
-            # Store references to UI elements
+            # Prop name
+            name_label = ttk.Label(prop_frame, text=prop_data["strName"])
+            name_label.pack(side='left', padx=5)
+            
+            # Status indicator (just 'O' with color)
+            status_label = ttk.Label(prop_frame, text="O")
+            status_label.pack(side='right', padx=5)
+            
+            # Store references
             self.props[prop_id] = {
                 'frame': prop_frame,
-                'card_frame': card_frame,
                 'status_label': status_label,
                 'info': prop_data,
-                'last_update': time.time()  # Add timestamp
+                'last_update': time.time()
             }
 
-            # Start periodic status updates for this prop
             self.schedule_status_update(prop_id)
         else:
             # Update existing prop info and timestamp
             self.props[prop_id]['info'] = prop_data
             self.props[prop_id]['last_update'] = time.time()
             self.update_prop_status(prop_id)
-
-        self.on_frame_configure()
 
     def schedule_status_update(self, prop_id):
         """Schedule periodic updates of prop status"""
