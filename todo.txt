@@ -18,6 +18,7 @@ clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
 blink upon room finish based on final prop state
+soundcheck behavior
 
 
 # known bugs

@@ -40,9 +40,34 @@ class AdminInterfaceBuilder:
     }
         
     def setup_ui(self):
-        self.main_container = tk.Frame(self.app.root)
-        self.main_container.pack(fill='both', expand=True, padx=10, pady=5)
+        # Create left panel that spans full height
+        self.left_panel = tk.Frame(
+            self.app.root,
+            bg='SystemButtonFace',  # Use system default background color
+            width=200  # Fixed width for left panel
+        )
+        self.left_panel.pack(
+            side='left',     # Place on left side
+            fill='y',        # Fill vertical space
+            expand=False,    # Don't expand horizontally
+            padx=5,          # Add padding from window edge
+            pady=5           # Add padding from top/bottom
+        )
         
+        # Prevent the panel from shrinking below requested width
+        self.left_panel.pack_propagate(False)
+        
+        # Create main container for existing content (kiosks and stats)
+        self.main_container = tk.Frame(self.app.root)
+        self.main_container.pack(
+            side='left',      # Place to right of left panel
+            fill='both',      # Fill remaining space
+            expand=True,      # Expand to fill space
+            padx=10,
+            pady=5
+        )
+        
+        # Create existing frames within main container
         left_frame = tk.Frame(self.main_container)
         left_frame.pack(side='left', fill='both', expand=True, padx=5)
         

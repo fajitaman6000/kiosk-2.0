@@ -62,9 +62,8 @@ class PropControl:
         self.MQTT_USER = "indestroom"
         self.MQTT_PASS = "indestroom"
         
-        # Create left side panel for prop controls
-        self.frame = ttk.Frame(app.root)
-        self.frame.pack(side='left', fill='y', padx=5, pady=5)
+        # Create left side panel for prop controls using parent's left_panel
+        self.frame = app.interface_builder.left_panel
         
         # Title label
         title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
