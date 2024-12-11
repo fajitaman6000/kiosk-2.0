@@ -19,6 +19,9 @@ restarter moved to kiosk app
 last hint given (admin-side)
 blink upon room finish based on final prop state
 soundcheck behavior
+don't load special controls section if none exist
+replace 'O's and reset, active, finish with symbols
+clicking props should load hints for it
 
 
 # known bugs
