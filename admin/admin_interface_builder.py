@@ -119,23 +119,176 @@ class AdminInterfaceBuilder:
         stats_container = tk.Frame(self.stats_frame)
         stats_container.pack(fill='both', expand=True, padx=10, pady=5)
         
-        # Create right side panel for video
-        right_panel = tk.Frame(stats_container)
-        right_panel.pack(side='right', fill='y', padx=(10, 0))
+        # Left side panel for stats and controls
+        left_panel = tk.Frame(stats_container)
+        left_panel.pack(side='left', fill='y', padx=(0, 10))
         
-        # Video feed panel with fixed size - now at top of right panel
+        # Stats frame for hints
+        stats_frame = tk.Frame(left_panel)
+        stats_frame.pack(fill='x', pady=(0, 10))
+        
+        self.stats_elements['hints_label'] = tk.Label(stats_frame, justify='left')
+        self.stats_elements['hints_label'].pack(anchor='w')
+
+        # Timer controls section
+        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", bg='black', fg='white')
+        timer_frame.pack(fill='x', pady=5)
+
+        # Current time display
+        self.stats_elements['current_time'] = tk.Label(
+            timer_frame,
+            text="45:00",
+            font=('Arial', 20, 'bold'),
+            fg='white',
+            bg='black',
+            highlightbackground='white',
+            highlightthickness=1,
+            padx=10,
+            pady=5
+        )
+        self.stats_elements['current_time'].pack(pady=5)
+
+        # Timer and video controls combined
+        control_buttons_frame = tk.Frame(timer_frame, bg='black')
+        control_buttons_frame.pack(fill='x', pady=5)
+        
+        # Load all required icons
+        icon_dir = os.path.join("admin_icons")
+        try:
+            play_icon = Image.open(os.path.join(icon_dir, "play.png"))
+            play_icon = play_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            play_icon = ImageTk.PhotoImage(play_icon)
+            
+            stop_icon = Image.open(os.path.join(icon_dir, "stop.png"))
+            stop_icon = stop_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            stop_icon = ImageTk.PhotoImage(stop_icon)
+            
+            video_icon = Image.open(os.path.join(icon_dir, "video.png"))
+            video_icon = video_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            video_icon = ImageTk.PhotoImage(video_icon)
+            
+            clock_icon = Image.open(os.path.join(icon_dir, "clock.png"))
+            clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            clock_icon = ImageTk.PhotoImage(clock_icon)
+        except Exception as e:
+            print(f"Error loading icons: {e}")
+            play_icon = stop_icon = video_icon = clock_icon = None
+        
+        # Timer button frame
+        button_frame = tk.Frame(control_buttons_frame, bg='black')
+        button_frame.pack(side='left', padx=5)
+        
+        # Create start/stop room button with icon
+        timer_button = tk.Button(
+            button_frame,
+            image=play_icon if play_icon else None,
+            text="" if play_icon else "Start Room",
+            command=lambda: self.toggle_timer(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
+        )
+        # Store both icons with the button for later use
+        if play_icon and stop_icon:
+            timer_button.play_icon = play_icon
+            timer_button.stop_icon = stop_icon
+        timer_button.pack(side='left', padx=(5, 20))  # Increased right padding
+        self.stats_elements['timer_button'] = timer_button
+
+        # Video frame with icon button and dropdown
+        video_frame = tk.Frame(control_buttons_frame, bg='black')
+        video_frame.pack(side='left', padx=5)
+        
+        # Video button with icon
+        video_btn = tk.Button(
+            video_frame,
+            image=video_icon if video_icon else None,
+            text="" if video_icon else "Start Room with Video",
+            command=lambda: self.play_video(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
+        )
+        if video_icon:
+            video_btn.image = video_icon
+        video_btn.pack(side='left', padx=2)
+        
+        # Video options dropdown
+        video_options = ['Intro', 'Late', 'Recent Player', 'Game']
+        self.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
+        video_dropdown = ttk.Combobox(
+            video_frame,
+            textvariable=self.stats_elements['video_type'],
+            values=video_options,
+            state='readonly',
+            width=10
+        )
+        video_dropdown.pack(side='left', padx=2)
+
+        # Time setting controls
+        time_set_frame = tk.Frame(timer_frame, bg='black')
+        time_set_frame.pack(fill='x', pady=5)
+
+        self.stats_elements['time_entry'] = tk.Entry(time_set_frame, width=3)
+        self.stats_elements['time_entry'].pack(side='left', padx=5)
+        tk.Label(time_set_frame, text="min", fg='white', bg='black').pack(side='left')
+
+        # Set time button with icon
+        set_time_btn = tk.Button(
+            time_set_frame,
+            image=clock_icon if clock_icon else None,
+            text="" if clock_icon else "Set Time",
+            command=lambda: self.set_timer(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0,
+            bg='black',
+            activebackground='black'
+        )
+        if clock_icon:
+            set_time_btn.image = clock_icon
+        set_time_btn.pack(side='left', padx=5)
+
+        # Hint controls
+        hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
+        hint_frame.pack(fill='x', pady=10)
+        
+        self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
+        self.stats_elements['msg_entry'].pack(fill='x', pady=5, padx=5)
+        
+        self.stats_elements['send_btn'] = tk.Button(
+            hint_frame, 
+            text="Send",
+            command=lambda: self.send_hint(computer_name)
+        )
+        self.stats_elements['send_btn'].pack(pady=5)
+        self.setup_audio_hints()
+
+        # Right side panel for video and audio
+        right_panel = tk.Frame(stats_container)
+        right_panel.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        
+        # Video feed panel with fixed size
         video_frame = tk.Frame(right_panel, bg='black', width=320, height=240)
-        video_frame.pack(anchor='n', pady=1)
+        video_frame.pack(expand=True, pady=1)
         video_frame.pack_propagate(False)
         
         self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
         self.stats_elements['video_label'].pack(fill='both', expand=True)
         
-        # Load icons first - keep them in the immediate scope of their use
+        # Control frame for camera and audio buttons
+        control_frame = tk.Frame(right_panel, bg='systemButtonFace')  # Match system background
+        control_frame.pack(pady=1)
+
+        # Load additional icons for video/audio controls
         try:
-            icon_dir = os.path.join("admin_icons")
-            
-            # Camera icons
             camera_icon = Image.open(os.path.join(icon_dir, "start_camera.png"))
             camera_icon = camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
             camera_icon = ImageTk.PhotoImage(camera_icon)
@@ -144,7 +297,6 @@ class AdminInterfaceBuilder:
             stop_camera_icon = stop_camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
             stop_camera_icon = ImageTk.PhotoImage(stop_camera_icon)
             
-            # Audio icons
             listen_icon = Image.open(os.path.join(icon_dir, "start_listening.png"))
             listen_icon = listen_icon.resize((24, 24), Image.Resampling.LANCZOS)
             listen_icon = ImageTk.PhotoImage(listen_icon)
@@ -153,7 +305,6 @@ class AdminInterfaceBuilder:
             stop_listening_icon = stop_listening_icon.resize((24, 24), Image.Resampling.LANCZOS)
             stop_listening_icon = ImageTk.PhotoImage(stop_listening_icon)
             
-            # Microphone icons
             enable_mic_icon = Image.open(os.path.join(icon_dir, "enable_microphone.png"))
             enable_mic_icon = enable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
             enable_mic_icon = ImageTk.PhotoImage(enable_mic_icon)
@@ -165,11 +316,7 @@ class AdminInterfaceBuilder:
             print(f"Error loading video/audio control icons: {e}")
             camera_icon = stop_camera_icon = listen_icon = stop_listening_icon = enable_mic_icon = disable_mic_icon = None
 
-        # Control frame for camera and audio buttons - directly under video
-        control_frame = tk.Frame(right_panel, bg='black')  # Changed to black background
-        control_frame.pack(pady=1)
-
-        # Camera button with icon
+        # Camera controls with icon
         camera_btn = tk.Button(
             control_frame,
             image=camera_icon if camera_icon else None,
@@ -179,8 +326,8 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            bg='systemButtonFace',  # Match system background
+            activebackground='systemButtonFace'  # Match system background when clicked
         )
         if camera_icon and stop_camera_icon:
             camera_btn.camera_icon = camera_icon
@@ -197,8 +344,8 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            bg='systemButtonFace',
+            activebackground='systemButtonFace'
         )
         if listen_icon and stop_listening_icon:
             listen_btn.listen_icon = listen_icon
@@ -216,79 +363,20 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            bg='systemButtonFace',
+            activebackground='systemButtonFace'
         )
         if enable_mic_icon and disable_mic_icon:
             speak_btn.enable_mic_icon = enable_mic_icon
             speak_btn.disable_mic_icon = disable_mic_icon
         speak_btn.pack(side='left', padx=5)
 
-        # Store button references
+        # Store buttons in stats_elements
         self.stats_elements['camera_btn'] = camera_btn
         self.stats_elements['listen_btn'] = listen_btn
         self.stats_elements['speak_btn'] = speak_btn
 
-        # Left side panel for stats and controls
-        left_panel = tk.Frame(stats_container)
-        left_panel.pack(side='left', fill='y', padx=(0, 10))
-        
-        # Stats frame for hints
-        stats_frame = tk.Frame(left_panel)
-        stats_frame.pack(fill='x', pady=(0, 10))
-        
-        self.stats_elements['hints_label'] = tk.Label(stats_frame, justify='left')
-        self.stats_elements['hints_label'].pack(anchor='w')
-        
-        # Timer controls section
-        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", bg='black', fg='white')
-        timer_frame.pack(fill='x', pady=5)
-        
-        # Timer display and controls (timer-related code remains the same)
-        self.stats_elements['current_time'] = tk.Label(
-            timer_frame,
-            text="45:00",
-            font=('Arial', 20, 'bold'),
-            fg='white',
-            bg='black',
-            highlightbackground='white',
-            highlightthickness=1,
-            padx=10,
-            pady=5
-        )
-        self.stats_elements['current_time'].pack(pady=5)
-        
-        # Timer and video controls combined
-        control_buttons_frame = tk.Frame(timer_frame, bg='black')
-        control_buttons_frame.pack(fill='x', pady=5)
-        
-        # ... (keep existing timer control code) ...
-        
-        # Hint controls section - now includes Classic Audio Hints
-        hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
-        hint_frame.pack(fill='x', pady=10)
-        
-        self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
-        self.stats_elements['msg_entry'].pack(fill='x', pady=5, padx=5)
-        
-        self.stats_elements['send_btn'] = tk.Button(
-            hint_frame, 
-            text="Send",
-            command=lambda: self.send_hint(computer_name)
-        )
-        self.stats_elements['send_btn'].pack(pady=(0, 5))
-        
-        # Add Classic Audio Hints directly in hint_frame
-        self.setup_audio_hints()
-        # Move the audio_hints frame into the hint controls section
-        if hasattr(self, 'audio_hints') and hasattr(self.audio_hints, 'frame'):
-            self.audio_hints.frame.pack_forget()  # Remove from previous location
-            self.audio_hints.frame.pack(in_=hint_frame, fill='x', pady=5)  # Add to hint_frame
-        
-        # Store all the button references
-        self.stats_elements['camera_btn'] = camera_btn
-        self.stats_elements['listen_btn'] = listen_btn
-        self.stats_elements['speak_btn'] = speak_btn
+        # Store the computer name for video/audio updates
         self.stats_elements['current_computer'] = computer_name
 
     def play_video(self, computer_name):
