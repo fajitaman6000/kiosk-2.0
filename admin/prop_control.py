@@ -29,15 +29,15 @@ class PropControl:
             1: {  # Casino Heist
                 'ip': '192.168.0.49',
                 'special_buttons': [
-                    ('SWITCH TO MORNING AFTER', 'quest/stag'),
-                    ('SWITCH TO CASINO', 'quest/robbery')
+                    ('CASINO', 'quest/robbery'),
+                    ('MA', 'quest/stag')
                 ]
             },
             2: {  # Morning After
                 'ip': '192.168.0.49',
                 'special_buttons': [
-                    ('SWITCH TO MORNING AFTER', 'quest/stag'),
-                    ('SWITCH TO CASINO', 'quest/robbery')
+                    ('MA', 'quest/stag'),
+                    ('CASINO', 'quest/robbery')
                 ]
             },
             6: {  # Atlantis Rising
@@ -326,35 +326,56 @@ class PropControl:
                 self.status_label.config(text="")
 
     def setup_special_buttons(self, room_number):
+        # Clear existing buttons
         for widget in self.special_frame.winfo_children():
             widget.destroy()
             
         if room_number not in self.room_configs:
             return
             
-        buttons_frame = ttk.Frame(self.special_frame)
-        buttons_frame.pack(fill='x', padx=5, pady=5)
+        # Create container for button grid
+        buttons_grid = ttk.Frame(self.special_frame)
+        buttons_grid.pack(fill='x', padx=1, pady=1)  # Reduced padding
         
-        button_style = {'background': '#ffcccc'}  # Pale red background
+        # Configure grid columns to be equal width
+        buttons_grid.columnconfigure(0, weight=1)
+        buttons_grid.columnconfigure(1, weight=1)
         
-        for button_text, command_name in self.room_configs[room_number]['special_buttons']:
+        button_style = {
+            'background': '#ffcccc',    # Pale red background
+            'font': ('Arial', 7),       # Even smaller font
+            'wraplength': 60,           # Narrower text wrapping
+            'height': 1,                # Reduced height
+            'width': 8,                 # Reduced width
+            'relief': 'raised',         # Add subtle 3D effect
+            'padx': 1,                  # Minimal internal padding
+            'pady': 1                   # Minimal internal padding
+        }
+        
+        # Place buttons in a 2-column grid
+        buttons = self.room_configs[room_number]['special_buttons']
+        for i, (button_text, command_name) in enumerate(buttons):
+            row = i // 2    # Integer division for row number
+            col = i % 2     # Remainder for column number
+            
             if command_name.startswith('quest/'):
                 quest_type = command_name.split('/')[1]
                 btn = tk.Button(
-                    buttons_frame, 
+                    buttons_grid, 
                     text=button_text,
                     command=lambda qt=quest_type: self.send_quest_command(qt),
                     **button_style
                 )
-                btn.pack(side='left', padx=5)
             else:
                 btn = tk.Button(
-                    buttons_frame, 
+                    buttons_grid, 
                     text=button_text,
                     command=lambda pn=command_name: self.send_special_command(pn, "on"),
                     **button_style
                 )
-                btn.pack(side='left', padx=5)
+                
+            # Pack button into grid with minimal padding
+            btn.grid(row=row, column=col, padx=1, pady=1, sticky='nsew')
 
     def on_message(self, client, userdata, msg, room_number):
         """Handle message from a specific room's client"""
