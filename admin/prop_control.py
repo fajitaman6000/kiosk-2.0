@@ -144,8 +144,6 @@ class PropControl:
                 # Get exact status string and match precisely
                 status_text = prop['info']['strStatus']
                 
-                # Debug print to see actual status
-                print(f"Prop {prop_id} status: '{status_text}'")
                 
                 if status_text == "Not activated" or status_text == "Not Activated":
                     icon = self.status_icons['not_activated']
