@@ -6,6 +6,8 @@ import time
 from datetime import datetime, timedelta
 import random
 import threading
+from PIL import Image, ImageTk
+import os
 
 class PropControl:
     def __init__(self, app):
@@ -123,8 +125,8 @@ class PropControl:
             self.initialize_mqtt_client(room_number)
 
     def update_prop_status(self, prop_id):
-        """Update the status display of a prop"""
-        if prop_id not in self.props:
+        """Update the status display of a prop using icons"""
+        if prop_id not in self.props or not hasattr(self, 'status_icons'):
             return
             
         prop = self.props[prop_id]
@@ -134,22 +136,36 @@ class PropControl:
         last_update = prop.get('last_update', current_time)
         time_diff = current_time - last_update
         
-        # Check if prop is offline (no updates for 2 seconds)
-        if time_diff > 2:
-            status_color = "#808080"  # Grey for offline
-        else:
-            status_text = prop['info']['strStatus']
-            status_color = {
-                "Not activated": "#808080",  # Grey
-                "Not Activated": "#808080",  # Grey
-                "Activated": "#ff0000",      # Red
-                "Finished": "#0000ff"        # Blue
-            }.get(status_text, "black")
-        
         try:
-            prop['status_label'].config(foreground=status_color)
+            if time_diff > 2:
+                # Offline status
+                icon = self.status_icons['offline']
+            else:
+                # Get exact status string and match precisely
+                status_text = prop['info']['strStatus']
+                
+                # Debug print to see actual status
+                print(f"Prop {prop_id} status: '{status_text}'")
+                
+                if status_text == "Not activated" or status_text == "Not Activated":
+                    icon = self.status_icons['not_activated']
+                elif status_text == "Activated":
+                    icon = self.status_icons['activated']
+                elif status_text == "Finished":
+                    icon = self.status_icons['finished']
+                else:
+                    print(f"Unknown status: '{status_text}', defaulting to not_activated")
+                    icon = self.status_icons['not_activated']
+            
+            # Update the label with the appropriate icon
+            prop['status_label'].config(image=icon)
+            # Keep a reference to prevent garbage collection
+            prop['status_label'].image = icon
+            
         except tk.TclError:
             print(f"Widget for prop {prop_id} was destroyed")
+        except Exception as e:
+            print(f"Error updating prop status: {e}")
 
     def initialize_mqtt_client(self, room_number):
         """Create and connect MQTT client for a room"""
@@ -407,6 +423,29 @@ class PropControl:
         if not prop_id:
             return
 
+        # Load status icons if not already loaded
+        if not hasattr(self, 'status_icons'):
+            try:
+                icon_dir = os.path.join("admin_icons")
+                # Load and resize all status icons
+                self.status_icons = {
+                    'not_activated': ImageTk.PhotoImage(
+                        Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                    ),
+                    'activated': ImageTk.PhotoImage(
+                        Image.open(os.path.join(icon_dir, "activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                    ),
+                    'finished': ImageTk.PhotoImage(
+                        Image.open(os.path.join(icon_dir, "finished.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                    ),
+                    'offline': ImageTk.PhotoImage(
+                        Image.open(os.path.join(icon_dir, "offline.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                    )
+                }
+            except Exception as e:
+                print(f"Error loading status icons: {e}")
+                self.status_icons = None
+
         if prop_id not in self.props:
             # Create new prop display
             prop_frame = ttk.Frame(self.props_frame)
@@ -452,8 +491,8 @@ class PropControl:
             name_label = ttk.Label(prop_frame, text=prop_data["strName"])
             name_label.pack(side='left', padx=5)
             
-            # Status indicator (just 'O' with color)
-            status_label = ttk.Label(prop_frame, text="O")
+            # Status indicator with icon
+            status_label = tk.Label(prop_frame)  # Changed to tk.Label to support images
             status_label.pack(side='right', padx=5)
             
             # Store references
