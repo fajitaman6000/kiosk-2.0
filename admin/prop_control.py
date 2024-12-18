@@ -500,36 +500,39 @@ class PropControl:
             reset_btn = tk.Button(
                 button_frame,
                 text="R",
+                font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "reset"),
                 bg='#cc362b',  # Red
-                width=1,
-                height=1
+                width=2,
+                height=4
             )
             reset_btn.pack(side='left', padx=1)
             
             activate_btn = tk.Button(
                 button_frame,
                 text="A",
+                font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "activate"),
                 bg='#ff8c00',  # Orange
-                width=1,
-                height=1
+                width=2,
+                height=4
             )
             activate_btn.pack(side='left', padx=1)
             
             finish_btn = tk.Button(
                 button_frame,
                 text="F",
+                font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "finish"),
                 bg='#28a745',  # Green
-                width=1,
-                height=1
+                width=2,
+                height=4
             )
             finish_btn.pack(side='left', padx=1)
             
             # Prop name
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
-            name_label = ttk.Label(prop_frame, text=mapped_name)
+            name_label = ttk.Label(prop_frame, font=('Arial', 10, 'bold'), text=mapped_name)
             name_label.pack(side='left', padx=5)
             
             # Status indicator with icon

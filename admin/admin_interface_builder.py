@@ -44,7 +44,7 @@ class AdminInterfaceBuilder:
         self.left_panel = tk.Frame(
             self.app.root,
             bg='SystemButtonFace',  # Use system default background color
-            width=200  # Fixed width for left panel
+            width=220  # Fixed width for left panel
         )
         self.left_panel.pack(
             side='left',     # Place on left side
