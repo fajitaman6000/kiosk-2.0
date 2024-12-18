@@ -1,4 +1,3 @@
-# kiosk_timer.py - Kiosk side
 import tkinter as tk
 import time
 
@@ -10,19 +9,44 @@ class KioskTimer:
         self.is_running = False
         self.last_update = None
         
-        # Create minimal timer display that floats over content
-        # Using a label directly without a containing frame
-        self.time_label = tk.Label(
-            root,  # Attach directly to root
+        # Create a frame container for the timer that will stay on top
+        self.timer_frame = tk.Frame(
+            root,
+            width=80,     # Height of the rotated text display
+            height=200,   # Width of the rotated text display
+            bg='black'
+        )
+        
+        # Position frame on right center of screen
+        self.timer_frame.place(
+            relx=1.0,     # Right edge of screen
+            rely=0.5,     # Vertical center
+            anchor='e',   # Anchor to east (right) center
+            x=-10        # Slight padding from edge
+        )
+        
+        # Prevent frame from shrinking
+        self.timer_frame.pack_propagate(False)
+        
+        # Create canvas inside the frame
+        self.canvas = tk.Canvas(
+            self.timer_frame,
+            width=80,    
+            height=200,  
+            bg='black',
+            highlightthickness=0
+        )
+        self.canvas.pack(fill='both', expand=True)
+        
+        # Create text item on canvas, rotated 90 degrees
+        self.time_text = self.canvas.create_text(
+            40,              # Horizontal center of canvas
+            100,            # Vertical center of canvas
             text="45:00",
             font=('Arial', 36, 'bold'),
-            fg='white',
-            bg='black',
-            padx=10,
-            pady=5
+            fill='white',
+            angle=270         # Rotate text 90 degrees clockwise
         )
-        # Position label directly at top of screen
-        self.time_label.place(x=10, y=10)  # Fixed position in top-left corner
         
         # Start update loop
         self.update_timer()
@@ -37,7 +61,7 @@ class KioskTimer:
             self.last_update = None
             print("Timer stopped")
         elif command == "set" and minutes is not None:
-            self.time_remaining = minutes * 45
+            self.time_remaining = minutes * 60
             self.is_running = False
             self.last_update = None
             print(f"Timer set to {minutes} minutes")
@@ -53,26 +77,26 @@ class KioskTimer:
                 self.last_update = current_time
                 self.update_display()
 
-            # Only schedule next update if widget exists
-            if self.time_label.winfo_exists():
+            if self.timer_frame.winfo_exists():
                 self.root.after(100, self.update_timer)
         except tk.TclError:
             pass  # Widget was destroyed
         
     def update_display(self):
         try:
-            if self.time_label.winfo_exists():
+            if self.canvas.winfo_exists():
                 minutes = int(self.time_remaining // 60)
                 seconds = int(self.time_remaining % 60)
-                self.time_label.config(
+                self.canvas.itemconfig(
+                    self.time_text,
                     text=f"{minutes:02d}:{seconds:02d}",
-                    fg='white' if self.is_running else 'yellow'
+                    fill='white' if self.is_running else 'yellow'
                 )
-                self.time_label.lift()  # Always keep timer on top
+                self.timer_frame.lift()  # Keep entire timer frame on top
         except tk.TclError:
             pass  # Widget was destroyed
         
     def lift_to_top(self):
         """Call this method when new UI elements are added"""
-        if hasattr(self, 'time_label') and self.time_label.winfo_exists():
-            self.time_label.lift()
+        if hasattr(self, 'timer_frame') and self.timer_frame.winfo_exists():
+            self.timer_frame.lift()

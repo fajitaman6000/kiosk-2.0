@@ -62,9 +62,9 @@ class KioskUI:
         self.help_button = None
         
     def setup_room_interface(self, room_number):
-        # Clear all widgets except timer
+        # Clear all widgets except timer frame
         for widget in self.root.winfo_children():
-            if widget is not self.message_handler.timer.time_label:  # Keep only timer label
+            if widget is not self.message_handler.timer.timer_frame:  # Keep timer frame
                 widget.destroy()
         
         # Set up background first
@@ -82,7 +82,7 @@ class KioskUI:
             self.create_help_button()
         
         # Ensure timer stays on top
-        self.message_handler.timer.time_label.lift()
+        self.message_handler.timer.lift_to_top()
             
     def create_help_button(self):
         if self.help_button is None and not self.hint_cooldown:
