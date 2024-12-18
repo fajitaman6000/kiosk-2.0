@@ -2,119 +2,383 @@
     "wizard": {
         "comments": "Wizard Trials room props",
         "mappings": {
-            "Ice goblet chest": "Goblet Chest",
-            "Potion pot": "Potion Pot",
-            "Owl": "Fart Owl",
-            "Planets": "Planet Colors",
-            "Mirror": "Mirror",
-            "Rod compartment": "Rod Game",
-            "Spining globe": "Spin Globe",
-            "Magic ball": "Veiny Orb",
-            "Fireplace": "Fireplace",
-            "Sit on chair": "Chair",
-            "Code panel": "Code Panel",
-            "Stone piece": "Stone Pieces",
-            "Dragon to cat": "Dragon to Cat",
-            "Wizards shelf": "Magic Shelf",
-            "Spirits board": "Spirits Board",
-            "Spell chart": "Spell Chart",
-            "Knoking chest": "Knocking Chest"
+            "Ice goblet chest": {
+                "display": "Goblet Chest",
+                "order": 1
+            },
+            "Potion pot": {
+                "display": "Potion Pot",
+                "order": 2
+            },
+            "Owl": {
+                "display": "Fart Owl",
+                "order": 3
+            },
+            "Planets": {
+                "display": "Planet Colors",
+                "order": 4
+            },
+            "Mirror": {
+                "display": "Mirror",
+                "order": 5
+            },
+            "Rod compartment": {
+                "display": "Rod Game",
+                "order": 6
+            },
+            "Spining globe": {
+                "display": "Spin Globe",
+                "order": 7
+            },
+            "Magic ball": {
+                "display": "Veiny Orb",
+                "order": 8
+            },
+            "Fireplace": {
+                "display": "Fireplace",
+                "order": 9
+            },
+            "Sit on chair": {
+                "display": "Chair",
+                "order": 10
+            },
+            "Code panel": {
+                "display": "Code Panel",
+                "order": 11
+            },
+            "Stone piece": {
+                "display": "Stone Pieces",
+                "order": 12
+            },
+            "Dragon to cat": {
+                "display": "Dragon to Cat",
+                "order": 13
+            },
+            "Wizards shelf": {
+                "display": "Magic Shelf",
+                "order": 14
+            },
+            "Spirits board": {
+                "display": "Spirits Board",
+                "order": 15
+            },
+            "Spell chart": {
+                "display": "Spell Chart",
+                "order": 16
+            },
+            "Knoking chest": {
+                "display": "Knocking Chest",
+                "order": 17
+            }
         }
     },
     "casino_ma": {
         "comments": "Combined Casino Heist and Morning After props",
         "mappings": {
-            "Tubes": "Buzzwire",
-            "Wardrobe": "Sliding Shelf",
-            "Lamp": "Spinning Lamp",
-            "Memory": "Memory Hotel",
-            "Boxes": "Drawers",
-            "Code panel": "Case Code",
-            "Weight game": "Weight Game",
-            "Painting 1": "Painting 1",
-            "Cache in table": "Table Cache",
-            "Painting cache": "Painting Cache",
-            "Dildo": "Dildo Game",
-            "Painting 2": "Painting 2",
-            "Cameras": "Cameras",
-            "Planting bomb": "Plant Bombs",
-            "Blast": "Blast Open",
-            "Clocks": "Clocks"
+            "Tubes": {
+                "display": "Buzzwire",
+                "order": 1
+            },
+            "Wardrobe": {
+                "display": "Sliding Shelf",
+                "order": 2
+            },
+            "Lamp": {
+                "display": "Spinning Lamp",
+                "order": 3
+            },
+            "Memory": {
+                "display": "Memory Hotel",
+                "order": 4
+            },
+            "Boxes": {
+                "display": "Drawers",
+                "order": 5
+            },
+            "Code panel": {
+                "display": "Case Code",
+                "order": 6
+            },
+            "Weight game": {
+                "display": "Weight Game",
+                "order": 7
+            },
+            "Painting 1": {
+                "display": "Painting 1",
+                "order": 8
+            },
+            "Cache in table": {
+                "display": "Table Cache",
+                "order": 9
+            },
+            "Painting cache": {
+                "display": "Painting Cache",
+                "order": 10
+            },
+            "Dildo": {
+                "display": "Dildo Game",
+                "order": 11
+            },
+            "Painting 2": {
+                "display": "Painting 2",
+                "order": 12
+            },
+            "Cameras": {
+                "display": "Cameras",
+                "order": 13
+            },
+            "Planting bomb": {
+                "display": "Plant Bombs",
+                "order": 14
+            },
+            "Blast": {
+                "display": "Blast Open",
+                "order": 15
+            },
+            "Clocks": {
+                "display": "Clocks",
+                "order": 16
+            }
         }
     },
     "haunted": {
         "comments": "Haunted Manor room props",
         "mappings": {
-            "Clock": "Clock",
-            "Change the object": "Diary/Cross",
-            "Symbol maze": "Symbol Maze",
-            "Ghost puzzle": "Yellow Puzzle",
-            "Family portrait": "Family Portrait",
-            "Talking mirror": "Mirror",
-            "Rotate the sun": "Sun Dial",
-            "Escape the rope": "Rope Braid",
-            "Cabinet": "Mouth Cabinet",
-            "Antique radio": "Radio Drawer",
-            "Blow the candles": "Candles",
-            "Suitcase": "Suitcase",
-            "Place the photos": "Vanity Photos"
+            "Clock": {
+                "display": "Clock",
+                "order": 1
+            },
+            "Change the object": {
+                "display": "Diary/Cross",
+                "order": 2
+            },
+            "Symbol maze": {
+                "display": "Symbol Maze",
+                "order": 3
+            },
+            "Ghost puzzle": {
+                "display": "Yellow Puzzle",
+                "order": 4
+            },
+            "Family portrait": {
+                "display": "Family Portrait",
+                "order": 5
+            },
+            "Talking mirror": {
+                "display": "Mirror",
+                "order": 6
+            },
+            "Rotate the sun": {
+                "display": "Sun Dial",
+                "order": 7
+            },
+            "Escape the rope": {
+                "display": "Rope Braid",
+                "order": 8
+            },
+            "Cabinet": {
+                "display": "Mouth Cabinet",
+                "order": 9
+            },
+            "Antique radio": {
+                "display": "Radio Drawer",
+                "order": 10
+            },
+            "Blow the candles": {
+                "display": "Candles",
+                "order": 11
+            },
+            "Suitcase": {
+                "display": "Suitcase",
+                "order": 12
+            },
+            "Place the photos": {
+                "display": "Vanity Photos",
+                "order": 13
+            }
         }
     },
     "zombie": {
         "comments": "Zombie Outbreak room props",
         "mappings": {
-            "Place The Tools": "Tools",
-            "Tool Holder": "Bench Lights",
-            "Bike": "Motorcycle",
-            "Antique TV": "TV",
-            "ZOMBIE Loops": "Zombie Loops",
-            "Microwave": "Microwave",
-            "Breaker box": "Breakers",
-            "Horse shoes": "[HORSE-REMOVED]",
-            "Wood wheel": "Wagon Wheel",
-            "Wrench Size Game": "Cables Box"
+            "Place The Tools": {
+                "display": "Tools",
+                "order": 1
+            },
+            "Tool Holder": {
+                "display": "Bench Lights",
+                "order": 2
+            },
+            "Bike": {
+                "display": "Motorcycle",
+                "order": 3
+            },
+            "Antique TV": {
+                "display": "TV",
+                "order": 4
+            },
+            "ZOMBIE Loops": {
+                "display": "Zombie Loops",
+                "order": 5
+            },
+            "Microwave": {
+                "display": "Microwave",
+                "order": 6
+            },
+            "Breaker box": {
+                "display": "Breakers",
+                "order": 7
+            },
+            "Horse shoes": {
+                "display": "[HORSE-REMOVED]",
+                "order": 8
+            },
+            "Wood wheel": {
+                "display": "Wagon Wheel",
+                "order": 9
+            },
+            "Wrench Size Game": {
+                "display": "Cables Box",
+                "order": 10
+            }
         }
     },
     "atlantis": {
         "comments": "Atlantis Rising room props",
         "mappings": {
-            "Crown": "Laser Crown",
-            "Trident": "Trident",
-            "Picks": "Pickaxes",
-            "Dynamite": "Dynamite",
-            "Light maze": "Light Maze",
-            "Treasury": "Treasure Dropper",
-            "Floor panels": "Floor Panels",
-            "Tangram": "Stone Fragments",
-            "Levers": "Levers",
-            "Pyramid": "Pyramid",
-            "Door": "Door",
-            "Color buttons": "Color Buttons",
-            "Cryptex": "Wheel Chest",
-            "Harp": "Harp Lights"
+            "Crown": {
+                "display": "Laser Crown",
+                "order": 1
+            },
+            "Trident": {
+                "display": "Trident",
+                "order": 2
+            },
+            "Picks": {
+                "display": "Pickaxes",
+                "order": 3
+            },
+            "Dynamite": {
+                "display": "Dynamite",
+                "order": 4
+            },
+            "Light maze": {
+                "display": "Light Maze",
+                "order": 5
+            },
+            "Treasury": {
+                "display": "Treasure Dropper",
+                "order": 6
+            },
+            "Floor panels": {
+                "display": "Floor Panels",
+                "order": 7
+            },
+            "Tangram": {
+                "display": "Stone Fragments",
+                "order": 8
+            },
+            "Levers": {
+                "display": "Levers",
+                "order": 9
+            },
+            "Pyramid": {
+                "display": "Pyramid",
+                "order": 10
+            },
+            "Door": {
+                "display": "Door",
+                "order": 11
+            },
+            "Color buttons": {
+                "display": "Color Buttons",
+                "order": 12
+            },
+            "Cryptex": {
+                "display": "Wheel Chest",
+                "order": 13
+            },
+            "Harp": {
+                "display": "Harp Lights",
+                "order": 14
+            }
         }
     },
     "time_machine": {
         "comments": "Time Machine room props",
         "mappings": {
-            "Clock": "Clock",
-            "Control panel": "Control Panel",
-            "Skull eye": "Skull Ball",
-            "Professors": "Professor Doors",
-            "Ignition": "Ignition",
-            "Machine door": "Door",
-            "Skull button": "Skull Button",
-            "Footprints": "Footprints",
-            "Cylinders": "Liquid Cylinders",
-            "Prism": "Color Prism",
-            "Radium matrix": "Ball Maze",
-            "Time capacitor": "Time Capacitor",
-            "Energy key": "Book Keys",
-            "Valves": "Wall Valves",
-            "Air flow filter": "Desk Fan",
-            "Inverse vault": "Inverse Vault",
-            "Radium cog": "Ball Course",
-            "Calculometer": "Calculometer"
+            "Clock": {
+                "display": "Clock",
+                "order": 1
+            },
+            "Control panel": {
+                "display": "Control Panel",
+                "order": 2
+            },
+            "Skull eye": {
+                "display": "Skull Ball",
+                "order": 3
+            },
+            "Professors": {
+                "display": "Professor Doors",
+                "order": 4
+            },
+            "Ignition": {
+                "display": "Ignition",
+                "order": 5
+            },
+            "Machine door": {
+                "display": "Door",
+                "order": 6
+            },
+            "Skull button": {
+                "display": "Skull Button",
+                "order": 7
+            },
+            "Footprints": {
+                "display": "Footprints",
+                "order": 8
+            },
+            "Cylinders": {
+                "display": "Liquid Cylinders",
+                "order": 9
+            },
+            "Prism": {
+                "display": "Color Prism",
+                "order": 10
+            },
+            "Radium matrix": {
+                "display": "Ball Maze",
+                "order": 11
+            },
+            "Time capacitor": {
+                "display": "Time Capacitor",
+                "order": 12
+            },
+            "Energy key": {
+                "display": "Book Keys",
+                "order": 13
+            },
+            "Valves": {
+                "display": "Wall Valves",
+                "order": 14
+            },
+            "Air flow filter": {
+                "display": "Desk Fan",
+                "order": 15
+            },
+            "Inverse vault": {
+                "display": "Inverse Vault",
+                "order": 16
+            },
+            "Radium cog": {
+                "display": "Ball Course",
+                "order": 17
+            },
+            "Calculometer": {
+                "display": "Calculometer",
+                "order": 18
+            }
         }
     }
 }

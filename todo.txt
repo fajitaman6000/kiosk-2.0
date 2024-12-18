@@ -23,6 +23,7 @@ don't load special controls section if none exist
 replace 'O's and reset, active, finish with symbols
 clicking props should load hints for it
 hint notification sound + manual sound button
+establish proper prop order
 
 
 # known bugs

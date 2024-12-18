@@ -81,7 +81,7 @@ class PropControl:
             self.global_controls,
             text="START GAME",
             command=self.start_game,
-            bg='#285aed',   # Blue
+            bg='#2898ED',   # Blue
             fg='white'
         )
         self.start_button.pack(fill='x', pady=2)
@@ -90,7 +90,7 @@ class PropControl:
             self.global_controls,
             text="RESET ALL",
             command=self.reset_all,
-            bg='#db42ad',   # Pink
+            bg='#DB4260',   # Red
             fg='white'
         )
         self.reset_button.pack(fill='x', pady=2)
@@ -120,6 +120,8 @@ class PropControl:
         # Status message label for connection state
         self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
         self.status_label.pack(fill='x', pady=5)
+
+        self.load_prop_name_mappings()
 
         # Initialize MQTT clients for all rooms
         for room_number in self.room_configs:
@@ -203,8 +205,11 @@ class PropControl:
         room_key = room_map[room_number]
         room_mappings = self.prop_name_mappings.get(room_key, {}).get('mappings', {})
         
-        # Return mapped name if it exists and isn't empty, otherwise return original
-        mapped_name = room_mappings.get(original_name, "")
+        # Get the mapping info for this prop
+        prop_info = room_mappings.get(original_name, {})
+        
+        # Return mapped display name if it exists and isn't empty, otherwise return original
+        mapped_name = prop_info.get('display', '')
         return mapped_name if mapped_name else original_name
 
     def initialize_mqtt_client(self, room_number):
@@ -467,7 +472,6 @@ class PropControl:
         if not hasattr(self, 'status_icons'):
             try:
                 icon_dir = os.path.join("admin_icons")
-                # Load and resize all status icons
                 self.status_icons = {
                     'not_activated': ImageTk.PhotoImage(
                         Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
@@ -485,11 +489,28 @@ class PropControl:
             except Exception as e:
                 print(f"Error loading status icons: {e}")
                 self.status_icons = None
+                
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time_machine"
+        }
+        
+        # Get the order number for this prop
+        order = 999  # Default high number for props not in mapping
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_data["strName"], {})
+                order = prop_info.get('order', 999)
 
         if prop_id not in self.props:
             # Create new prop display
             prop_frame = ttk.Frame(self.props_frame)
-            prop_frame.pack(fill='x', pady=1)
             
             # Button frame for control buttons
             button_frame = ttk.Frame(prop_frame)
@@ -532,27 +553,36 @@ class PropControl:
             
             # Prop name
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
-            name_label = ttk.Label(prop_frame, font=('Arial', 10, 'bold'), text=mapped_name)
+            name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
             name_label.pack(side='left', padx=5)
             
             # Status indicator with icon
-            status_label = tk.Label(prop_frame)  # Changed to tk.Label to support images
+            status_label = tk.Label(prop_frame)
             status_label.pack(side='right', padx=5)
             
-            # Store references
+            # Store references with order number
             self.props[prop_id] = {
                 'frame': prop_frame,
                 'status_label': status_label,
                 'info': prop_data,
-                'last_update': time.time()
+                'last_update': time.time(),
+                'order': order
             }
+
+            # Sort and repack all frames based on order
+            sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
+            for _, prop_info in sorted_props:
+                prop_info['frame'].pack_forget()
+                prop_info['frame'].pack(fill='x', pady=1)
 
             self.schedule_status_update(prop_id)
         else:
             # Update existing prop info and timestamp
             self.props[prop_id]['info'] = prop_data
             self.props[prop_id]['last_update'] = time.time()
+            self.props[prop_id]['order'] = order  # Update order in case it changed
             self.update_prop_status(prop_id)
+
 
     def schedule_status_update(self, prop_id):
         """Schedule periodic updates of prop status"""
