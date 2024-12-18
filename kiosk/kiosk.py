@@ -153,7 +153,8 @@ class KioskApp:
                     fg='yellow', bg='black',
                     font=('Arial', 24)
                 )
-                self.ui.request_pending_label.pack(pady=10)
+                # Position the pending request text on the left side
+                self.ui.request_pending_label.place(relx=0.2, rely=0.4, anchor='center')
             
             self.network.send_message({
                 'type': 'help_request',

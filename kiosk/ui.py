@@ -85,18 +85,21 @@ class KioskUI:
         self.message_handler.timer.lift_to_top()
             
     def create_help_button(self):
+        """Creates the help request button"""
         if self.help_button is None and not self.hint_cooldown:
-                self.help_button = tk.Button(
-                    self.root,
-                    text="REQUEST NEW HINT",
-                    command=self.message_handler.request_help,
-                    height=5, width=30,
-                    font=('Arial', 24),
-                    bg='blue', fg='white'
-                )
-                self.help_button.pack(pady=50)
+            self.help_button = tk.Button(
+                self.root,
+                text="REQUEST NEW HINT",
+                command=self.message_handler.request_help,
+                height=5, width=30,
+                font=('Arial', 24),
+                bg='blue', fg='white'
+            )
+            # Position button on the left side
+            self.help_button.place(relx=0.2, rely=0.5, anchor='center')
             
     def show_hint(self, text):
+        """Shows the hint text"""
         self.current_hint = text
         
         if self.request_pending_label:
@@ -111,7 +114,8 @@ class KioskUI:
                 font=('Arial', 20),
                 wraplength=800
             )
-            self.hint_label.pack(pady=20)
+            # Position hint text on the left side
+            self.hint_label.place(relx=0.2, rely=0.3, anchor='center')
         else:
             self.hint_label.config(text=text)
             
@@ -128,7 +132,8 @@ class KioskUI:
                     fg='white',
                     font=('Arial', 24)
                 )
-                self.cooldown_label.pack(pady=10)
+                # Position cooldown text on the left side
+                self.cooldown_label.place(relx=0.2, rely=0.7, anchor='center')
             
             self.cooldown_label.config(
                 text=f"Please wait {seconds_left} seconds until requesting the next hint."
