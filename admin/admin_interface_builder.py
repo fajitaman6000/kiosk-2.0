@@ -426,7 +426,7 @@ class AdminInterfaceBuilder:
     def update_timer_display(self):
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
             stats = self.app.kiosk_tracker.kiosk_stats[self.selected_kiosk]
-            timer_time = stats.get('timer_time', 3600)
+            timer_time = stats.get('timer_time', 2700)
             timer_minutes = int(timer_time // 60)
             timer_seconds = int(timer_time % 60)
             if 'current_time' in self.stats_elements and self.stats_elements['current_time']:

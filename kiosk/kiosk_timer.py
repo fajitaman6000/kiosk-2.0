@@ -6,7 +6,7 @@ class KioskTimer:
     def __init__(self, root, network_handler):
         self.root = root
         self.network_handler = network_handler
-        self.time_remaining = 60 * 60  # Default 60 minutes
+        self.time_remaining = 60 * 45  # Default 60 minutes
         self.is_running = False
         self.last_update = None
         
@@ -16,7 +16,7 @@ class KioskTimer:
         
         self.time_label = tk.Label(
             self.timer_frame,
-            text="60:00",
+            text="45:00",
             font=('Arial', 36, 'bold'),
             fg='white',
             bg='black',

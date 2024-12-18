@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk
 import paho.mqtt.client as mqtt
 import json
+from pathlib import Path
 import time
 from datetime import datetime, timedelta
 import random
@@ -164,6 +165,47 @@ class PropControl:
             print(f"Widget for prop {prop_id} was destroyed")
         except Exception as e:
             print(f"Error updating prop status: {e}")
+
+    def load_prop_name_mappings(self):
+        """Load prop name mappings from JSON file"""
+        try:
+            mapping_file = Path("prop_name_mapping.json")
+            if mapping_file.exists():
+                with open(mapping_file, 'r') as f:
+                    self.prop_name_mappings = json.load(f)
+                print("Loaded prop name mappings successfully")
+            else:
+                self.prop_name_mappings = {}
+                print("No prop name mapping file found")
+        except Exception as e:
+            print(f"Error loading prop name mappings: {e}")
+            self.prop_name_mappings = {}
+
+    def get_mapped_prop_name(self, original_name, room_number):
+        """Get the mapped name for a prop if it exists"""
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+        
+        # Map room numbers to config sections
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time_machine"
+        }
+        
+        if room_number not in room_map:
+            return original_name
+            
+        room_key = room_map[room_number]
+        room_mappings = self.prop_name_mappings.get(room_key, {}).get('mappings', {})
+        
+        # Return mapped name if it exists and isn't empty, otherwise return original
+        mapped_name = room_mappings.get(original_name, "")
+        return mapped_name if mapped_name else original_name
 
     def initialize_mqtt_client(self, room_number):
         """Create and connect MQTT client for a room"""
@@ -457,7 +499,7 @@ class PropControl:
             button_size = 20  # Size in pixels
             reset_btn = tk.Button(
                 button_frame,
-                text="",
+                text="R",
                 command=lambda: self.send_command(prop_id, "reset"),
                 bg='#cc362b',  # Red
                 width=1,
@@ -467,7 +509,7 @@ class PropControl:
             
             activate_btn = tk.Button(
                 button_frame,
-                text="",
+                text="A",
                 command=lambda: self.send_command(prop_id, "activate"),
                 bg='#ff8c00',  # Orange
                 width=1,
@@ -477,7 +519,7 @@ class PropControl:
             
             finish_btn = tk.Button(
                 button_frame,
-                text="",
+                text="F",
                 command=lambda: self.send_command(prop_id, "finish"),
                 bg='#28a745',  # Green
                 width=1,
@@ -486,7 +528,8 @@ class PropControl:
             finish_btn.pack(side='left', padx=1)
             
             # Prop name
-            name_label = ttk.Label(prop_frame, text=prop_data["strName"])
+            mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+            name_label = ttk.Label(prop_frame, text=mapped_name)
             name_label.pack(side='left', padx=5)
             
             # Status indicator with icon

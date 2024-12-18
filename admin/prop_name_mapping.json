@@ -1,0 +1,120 @@
+{
+    "wizard": {
+        "comments": "Wizard Trials room props",
+        "mappings": {
+            "Ice goblet chest": "Goblet Chest",
+            "Potion pot": "Potion Pot",
+            "Owl": "Fart Owl",
+            "Planets": "Planet Colors",
+            "Mirror": "Mirror",
+            "Rod compartment": "Rod Game",
+            "Spining globe": "Spinning Globe",
+            "Magic ball": "Veiny Orb",
+            "Fireplace": "Fireplace",
+            "Sit on chair": "Chair",
+            "Code panel": "Code Panel",
+            "Stone piece": "Stone Pieces",
+            "Dragon to cat": "Dragon to Cat",
+            "Wizards shelf": "Magic Shelf",
+            "Spirits board": "Spirits Board",
+            "Spell chart": "Spell Chart",
+            "Knoking chest": "Knocking Chest"
+        }
+    },
+    "casino_ma": {
+        "comments": "Combined Casino Heist and Morning After props",
+        "mappings": {
+            "Tubes": "Buzzwire",
+            "Wardrobe": "Sliding Shelf",
+            "Lamp": "Spinning Lamp",
+            "Memory": "Memory Hotel",
+            "Boxes": "Drawers",
+            "Code panel": "Case Code",
+            "Weight game": "Weight Game",
+            "Painting 1": "Painting 1",
+            "Cache in table": "Table Cache",
+            "Painting cache": "Painting Cache",
+            "Dildo": "Dildo Game",
+            "Painting 2": "Painting 2",
+            "Cameras": "Cameras",
+            "Planting bomb": "Plant Bombs",
+            "Blast": "Blast Open",
+            "Clocks": "Clocks"
+        }
+    },
+    "haunted": {
+        "comments": "Haunted Manor room props",
+        "mappings": {
+            "Clock": "Clock",
+            "Change the object": "Diary/Cross",
+            "Symbol maze": "Symbol Maze",
+            "Ghost puzzle": "Yellow Puzzle",
+            "Family portrait": "Family Portrait",
+            "Talking mirror": "Mirror",
+            "Rotate the sun": "Sun Dial",
+            "Escape the rope": "Rope Braid",
+            "Cabinet": "Mouth Cabinet",
+            "Antique radio": "Radio Drawer",
+            "Blow the candles": "Candles",
+            "Suitcase": "Suitcase",
+            "Place the photos": "Vanity Photos"
+        }
+    },
+    "zombie": {
+        "comments": "Zombie Outbreak room props",
+        "mappings": {
+            "Place The Tools": "Tools",
+            "Tool Holder": "Bench Lights",
+            "Bike": "Motorcycle",
+            "Antique TV": "TV",
+            "ZOMBIE Loops": "Zombie Loops",
+            "Microwave": "Microwave",
+            "Breaker box": "Breakers",
+            "Horse shoes": "[HORSE-REMOVED]",
+            "Wood wheel": "Wagon Wheel",
+            "Wrench Size Game": "Cables Box"
+        }
+    },
+    "atlantis": {
+        "comments": "Atlantis Rising room props",
+        "mappings": {
+            "Crown": "Laser Crown",
+            "Trident": "Trident",
+            "Picks": "Pickaxes",
+            "Dynamite": "Dynamite",
+            "Light maze": "Light Maze",
+            "Treasury": "Treasure Dropper",
+            "Floor panels": "Floor Panels",
+            "Tangram": "Stone Fragments",
+            "Levers": "Levers",
+            "Pyramid": "Pyramid",
+            "Door": "Door",
+            "Color buttons": "Color Buttons",
+            "Cryptex": "Wheel Chest",
+            "Harp": "Harp Lights"
+        }
+    },
+    "time_machine": {
+        "comments": "Time Machine room props",
+        "mappings": {
+            "Clock": "Clock",
+            "Control panel": "Control Panel",
+            "Skull eye": "Skull Ball",
+            "Professors": "Professor Doors",
+            "Ignition": "Ignition",
+            "Machine door": "Door",
+            "Skull button": "Skull Button",
+            "Footprints": "Footprints",
+            "Cylinders": "Liquid Cylinders",
+            "Prism": "Color Prism",
+            "Radium matrix": "Ball Maze",
+            "Time capacitor": "Time Capacitor",
+            "Energy key": "Book Keys",
+            "Valves": "Wall Valves",
+            "Air flow filter": "Desk Fan",
+            "Inverse vault": "Inverse Vault",
+            "Radium cog": "Ball Course",
+            "Calculometer": "Calculometer"
+        }
+    }
+}
