@@ -62,32 +62,27 @@ class KioskUI:
         self.help_button = None
         
     def setup_room_interface(self, room_number):
+        # Clear all widgets except timer
         for widget in self.root.winfo_children():
-            if widget is not self.message_handler.timer.timer_frame:  # Keep timer
+            if widget is not self.message_handler.timer.time_label:  # Keep only timer label
                 widget.destroy()
-            
+        
+        # Set up background first
         self.background_image = self.load_background(room_number)
         if self.background_image:
             background_label = tk.Label(self.root, image=self.background_image)
             background_label.place(x=0, y=0, relwidth=1, relheight=1)
         
-        room_name = self.room_config['names'].get(room_number, f"Room {room_number}")
-        name_label = tk.Label(
-            self.root,
-            text=room_name,
-            fg='white', bg='black',
-            font=('Arial', 36)
-        )
-        name_label.pack(pady=(80,20))  # Add top padding to account for timer
-        
+        # Restore hint if there was one
         if self.current_hint:
             self.show_hint(self.current_hint)
-            
+        
+        # Restore help button if not in cooldown
         if not self.hint_cooldown:
             self.create_help_button()
-            
+        
         # Ensure timer stays on top
-        self.message_handler.timer.lift_to_top()
+        self.message_handler.timer.time_label.lift()
             
     def create_help_button(self):
         if self.help_button is None and not self.hint_cooldown:

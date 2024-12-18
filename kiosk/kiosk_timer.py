@@ -6,26 +6,23 @@ class KioskTimer:
     def __init__(self, root, network_handler):
         self.root = root
         self.network_handler = network_handler
-        self.time_remaining = 60 * 45  # Default 60 minutes
+        self.time_remaining = 60 * 45  # Default 45 minutes
         self.is_running = False
         self.last_update = None
         
-        # Create timer display
-        self.timer_frame = tk.Frame(root, bg='black')
-        self.timer_frame.pack(fill='x', side='top')
-        
+        # Create minimal timer display that floats over content
+        # Using a label directly without a containing frame
         self.time_label = tk.Label(
-            self.timer_frame,
+            root,  # Attach directly to root
             text="45:00",
             font=('Arial', 36, 'bold'),
             fg='white',
             bg='black',
-            highlightbackground='white',
-            highlightthickness=1,
             padx=10,
             pady=5
         )
-        self.time_label.pack(pady=10)
+        # Position label directly at top of screen
+        self.time_label.place(x=10, y=10)  # Fixed position in top-left corner
         
         # Start update loop
         self.update_timer()
@@ -40,7 +37,7 @@ class KioskTimer:
             self.last_update = None
             print("Timer stopped")
         elif command == "set" and minutes is not None:
-            self.time_remaining = minutes * 60
+            self.time_remaining = minutes * 45
             self.is_running = False
             self.last_update = None
             print(f"Timer set to {minutes} minutes")
@@ -71,12 +68,11 @@ class KioskTimer:
                     text=f"{minutes:02d}:{seconds:02d}",
                     fg='white' if self.is_running else 'yellow'
                 )
-                
-                # Keep timer on top
-                self.timer_frame.lift()
+                self.time_label.lift()  # Always keep timer on top
         except tk.TclError:
             pass  # Widget was destroyed
         
     def lift_to_top(self):
         """Call this method when new UI elements are added"""
-        self.timer_frame.lift()
+        if hasattr(self, 'time_label') and self.time_label.winfo_exists():
+            self.time_label.lift()
