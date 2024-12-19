@@ -85,18 +85,68 @@ class KioskUI:
         self.message_handler.timer.lift_to_top()
             
     def create_help_button(self):
-        """Creates the help request button"""
+        """Creates the help request button using room-specific image"""
         if self.help_button is None and not self.hint_cooldown:
-            self.help_button = tk.Button(
-                self.root,
-                text="REQUEST NEW HINT",
-                command=self.message_handler.request_help,
-                height=5, width=30,
-                font=('Arial', 24),
-                bg='blue', fg='white'
-            )
-            # Position button on the left side
-            self.help_button.place(relx=0.2, rely=0.5, anchor='center')
+            # Get the assigned room number
+            room_number = self.message_handler.assigned_room
+            if not room_number:
+                return
+                
+            # Use same room mapping as backgrounds to get button image
+            button_filename = self.room_config['backgrounds'][room_number]
+            # Replace extension with .png for button image
+            button_filename = button_filename.replace('.png', '.png')
+            button_path = os.path.join("Buttons", button_filename)
+            
+            try:
+                # Load and create button image
+                if os.path.exists(button_path):
+                    button_image = Image.open(button_path)
+                    # Scale button to reasonable size (adjust as needed)
+                    button_image = button_image.resize((400, 150), Image.Resampling.LANCZOS)
+                    button_photo = ImageTk.PhotoImage(button_image)
+                    
+                    # Create image button
+                    self.help_button = tk.Button(
+                        self.root,
+                        image=button_photo,
+                        command=self.message_handler.request_help,
+                        borderwidth=0,
+                        highlightthickness=0,
+                        bd=0,
+                        activebackground='black',
+                        bg='black'
+                    )
+                    # Keep reference to prevent garbage collection
+                    self.help_button.image = button_photo
+                    
+                    # Position button on the left side
+                    self.help_button.place(relx=0.2, rely=0.5, anchor='center')
+                else:
+                    print(f"Button image not found: {button_path}")
+                    # Fallback to text button if image not found
+                    self.help_button = tk.Button(
+                        self.root,
+                        text="REQUEST NEW HINT",
+                        command=self.message_handler.request_help,
+                        height=5, width=30,
+                        font=('Arial', 24),
+                        bg='blue', fg='white'
+                    )
+                    self.help_button.place(relx=0.2, rely=0.5, anchor='center')
+                    
+            except Exception as e:
+                print(f"Error creating button image: {e}")
+                # Fallback to text button on error
+                self.help_button = tk.Button(
+                    self.root,
+                    text="REQUEST NEW HINT",
+                    command=self.message_handler.request_help,
+                    height=5, width=30,
+                    font=('Arial', 24),
+                    bg='blue', fg='white'
+                )
+                self.help_button.place(relx=0.2, rely=0.5, anchor='center')
             
     def show_hint(self, text):
         """Shows the hint text"""
