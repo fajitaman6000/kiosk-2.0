@@ -12,8 +12,8 @@ class KioskTimer:
         # Create a frame container for the timer that will stay on top
         self.timer_frame = tk.Frame(
             root,
-            width=80,     # Height of the rotated text display
-            height=200,   # Width of the rotated text display
+            width=200,     # Height of the rotated text display
+            height=400,   # Width of the rotated text display
             bg='black'
         )
         
@@ -22,7 +22,7 @@ class KioskTimer:
             relx=1.0,     # Right edge of screen
             rely=0.5,     # Vertical center
             anchor='e',   # Anchor to east (right) center
-            x=-10        # Slight padding from edge
+            x=-260        # Slight padding from edge
         )
         
         # Prevent frame from shrinking
@@ -31,8 +31,8 @@ class KioskTimer:
         # Create canvas inside the frame
         self.canvas = tk.Canvas(
             self.timer_frame,
-            width=80,    
-            height=200,  
+            width=200,    
+            height=400,  
             bg='black',
             highlightthickness=0
         )
@@ -40,10 +40,10 @@ class KioskTimer:
         
         # Create text item on canvas, rotated 90 degrees
         self.time_text = self.canvas.create_text(
-            40,              # Horizontal center of canvas
-            100,            # Vertical center of canvas
+            100,              # Horizontal center of canvas
+            200,            # Vertical center of canvas
             text="45:00",
-            font=('Arial', 36, 'bold'),
+            font=('Arial', 70, 'bold'),
             fill='white',
             angle=270         # Rotate text 90 degrees clockwise
         )
@@ -62,8 +62,6 @@ class KioskTimer:
             print("Timer stopped")
         elif command == "set" and minutes is not None:
             self.time_remaining = minutes * 60
-            self.is_running = False
-            self.last_update = None
             print(f"Timer set to {minutes} minutes")
             
         self.update_display()
