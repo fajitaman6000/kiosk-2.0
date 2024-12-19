@@ -688,7 +688,13 @@ class AdminInterfaceBuilder:
                 fg=self.ROOM_COLORS.get(selected_room, "black")  # Update color on assignment
             )
         
-        assign_btn = tk.Button(frame, text="Assign Room", command=assign_room)
+        assign_btn = tk.Button(
+            frame, 
+            text="Assign Room", 
+            command=assign_room,
+            bg='#90EE90',  # Light green background
+            fg='black'
+        )
         assign_btn.pack(side='left', padx=5)
         
         # Add reboot button with padding to prevent accidental clicks
@@ -839,12 +845,22 @@ class AdminInterfaceBuilder:
                 if cn == computer_name:
                     data['frame'].configure(bg='lightblue')
                     for widget in data['frame'].winfo_children():
-                        if not isinstance(widget, ttk.Combobox):
+                        if isinstance(widget, tk.Button):
+                            if widget == data['reboot_btn']:
+                                widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
+                            elif widget == data['assign_btn']:
+                                widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
+                        elif not isinstance(widget, ttk.Combobox):
                             widget.configure(bg='lightblue')
                 else:
                     data['frame'].configure(bg='SystemButtonFace')
                     for widget in data['frame'].winfo_children():
-                        if not isinstance(widget, ttk.Combobox):
+                        if isinstance(widget, tk.Button):
+                            if widget == data['reboot_btn']:
+                                widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
+                            elif widget == data['assign_btn']:
+                                widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
+                        elif not isinstance(widget, ttk.Combobox):
                             widget.configure(bg='SystemButtonFace')
             
             self.update_stats_display(computer_name)
