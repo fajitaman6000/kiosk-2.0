@@ -647,36 +647,34 @@ class AdminInterfaceBuilder:
                 font=('Arial', 12, 'bold'),
                 fg=room_color)  # Apply room-specific color
             name_label.pack(side='left', padx=5)
-            #computer_label = tk.Label(frame,
-                #text=f"({computer_name})",
-                #font=('Arial', 12, 'italic'))
-            #computer_label.pack(side='left')
+            computer_label = tk.Label(frame,
+                text=f"({computer_name})",
+                font=('Arial', 12, 'italic'))
+            computer_label.pack(side='left')
         else:
             name_label = tk.Label(frame, 
                 text="Unassigned",
                 font=('Arial', 12, 'bold'))
             name_label.pack(side='left', padx=5)
-            #computer_label = tk.Label(frame,
-                #text=f"({computer_name})",
-                #font=('Arial', 12, 'italic'))
-            #computer_label.pack(side='left')
+            computer_label = tk.Label(frame,
+                text=f"({computer_name})",
+                font=('Arial', 12, 'italic'))
+            computer_label.pack(side='left')
         
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
         
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
-        #computer_label.bind('<Button-1>', lambda e: click_handler())
+        computer_label.bind('<Button-1>', lambda e: click_handler())
         
         room_var = tk.StringVar()
         dropdown = ttk.Combobox(frame, textvariable=room_var, 
             values=list(self.app.rooms.values()), state='readonly')
         dropdown.pack(side='left', padx=5)
         
-        help_label = tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red')
-        help_label.pack(side='left', padx=5)
-        
-        def assign_room():
+        # Add handler for dropdown selection
+        def on_room_select(event):
             if not room_var.get():
                 return
             selected_room = next(num for num, name in self.app.rooms.items() 
@@ -688,14 +686,11 @@ class AdminInterfaceBuilder:
                 fg=self.ROOM_COLORS.get(selected_room, "black")  # Update color on assignment
             )
         
-        assign_btn = tk.Button(
-            frame, 
-            text="Assign Room", 
-            command=assign_room,
-            bg='#90EE90',  # Light green background
-            fg='black'
-        )
-        assign_btn.pack(side='left', padx=5)
+        # Bind the handler to the dropdown selection event
+        dropdown.bind('<<ComboboxSelected>>', on_room_select)
+        
+        help_label = tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red')
+        help_label.pack(side='left', padx=5)
         
         # Add reboot button with padding to prevent accidental clicks
         reboot_btn = tk.Button(
@@ -711,11 +706,10 @@ class AdminInterfaceBuilder:
             'frame': frame,
             'help_label': help_label,
             'dropdown': dropdown,
-            'assign_btn': assign_btn,
             'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
-            #'computer_label': computer_label
+            'computer_label': computer_label  # Restored computer_label reference
         }
         
         if computer_name == self.selected_kiosk:
