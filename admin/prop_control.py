@@ -88,7 +88,7 @@ class PropControl:
 
         self.reset_button = tk.Button(
             self.global_controls,
-            text="RESET ALL",
+            text="RESET ALL PROPS",
             command=self.reset_all,
             bg='#DB4260',   # Red
             fg='white'

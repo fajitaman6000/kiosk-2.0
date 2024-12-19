@@ -67,13 +67,13 @@ class KioskApp:
             self.ui.setup_waiting_screen()
 
     def handle_message(self, msg):
+        print(f"\nReceived message: {msg}")
         if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
-            print(f"\nReceived room assignment message: {msg}")
+            print(f"Processing room assignment: {msg['room']}")            
             self.assigned_room = msg['room']
-            # Save room assignment persistently
-            save_success = self.room_persistence.save_room_assignment(msg['room'])
-            print(f"Room assignment save {'successful' if save_success else 'failed'}")
-            
+            print("Saving room assignment...")
+            save_result = self.room_persistence.save_room_assignment(msg['room'])
+            print(f"Save result: {save_result}")
             self.start_time = time.time()
             self.ui.hint_cooldown = False
             self.ui.current_hint = None
@@ -90,6 +90,25 @@ class KioskApp:
             
         elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
             self.play_video(msg['video_type'], msg['minutes'])
+            
+        elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
+            # Reset hints count
+            self.hints_requested = 0
+            
+            # Clear UI elements
+            self.ui.hint_cooldown = False
+            self.ui.current_hint = None
+            self.ui.clear_all_labels()
+            
+            # Restore room interface if assigned
+            if self.assigned_room:
+                self.ui.setup_room_interface(self.assigned_room)
+            
+            # Stop any playing videos
+            if self.current_video_process:
+                self.current_video_process.terminate()
+                self.current_video_process = None
+                self.root.deiconify()  # Restore UI if hidden
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -138,6 +157,36 @@ class KioskApp:
             
         elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
             self.play_video(msg['video_type'], msg['minutes'])
+            
+        elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
+            print("Received reset command - resetting kiosk state")
+            # Reset hints count and immediately notify admin
+            self.hints_requested = 0
+            self.network.send_message({
+                'type': 'kiosk_announce',
+                'computer_name': self.computer_name,
+                'room': self.assigned_room,
+                'total_hints': 0,
+                'timer_time': self.timer.time_remaining,
+                'timer_running': self.timer.is_running
+            })
+            
+            # Clear UI elements
+            self.ui.hint_cooldown = False
+            self.ui.current_hint = None
+            self.ui.clear_all_labels()
+            
+            # Restore room interface if assigned
+            if self.assigned_room:
+                self.ui.setup_room_interface(self.assigned_room)
+            
+            # Stop any playing videos
+            if self.current_video_process:
+                self.current_video_process.terminate()
+                self.current_video_process = None
+                self.root.deiconify()  # Restore UI if hidden
+                
+            print("Kiosk reset complete")
                 
     def request_help(self):
         if not self.ui.hint_cooldown:

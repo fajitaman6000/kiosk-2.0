@@ -8,6 +8,7 @@ import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
 import os
+import json
 
 
 class AdminInterfaceBuilder:
@@ -127,8 +128,33 @@ class AdminInterfaceBuilder:
         stats_frame = tk.Frame(left_panel)
         stats_frame.pack(fill='x', pady=(0, 10))
         
-        self.stats_elements['hints_label'] = tk.Label(stats_frame, justify='left')
-        self.stats_elements['hints_label'].pack(anchor='w')
+        # Create a frame for hints and reset button
+        hints_frame = tk.Frame(stats_frame)
+        hints_frame.pack(fill='x')
+        
+        # Get current hints count from tracker
+        current_hints = 0
+        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+            current_hints = self.app.kiosk_tracker.kiosk_stats[computer_name].get('total_hints', 0)
+        
+        # Create the hints label with current count
+        self.stats_elements['hints_label'] = tk.Label(
+            hints_frame, 
+            text=f"Hints requested: {current_hints}",
+            justify='left'
+        )
+        self.stats_elements['hints_label'].pack(side='left')
+        
+        # Add reset button next to hints label
+        reset_btn = tk.Button(
+            hints_frame,
+            text="Reset Kiosk",
+            command=lambda: self.reset_kiosk(computer_name),
+            bg='#ff6b6b',  # Light red
+            fg='white',
+            padx=10
+        )
+        reset_btn.pack(side='left', padx=10)
 
         # Timer controls section
         timer_frame = tk.LabelFrame(left_panel, text="Room Controls", fg='black')
@@ -140,7 +166,6 @@ class AdminInterfaceBuilder:
             text="45:00",
             font=('Arial', 20, 'bold'),
             fg='black',
-            #bg='black',
             highlightbackground='black',
             highlightthickness=1,
             padx=10,
@@ -150,7 +175,7 @@ class AdminInterfaceBuilder:
 
         # Timer and video controls combined
         control_buttons_frame = tk.Frame(timer_frame)
-        control_buttons_frame.pack(fill='x', pady=5)
+        control_buttons_frame.pack(fill='x', pady=1)
         
         # Load all required icons
         icon_dir = os.path.join("admin_icons")
@@ -195,12 +220,12 @@ class AdminInterfaceBuilder:
         if play_icon and stop_icon:
             timer_button.play_icon = play_icon
             timer_button.stop_icon = stop_icon
-        timer_button.pack(side='left', padx=(5, 20))  # Increased right padding
+        timer_button.pack(side='left', padx=(25, 5))
         self.stats_elements['timer_button'] = timer_button
 
         # Video frame with icon button and dropdown
         video_frame = tk.Frame(control_buttons_frame)
-        video_frame.pack(side='left', padx=5)
+        video_frame.pack(side='left', padx=(0,25))
         
         # Video button with icon
         video_btn = tk.Button(
@@ -416,6 +441,36 @@ class AdminInterfaceBuilder:
 
         # Store the computer name for video/audio updates
         self.stats_elements['current_computer'] = computer_name
+
+    def reset_kiosk(self, computer_name):
+        """Reset all kiosk stats and state"""
+        if computer_name not in self.app.kiosk_tracker.kiosk_stats:
+            return
+            
+        # Reset hints count locally
+        self.app.kiosk_tracker.kiosk_stats[computer_name]['total_hints'] = 0
+        
+        # Reset and stop timer
+        self.app.network_handler.send_timer_command(computer_name, "set", 45)
+        self.app.network_handler.send_timer_command(computer_name, "stop")
+        
+        # Clear any pending help requests
+        if computer_name in self.app.kiosk_tracker.help_requested:
+            self.app.kiosk_tracker.help_requested.remove(computer_name)
+            if computer_name in self.connected_kiosks:
+                self.connected_kiosks[computer_name]['help_label'].config(text="")
+        
+        # Send reset message through network handler
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'reset_kiosk',
+                'computer_name': computer_name
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+        
+        # Force immediate UI update
+        self.update_stats_display(computer_name)
 
     def play_video(self, computer_name):
         video_type = self.stats_elements['video_type'].get().lower().split()[0]
@@ -822,8 +877,9 @@ class AdminInterfaceBuilder:
                 
             # Update hints label if it exists
             if self.stats_elements.get('hints_label'):
+                total_hints = stats.get('total_hints', 0)
                 self.stats_elements['hints_label'].config(
-                    text=f"Hints requested: {stats.get('total_hints', 0)}"
+                    text=f"Hints requested: {total_hints}"
                 )
             
             # Update timer display
