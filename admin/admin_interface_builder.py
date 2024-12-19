@@ -126,7 +126,7 @@ class AdminInterfaceBuilder:
         
         # Stats frame for hints
         stats_frame = tk.Frame(left_panel)
-        stats_frame.pack(fill='x', pady=(0, 10))
+        stats_frame.pack(fill='x', pady=(0, 2))
         
         # Create a frame for hints and reset button
         hints_frame = tk.Frame(stats_frame)
@@ -150,7 +150,7 @@ class AdminInterfaceBuilder:
             hints_frame,
             text="Reset Kiosk",
             command=lambda: self.reset_kiosk(computer_name),
-            bg='#ff6b6b',  # Light red
+            bg='#7897bf',
             fg='white',
             padx=10
         )
@@ -158,7 +158,7 @@ class AdminInterfaceBuilder:
 
         # Timer controls section
         timer_frame = tk.LabelFrame(left_panel, text="Room Controls", fg='black')
-        timer_frame.pack(fill='x', pady=5)
+        timer_frame.pack(fill='x', pady=1)
 
         # Current time display
         self.stats_elements['current_time'] = tk.Label(
@@ -282,7 +282,7 @@ class AdminInterfaceBuilder:
         set_time_btn.pack(side='left', padx=5)
 
         # Hint controls
-        hint_frame = tk.LabelFrame(left_panel, text="Hint Controls")
+        hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
         hint_frame.pack(fill='x', pady=10)
         
         self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
@@ -647,26 +647,26 @@ class AdminInterfaceBuilder:
                 font=('Arial', 12, 'bold'),
                 fg=room_color)  # Apply room-specific color
             name_label.pack(side='left', padx=5)
-            computer_label = tk.Label(frame,
-                text=f"({computer_name})",
-                font=('Arial', 12, 'italic'))
-            computer_label.pack(side='left')
+            #computer_label = tk.Label(frame,
+                #text=f"({computer_name})",
+                #font=('Arial', 12, 'italic'))
+            #computer_label.pack(side='left')
         else:
             name_label = tk.Label(frame, 
                 text="Unassigned",
                 font=('Arial', 12, 'bold'))
             name_label.pack(side='left', padx=5)
-            computer_label = tk.Label(frame,
-                text=f"({computer_name})",
-                font=('Arial', 12, 'italic'))
-            computer_label.pack(side='left')
+            #computer_label = tk.Label(frame,
+                #text=f"({computer_name})",
+                #font=('Arial', 12, 'italic'))
+            #computer_label.pack(side='left')
         
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
         
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
-        computer_label.bind('<Button-1>', lambda e: click_handler())
+        #computer_label.bind('<Button-1>', lambda e: click_handler())
         
         room_var = tk.StringVar()
         dropdown = ttk.Combobox(frame, textvariable=room_var, 
@@ -709,7 +709,7 @@ class AdminInterfaceBuilder:
             'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
-            'computer_label': computer_label  # Restored computer_label reference
+            #'computer_label': computer_label  # Restored computer_label reference
         }
         
         if computer_name == self.selected_kiosk:
@@ -832,7 +832,7 @@ class AdminInterfaceBuilder:
                 title = f"Unassigned ({computer_name})"
                 print("No room assigned")
             
-            self.stats_frame.configure(text=title)
+            self.stats_frame.configure(text=title,font=('Arial', 10, 'bold'))
             
             # Update highlighting
             for cn, data in self.connected_kiosks.items():

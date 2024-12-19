@@ -16,8 +16,8 @@ class ClassicAudioHints:
         pygame.mixer.init()
         
         # Create main frame with fixed width
-        self.frame = ttk.LabelFrame(parent, text="Classic Audio Hints")
-        self.frame.pack(fill='x', padx=5, pady=5)
+        self.frame = ttk.LabelFrame(parent, text="Audio Hints")
+        self.frame.pack(side='left', padx=5, pady=5)
         
         # Create fixed-width inner container
         self.list_container = ttk.Frame(self.frame)
