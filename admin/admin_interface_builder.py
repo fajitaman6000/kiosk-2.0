@@ -647,26 +647,26 @@ class AdminInterfaceBuilder:
                 font=('Arial', 12, 'bold'),
                 fg=room_color)  # Apply room-specific color
             name_label.pack(side='left', padx=5)
-            computer_label = tk.Label(frame,
-                text=f"({computer_name})",
-                font=('Arial', 12, 'italic'))
-            computer_label.pack(side='left')
+            #computer_label = tk.Label(frame,
+                #text=f"({computer_name})",
+                #font=('Arial', 12, 'italic'))
+            #computer_label.pack(side='left')
         else:
             name_label = tk.Label(frame, 
                 text="Unassigned",
                 font=('Arial', 12, 'bold'))
             name_label.pack(side='left', padx=5)
-            computer_label = tk.Label(frame,
-                text=f"({computer_name})",
-                font=('Arial', 12, 'italic'))
-            computer_label.pack(side='left')
+            #computer_label = tk.Label(frame,
+                #text=f"({computer_name})",
+                #font=('Arial', 12, 'italic'))
+            #computer_label.pack(side='left')
         
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
         
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
-        computer_label.bind('<Button-1>', lambda e: click_handler())
+        #computer_label.bind('<Button-1>', lambda e: click_handler())
         
         room_var = tk.StringVar()
         dropdown = ttk.Combobox(frame, textvariable=room_var, 
@@ -709,7 +709,7 @@ class AdminInterfaceBuilder:
             'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
-            'computer_label': computer_label
+            #'computer_label': computer_label
         }
         
         if computer_name == self.selected_kiosk:
