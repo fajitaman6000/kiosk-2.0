@@ -17,6 +17,7 @@ class KioskUI:
         self.request_pending_label = None
         self.current_hint = None
         self.hint_label = None
+        self.cooldown_after_id = None
         
         self.setup_root()
         
@@ -52,6 +53,15 @@ class KioskUI:
         self.status_label.place(relx=0.5, rely=0.5, anchor='center')
         
     def clear_all_labels(self):
+        """Clear all UI elements and cancel any pending cooldown timer"""
+        # Cancel any pending cooldown timer
+        if self.cooldown_after_id:
+            self.root.after_cancel(self.cooldown_after_id)
+            self.cooldown_after_id = None
+            
+        # Reset cooldown state
+        self.hint_cooldown = False
+        
         for widget in [self.hint_label, self.request_pending_label, 
                       self.cooldown_label, self.help_button]:
             if widget:
@@ -201,12 +211,18 @@ class KioskUI:
         )
             
     def start_cooldown(self):
+        """Start the cooldown timer, cancelling any existing one first"""
+        # Cancel any existing cooldown timer
+        if self.cooldown_after_id:
+            self.root.after_cancel(self.cooldown_after_id)
+            self.cooldown_after_id = None
+            
         self.hint_cooldown = True
         self.update_cooldown(60)
         
     def update_cooldown(self, seconds_left):
         """Updates the cooldown counter with rotated text"""
-        if seconds_left > 0:
+        if seconds_left > 0 and self.hint_cooldown:  # Only continue if cooldown is still active
             # Canvas dimensions (swapped due to rotation)
             canvas_width = 150   # This will be the height of the text area
             canvas_height = 600  # This will be the width of the text area
@@ -237,9 +253,12 @@ class KioskUI:
                 justify='center'
             )
             
-            self.root.after(1000, lambda: self.update_cooldown(seconds_left - 1))
+            # Store the ID of the next timer callback so we can cancel it if needed
+            self.cooldown_after_id = self.root.after(1000, lambda: self.update_cooldown(seconds_left - 1))
         else:
+            # Clean up the cooldown state
             self.hint_cooldown = False
+            self.cooldown_after_id = None
             if self.cooldown_label:
                 self.cooldown_label.destroy()
                 self.cooldown_label = None
