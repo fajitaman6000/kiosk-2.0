@@ -131,7 +131,7 @@ class AdminInterfaceBuilder:
         self.stats_elements['hints_label'].pack(anchor='w')
 
         # Timer controls section
-        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", bg='black', fg='white')
+        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", fg='black')
         timer_frame.pack(fill='x', pady=5)
 
         # Current time display
@@ -139,9 +139,9 @@ class AdminInterfaceBuilder:
             timer_frame,
             text="45:00",
             font=('Arial', 20, 'bold'),
-            fg='white',
-            bg='black',
-            highlightbackground='white',
+            fg='black',
+            #bg='black',
+            highlightbackground='black',
             highlightthickness=1,
             padx=10,
             pady=5
@@ -149,7 +149,7 @@ class AdminInterfaceBuilder:
         self.stats_elements['current_time'].pack(pady=5)
 
         # Timer and video controls combined
-        control_buttons_frame = tk.Frame(timer_frame, bg='black')
+        control_buttons_frame = tk.Frame(timer_frame)
         control_buttons_frame.pack(fill='x', pady=5)
         
         # Load all required icons
@@ -175,7 +175,7 @@ class AdminInterfaceBuilder:
             play_icon = stop_icon = video_icon = clock_icon = None
         
         # Timer button frame
-        button_frame = tk.Frame(control_buttons_frame, bg='black')
+        button_frame = tk.Frame(control_buttons_frame)
         button_frame.pack(side='left', padx=5)
         
         # Create start/stop room button with icon
@@ -188,8 +188,8 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            #bg='black',
+            #activebackground='black'
         )
         # Store both icons with the button for later use
         if play_icon and stop_icon:
@@ -199,7 +199,7 @@ class AdminInterfaceBuilder:
         self.stats_elements['timer_button'] = timer_button
 
         # Video frame with icon button and dropdown
-        video_frame = tk.Frame(control_buttons_frame, bg='black')
+        video_frame = tk.Frame(control_buttons_frame)
         video_frame.pack(side='left', padx=5)
         
         # Video button with icon
@@ -212,8 +212,8 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            #bg='black',
+            #activebackground='black'
         )
         if video_icon:
             video_btn.image = video_icon
@@ -232,12 +232,12 @@ class AdminInterfaceBuilder:
         video_dropdown.pack(side='left', padx=2)
 
         # Time setting controls
-        time_set_frame = tk.Frame(timer_frame, bg='black')
+        time_set_frame = tk.Frame(timer_frame)
         time_set_frame.pack(fill='x', pady=5)
 
         self.stats_elements['time_entry'] = tk.Entry(time_set_frame, width=3)
         self.stats_elements['time_entry'].pack(side='left', padx=5)
-        tk.Label(time_set_frame, text="min", fg='white', bg='black').pack(side='left')
+        tk.Label(time_set_frame, text="min", fg='black').pack(side='left')
 
         # Set time button with icon
         set_time_btn = tk.Button(
@@ -249,8 +249,8 @@ class AdminInterfaceBuilder:
             height=24,
             bd=0,
             highlightthickness=0,
-            bg='black',
-            activebackground='black'
+            #bg='black',
+            #activebackground='black'
         )
         if clock_icon:
             set_time_btn.image = clock_icon
