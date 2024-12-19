@@ -261,7 +261,7 @@ class AdminInterfaceBuilder:
         hint_frame.pack(fill='x', pady=10)
         
         self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
-        self.stats_elements['msg_entry'].pack(fill='x', pady=5, padx=5)
+        self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
         
         self.stats_elements['send_btn'] = tk.Button(
             hint_frame, 
@@ -271,21 +271,59 @@ class AdminInterfaceBuilder:
         self.stats_elements['send_btn'].pack(pady=5)
         self.setup_audio_hints()
 
-        # Right side panel for video and audio
-        right_panel = tk.Frame(stats_container)
-        right_panel.pack(side='right', fill='both', expand=True, padx=(10, 0))
+        # Right side panel fixed to right edge
+        right_panel = tk.Frame(
+            stats_container,
+            width=500,  # Fixed width for entire right panel
+            bg='systemButtonFace'
+        )
+        right_panel.pack(
+            side='right',     # Ensure it stays on right
+            fill='y',         # Fill vertical space
+            expand=False,     # Don't expand horizontally
+            padx=(10, 0)      # Padding only on left side
+        )
+        right_panel.pack_propagate(False)  # Prevent panel from shrinking
         
         # Video feed panel with fixed size
-        video_frame = tk.Frame(right_panel, bg='black', width=320, height=240)
-        video_frame.pack(expand=True, pady=1)
-        video_frame.pack_propagate(False)
+        video_frame = tk.Frame(
+            right_panel,
+            bg='black',
+            width=500,
+            height=375
+        )
+        video_frame.pack(
+            expand=False,     # Don't expand
+            pady=1,           # Slight vertical padding
+            anchor='n'        # Anchor to top
+        )
+        video_frame.pack_propagate(False)  # Prevent frame from shrinking
         
-        self.stats_elements['video_label'] = tk.Label(video_frame, bg='black')
-        self.stats_elements['video_label'].pack(fill='both', expand=True)
+        # Video display label fills video frame
+        self.stats_elements['video_label'] = tk.Label(
+            video_frame,
+            bg='black'
+        )
+        self.stats_elements['video_label'].pack(
+            fill='both',
+            expand=True
+        )
         
         # Control frame for camera and audio buttons
-        control_frame = tk.Frame(right_panel, bg='systemButtonFace')  # Match system background
-        control_frame.pack(pady=1)
+        # Place this BEFORE the video frame code to ensure it appears above
+        control_frame = tk.Frame(
+            right_panel,
+            bg='systemButtonFace',
+            height=40  # Fixed height
+        )
+        control_frame.pack(
+            side='bottom',      # Pack at top of right panel
+            fill='x',        # Fill horizontal space
+            pady=0,          # Vertical padding
+            anchor='n',      # Anchor to top
+            before=video_frame  # Ensure it stays above video frame
+        )
+        control_frame.pack_propagate(False)  # Prevent height collapse
 
         # Load additional icons for video/audio controls
         try:
@@ -488,7 +526,7 @@ class AdminInterfaceBuilder:
                 frame = self.video_client.get_frame()
                 if frame is not None:
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frame = cv2.resize(frame, (320, 240))
+                    frame = cv2.resize(frame, (500, 375))
                     img = Image.fromarray(frame)
                     imgtk = ImageTk.PhotoImage(image=img)
                     self.stats_elements['video_label'].imgtk = imgtk
