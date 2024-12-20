@@ -1,5 +1,7 @@
 import tkinter as tk
 import time
+from PIL import Image, ImageTk
+import os
 
 class KioskTimer:
     def __init__(self, root, network_handler):
@@ -8,13 +10,25 @@ class KioskTimer:
         self.time_remaining = 60 * 45  # Default 45 minutes
         self.is_running = False
         self.last_update = None
+        self.current_image = None  # Store reference to prevent garbage collection
+        self.current_room = None
+        
+        # Define room to timer background mapping
+        self.timer_backgrounds = {
+            1: "casino_heist.png",
+            2: "morning_after.png",
+            3: "wizard_trials.png",
+            4: "zombie_outbreak.png",
+            5: "haunted_manor.png",
+            6: "atlantis_rising.png",
+            7: "time_machine.png"
+        }
         
         # Create a frame container for the timer that will stay on top
         self.timer_frame = tk.Frame(
             root,
             width=200,     # Height of the rotated text display
-            height=400,   # Width of the rotated text display
-            bg='black'
+            height=400,    # Width of the rotated text display
         )
         
         # Position frame on right center of screen
@@ -33,15 +47,22 @@ class KioskTimer:
             self.timer_frame,
             width=200,    
             height=400,  
-            bg='black',
-            highlightthickness=0
+            highlightthickness=0,
+            bg='black'  # Fallback color if no background loaded
         )
         self.canvas.pack(fill='both', expand=True)
+        
+        # Create background image on canvas (initially None)
+        self.bg_image_item = self.canvas.create_image(
+            100,              # Horizontal center
+            200,             # Vertical center
+            image=None       # Will be set when room is assigned
+        )
         
         # Create text item on canvas, rotated 90 degrees
         self.time_text = self.canvas.create_text(
             100,              # Horizontal center of canvas
-            200,            # Vertical center of canvas
+            200,             # Vertical center of canvas
             text="45:00",
             font=('Arial', 70, 'bold'),
             fill='white',
@@ -50,16 +71,51 @@ class KioskTimer:
         
         # Start update loop
         self.update_timer()
+    
+    def load_room_background(self, room_number):
+        """Load the timer background for the specified room"""
+        try:
+            if room_number == self.current_room:
+                return  # Already loaded
+                
+            self.current_room = room_number
+            bg_filename = self.timer_backgrounds.get(room_number)
+            
+            if not bg_filename:
+                print(f"No timer background defined for room {room_number}")
+                return
+                
+            bg_path = os.path.join("timer_backgrounds", bg_filename)
+            print(f"Loading timer background: {bg_path}")
+            
+            if not os.path.exists(bg_path):
+                print(f"Timer background not found: {bg_path}")
+                return
+                
+            # Load and resize the background image
+            bg_img = Image.open(bg_path)
+            bg_img = bg_img.resize((200, 400), Image.Resampling.LANCZOS)
+            
+            # Store the PhotoImage and update canvas
+            self.current_image = ImageTk.PhotoImage(bg_img)
+            self.canvas.itemconfig(self.bg_image_item, image=self.current_image)
+            
+            print(f"Successfully loaded timer background for room {room_number}")
+            
+        except Exception as e:
+            print(f"Error loading timer background for room {room_number}: {e}")
         
     def handle_command(self, command, minutes=None):
         if command == "start":
             self.is_running = True
             self.last_update = time.time()
             print("Timer started")
+            
         elif command == "stop":
             self.is_running = False
             self.last_update = None
             print("Timer stopped")
+            
         elif command == "set" and minutes is not None:
             self.time_remaining = minutes * 60
             print(f"Timer set to {minutes} minutes")
@@ -88,7 +144,7 @@ class KioskTimer:
                 self.canvas.itemconfig(
                     self.time_text,
                     text=f"{minutes:02d}:{seconds:02d}",
-                    fill='white' if self.is_running else 'yellow'
+                    fill='white'
                 )
                 self.timer_frame.lift()  # Keep entire timer frame on top
         except tk.TclError:

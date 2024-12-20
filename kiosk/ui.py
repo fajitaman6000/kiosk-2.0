@@ -83,6 +83,9 @@ class KioskUI:
             background_label = tk.Label(self.root, image=self.background_image)
             background_label.place(x=0, y=0, relwidth=1, relheight=1)
         
+        # Load room-specific timer background
+        self.message_handler.timer.load_room_background(room_number)
+        
         # Restore hint if there was one
         if self.current_hint:
             self.show_hint(self.current_hint)

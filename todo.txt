@@ -22,8 +22,9 @@ soundcheck/touchcheck behavior
 don't load special controls section if none exist
 clicking props should load hints for it
 hint notification sound + manual sound button
-establish proper prop order
 video hints need play button
+
+
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline
