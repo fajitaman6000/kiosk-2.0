@@ -273,13 +273,34 @@ class AdminInterfaceBuilder:
             width=24,
             height=24,
             bd=0,
-            highlightthickness=0,
-            #bg='black',
-            #activebackground='black'
+            highlightthickness=0
         )
         if clock_icon:
             set_time_btn.image = clock_icon
         set_time_btn.pack(side='left', padx=5)
+
+        # Add time button (uses plus icon if available)
+        try:
+            plus_icon = Image.open(os.path.join(icon_dir, "plus.png"))
+            plus_icon = plus_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            plus_icon = ImageTk.PhotoImage(plus_icon)
+        except Exception as e:
+            print(f"Error loading plus icon: {e}")
+            plus_icon = None
+
+        add_time_btn = tk.Button(
+            time_set_frame,
+            image=plus_icon if plus_icon else None,
+            text="" if plus_icon else "Add Time",
+            command=lambda: self.add_timer_time(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0
+        )
+        if plus_icon:
+            add_time_btn.image = plus_icon
+        add_time_btn.pack(side='left', padx=5)
 
         # Hint controls
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
@@ -513,6 +534,24 @@ class AdminInterfaceBuilder:
             minutes = int(self.stats_elements['time_entry'].get())
             if 0 <= minutes <= 99:  # Validate input range
                 self.app.network_handler.send_timer_command(computer_name, "set", minutes)
+        except ValueError:
+            pass  # Invalid input handling
+
+    def add_timer_time(self, computer_name):
+        """Add specified minutes to current timer without affecting running state"""
+        try:
+            minutes_to_add = int(self.stats_elements['time_entry'].get())
+            if 0 <= minutes_to_add <= 99:  # Validate input range
+                # Get current time from stats
+                if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                    stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+                    current_seconds = stats.get('timer_time', 0)
+                    # Add new time in seconds (convert minutes to seconds)
+                    new_seconds = current_seconds + (minutes_to_add * 60)
+                    # Convert total seconds back to minutes for the command
+                    new_minutes = new_seconds / 60
+                    # Send set command with new total time, keeping decimal precision
+                    self.app.network_handler.send_timer_command(computer_name, "set", new_minutes)
         except ValueError:
             pass  # Invalid input handling
 
