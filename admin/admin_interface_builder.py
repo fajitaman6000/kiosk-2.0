@@ -432,7 +432,7 @@ class AdminInterfaceBuilder:
             height=40  # Fixed height
         )
         control_frame.pack(
-            side='bottom',      # Pack at top of right panel
+            side='top',      # Pack at top of right panel
             fill='x',        # Fill horizontal space
             pady=0,          # Vertical padding
             anchor='n',      # Anchor to top

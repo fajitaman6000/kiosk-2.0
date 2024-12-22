@@ -582,7 +582,71 @@ class PropControl:
             self.props[prop_id]['last_update'] = time.time()
             self.props[prop_id]['order'] = order  # Update order in case it changed
             self.update_prop_status(prop_id)
+            self.check_finishing_prop_status(prop_id, prop_data)
 
+    def check_finishing_prop_status(self, prop_id, prop_data):
+        """
+        Check if this prop is a finishing prop and update kiosk display accordingly
+        
+        Args:
+            prop_id: The ID of the prop being updated
+            prop_data: The updated prop data including status
+        """
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+            
+        # Get prop name from data
+        prop_name = prop_data.get("strName")
+        if not prop_name:
+            return
+            
+        # Map room numbers to config sections
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time_machine"
+        }
+        
+        if self.current_room not in room_map:
+            return
+            
+        room_key = room_map[self.current_room]
+        if room_key not in self.prop_name_mappings:
+            return
+            
+        # Get prop mapping info
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        
+        # Check if this is a finishing prop
+        if prop_info.get('finishing_prop', False):
+            # Find the kiosk assigned to this room
+            assigned_kiosk = None
+            for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+                if room_num == self.current_room:
+                    assigned_kiosk = computer_name
+                    break
+            
+            if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
+                kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
+                
+                # Update frame color based on prop status
+                # Note: strStatus is directly in prop_data, not nested in 'info'
+                if prop_data['strStatus'] == "Finished":
+                    kiosk_frame.configure(bg='#90EE90')  # Light green
+                    # Also update child widgets except buttons and comboboxes
+                    for widget in kiosk_frame.winfo_children():
+                        if not isinstance(widget, (tk.Button, ttk.Combobox)):
+                            widget.configure(bg='#90EE90')
+                else:
+                    # Reset to default color
+                    kiosk_frame.configure(bg='SystemButtonFace')
+                    for widget in kiosk_frame.winfo_children():
+                        if not isinstance(widget, (tk.Button, ttk.Combobox)):
+                            widget.configure(bg='SystemButtonFace')
 
     def schedule_status_update(self, prop_id):
         """Schedule periodic updates of prop status"""

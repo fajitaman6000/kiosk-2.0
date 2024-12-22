@@ -44,14 +44,14 @@ class SavedHintsPanel:
         """Set up the list view interface"""
         self.hint_listbox = tk.Listbox(
             self.list_view,
-            height=12,  # Made taller since it's the only element
+            height=9,  # Made taller since it's the only element
             width=40,
             selectmode=tk.SINGLE,
             exportselection=False,
             bg='white',
             fg='black'
         )
-        self.hint_listbox.pack(padx=5, pady=5)
+        self.hint_listbox.pack(padx=5, pady=(0, 5))
         self.hint_listbox.bind('<<ListboxSelect>>', self.on_hint_select)
 
     def setup_detail_view(self):

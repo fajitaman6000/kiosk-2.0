@@ -4,71 +4,88 @@
         "mappings": {
             "Ice goblet chest": {
                 "display": "Goblet Chest",
-                "order": 11
+                "order": 11,
+                "finishing_prop": false
             },
             "Potion pot": {
                 "display": "Potion Pot",
-                "order": 66
+                "order": 66,
+                "finishing_prop": false
             },
             "Owl": {
                 "display": "Fart Owl",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             },
             "Planets": {
                 "display": "Planet Colors",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "Mirror": {
                 "display": "Mirror",
-                "order": 6
+                "order": 6,
+                "finishing_prop": false
             },
             "Rod compartment": {
                 "display": "Rod Game",
-                "order": 12
+                "order": 12,
+                "finishing_prop": false
             },
             "Spining globe": {
                 "display": "Spin Globe",
-                "order": 9
+                "order": 9,
+                "finishing_prop": false
             },
             "Magic ball": {
                 "display": "Veiny Orb",
-                "order": 8
+                "order": 8,
+                "finishing_prop": false
             },
             "Fireplace": {
                 "display": "Fireplace",
-                "order": 7
+                "order": 7,
+                "finishing_prop": false
             },
             "Sit on chair": {
                 "display": "Chair",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Code panel": {
                 "display": "Code Panel",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "Stone piece": {
                 "display": "Stone Pieces",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Dragon to cat": {
                 "display": "Dragon to Cat",
-                "order": 99
+                "order": 99,
+                "finishing_prop": false
             },
             "Wizards shelf": {
                 "display": "Magic Shelf",
-                "order": 13
+                "order": 13,
+                "finishing_prop": false
             },
             "Spirits board": {
                 "display": "Spirits Board",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "Spell chart": {
                 "display": "Spell Chart",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Knoking chest": {
                 "display": "Knocking Chest",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             }
         }
     },
@@ -77,67 +94,83 @@
         "mappings": {
             "Tubes": {
                 "display": "Buzzwire",
-                "order": 8
+                "order": 8,
+                "finishing_prop": false
             },
             "Wardrobe": {
                 "display": "Sliding Shelf",
-                "order": 7
+                "order": 7,
+                "finishing_prop": false
             },
             "Lamp": {
                 "display": "Spinning Lamp",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Memory": {
                 "display": "Memory Hotel",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Boxes": {
                 "display": "Drawers",
-                "order": 12
+                "order": 12,
+                "finishing_prop": false
             },
             "Code panel": {
                 "display": "Case Code",
-                "order": 13
+                "order": 13,
+                "finishing_prop": false
             },
             "Weight game": {
                 "display": "Weight Game",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Painting 1": {
                 "display": "Painting 1",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Cache in table": {
                 "display": "Table Cache",
-                "order": 7
+                "order": 7,
+                "finishing_prop": false
             },
             "Painting cache": {
                 "display": "Painting Cache",
-                "order": 6
+                "order": 6,
+                "finishing_prop": false
             },
             "Dildo": {
                 "display": "Dildo Game",
-                "order": 6
+                "order": 6,
+                "finishing_prop": false
             },
             "Painting 2": {
                 "display": "Painting 2",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Cameras": {
                 "display": "Cameras",
-                "order": 11
+                "order": 11,
+                "finishing_prop": false
             },
             "Planting bomb": {
                 "display": "Plant Bombs",
-                "order": 9
+                "order": 9,
+                "finishing_prop": false
             },
             "Blast": {
                 "display": "Blast Open",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             },
             "Clocks": {
                 "display": "Clocks",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             }
         }
     },
@@ -146,55 +179,68 @@
         "mappings": {
             "Clock": {
                 "display": "Clock",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Change the object": {
                 "display": "Diary/Cross",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Symbol maze": {
                 "display": "Symbol Maze",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Ghost puzzle": {
                 "display": "Yellow Puzzle",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Family portrait": {
                 "display": "Family Portrait",
-                "order": 99
+                "order": 99,
+                "finishing_prop": false
             },
             "Talking mirror": {
                 "display": "Mirror",
-                "order": 6
+                "order": 6,
+                "finishing_prop": false
             },
             "Rotate the sun": {
                 "display": "Sun Dial",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Escape the rope": {
                 "display": "Rope Braid",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Cabinet": {
                 "display": "Mouth Cabinet",
-                "order": 9
+                "order": 9,
+                "finishing_prop": false
             },
             "Antique radio": {
                 "display": "Radio Drawer",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             },
             "Blow the candles": {
                 "display": "Candles",
-                "order": 11
+                "order": 11,
+                "finishing_prop": false
             },
             "Suitcase": {
                 "display": "Suitcase",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Place the photos": {
                 "display": "Vanity Photos",
-                "order": 13
+                "order": 13,
+                "finishing_prop": false
             }
         }
     },
@@ -203,43 +249,53 @@
         "mappings": {
             "Place The Tools": {
                 "display": "Tools",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Tool Holder": {
                 "display": "Bench Lights",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Bike": {
                 "display": "Motorcycle",
-                "order": 11
+                "order": 11,
+                "finishing_prop": false
             },
             "Antique TV": {
                 "display": "TV",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "ZOMBIE Loops": {
                 "display": "Zombie Loops",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             },
             "Microwave": {
                 "display": "Microwave",
-                "order": 6
+                "order": 6,
+                "finishing_prop": false
             },
             "Breaker box": {
                 "display": "Breakers",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Horse shoes": {
                 "display": "[HORSE-REMOVED]",
-                "order": 999
+                "order": 999,
+                "finishing_prop": false
             },
             "Wood wheel": {
                 "display": "Wagon Wheel",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Wrench Size Game": {
                 "display": "Cables Box",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             }
         }
     },
@@ -248,59 +304,73 @@
         "mappings": {
             "Crown": {
                 "display": "Laser Crown",
-                "order": 49
+                "order": 49,
+                "finishing_prop": false
             },
             "Trident": {
                 "display": "Trident",
-                "order": 50
+                "order": 50,
+                "finishing_prop": true
             },
             "Picks": {
                 "display": "Pickaxes",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Dynamite": {
                 "display": "Dynamite",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Light maze": {
                 "display": "Light Maze",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Treasury": {
                 "display": "Treasure Dropper",
-                "order": 99
+                "order": 99,
+                "finishing_prop": false
             },
             "Floor panels": {
                 "display": "Floor Panels",
-                "order": 7
+                "order": 7,
+                "finishing_prop": false
             },
             "Tangram": {
                 "display": "Stone Fragments",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Levers": {
                 "display": "Levers",
-                "order": 9
+                "order": 9,
+                "finishing_prop": false
             },
             "Pyramid": {
                 "display": "Pyramid",
-                "order": 48
+                "order": 48,
+                "finishing_prop": false
             },
             "Door": {
                 "display": "Door",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "Color buttons": {
                 "display": "Color Buttons",
-                "order": 12
+                "order": 12,
+                "finishing_prop": false
             },
             "Cryptex": {
                 "display": "Wheel Chest",
-                "order": 13
+                "order": 13,
+                "finishing_prop": false
             },
             "Harp": {
                 "display": "Harp Lights",
-                "order": 14
+                "order": 14,
+                "finishing_prop": false
             }
         }
     },
@@ -309,75 +379,93 @@
         "mappings": {
             "Clock": {
                 "display": "Clock",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Control panel": {
                 "display": "Control Panel",
-                "order": 50
+                "order": 50,
+                "finishing_prop": false
             },
             "Skull eye": {
                 "display": "Skull Ball",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Professors": {
                 "display": "Professor Doors",
-                "order": 1
+                "order": 1,
+                "finishing_prop": false
             },
             "Ignition": {
                 "display": "Ignition",
-                "order": 51
+                "order": 51,
+                "finishing_prop": false
             },
             "Machine door": {
                 "display": "Door",
-                "order": 99
+                "order": 99,
+                "finishing_prop": false
             },
             "Skull button": {
                 "display": "Skull Button",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Footprints": {
                 "display": "Footprints",
-                "order": 8
+                "order": 8,
+                "finishing_prop": false
             },
             "Cylinders": {
                 "display": "Liquid Cylinders",
-                "order": 39
+                "order": 39,
+                "finishing_prop": false
             },
             "Prism": {
                 "display": "Color Prism",
-                "order": 10
+                "order": 10,
+                "finishing_prop": false
             },
             "Radium matrix": {
                 "display": "Ball Maze",
-                "order": 11
+                "order": 11,
+                "finishing_prop": false
             },
             "Time capacitor": {
                 "display": "Time Capacitor",
-                "order": 98
+                "order": 98,
+                "finishing_prop": false
             },
             "Energy key": {
                 "display": "Book Keys",
-                "order": 5
+                "order": 5,
+                "finishing_prop": false
             },
             "Valves": {
                 "display": "Wall Valves",
-                "order": 4
+                "order": 4,
+                "finishing_prop": false
             },
             "Air flow filter": {
                 "display": "Desk Fan",
-                "order": 2
+                "order": 2,
+                "finishing_prop": false
             },
             "Inverse vault": {
                 "display": "Inverse Vault",
-                "order": 3
+                "order": 3,
+                "finishing_prop": false
             },
             "Radium cog": {
                 "display": "Ball Course",
-                "order": 17
+                "order": 17,
+                "finishing_prop": false
             },
             "Calculometer": {
                 "display": "Calculometer",
-                "order": 18
+                "order": 18,
+                "finishing_prop": false
             }
         }
     }
