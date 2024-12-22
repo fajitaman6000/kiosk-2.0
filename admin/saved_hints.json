@@ -1,13 +1,15 @@
 {
     "hints": {
-        "zombie_first_clue": {
+        "zombie_tools_hint": {
             "room": 4,
+            "prop": "Place The Tools",
             "name": "First Tools Hint",
             "text": "Look carefully at the shapes of the tools. Each one matches a specific outline on the wall.",
             "image": "zombie_tools_outline.png"
         },
         "wizard_potion_hint": {
             "room": 3,
+            "prop": "Potion pot",
             "name": "Potion Creation",
             "text": "Remember: mix the ingredients in order from darkest to lightest color.",
             "image": null
