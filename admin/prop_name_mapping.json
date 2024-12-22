@@ -65,7 +65,7 @@
             "Dragon to cat": {
                 "display": "Dragon to Cat",
                 "order": 99,
-                "finishing_prop": false
+                "finishing_prop": true
             },
             "Wizards shelf": {
                 "display": "Magic Shelf",
@@ -120,7 +120,7 @@
             "Code panel": {
                 "display": "Case Code",
                 "order": 13,
-                "finishing_prop": false
+                "finishing_prop": true
             },
             "Weight game": {
                 "display": "Weight Game",
@@ -200,7 +200,7 @@
             "Family portrait": {
                 "display": "Family Portrait",
                 "order": 99,
-                "finishing_prop": false
+                "finishing_prop": true
             },
             "Talking mirror": {
                 "display": "Mirror",
@@ -260,7 +260,7 @@
             "Bike": {
                 "display": "Motorcycle",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": true
             },
             "Antique TV": {
                 "display": "TV",
@@ -435,7 +435,7 @@
             "Time capacitor": {
                 "display": "Time Capacitor",
                 "order": 98,
-                "finishing_prop": false
+                "finishing_prop": true
             },
             "Energy key": {
                 "display": "Book Keys",

@@ -907,6 +907,16 @@ class AdminInterfaceBuilder:
                 title = f"{room_name} ({computer_name})"
                 print(f"Room assigned: {room_name} (#{room_num})")
                 
+                # Get room color from mapping, default to black if not found
+                room_color = self.ROOM_COLORS.get(room_num, "black")
+                
+                # Configure title with room-specific color
+                self.stats_frame.configure(
+                    text=title,
+                    font=('Arial', 10, 'bold'),
+                    fg=room_color  # Add color to match room color scheme
+                )
+                
                 # Map room number to directory name for audio hints
                 print("\n=== AUDIO HINTS UPDATE START ===")
                 room_dirs = {
@@ -939,6 +949,11 @@ class AdminInterfaceBuilder:
             else:
                 title = f"Unassigned ({computer_name})"
                 print("No room assigned")
+                self.stats_frame.configure(
+                    text=title,
+                    font=('Arial', 10, 'bold'),
+                    fg='black'  # Default color for unassigned
+                )
             
             if hasattr(self, 'saved_hints'):
                 print("Updating saved hints for room")
@@ -947,7 +962,6 @@ class AdminInterfaceBuilder:
                 else:
                     self.saved_hints.clear_preview()
             
-            self.stats_frame.configure(text=title,font=('Arial', 10, 'bold'))
             
             # Update highlighting
             for cn, data in self.connected_kiosks.items():
