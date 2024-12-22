@@ -349,7 +349,7 @@ class AdminInterfaceBuilder:
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
         hint_frame.pack(fill='x', pady=10)
         
-        self.stats_elements['msg_entry'] = tk.Entry(hint_frame, width=10)
+        self.stats_elements['msg_entry'] = tk.Text(hint_frame, width=10, height=5)
         self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
         
         self.stats_elements['send_btn'] = tk.Button(

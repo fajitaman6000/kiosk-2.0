@@ -103,7 +103,7 @@ class SavedHintsPanel:
         self.current_room = None
         self.load_hints()
         self.load_prop_name_mappings()
-        
+
         # Show list view initially
         self.show_list_view()
     
@@ -241,13 +241,19 @@ class SavedHintsPanel:
             return
             
         hint_name = self.hint_listbox.get(selection[0])
-        selected_prop = self.prop_var.get()
+        selected_display_name = self.prop_var.get()
+        
+        # Get original prop name from the mapping
+        if not hasattr(self, 'prop_name_map') or not selected_display_name in self.prop_name_map:
+            return
+            
+        original_prop_name = self.prop_name_map[selected_display_name]
         
         # Find hint data by name and prop
         selected_hint = None
-        for hint_data in self.hints_data.values():
+        for hint_id, hint_data in self.hints_data.items():
             if (hint_data['name'] == hint_name and 
-                hint_data['prop'] == selected_prop):
+                hint_data['prop'] == original_prop_name):
                 selected_hint = hint_data
                 break
                 

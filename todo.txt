@@ -23,10 +23,9 @@ don't load special controls section if none exist
 clicking props should load hints for it
 hint notification sound + manual sound button
 video hints need play button
-image hints
-manual hint text box larger
 saved hints need to be organized by props in the same way as audio hints
 hint text and image need to be aligned
+text is made invisible on wizard when hint button is pressed because it's black
 
 
 
