@@ -203,7 +203,7 @@ class KioskUI:
                     self.root,
                     width=total_width,   # Width accommodates both text and image
                     height=800,          # Height (becomes width when rotated)
-                    bg='black',         # Default background
+                    bg='#000000',         # Default background
                     highlightthickness=0
                 )
                 self.hint_label.place(relx=0.4, rely=0.5, anchor='center')
@@ -245,12 +245,12 @@ class KioskUI:
                     print(f"Error loading hint background: {e}")
 
             # Create visual separator between text and image areas
-            self.hint_label.create_line(
-                300, 0,    # Start at middle top
-                300, 800,  # End at middle bottom
-                fill='black',
-                width=2
-            )
+            #self.hint_label.create_line(
+                #300, 0,    # Start at middle top
+                #300, 800,  # End at middle bottom
+                #fill='black',
+                #width=2
+            #)
 
             # Parse hint data
             hint_text = ""
