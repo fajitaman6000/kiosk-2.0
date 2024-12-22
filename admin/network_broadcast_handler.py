@@ -97,13 +97,50 @@ class NetworkBroadcastHandler:
                 if self.running:
                     print(f"Error in listen_for_messages: {e}")
                 
-    def send_hint(self, room_number, hint_text):
+    def send_hint(self, room_number, hint_data):
+        """
+        Send a hint to a specific room.
+        
+        Args:
+            room_number (int): The room number to send to
+            hint_data (dict): Dictionary containing 'text' and optional 'image' keys
+        """
+        print("\n=== Sending Hint ===")
+        
+        # Construct the message
         message = {
             'type': 'hint',
             'room': room_number,
-            'text': hint_text
+            'text': hint_data.get('text', ''),
+            'has_image': bool(hint_data.get('image'))
         }
-        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        
+        # If we have image data, include it
+        if hint_data.get('image'):
+            message['image'] = hint_data['image']
+            print(f"Image data size: {len(hint_data['image']) / 1024:.2f}KB")
+        
+        # Convert to JSON and check size
+        try:
+            encoded_message = json.dumps(message).encode()
+            msg_size = len(encoded_message) / 1024  # Size in KB
+            print(f"Total message size: {msg_size:.2f}KB")
+            
+            # Check if message is too large for UDP
+            if msg_size > 60000:  # UDP practical limit ~64KB
+                print("ERROR: Hint message too large to send!")
+                print("Consider reducing image quality or size")
+                return
+                
+            # Send the message
+            print("Sending hint message...")
+            self.socket.sendto(encoded_message, ('255.255.255.255', 12346))
+            print(f"Hint sent to room {room_number}")
+            
+        except Exception as e:
+            print(f"Failed to send hint: {e}")
+            import traceback
+            traceback.print_exc()
         
     def send_room_assignment(self, computer_name, room_number):
         message = {

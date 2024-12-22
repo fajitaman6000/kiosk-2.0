@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, filedialog
 import time
 from video_client import VideoClient
 from audio_client import AudioClient
@@ -9,6 +9,8 @@ from PIL import Image, ImageTk
 import threading
 import os
 import json
+import io
+import base64
 
 
 class AdminInterfaceBuilder:
@@ -109,6 +111,45 @@ class AdminInterfaceBuilder:
         print("Creating new ClassicAudioHints instance...")
         self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change)
         print("=== AUDIO HINTS SETUP END ===\n")
+
+    def select_image(self):
+        """Handle image selection for hints"""
+        file_path = filedialog.askopenfilename(
+            filetypes=[
+                ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if file_path:
+            try:
+                # Open and resize image for preview
+                image = Image.open(file_path)
+                
+                # Calculate resize dimensions (max 200px width/height)
+                ratio = min(200/image.width, 200/image.height)
+                new_size = (int(image.width * ratio), int(image.height * ratio))
+                
+                # Resize image and convert to PhotoImage
+                image = image.resize(new_size, Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(image)
+                
+                # Update preview
+                self.stats_elements['image_preview'].configure(image=photo)
+                self.stats_elements['image_preview'].image = photo
+                
+                # Store original image data
+                buffer = io.BytesIO()
+                image.save(buffer, format="PNG")
+                self.current_hint_image = base64.b64encode(buffer.getvalue()).decode()
+                
+                # Enable send button even if no text
+                if self.stats_elements['send_btn']:
+                    self.stats_elements['send_btn'].config(state='normal')
+                    
+            except Exception as e:
+                print(f"Error loading image: {e}")
+                self.current_hint_image = None
 
     def setup_stats_panel(self, computer_name):
         """Setup the stats panel interface"""
@@ -315,6 +356,25 @@ class AdminInterfaceBuilder:
             command=lambda: self.send_hint(computer_name)
         )
         self.stats_elements['send_btn'].pack(pady=5)
+
+        # Create a frame for image selection and preview
+        image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
+        image_frame.pack(fill='x', pady=5, padx=5)
+
+        # Add image selection button
+        self.stats_elements['image_btn'] = ttk.Button(
+            image_frame, 
+            text="Choose Image",
+            command=lambda: self.select_image()
+        )
+        self.stats_elements['image_btn'].pack(pady=5)
+
+        # Add image preview label
+        self.stats_elements['image_preview'] = ttk.Label(image_frame)
+        self.stats_elements['image_preview'].pack(pady=5)
+
+        # Store the currently selected image
+        self.current_hint_image = None
         self.setup_audio_hints()
 
         # Right side panel fixed to right edge
@@ -982,22 +1042,47 @@ class AdminInterfaceBuilder:
             print(f"Error updating stats display: {e}")
 
     def send_hint(self, computer_name):
-        if not self.stats_elements['msg_entry'] or not computer_name in self.app.kiosk_tracker.kiosk_assignments:
+        """Send a hint to the selected kiosk, with optional image attachment"""
+        # Validate kiosk assignment
+        if not computer_name in self.app.kiosk_tracker.kiosk_assignments:
             return
             
-        message_text = self.stats_elements['msg_entry'].get()
-        if not message_text:
+        # Check if we have either text or image
+        message_text = self.stats_elements['msg_entry'].get() if self.stats_elements['msg_entry'] else ""
+        if not message_text and not self.current_hint_image:
             return
             
+        # Get room number
         room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-        self.app.network_handler.send_hint(room_number, message_text)
         
+        # Prepare hint data
+        hint_data = {
+            'text': message_text,
+            'image': self.current_hint_image
+        }
+        
+        # Send the hint
+        self.app.network_handler.send_hint(room_number, hint_data)
+        
+        # Clear any pending help requests
         if computer_name in self.app.kiosk_tracker.help_requested:
             self.app.kiosk_tracker.help_requested.remove(computer_name)
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
         
-        self.stats_elements['msg_entry'].delete(0, 'end')
+        # Clear the input fields
+        if self.stats_elements['msg_entry']:
+            self.stats_elements['msg_entry'].delete(0, 'end')
+        
+        # Clear the image preview and stored image
+        if self.stats_elements['image_preview']:
+            self.stats_elements['image_preview'].configure(image='')
+            self.stats_elements['image_preview'].image = None
+        self.current_hint_image = None
+        
+        # Reset send button state
+        if self.stats_elements['send_btn']:
+            self.stats_elements['send_btn'].config(state='disabled')
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""

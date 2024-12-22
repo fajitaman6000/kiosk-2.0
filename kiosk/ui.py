@@ -2,6 +2,9 @@
 import tkinter as tk
 from PIL import Image, ImageTk
 import os
+import base64
+import io
+import traceback
 
 class KioskUI:
     def __init__(self, root, computer_name, room_config, message_handler):
@@ -174,44 +177,138 @@ class KioskUI:
                 **self.message_handler.get_stats()
             })
 
-    def show_hint(self, text):
-        """Shows the hint text rotated 270 degrees"""
-        self.current_hint = text
+    def show_hint(self, text_or_data):
+        """Shows the hint text and/or image rotated 270 degrees"""
+        print("\n=== PROCESSING NEW HINT ===")
+        print(f"Received hint data: {type(text_or_data)}")
         
-        # Clear pending request label if it exists
-        if self.request_pending_label:
-            self.request_pending_label.destroy()
-            self.request_pending_label = None
-        
-        # Canvas dimensions (swapped due to rotation)
-        canvas_width = 150   # This will be the height of the text area
-        canvas_height = 800  # This will be the width of the text area
-        
-        if self.hint_label is None:
-            self.hint_label = tk.Canvas(
-                self.root,
-                width=canvas_width,
-                height=canvas_height,
-                bg='yellow',    # Yellow background for hints
-                highlightthickness=0
-            )
-            # Position hint text on the right side of the help button
-            self.hint_label.place(relx=0.4, rely=0.5, anchor='center')
-        else:
-            # Clear existing text
-            self.hint_label.delete('all')
-        
-        # Create the rotated text
-        self.hint_label.create_text(
-            canvas_width/2,    # Center horizontally in canvas
-            canvas_height/2,   # Center vertically in canvas
-            text=text,
-            fill='black',
-            font=('Arial', 20),
-            width=canvas_height-20,  # Leave some padding
-            angle=270,         # Rotate text
-            justify='center'   # Center the text
-        )
+        try:
+            self.current_hint = text_or_data
+            
+            # Clear pending request label if it exists
+            if self.request_pending_label:
+                self.request_pending_label.destroy()
+                self.request_pending_label = None
+            
+            # Create hint container if needed
+            if self.hint_label is None:
+                print("Creating new hint canvas")
+                self.hint_label = tk.Canvas(
+                    self.root,
+                    width=150,   # Height of rotated content
+                    height=800,  # Width of content
+                    bg='yellow',
+                    highlightthickness=0
+                )
+                self.hint_label.place(relx=0.4, rely=0.5, anchor='center')
+            else:
+                print("Clearing existing hint canvas")
+                self.hint_label.delete('all')
+            
+            # Parse hint data
+            hint_text = ""
+            image_data = None
+            
+            if isinstance(text_or_data, str):
+                print("Processing text-only hint")
+                hint_text = text_or_data
+            elif isinstance(text_or_data, dict):
+                print("Processing hint dictionary")
+                hint_text = text_or_data.get('text', '')
+                image_data = text_or_data.get('image')
+                print(f"Found text: {bool(hint_text)}")
+                print(f"Found image data: {bool(image_data)}")
+            else:
+                print(f"WARNING: Unexpected hint data type: {type(text_or_data)}")
+                hint_text = str(text_or_data)
+            
+            y_position = 400  # Start at vertical center
+            
+            # Add text if present
+            if hint_text:
+                print("Adding hint text to canvas")
+                self.hint_label.create_text(
+                    75,     # Center horizontally
+                    y_position,
+                    text=hint_text,
+                    fill='black',
+                    font=('Arial', 20),
+                    width=780,
+                    angle=270,
+                    justify='center'
+                )
+                y_position += len(hint_text.split('\n')) * 30
+            
+            # Add image if present
+            if image_data:
+                print("Processing hint image")
+                try:
+                    print("Decoding base64 image data")
+                    image_bytes = base64.b64decode(image_data)
+                    print(f"Decoded image size: {len(image_bytes)} bytes")
+                    
+                    print("Opening image from bytes")
+                    image = Image.open(io.BytesIO(image_bytes))
+                    print(f"Original image size: {image.size}")
+                    
+                    # Calculate size to fit
+                    max_width = 700
+                    max_height = 140
+                    ratio = min(max_width/image.width, max_height/image.height)
+                    new_size = (int(image.width * ratio), int(image.height * ratio))
+                    print(f"Resizing to: {new_size}")
+                    
+                    # Resize and rotate
+                    image = image.resize(new_size, Image.Resampling.LANCZOS)
+                    image = image.rotate(90, expand=True)
+                    
+                    print("Converting to PhotoImage")
+                    photo = ImageTk.PhotoImage(image)
+                    self.hint_label.photo = photo
+                    
+                    # Position and display
+                    image_x = 75
+                    image_y = y_position + (new_size[1] / 2)
+                    print(f"Placing image at: ({image_x}, {image_y})")
+                    
+                    self.hint_label.create_image(
+                        image_x, image_y,
+                        image=photo,
+                        anchor='center'
+                    )
+                    print("Image successfully added to canvas")
+                    
+                except Exception as e:
+                    print("\nError processing hint image:")
+                    traceback.print_exc()
+                    self.hint_label.create_text(
+                        75,
+                        y_position + 50,
+                        text=f"[Error displaying image: {str(e)}]",
+                        fill='red',
+                        font=('Arial', 16),
+                        width=780,
+                        angle=270,
+                        justify='center'
+                    )
+        except Exception as e:
+            print("\nCritical error in show_hint:")
+            traceback.print_exc()
+            # Try to show error message in UI
+            try:
+                if hasattr(self, 'hint_label') and self.hint_label:
+                    self.hint_label.delete('all')
+                    self.hint_label.create_text(
+                        75, 400,
+                        text=f"Error displaying hint: {str(e)}",
+                        fill='red',
+                        font=('Arial', 16),
+                        width=780,
+                        angle=270,
+                        justify='center'
+                    )
+            except:
+                pass
             
     def start_cooldown(self):
         """Start the cooldown timer, cancelling any existing one first"""

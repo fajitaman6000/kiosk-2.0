@@ -23,7 +23,8 @@ don't load special controls section if none exist
 clicking props should load hints for it
 hint notification sound + manual sound button
 video hints need play button
-
+image hints
+manual hint text box larger
 
 
 # known bugs

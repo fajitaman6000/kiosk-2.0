@@ -12,6 +12,7 @@ from audio_server import AudioServer
 from pathlib import Path
 from room_persistence import RoomPersistence
 import subprocess
+import traceback
 
 
 class KioskApp:
@@ -135,58 +136,75 @@ class KioskApp:
         
     def handle_message(self, msg):
         print(f"\nReceived message: {msg}")
-        if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
-            print(f"Processing room assignment: {msg['room']}")            
-            self.assigned_room = msg['room']
-            print("Saving room assignment...")
-            save_result = self.room_persistence.save_room_assignment(msg['room'])
-            print(f"Save result: {save_result}")
-            self.start_time = time.time()
-            self.ui.hint_cooldown = False
-            self.ui.current_hint = None
-            self.ui.clear_all_labels()
-            self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
-            
-        elif msg['type'] == 'hint' and self.assigned_room:
-            if msg.get('room') == self.assigned_room:
-                self.root.after(0, lambda t=msg['text']: self.show_hint(t))
+        try:
+            if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
+                print(f"Processing room assignment: {msg['room']}")            
+                self.assigned_room = msg['room']
+                print("Saving room assignment...")
+                save_result = self.room_persistence.save_room_assignment(msg['room'])
+                print(f"Save result: {save_result}")
+                self.start_time = time.time()
+                self.ui.hint_cooldown = False
+                self.ui.current_hint = None
+                self.ui.clear_all_labels()
+                self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
                 
-        elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
-            minutes = msg.get('minutes')
-            self.timer.handle_command(msg['command'], minutes)
-            
-        elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
-            self.play_video(msg['video_type'], msg['minutes'])
-            
-        elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
-            print("Received reset command - resetting kiosk state")
-            # Reset hints count and immediately notify admin
-            self.hints_requested = 0
-            self.network.send_message({
-                'type': 'kiosk_announce',
-                'computer_name': self.computer_name,
-                'room': self.assigned_room,
-                'total_hints': 0,
-                'timer_time': self.timer.time_remaining,
-                'timer_running': self.timer.is_running
-            })
-            
-            # Clear UI elements
-            self.ui.hint_cooldown = False
-            self.ui.current_hint = None
-            self.ui.clear_all_labels()
-            
-            # Restore room interface if assigned
-            if self.assigned_room:
-                self.ui.setup_room_interface(self.assigned_room)
-            
-            # Stop any playing videos
-            if self.current_video_process:
-                self.current_video_process.terminate()
-                self.current_video_process = None
-                self.root.deiconify()  # Restore UI if hidden
+            elif msg['type'] == 'hint' and self.assigned_room:
+                if msg.get('room') == self.assigned_room:
+                    print("\nProcessing hint message:")
+                    print(f"Has image flag: {msg.get('has_image')}")
+                    print(f"Message keys: {msg.keys()}")
+                    
+                    # Prepare hint data
+                    if msg.get('has_image') and 'image' in msg:
+                        print("Creating image+text hint data")
+                        hint_data = {
+                            'text': msg.get('text', ''),
+                            'image': msg['image']
+                        }
+                    else:
+                        print("Creating text-only hint")
+                        hint_data = msg.get('text', '')
+                    
+                    print(f"Scheduling hint display with data type: {type(hint_data)}")
+                    self.root.after(0, lambda d=hint_data: self.ui.show_hint(d))
+                    
+            elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
+                minutes = msg.get('minutes')
+                self.timer.handle_command(msg['command'], minutes)
                 
-            print("Kiosk reset complete")
+            elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
+                self.play_video(msg['video_type'], msg['minutes'])
+                
+            elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
+                print("Received reset command - resetting kiosk state")
+                self.hints_requested = 0
+                self.network.send_message({
+                    'type': 'kiosk_announce',
+                    'computer_name': self.computer_name,
+                    'room': self.assigned_room,
+                    'total_hints': 0,
+                    'timer_time': self.timer.time_remaining,
+                    'timer_running': self.timer.is_running
+                })
+                
+                self.ui.hint_cooldown = False
+                self.ui.current_hint = None
+                self.ui.clear_all_labels()
+                
+                if self.assigned_room:
+                    self.ui.setup_room_interface(self.assigned_room)
+                
+                if self.current_video_process:
+                    self.current_video_process.terminate()
+                    self.current_video_process = None
+                    self.root.deiconify()
+        
+        except Exception as e:
+            print("\nCritical error in handle_message:")
+            print(f"Error type: {type(e)}")
+            print(f"Error message: {str(e)}")
+            traceback.print_exc()
                 
     def request_help(self):
         if not self.ui.hint_cooldown:
