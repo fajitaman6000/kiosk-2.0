@@ -40,8 +40,8 @@ class KioskNetwork:
         try:
             encoded = json.dumps(message).encode()
             msg_size = len(encoded) / 1024  # Size in KB
-            print(f"\nSending message: {message['type']}")
-            print(f"Message size: {msg_size:.2f}KB")
+            #print(f"\nSending message: {message['type']}")
+            #print(f"Message size: {msg_size:.2f}KB")
             
             if msg_size > 60000:  # UDP practical limit ~64KB
                 print("WARNING: Message exceeds UDP size limit!")

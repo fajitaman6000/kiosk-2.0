@@ -4,8 +4,10 @@ import time
 from video_client import VideoClient
 from audio_client import AudioClient
 from classic_audio_hints import ClassicAudioHints
+from saved_hints_panel import SavedHintsPanel
 import cv2 # type: ignore
 from PIL import Image, ImageTk
+from pathlib import Path
 import threading
 import os
 import json
@@ -376,6 +378,13 @@ class AdminInterfaceBuilder:
         # Store the currently selected image
         self.current_hint_image = None
         self.setup_audio_hints()
+
+        # Set up Saved Hints panel after audio hints
+        saved_hint_callback = lambda hint_data, cn=computer_name: self.send_hint(cn, hint_data)
+        self.saved_hints = SavedHintsPanel(
+            self.stats_frame,
+            saved_hint_callback
+        )
 
         # Right side panel fixed to right edge
         right_panel = tk.Frame(
@@ -931,6 +940,13 @@ class AdminInterfaceBuilder:
                 title = f"Unassigned ({computer_name})"
                 print("No room assigned")
             
+            if hasattr(self, 'saved_hints'):
+                print("Updating saved hints for room")
+                if room_num:
+                    self.saved_hints.update_room(room_num)
+                else:
+                    self.saved_hints.clear_preview()
+            
             self.stats_frame.configure(text=title,font=('Arial', 10, 'bold'))
             
             # Update highlighting
@@ -1041,25 +1057,31 @@ class AdminInterfaceBuilder:
         except Exception as e:
             print(f"Error updating stats display: {e}")
 
-    def send_hint(self, computer_name):
-        """Send a hint to the selected kiosk, with optional image attachment"""
+    def send_hint(self, computer_name, hint_data=None):
+        """
+        Send a hint to the selected kiosk.
+        
+        Args:
+            computer_name: Name of the target computer
+            hint_data: Optional dict containing hint data. If None, uses manual entry fields.
+        """
         # Validate kiosk assignment
         if not computer_name in self.app.kiosk_tracker.kiosk_assignments:
             return
-            
-        # Check if we have either text or image
-        message_text = self.stats_elements['msg_entry'].get() if self.stats_elements['msg_entry'] else ""
-        if not message_text and not self.current_hint_image:
-            return
-            
+                
+        if hint_data is None:
+            # Using manual entry
+            message_text = self.stats_elements['msg_entry'].get() if self.stats_elements['msg_entry'] else ""
+            if not message_text and not self.current_hint_image:
+                return
+                
+            hint_data = {
+                'text': message_text,
+                'image': self.current_hint_image
+            }
+        
         # Get room number
         room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-        
-        # Prepare hint data
-        hint_data = {
-            'text': message_text,
-            'image': self.current_hint_image
-        }
         
         # Send the hint
         self.app.network_handler.send_hint(room_number, hint_data)
@@ -1070,19 +1092,18 @@ class AdminInterfaceBuilder:
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
         
-        # Clear the input fields
-        if self.stats_elements['msg_entry']:
-            self.stats_elements['msg_entry'].delete(0, 'end')
-        
-        # Clear the image preview and stored image
-        if self.stats_elements['image_preview']:
-            self.stats_elements['image_preview'].configure(image='')
-            self.stats_elements['image_preview'].image = None
-        self.current_hint_image = None
-        
-        # Reset send button state
-        if self.stats_elements['send_btn']:
-            self.stats_elements['send_btn'].config(state='disabled')
+        # Only clear manual entry fields if we used them
+        if hint_data is None:
+            if self.stats_elements['msg_entry']:
+                self.stats_elements['msg_entry'].delete(0, 'end')
+            
+            if self.stats_elements['image_preview']:
+                self.stats_elements['image_preview'].configure(image='')
+                self.stats_elements['image_preview'].image = None
+            self.current_hint_image = None
+            
+            if self.stats_elements['send_btn']:
+                self.stats_elements['send_btn'].config(state='disabled')
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""

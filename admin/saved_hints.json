@@ -1,0 +1,16 @@
+{
+    "hints": {
+        "zombie_first_clue": {
+            "room": 4,
+            "name": "First Tools Hint",
+            "text": "Look carefully at the shapes of the tools. Each one matches a specific outline on the wall.",
+            "image": "zombie_tools_outline.png"
+        },
+        "wizard_potion_hint": {
+            "room": 3,
+            "name": "Potion Creation",
+            "text": "Remember: mix the ingredients in order from darkest to lightest color.",
+            "image": null
+        }
+    }
+}
