@@ -198,3 +198,9 @@ class SavedHintsPanel:
             
             # Send hint through callback
             self.send_hint_callback(hint_data)
+            
+            # Clear preview after sending
+            self.clear_preview()
+            
+            # Clear listbox selection
+            self.hint_listbox.selection_clear(0, tk.END)

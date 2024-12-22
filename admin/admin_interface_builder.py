@@ -1092,18 +1092,21 @@ class AdminInterfaceBuilder:
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
         
-        # Only clear manual entry fields if we used them
-        if hint_data is None:
-            if self.stats_elements['msg_entry']:
-                self.stats_elements['msg_entry'].delete(0, 'end')
+        # Clear ALL hint entry fields regardless of which method was used
+        if self.stats_elements['msg_entry']:
+            self.stats_elements['msg_entry'].delete(0, 'end')
+        
+        if self.stats_elements['image_preview']:
+            self.stats_elements['image_preview'].configure(image='')
+            self.stats_elements['image_preview'].image = None
+        self.current_hint_image = None
+        
+        if self.stats_elements['send_btn']:
+            self.stats_elements['send_btn'].config(state='disabled')
             
-            if self.stats_elements['image_preview']:
-                self.stats_elements['image_preview'].configure(image='')
-                self.stats_elements['image_preview'].image = None
-            self.current_hint_image = None
-            
-            if self.stats_elements['send_btn']:
-                self.stats_elements['send_btn'].config(state='disabled')
+        # Also clear saved hints preview if it exists
+        if hasattr(self, 'saved_hints'):
+            self.saved_hints.clear_preview()
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
