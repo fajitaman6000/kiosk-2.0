@@ -25,6 +25,7 @@ hint notification sound + manual sound button
 video hints need play button
 image hints
 manual hint text box larger
+saved hints need to be organized by props in the same way as audio hints
 
 
 # known bugs
