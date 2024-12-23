@@ -349,15 +349,41 @@ class AdminInterfaceBuilder:
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
         hint_frame.pack(fill='x', pady=10)
         
-        self.stats_elements['msg_entry'] = tk.Text(hint_frame, width=10, height=5)
+        # Create Text widget instead of Entry
+        self.stats_elements['msg_entry'] = tk.Text(
+            hint_frame, 
+            width=30,  # Width in characters
+            height=4,  # Height in lines
+            wrap=tk.WORD  # Word wrapping
+        )
         self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
         
+         # Create button frame for all hint controls
+        hint_buttons_frame = tk.Frame(hint_frame)
+        hint_buttons_frame.pack(pady=5)
+        
         self.stats_elements['send_btn'] = tk.Button(
-            hint_frame, 
+            hint_buttons_frame, 
             text="Send",
             command=lambda: self.send_hint(computer_name)
         )
-        self.stats_elements['send_btn'].pack(pady=5)
+        self.stats_elements['send_btn'].pack(side='left', padx=5)
+        
+        # Add save button
+        save_btn = tk.Button(
+            hint_buttons_frame,
+            text="Save",
+            command=self.save_manual_hint
+        )
+        save_btn.pack(side='left', padx=5)
+        
+        # Add clear button
+        clear_btn = tk.Button(
+            hint_buttons_frame,
+            text="Clear",
+            command=self.clear_manual_hint
+        )
+        clear_btn.pack(side='left', padx=5)
 
         # Create a frame for image selection and preview
         image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
@@ -1085,7 +1111,7 @@ class AdminInterfaceBuilder:
                 
         if hint_data is None:
             # Using manual entry
-            message_text = self.stats_elements['msg_entry'].get() if self.stats_elements['msg_entry'] else ""
+            message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
             if not message_text and not self.current_hint_image:
                 return
                 
@@ -1108,7 +1134,7 @@ class AdminInterfaceBuilder:
         
         # Clear ALL hint entry fields regardless of which method was used
         if self.stats_elements['msg_entry']:
-            self.stats_elements['msg_entry'].delete(0, 'end')
+            self.stats_elements['msg_entry'].delete('1.0', 'end')
         
         if self.stats_elements['image_preview']:
             self.stats_elements['image_preview'].configure(image='')
@@ -1121,6 +1147,161 @@ class AdminInterfaceBuilder:
         # Also clear saved hints preview if it exists
         if hasattr(self, 'saved_hints'):
             self.saved_hints.clear_preview()
+
+    def save_manual_hint(self):
+        """Save the current manual hint to saved_hints.json"""
+        if not hasattr(self, 'selected_kiosk') or not self.selected_kiosk:
+            return
+            
+        if self.selected_kiosk not in self.app.kiosk_tracker.kiosk_assignments:
+            return
+            
+        # Get hint text
+        message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
+        if not message_text and not self.current_hint_image:
+            return
+            
+        # Get room number and prop name
+        room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
+        
+        # Show dialog to get prop name and hint name
+        dialog = tk.Toplevel(self.app.root)
+        dialog.title("Save Hint")
+        dialog.transient(self.app.root)
+        dialog.grab_set()
+        
+        # Center dialog
+        dialog_width = 300
+        dialog_height = 150
+        screen_width = dialog.winfo_screenwidth()
+        screen_height = dialog.winfo_screenheight()
+        x = (screen_width - dialog_width) // 2
+        y = (screen_height - dialog_height) // 2
+        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        
+        # Map room number to config key
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time_machine"
+        }
+        room_key = room_map.get(room_number)
+        
+        # Load available props for this room from mapping file
+        try:
+            with open("prop_name_mapping.json", 'r') as f:
+                prop_mappings = json.load(f)
+                
+            # Get props for this room and sort by order
+            room_props = prop_mappings.get(room_key, {}).get('mappings', {})
+            props_with_order = [(prop, info.get('display', prop) or prop, info.get('order', 999))
+                            for prop, info in room_props.items()]
+            sorted_props = sorted(props_with_order, key=lambda x: (x[2], x[1]))
+            available_props = [(display, internal) for internal, display, _ in sorted_props]
+        except Exception as e:
+            print(f"Error loading prop mappings: {e}")
+            available_props = []
+        
+        if not available_props:
+            tk.messagebox.showerror("Error", "No props available for this room")
+            dialog.destroy()
+            return
+        
+        # Add form fields with dropdown for props
+        tk.Label(dialog, text="Select Prop:").pack(pady=(10,0))
+        prop_var = tk.StringVar(dialog)
+        prop_dropdown = ttk.Combobox(dialog, 
+            textvariable=prop_var,
+            values=[display for display, _ in available_props],
+            state='readonly',
+            width=30
+        )
+        prop_dropdown.pack(pady=(0,10))
+        
+        tk.Label(dialog, text="Hint Name:").pack()
+        hint_entry = tk.Entry(dialog, width=35)
+        hint_entry.pack(pady=(0,10))
+        
+        def save_hint():
+            display_name = prop_var.get()
+            # Find internal prop name from selection
+            prop_name = next((internal for disp, internal in available_props if disp == display_name), None)
+            hint_name = hint_entry.get().strip()
+            
+            if not prop_name or not hint_name:
+                return
+                
+            # Load existing hints
+            hints_file = Path("saved_hints.json")
+            if hints_file.exists():
+                with open(hints_file, 'r') as f:
+                    data = json.load(f)
+            else:
+                data = {"hints": {}}
+                
+            # Generate unique ID for hint
+            base_id = f"{prop_name.lower().replace(' ', '_')}_hint"
+            hint_id = base_id
+            counter = 1
+            while hint_id in data["hints"]:
+                hint_id = f"{base_id}_{counter}"
+                counter += 1
+                
+            # Save image if present
+            image_filename = None
+            if self.current_hint_image:
+                # Create directory if needed
+                Path("saved_hint_images").mkdir(exist_ok=True)
+                
+                # Generate image filename
+                image_filename = f"{hint_id}.png"
+                image_path = Path("saved_hint_images") / image_filename
+                
+                # Save image
+                image_data = base64.b64decode(self.current_hint_image)
+                with open(image_path, 'wb') as f:
+                    f.write(image_data)
+                    
+            # Add hint to data
+            data["hints"][hint_id] = {
+                "room": room_number,
+                "prop": prop_name,  # Save internal prop name
+                "name": hint_name,
+                "text": message_text,
+                "image": image_filename
+            }
+            
+            # Save updated hints file
+            with open(hints_file, 'w') as f:
+                json.dump(data, f, indent=4)
+                
+            # Close dialog and clear form
+            dialog.destroy()
+            self.clear_manual_hint()
+            
+            # Refresh saved hints panel if it exists
+            if hasattr(self, 'saved_hints'):
+                self.saved_hints.load_hints()
+                self.saved_hints.update_room(room_number)
+        
+        tk.Button(dialog, text="Save", command=save_hint).pack(pady=10)
+
+    def clear_manual_hint(self):
+        """Clear the manual hint entry fields"""
+        if self.stats_elements['msg_entry']:
+            self.stats_elements['msg_entry'].delete('1.0', 'end')
+        
+        if self.stats_elements['image_preview']:
+            self.stats_elements['image_preview'].configure(image='')
+            self.stats_elements['image_preview'].image = None
+        self.current_hint_image = None
+        
+        if self.stats_elements['send_btn']:
+            self.stats_elements['send_btn'].config(state='disabled')
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""

@@ -13,6 +13,27 @@
             "name": "Potion Creation",
             "text": "Remember: mix the ingredients in order from darkest to lightest color.",
             "image": null
+        },
+        "bike_hint": {
+            "room": 4,
+            "prop": "Bike",
+            "name": "test",
+            "text": "gsdfgsdfgsdf",
+            "image": null
+        },
+        "tool_holder_hint": {
+            "room": 4,
+            "prop": "Tool Holder",
+            "name": "test2",
+            "text": "fdjhgjfgjh",
+            "image": "tool_holder_hint.png"
+        },
+        "tool_holder_hint_1": {
+            "room": 4,
+            "prop": "Tool Holder",
+            "name": "test2",
+            "text": "gsdfgsdfggg",
+            "image": "tool_holder_hint_1.png"
         }
     }
 }

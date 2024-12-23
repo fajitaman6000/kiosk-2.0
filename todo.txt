@@ -25,10 +25,13 @@ hint notification sound + manual sound button
 video hints need play button
 saved hints need to be organized by props in the same way as audio hints
 hint text and image need to be aligned
-text is made invisible on wizard when hint button is pressed because it's black
+hint cooldown text needs to have background or be universal
+hint manager
 
 
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline
 reset all makes a call for kiosk tracker log that doesn't exist
+two gamemasters requesting the same video stream crashes that kiosk
+please wait for hint text is missing
