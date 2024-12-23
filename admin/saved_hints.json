@@ -1,39 +1,40 @@
 {
-    "hints": {
-        "zombie_tools_hint": {
-            "room": 4,
-            "prop": "Place The Tools",
-            "name": "First Tools Hint",
-            "text": "Look carefully at the shapes of the tools. Each one matches a specific outline on the wall.",
-            "image": "zombie_tools_outline.png"
+    "rooms": {
+        "4": {
+            "hints": {
+                "horse_shoes_hint": {
+                    "prop": "Horse shoes",
+                    "name": "gsdfgsdf",
+                    "text": "sggsdfgd",
+                    "image": "horse_shoes_hint.png"
+                }
+            }
         },
-        "wizard_potion_hint": {
-            "room": 3,
-            "prop": "Potion pot",
-            "name": "Potion Creation",
-            "text": "Remember: mix the ingredients in order from darkest to lightest color.",
-            "image": null
+        "6": {
+            "hints": {
+                "tangram_hint": {
+                    "prop": "Tangram",
+                    "name": "test",
+                    "text": "gdsfgsdfgsdfg",
+                    "image": "tangram_hint.png"
+                }
+            }
         },
-        "bike_hint": {
-            "room": 4,
-            "prop": "Bike",
-            "name": "test",
-            "text": "gsdfgsdfgsdf",
-            "image": null
-        },
-        "tool_holder_hint": {
-            "room": 4,
-            "prop": "Tool Holder",
-            "name": "test2",
-            "text": "fdjhgjfgjh",
-            "image": "tool_holder_hint.png"
-        },
-        "tool_holder_hint_1": {
-            "room": 4,
-            "prop": "Tool Holder",
-            "name": "test2",
-            "text": "gsdfgsdfggg",
-            "image": "tool_holder_hint_1.png"
+        "1": {
+            "hints": {
+                "weight_game_hint": {
+                    "prop": "Weight game",
+                    "name": "test",
+                    "text": "ggggggg",
+                    "image": null
+                },
+                "lamp_hint": {
+                    "prop": "Lamp",
+                    "name": "gdfgsdfg",
+                    "text": "test\n\ntest3",
+                    "image": null
+                }
+            }
         }
     }
 }

@@ -26,8 +26,8 @@ video hints need play button
 saved hints need to be organized by props in the same way as audio hints
 hint text and image need to be aligned
 hint cooldown text needs to have background or be universal
-hint manager
-
+hint manager/deleter program/section that replaces the whole interface
+persistent tracking of prop statuses for finishing/running/OOT highlight
 
 
 # known bugs

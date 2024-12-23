@@ -412,14 +412,14 @@ class AdminInterfaceBuilder:
             saved_hint_callback
         )
 
-        # Right side panel fixed to right edge
+        # Right side panel
         right_panel = tk.Frame(
             stats_container,
             width=500,  # Fixed width for entire right panel
             bg='systemButtonFace'
         )
         right_panel.pack(
-            side='right',     # Ensure it stays on right
+            side='left',     # Ensure it stays on right
             fill='y',         # Fill vertical space
             expand=False,     # Don't expand horizontally
             padx=(10, 0)      # Padding only on left side
@@ -455,7 +455,7 @@ class AdminInterfaceBuilder:
         control_frame = tk.Frame(
             right_panel,
             bg='systemButtonFace',
-            height=40  # Fixed height
+            height=32  # Fixed height
         )
         control_frame.pack(
             side='top',      # Pack at top of right panel
@@ -502,7 +502,7 @@ class AdminInterfaceBuilder:
             text="" if camera_icon else "Start Camera",
             command=lambda: self.toggle_camera(computer_name),
             width=24,
-            height=24,
+            height=20,
             bd=0,
             highlightthickness=0,
             bg='systemButtonFace',  # Match system background
@@ -1161,8 +1161,9 @@ class AdminInterfaceBuilder:
         if not message_text and not self.current_hint_image:
             return
             
-        # Get room number and prop name
+        # Get room number
         room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
+        room_str = str(room_number)
         
         # Show dialog to get prop name and hint name
         dialog = tk.Toplevel(self.app.root)
@@ -1237,17 +1238,34 @@ class AdminInterfaceBuilder:
                 
             # Load existing hints
             hints_file = Path("saved_hints.json")
-            if hints_file.exists():
-                with open(hints_file, 'r') as f:
-                    data = json.load(f)
-            else:
-                data = {"hints": {}}
+            try:
+                if hints_file.exists() and hints_file.stat().st_size > 0:
+                    with open(hints_file, 'r') as f:
+                        try:
+                            data = json.load(f)
+                        except json.JSONDecodeError:
+                            # If JSON is invalid, start fresh
+                            data = {"rooms": {}}
+                else:
+                    # If file doesn't exist or is empty, start fresh
+                    data = {"rooms": {}}
+            except Exception as e:
+                print(f"Error loading hints file: {e}")
+                data = {"rooms": {}}
+            
+            # Ensure room structure exists
+            if 'rooms' not in data:
+                data['rooms'] = {}
+            if room_str not in data['rooms']:
+                data['rooms'][room_str] = {"hints": {}}
+            elif 'hints' not in data['rooms'][room_str]:
+                data['rooms'][room_str]['hints'] = {}
                 
             # Generate unique ID for hint
             base_id = f"{prop_name.lower().replace(' ', '_')}_hint"
             hint_id = base_id
             counter = 1
-            while hint_id in data["hints"]:
+            while hint_id in data['rooms'][room_str]['hints']:
                 hint_id = f"{base_id}_{counter}"
                 counter += 1
                 
@@ -1267,8 +1285,7 @@ class AdminInterfaceBuilder:
                     f.write(image_data)
                     
             # Add hint to data
-            data["hints"][hint_id] = {
-                "room": room_number,
+            data['rooms'][room_str]['hints'][hint_id] = {
                 "prop": prop_name,  # Save internal prop name
                 "name": hint_name,
                 "text": message_text,
@@ -1276,8 +1293,13 @@ class AdminInterfaceBuilder:
             }
             
             # Save updated hints file
-            with open(hints_file, 'w') as f:
-                json.dump(data, f, indent=4)
+            try:
+                with open(hints_file, 'w') as f:
+                    json.dump(data, f, indent=4)
+            except Exception as e:
+                print(f"Error saving hints file: {e}")
+                tk.messagebox.showerror("Error", "Failed to save hint")
+                return
                 
             # Close dialog and clear form
             dialog.destroy()

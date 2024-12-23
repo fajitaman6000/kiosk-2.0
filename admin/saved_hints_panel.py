@@ -162,8 +162,8 @@ class SavedHintsPanel:
             if os.path.exists(hints_path):
                 with open(hints_path, 'r') as f:
                     data = json.load(f)
-                    self.hints_data = data['hints']
-                    print(f"Loaded {len(self.hints_data)} hints")
+                    self.hints_data = data.get('rooms', {})
+                    print(f"Loaded hints for {len(self.hints_data)} rooms")
             else:
                 print("No hints file found!")
                 self.hints_data = {}
@@ -188,8 +188,11 @@ class SavedHintsPanel:
     def get_props_for_room(self, room_number):
         """Get available props for the current room from hints data"""
         props = {}  # Using dict to maintain mapping of display name to original name
-        for hint in self.hints_data.values():
-            if hint['room'] == room_number:
+        room_str = str(room_number)  # Convert room number to string for dict key
+        
+        if room_str in self.hints_data:
+            room_hints = self.hints_data[room_str].get('hints', {})
+            for hint in room_hints.values():
                 original_name = hint['prop']
                 display_name = self.get_display_name(original_name)
                 props[display_name] = original_name
@@ -202,10 +205,13 @@ class SavedHintsPanel:
     def get_hints_for_prop(self, prop_name):
         """Get hints for the selected prop"""
         hints = []
-        for hint in self.hints_data.values():
-            if (hint['room'] == self.current_room and 
-                hint['prop'] == prop_name):
-                hints.append(hint['name'])
+        room_str = str(self.current_room)
+        
+        if room_str in self.hints_data:
+            room_hints = self.hints_data[room_str].get('hints', {})
+            for hint in room_hints.values():
+                if hint['prop'] == prop_name:
+                    hints.append(hint['name'])
         return sorted(hints)
 
     def update_room(self, room_number):
@@ -248,14 +254,17 @@ class SavedHintsPanel:
             return
             
         original_prop_name = self.prop_name_map[selected_display_name]
+        room_str = str(self.current_room)
         
         # Find hint data by name and prop
         selected_hint = None
-        for hint_id, hint_data in self.hints_data.items():
-            if (hint_data['name'] == hint_name and 
-                hint_data['prop'] == original_prop_name):
-                selected_hint = hint_data
-                break
+        if room_str in self.hints_data:
+            room_hints = self.hints_data[room_str].get('hints', {})
+            for hint_data in room_hints.values():
+                if (hint_data['name'] == hint_name and 
+                    hint_data['prop'] == original_prop_name):
+                    selected_hint = hint_data
+                    break
                 
         if selected_hint:
             # Update preview text
@@ -302,18 +311,25 @@ class SavedHintsPanel:
         hint_name = self.hint_listbox.get(selection[0])
         selected_display_name = self.prop_var.get()
         original_prop_name = self.prop_name_map[selected_display_name]
+        room_str = str(self.current_room)
         
         # Find hint data by name and prop
         selected_hint = None
-        for hint_data in self.hints_data.values():
-            if (hint_data['name'] == hint_name and 
-                hint_data['prop'] == original_prop_name):
-                selected_hint = hint_data
-                break
+        if room_str in self.hints_data:
+            room_hints = self.hints_data[room_str].get('hints', {})
+            for hint_data in room_hints.values():
+                try:
+                    if (hint_data.get('name') == hint_name and 
+                        hint_data.get('prop') == original_prop_name):
+                        selected_hint = hint_data
+                        break
+                except (KeyError, AttributeError) as e:
+                    print(f"Error accessing hint data: {e}")
+                    continue
                 
         if selected_hint:
             # Prepare hint data
-            hint_data = {'text': selected_hint['text']}
+            hint_data = {'text': selected_hint.get('text', '')}
             
             # Add image if present
             if selected_hint.get('image'):
