@@ -5,6 +5,7 @@ from video_client import VideoClient
 from audio_client import AudioClient
 from classic_audio_hints import ClassicAudioHints
 from setup_stats_panel import setup_stats_panel
+from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 from pathlib import Path
@@ -696,233 +697,17 @@ class AdminInterfaceBuilder:
         except Exception as e:
             print(f"Error updating stats display: {e}")
 
-    def send_hint(self, computer_name, hint_data=None):
-        """
-        Send a hint to the selected kiosk.
-        
-        Args:
-            computer_name: Name of the target computer
-            hint_data: Optional dict containing hint data. If None, uses manual entry fields.
-        """
-        # Validate kiosk assignment
-        if not computer_name in self.app.kiosk_tracker.kiosk_assignments:
-            return
-                
-        if hint_data is None:
-            # Using manual entry
-            message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
-            if not message_text and not self.current_hint_image:
-                return
-                
-            hint_data = {
-                'text': message_text,
-                'image': self.current_hint_image
-            }
-        
-        # Get room number
-        room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-        
-        # Send the hint
-        self.app.network_handler.send_hint(room_number, hint_data)
-        
-        # Clear any pending help requests
-        if computer_name in self.app.kiosk_tracker.help_requested:
-            self.app.kiosk_tracker.help_requested.remove(computer_name)
-            if computer_name in self.connected_kiosks:
-                self.connected_kiosks[computer_name]['help_label'].config(text="")
-        
-        # Clear ALL hint entry fields regardless of which method was used
-        if self.stats_elements['msg_entry']:
-            self.stats_elements['msg_entry'].delete('1.0', 'end')
-        
-        if self.stats_elements['image_preview']:
-            self.stats_elements['image_preview'].configure(image='')
-            self.stats_elements['image_preview'].image = None
-        self.current_hint_image = None
-        
-        if self.stats_elements['send_btn']:
-            self.stats_elements['send_btn'].config(state='disabled')
-            
-        # Also clear saved hints preview if it exists
-        if hasattr(self, 'saved_hints'):
-            self.saved_hints.clear_preview()
-
     def save_manual_hint(self):
-        """Save the current manual hint to saved_hints.json"""
-        if not hasattr(self, 'selected_kiosk') or not self.selected_kiosk:
-            return
-            
-        if self.selected_kiosk not in self.app.kiosk_tracker.kiosk_assignments:
-            return
-            
-        # Get hint text
-        message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
-        if not message_text and not self.current_hint_image:
-            return
-            
-        # Get room number
-        room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
-        room_str = str(room_number)
-        
-        # Show dialog to get prop name and hint name
-        dialog = tk.Toplevel(self.app.root)
-        dialog.title("Save Hint")
-        dialog.transient(self.app.root)
-        dialog.grab_set()
-        
-        # Center dialog
-        dialog_width = 300
-        dialog_height = 150
-        screen_width = dialog.winfo_screenwidth()
-        screen_height = dialog.winfo_screenheight()
-        x = (screen_width - dialog_width) // 2
-        y = (screen_height - dialog_height) // 2
-        dialog.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
-        
-        # Map room number to config key
-        room_map = {
-            3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time_machine"
-        }
-        room_key = room_map.get(room_number)
-        
-        # Load available props for this room from mapping file
-        try:
-            with open("prop_name_mapping.json", 'r') as f:
-                prop_mappings = json.load(f)
-                
-            # Get props for this room and sort by order
-            room_props = prop_mappings.get(room_key, {}).get('mappings', {})
-            props_with_order = [(prop, info.get('display', prop) or prop, info.get('order', 999))
-                            for prop, info in room_props.items()]
-            sorted_props = sorted(props_with_order, key=lambda x: (x[2], x[1]))
-            available_props = [(display, internal) for internal, display, _ in sorted_props]
-        except Exception as e:
-            print(f"Error loading prop mappings: {e}")
-            available_props = []
-        
-        if not available_props:
-            tk.messagebox.showerror("Error", "No props available for this room")
-            dialog.destroy()
-            return
-        
-        # Add form fields with dropdown for props
-        tk.Label(dialog, text="Select Prop:").pack(pady=(10,0))
-        prop_var = tk.StringVar(dialog)
-        prop_dropdown = ttk.Combobox(dialog, 
-            textvariable=prop_var,
-            values=[display for display, _ in available_props],
-            state='readonly',
-            width=30
-        )
-        prop_dropdown.pack(pady=(0,10))
-        
-        tk.Label(dialog, text="Hint Name:").pack()
-        hint_entry = tk.Entry(dialog, width=35)
-        hint_entry.pack(pady=(0,10))
-        
-        def save_hint():
-            display_name = prop_var.get()
-            # Find internal prop name from selection
-            prop_name = next((internal for disp, internal in available_props if disp == display_name), None)
-            hint_name = hint_entry.get().strip()
-            
-            if not prop_name or not hint_name:
-                return
-                
-            # Load existing hints
-            hints_file = Path("saved_hints.json")
-            try:
-                if hints_file.exists() and hints_file.stat().st_size > 0:
-                    with open(hints_file, 'r') as f:
-                        try:
-                            data = json.load(f)
-                        except json.JSONDecodeError:
-                            # If JSON is invalid, start fresh
-                            data = {"rooms": {}}
-                else:
-                    # If file doesn't exist or is empty, start fresh
-                    data = {"rooms": {}}
-            except Exception as e:
-                print(f"Error loading hints file: {e}")
-                data = {"rooms": {}}
-            
-            # Ensure room structure exists
-            if 'rooms' not in data:
-                data['rooms'] = {}
-            if room_str not in data['rooms']:
-                data['rooms'][room_str] = {"hints": {}}
-            elif 'hints' not in data['rooms'][room_str]:
-                data['rooms'][room_str]['hints'] = {}
-                
-            # Generate unique ID for hint
-            base_id = f"{prop_name.lower().replace(' ', '_')}_hint"
-            hint_id = base_id
-            counter = 1
-            while hint_id in data['rooms'][room_str]['hints']:
-                hint_id = f"{base_id}_{counter}"
-                counter += 1
-                
-            # Save image if present
-            image_filename = None
-            if self.current_hint_image:
-                # Create directory if needed
-                Path("saved_hint_images").mkdir(exist_ok=True)
-                
-                # Generate image filename
-                image_filename = f"{hint_id}.png"
-                image_path = Path("saved_hint_images") / image_filename
-                
-                # Save image
-                image_data = base64.b64decode(self.current_hint_image)
-                with open(image_path, 'wb') as f:
-                    f.write(image_data)
-                    
-            # Add hint to data
-            data['rooms'][room_str]['hints'][hint_id] = {
-                "prop": prop_name,  # Save internal prop name
-                "name": hint_name,
-                "text": message_text,
-                "image": image_filename
-            }
-            
-            # Save updated hints file
-            try:
-                with open(hints_file, 'w') as f:
-                    json.dump(data, f, indent=4)
-            except Exception as e:
-                print(f"Error saving hints file: {e}")
-                tk.messagebox.showerror("Error", "Failed to save hint")
-                return
-                
-            # Close dialog and clear form
-            dialog.destroy()
-            self.clear_manual_hint()
-            
-            # Refresh saved hints panel if it exists
-            if hasattr(self, 'saved_hints'):
-                self.saved_hints.load_hints()
-                self.saved_hints.update_room(room_number)
-        
-        tk.Button(dialog, text="Save", command=save_hint).pack(pady=10)
+        # Wrapper for the extracted save_manual_hint function
+        save_manual_hint(self)
 
     def clear_manual_hint(self):
-        """Clear the manual hint entry fields"""
-        if self.stats_elements['msg_entry']:
-            self.stats_elements['msg_entry'].delete('1.0', 'end')
-        
-        if self.stats_elements['image_preview']:
-            self.stats_elements['image_preview'].configure(image='')
-            self.stats_elements['image_preview'].image = None
-        self.current_hint_image = None
-        
-        if self.stats_elements['send_btn']:
-            self.stats_elements['send_btn'].config(state='disabled')
+        # Wrapper for the extracted clear_manual_hint function
+        clear_manual_hint(self)
+
+    def send_hint(self, computer_name, hint_data=None):
+        # Wrapper for the extracted send_hint function
+        send_hint(self, computer_name, hint_data)
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
