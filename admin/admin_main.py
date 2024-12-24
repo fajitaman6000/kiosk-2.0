@@ -28,10 +28,8 @@ try:
             screen_height = self.root.winfo_screenheight()
             
             # Calculate window size with manual adjustments:
-            # - Subtract 40px from height to avoid taskbar
-            # - Move 3px left to align with screen edge
             window_width = screen_width // 2
-            window_height = screen_height - 69
+            window_height = screen_height - 69 # nice
             x_position = -10
             y_position = 0
             
