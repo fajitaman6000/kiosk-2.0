@@ -8,7 +8,6 @@ from setup_stats_panel import setup_stats_panel
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 import cv2 # type: ignore
 from PIL import Image, ImageTk
-from pathlib import Path
 import threading
 import os
 import json
@@ -73,15 +72,47 @@ class AdminInterfaceBuilder:
             pady=5
         )
         
-        # Create existing frames within main container
+        # Create frames within main container
         left_frame = tk.Frame(self.main_container)
         left_frame.pack(side='left', fill='both', expand=True, padx=5)
         
-        self.kiosk_frame = tk.LabelFrame(left_frame, text="Online Kiosk Computers", padx=10, pady=5)
-        self.kiosk_frame.pack(fill='both', expand=True)
+        # Create a horizontal container for kiosk frame and hints button
+        kiosk_container = tk.Frame(left_frame)
+        kiosk_container.pack(fill='both', expand=True)
         
+        # Create kiosk frame on the left side of container
+        self.kiosk_frame = tk.LabelFrame(kiosk_container, text="Online Kiosk Computers", padx=10, pady=5)
+        self.kiosk_frame.pack(side='left', fill='both', expand=True)
+        
+        # Create small frame for hints button on the right side of container
+        hints_button_frame = tk.Frame(kiosk_container)
+        hints_button_frame.pack(side='left', anchor='n', padx=5)  # Anchor to top
+        
+        # Add Hints Library button in its own frame - small and square
+        hints_library_btn = tk.Button(
+            hints_button_frame,
+            text="Hint\nManager",
+            command=lambda: self.show_hints_library(),
+            bg='#4a90e2',
+            fg='white',
+            font=('Arial', 9),
+            width=6,         # Set fixed width in text units
+            height=2         # Set fixed height in text units
+        )
+        hints_library_btn.pack(anchor='n')  # Anchor to top of its frame
+        
+        # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=10)
+
+    # The show_hints_library method remains unchanged and should be kept as is
+    def show_hints_library(self):
+        """Show the Hints Library interface"""
+        if not hasattr(self, 'hint_manager'):
+            from hints_library import HintManager
+            self.hint_manager = HintManager(self.app, self)
+        self.hint_manager.show_hint_manager()
+    # END OF COMPLETE REPLACEMENT FOR setup_ui METHOD
 
     def setup_audio_hints(self):
         """Set up the Classic Audio Hints panel"""
