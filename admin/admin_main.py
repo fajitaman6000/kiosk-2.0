@@ -22,7 +22,21 @@ try:
             
             self.root = tk.Tk()
             self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
-            self.root.geometry("900x600")
+            
+            # Get screen dimensions
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            
+            # Calculate window size with manual adjustments:
+            # - Subtract 40px from height to avoid taskbar
+            # - Move 3px left to align with screen edge
+            window_width = screen_width // 2
+            window_height = screen_height - 69
+            x_position = -10
+            y_position = 0
+            
+            # Set window geometry with manual adjustments
+            self.root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
             
             # Room definitions
             self.rooms = {
@@ -39,7 +53,7 @@ try:
             self.kiosk_tracker = KioskStateTracker(self)
             self.network_handler = NetworkBroadcastHandler(self)
             self.interface_builder = AdminInterfaceBuilder(self)
-            self.prop_control = PropControl(self)  # Add this line
+            self.prop_control = PropControl(self)
             
             # Start network handling
             self.network_handler.start()
@@ -47,6 +61,7 @@ try:
             # Set up update timers
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
+
         
         def run(self):
             print("Starting admin application...")
