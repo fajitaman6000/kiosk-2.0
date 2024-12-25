@@ -84,6 +84,16 @@ class AdminInterfaceBuilder:
         self.kiosk_frame = tk.LabelFrame(kiosk_container, text="Online Kiosk Computers", padx=10, pady=5)
         self.kiosk_frame.pack(side='left', fill='both', expand=True)
         
+        # Load all required icons
+        icon_dir = os.path.join("admin_icons")
+        try:
+            settings_icon = Image.open(os.path.join(icon_dir, "settings.png"))
+            settings_icon = settings_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            settings_icon = ImageTk.PhotoImage(settings_icon)
+        except Exception as e:
+            print(f"Error loading icons: {e}")
+            settings_icon = None
+
         # Create small frame for hints button on the right side of container
         hints_button_frame = tk.Frame(kiosk_container)
         hints_button_frame.pack(side='left', anchor='n', padx=5)  # Anchor to top
@@ -93,7 +103,7 @@ class AdminInterfaceBuilder:
             hints_button_frame,
             text="Hint\nManager",
             command=lambda: self.show_hints_library(),
-            bg='#4a90e2',
+            bg='#C6AE66',
             fg='white',
             font=('Arial', 9),
             width=6,         # Set fixed width in text units

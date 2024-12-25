@@ -29,10 +29,11 @@ hint cooldown text needs to have background or be universal
 hint manager/deleter program/section that replaces the whole interface
 persistent tracking of prop statuses for finishing/running/OOT highlight
 general notifications for significant events to improve gm awareness
+room start upon video finish (optional?)
 
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline
 reset all makes a call for kiosk tracker log that doesn't exist
 two gamemasters requesting the same video stream crashes that kiosk
-please wait for hint text is missing
+hint cooldown text missing

@@ -164,7 +164,7 @@ class KioskUI:
                     canvas_width/2,
                     canvas_height/2,
                     text="Hint Requested, please wait...",
-                    #fill='yellow',
+                    fill='yellow',
                     font=('Arial', 24),
                     width=canvas_height-20,  # Leave some padding
                     angle=270,
@@ -399,7 +399,7 @@ class KioskUI:
                 canvas_width/2,
                 canvas_height/2,
                 text=f"Please wait {seconds_left} seconds until requesting the next hint.",
-                fill='white',
+                fill='yellow',
                 font=('Arial', 24),
                 width=canvas_height-20,  # Leave some padding
                 angle=270,
