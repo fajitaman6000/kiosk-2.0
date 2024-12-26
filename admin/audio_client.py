@@ -1,4 +1,4 @@
-# audio_client.py
+# audio_client.py manages microphone activity, not admin application sounds
 import pyaudio
 import socket
 import threading

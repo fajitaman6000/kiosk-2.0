@@ -21,7 +21,7 @@ blink upon room finish based on final prop state
 soundcheck/touchcheck behavior
 don't load special controls section if none exist
 clicking props should load hints for it
-hint notification sound + manual sound button
+kiosk-side hint notification sound + manual sound button on admin side
 video hints need play button
 hint text and image need to be aligned
 hint cooldown text needs to have background or be universal

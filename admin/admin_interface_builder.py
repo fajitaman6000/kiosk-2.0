@@ -291,6 +291,8 @@ class AdminInterfaceBuilder:
             pass  # Invalid input handling
 
     def update_timer_display(self):
+        """Update all timer displays including mini timers"""
+        # Update selected kiosk's main timer display
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
             stats = self.app.kiosk_tracker.kiosk_stats[self.selected_kiosk]
             timer_time = stats.get('timer_time', 2700)
@@ -298,6 +300,17 @@ class AdminInterfaceBuilder:
             timer_seconds = int(timer_time % 60)
             if 'current_time' in self.stats_elements and self.stats_elements['current_time']:
                 self.stats_elements['current_time'].config(
+                    text=f"{timer_minutes:02d}:{timer_seconds:02d}"
+                )
+        
+        # Update mini timers for all kiosks
+        for computer_name, kiosk_data in self.connected_kiosks.items():
+            if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+                timer_time = stats.get('timer_time', 2700)
+                timer_minutes = int(timer_time // 60)
+                timer_seconds = int(timer_time % 60)
+                kiosk_data['timer_label'].config(
                     text=f"{timer_minutes:02d}:{timer_seconds:02d}"
                 )
         
@@ -422,33 +435,23 @@ class AdminInterfaceBuilder:
                 font=('Arial', 12, 'bold'),
                 fg=room_color)  # Apply room-specific color
             name_label.pack(side='left', padx=5)
-            #computer_label = tk.Label(frame,
-                #text=f"({computer_name})",
-                #font=('Arial', 12, 'italic'))
-            #computer_label.pack(side='left')
         else:
             name_label = tk.Label(frame, 
                 text="Unassigned",
                 font=('Arial', 12, 'bold'))
             name_label.pack(side='left', padx=5)
-            #computer_label = tk.Label(frame,
-                #text=f"({computer_name})",
-                #font=('Arial', 12, 'italic'))
-            #computer_label.pack(side='left')
         
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
         
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
-        #computer_label.bind('<Button-1>', lambda e: click_handler())
         
         room_var = tk.StringVar()
         dropdown = ttk.Combobox(frame, textvariable=room_var, 
             values=list(self.app.rooms.values()), state='readonly')
         dropdown.pack(side='left', padx=5)
         
-        # Add handler for dropdown selection
         def on_room_select(event):
             if not room_var.get():
                 return
@@ -458,24 +461,29 @@ class AdminInterfaceBuilder:
             dropdown.set('')
             name_label.config(
                 text=self.app.rooms[selected_room],
-                fg=self.ROOM_COLORS.get(selected_room, "black")  # Update color on assignment
+                fg=self.ROOM_COLORS.get(selected_room, "black")
             )
         
-        # Bind the handler to the dropdown selection event
         dropdown.bind('<<ComboboxSelected>>', on_room_select)
         
         help_label = tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red')
         help_label.pack(side='left', padx=5)
         
-        # Add reboot button with padding to prevent accidental clicks
         reboot_btn = tk.Button(
             frame, 
             text="Reboot Kiosk",
             command=lambda: self.app.network_handler.send_reboot_signal(computer_name),
-            bg='#FF6B6B',  # Light red background
+            bg='#FF6B6B',
             fg='white'
         )
-        reboot_btn.pack(side='left', padx=(20, 5))  # Extra left padding
+        reboot_btn.pack(side='left', padx=(20, 5))
+
+        # Add mini timer label at the end
+        timer_label = tk.Label(frame,
+            text="--:--",
+            font=('Arial', 10, 'bold'),
+            width=6)
+        timer_label.pack(side='right', padx=5)
         
         self.connected_kiosks[computer_name] = {
             'frame': frame,
@@ -484,7 +492,7 @@ class AdminInterfaceBuilder:
             'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
-            #'computer_label': computer_label  # Restored computer_label reference
+            'timer_label': timer_label  # Store timer label reference
         }
         
         if computer_name == self.selected_kiosk:
