@@ -408,6 +408,7 @@ class AdminInterfaceBuilder:
             return
             
         frame = tk.Frame(self.kiosk_frame)
+        frame.configure(relief='flat', borderwidth=0, highlightthickness=0)
         frame.pack(fill='x', pady=2)
         
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
@@ -629,29 +630,41 @@ class AdminInterfaceBuilder:
                 else:
                     self.saved_hints.clear_preview()
             
-            
-            # Update highlighting
+            # Update highlighting with dotted border
             for cn, data in self.connected_kiosks.items():
                 if cn == computer_name:
-                    data['frame'].configure(bg='lightblue')
+                    # Create dotted border effect
+                    data['frame'].configure(
+                        relief='solid',  # Solid relief creates border base
+                        borderwidth=0,   # Border thickness
+                        highlightthickness=0,  # Additional highlight border
+                        highlightbackground='#363636',  # Color of dotted border
+                        highlightcolor='#363636'  # Color when focused
+                    )
+                    # Create dotted border effect using character spacing
+                    border_pattern = '. ' * 20  # Alternating dot and space
+                    data['frame'].configure(bd=2, relief='solid')
+                    # Keep button colors consistent
                     for widget in data['frame'].winfo_children():
                         if isinstance(widget, tk.Button):
                             if widget == data['reboot_btn']:
                                 widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
                             elif widget == data['assign_btn']:
                                 widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
-                        elif not isinstance(widget, ttk.Combobox):
-                            widget.configure(bg='lightblue')
                 else:
-                    data['frame'].configure(bg='SystemButtonFace')
+                    # Remove highlighting for unselected kiosks
+                    data['frame'].configure(
+                        relief='flat',
+                        borderwidth=0,
+                        highlightthickness=0
+                    )
+                    # Keep button colors consistent for unselected kiosks
                     for widget in data['frame'].winfo_children():
                         if isinstance(widget, tk.Button):
                             if widget == data['reboot_btn']:
                                 widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
                             elif widget == data['assign_btn']:
                                 widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
-                        elif not isinstance(widget, ttk.Combobox):
-                            widget.configure(bg='SystemButtonFace')
             
             self.update_stats_display(computer_name)
             
