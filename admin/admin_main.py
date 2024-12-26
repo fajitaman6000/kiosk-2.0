@@ -65,6 +65,12 @@ try:
             print("Starting admin application...")
             self.root.mainloop()
 
+        def on_closing(self):
+            print("Shutting down admin application...")
+            if hasattr(self.interface_builder, 'cleanup'):
+                self.interface_builder.cleanup()
+            self.root.destroy()
+
     if __name__ == '__main__':
         app = AdminApplication()
         app.run()

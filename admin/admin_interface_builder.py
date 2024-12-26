@@ -6,6 +6,7 @@ from audio_client import AudioClient
 from classic_audio_hints import ClassicAudioHints
 from setup_stats_panel import setup_stats_panel
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
+from admin_audio_manager import AdminAudioManager
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
@@ -115,14 +116,12 @@ class AdminInterfaceBuilder:
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=10)
 
-    # The show_hints_library method remains unchanged and should be kept as is
     def show_hints_library(self):
         """Show the Hints Library interface"""
         if not hasattr(self, 'hint_manager'):
             from hints_library import HintManager
             self.hint_manager = HintManager(self.app, self)
         self.hint_manager.show_hint_manager()
-    # END OF COMPLETE REPLACEMENT FOR setup_ui METHOD
 
     def setup_audio_hints(self):
         """Set up the Classic Audio Hints panel"""
@@ -509,12 +508,15 @@ class AdminInterfaceBuilder:
                         self.stats_elements['send_btn'].config(state='normal')
 
     def mark_help_requested(self, computer_name):
+        """Mark a kiosk as requesting help and play notification sound"""
         if computer_name in self.connected_kiosks:
             self.connected_kiosks[computer_name]['help_label'].config(
                 text="HINT REQUESTED",
                 fg='red',
                 font=('Arial', 14, 'bold')
             )
+            self.audio_manager = AdminAudioManager()
+            self.audio_manager.play_sound("hint_notification")
 
     def remove_kiosk(self, computer_name):
         if computer_name in self.connected_kiosks:
@@ -762,6 +764,11 @@ class AdminInterfaceBuilder:
     def send_hint(self, computer_name, hint_data=None):
         # Wrapper for the extracted send_hint function
         send_hint(self, computer_name, hint_data)
+
+    def cleanup(self):
+        """Clean up resources before closing"""
+        if hasattr(self, 'audio_manager'):
+            self.audio_manager.cleanup()
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
