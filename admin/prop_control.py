@@ -415,8 +415,25 @@ class PropControl:
             is_finishing = self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
             
             if is_finishing:
-                # Update kiosk highlighting for this room
-                self.update_kiosk_highlight(room_number, status == "Finished")
+                # Get activation status for all props in this room
+                is_activated = False
+                if room_number in self.all_props:
+                    for pid, pdata in self.all_props[room_number].items():
+                        if 'info' in pdata and pdata['info'].get('strStatus') == "Activated":
+                            is_activated = True
+                            break
+
+                # Get timer status for the kiosk
+                timer_expired = False
+                for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+                    if room_num == room_number:
+                        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                            timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
+                            timer_expired = timer_time <= 0
+                        break
+                
+                # Update kiosk highlighting with all states
+                self.update_kiosk_highlight(room_number, status == "Finished", is_activated, timer_expired)
                 
             # Only update status label if this is current room and widget exists
             if room_number == self.current_room and 'status_label' in prop_info:
@@ -429,7 +446,7 @@ class PropControl:
                     del prop_info['status_label']
                 except Exception as e:
                     print(f"Error updating prop UI: {e}")
-                    
+                        
         except Exception as e:
             print(f"Error in check_prop_status: {e}")
 
@@ -440,14 +457,77 @@ class PropControl:
             
         current_time = time.time()
         
-        # Update each prop's status
+        # First check overall room state
+        is_activated = False
+        is_finished = False
+        timer_expired = False
+        
+        # Check activation and finishing states
         for prop_id, prop_info in self.all_props[room_number].items():
-            self.check_prop_status(room_number, prop_id, prop_info)
-            
+            if 'info' not in prop_info:
+                continue
+                
+            status = prop_info['info'].get('strStatus')
+            if status == "Activated":
+                is_activated = True
+                
+            if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
+                if status == "Finished":
+                    is_finished = True
+        
+        # Check timer state
+        for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+            if room_num == room_number:
+                if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                    timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
+                    timer_expired = timer_time <= 0
+                break
+        
+        # Update highlighting regardless of room selection
+        self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
+        
+        # Update individual props if this is the current room
+        if room_number == self.current_room:
+            for prop_id, prop_info in self.all_props[room_number].items():
+                self.check_prop_status(room_number, prop_id, prop_info)
+        
         # Schedule next update based on room's interval
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
             self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
+
+    def update_timer_status(self, room_number):
+        """Update room status when timer changes"""
+        if room_number not in self.all_props:
+            return
+            
+        is_activated = False
+        is_finished = False
+        timer_expired = False
+        
+        # Check prop states
+        for prop_id, prop_info in self.all_props[room_number].items():
+            if 'info' not in prop_info:
+                continue
+                
+            status = prop_info['info'].get('strStatus')
+            if status == "Activated":
+                is_activated = True
+                
+            if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
+                if status == "Finished":
+                    is_finished = True
+        
+        # Check timer state
+        for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+            if room_num == room_number:
+                if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                    timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
+                    timer_expired = timer_time <= 0
+                break
+        
+        # Update highlighting
+        self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
 
     def on_connect(self, client, userdata, flags, rc, room_number):
         """Handle connection for a specific room's client"""
@@ -747,7 +827,8 @@ class PropControl:
 
     def check_finishing_prop_status(self, prop_id, prop_data):
         """
-        Check if this prop is a finishing prop and update kiosk display accordingly
+        Check prop status and update kiosk display accordingly.
+        Checks finishing props, activated states, and timer status.
         
         Args:
             prop_id: The ID of the prop being updated
@@ -776,41 +857,48 @@ class PropControl:
             return
             
         room_key = room_map[self.current_room]
-        if room_key not in self.prop_name_mappings:
-            return
-            
-        # Get prop mapping info
-        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
         
-        # Check if this is a finishing prop
-        if prop_info.get('finishing_prop', False):
-            # Find the kiosk assigned to this room
-            assigned_kiosk = None
-            for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
-                if room_num == self.current_room:
-                    assigned_kiosk = computer_name
-                    break
+        # Find the kiosk assigned to this room
+        assigned_kiosk = None
+        for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+            if room_num == self.current_room:
+                assigned_kiosk = computer_name
+                break
+        
+        if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
+            # Check if any props are activated or if finishing prop is finished
+            is_activated = False
+            is_finished = False
             
-            if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
-                kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
+            # Check all props in current room for activated state
+            for pid, pdata in self.props.items():
+                if pdata['info']['strStatus'] == "Activated":
+                    is_activated = True
                 
-                # Update frame color based on prop status
-                # Note: strStatus is directly in prop_data, not nested in 'info'
-                if prop_data['strStatus'] == "Finished":
-                    kiosk_frame.configure(bg='#90EE90')  # Light green
-                    # Also update child widgets except buttons and comboboxes
-                    for widget in kiosk_frame.winfo_children():
-                        if not isinstance(widget, (tk.Button, ttk.Combobox)):
-                            widget.configure(bg='#90EE90')
-                else:
-                    # Reset to default color
-                    kiosk_frame.configure(bg='SystemButtonFace')
-                    for widget in kiosk_frame.winfo_children():
-                        if not isinstance(widget, (tk.Button, ttk.Combobox)):
-                            widget.configure(bg='SystemButtonFace')
+                # Check if this is a finishing prop and it's finished
+                prop_info = self.prop_name_mappings.get(room_key, {}).get('mappings', {}).get(pdata['info']['strName'], {})
+                if prop_info.get('finishing_prop', False) and pdata['info']['strStatus'] == "Finished":
+                    is_finished = True
+            
+            # Get timer status for the kiosk
+            timer_expired = False
+            if assigned_kiosk in self.app.kiosk_tracker.kiosk_stats:
+                timer_time = self.app.kiosk_tracker.kiosk_stats[assigned_kiosk].get('timer_time', 2700)
+                timer_expired = timer_time <= 0
+            
+            # Update the highlight state with timer status
+            self.update_kiosk_highlight(self.current_room, is_finished, is_activated, timer_expired)
 
-    def update_kiosk_highlight(self, room_number, is_finished):
-        """Update kiosk frame highlighting based on finishing prop status"""
+    def update_kiosk_highlight(self, room_number, is_finished, is_activated, timer_expired=False):
+        """
+        Update kiosk frame highlighting based on prop status and timer
+        
+        Args:
+            room_number: The room number to update
+            is_finished: Boolean indicating if finishing prop is finished
+            is_activated: Boolean indicating if any props are activated
+            timer_expired: Boolean indicating if timer has expired
+        """
         # Find kiosk assigned to this room
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
@@ -824,10 +912,14 @@ class PropControl:
         try:
             kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
             
-            if is_finished:
-                new_color = '#90EE90'  # Light green
+            if timer_expired:
+                new_color = '#FFB6C1'  # Light red for expired timer
+            elif is_finished:
+                new_color = '#90EE90'  # Light green for finished
+            elif is_activated:
+                new_color = '#faf8ca'  # Pale yellow for activated
             else:
-                new_color = 'SystemButtonFace'  # Default color
+                new_color = 'SystemButtonFace'  # Default system color
                 
             # Update frame and child widgets
             kiosk_frame.configure(bg=new_color)
