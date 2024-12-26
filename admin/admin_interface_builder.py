@@ -307,12 +307,17 @@ class AdminInterfaceBuilder:
         for computer_name, kiosk_data in self.connected_kiosks.items():
             if computer_name in self.app.kiosk_tracker.kiosk_stats:
                 stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-                timer_time = stats.get('timer_time', 2700)
-                timer_minutes = int(timer_time // 60)
-                timer_seconds = int(timer_time % 60)
-                kiosk_data['timer_label'].config(
-                    text=f"{timer_minutes:02d}:{timer_seconds:02d}"
-                )
+                is_running = stats.get('timer_running', False)
+                
+                if is_running:
+                    timer_time = stats.get('timer_time', 2700)
+                    timer_minutes = int(timer_time // 60)
+                    timer_seconds = int(timer_time % 60)
+                    display_text = f"{timer_minutes:02d}:{timer_seconds:02d}"
+                else:
+                    display_text = "- - : - -"
+                    
+                kiosk_data['timer_label'].config(text=display_text)
         
         self.app.root.after(1000, self.update_timer_display)
 
