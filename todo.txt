@@ -16,7 +16,6 @@ clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
 soundcheck/touchcheck behavior
-don't load special controls section if none exist
 clicking props should load hints for it
 kiosk-side hint notification sound + manual sound button on admin
 video hints need play button
@@ -26,6 +25,7 @@ hint manager needs improvement
 radio notification upon room status change
 general notifications for significant events to improve gm awareness
 room start upon video finish (optional?)
+reduce music volume while video hint is playing/have no audio in video hints
 
 
 # known bugs

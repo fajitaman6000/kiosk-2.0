@@ -27,16 +27,16 @@ class KioskTimer:
         # Create a frame container for the timer that will stay on top
         self.timer_frame = tk.Frame(
             root,
-            width=200,     # Height of the rotated text display
-            height=400,    # Width of the rotated text display
+            width=270,     # Height of the rotated text display
+            height=530,    # Width of the rotated text display
         )
         
         # Position frame on right center of screen
         self.timer_frame.place(
-            relx=1.0,     # Right edge of screen
+            relx=1.017,     # Right edge of screen
             rely=0.5,     # Vertical center
             anchor='e',   # Anchor to east (right) center
-            x=-260        # Slight padding from edge
+            x=-182        # Slight padding from edge
         )
         
         # Prevent frame from shrinking
@@ -54,15 +54,15 @@ class KioskTimer:
         
         # Create background image on canvas (initially None)
         self.bg_image_item = self.canvas.create_image(
-            100,              # Horizontal center
-            200,             # Vertical center
+            135,              # Horizontal center
+            265,             # Vertical center
             image=None       # Will be set when room is assigned
         )
         
         # Create text item on canvas, rotated 90 degrees
         self.time_text = self.canvas.create_text(
-            100,              # Horizontal center of canvas
-            200,             # Vertical center of canvas
+            135,              # Horizontal center of canvas
+            265,             # Vertical center of canvas
             text="45:00",
             font=('Arial', 70, 'bold'),
             fill='white',
@@ -94,7 +94,7 @@ class KioskTimer:
                 
             # Load and resize the background image
             bg_img = Image.open(bg_path)
-            bg_img = bg_img.resize((200, 400), Image.Resampling.LANCZOS)
+            bg_img = bg_img.resize((270, 530), Image.Resampling.LANCZOS)
             
             # Store the PhotoImage and update canvas
             self.current_image = ImageTk.PhotoImage(bg_img)

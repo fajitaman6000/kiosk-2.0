@@ -7,6 +7,12 @@
                     "name": "gsdfgsdf",
                     "text": "sggsdfgd",
                     "image": "horse_shoes_hint.png"
+                },
+                "antique_tv_hint": {
+                    "prop": "Antique TV",
+                    "name": "gdfgsdfgfsdhhjdfghjdf",
+                    "text": "gjhdfghdfh",
+                    "image": null
                 }
             }
         },
@@ -32,6 +38,16 @@
                     "prop": "Lamp",
                     "name": "gdfgsdfg",
                     "text": "test\n\ntest3",
+                    "image": null
+                }
+            }
+        },
+        "7": {
+            "hints": {
+                "professors_hint": {
+                    "prop": "Professors",
+                    "name": "gsdfg gsdfgsfg sdfgsd",
+                    "text": "test",
                     "image": null
                 }
             }

@@ -25,3 +25,4 @@ __pycache__/
 .Python
 admin/audio_hints/
 admin/saved_hint_images/
+admin/saved_hints.json

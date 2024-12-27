@@ -105,8 +105,8 @@ class KioskUI:
         if self.help_button is None and not self.hint_cooldown:
             # Create a canvas container for the rotated button
             # Height and width are swapped due to rotation
-            canvas_width = 150  # This will be the height of the button
-            canvas_height = 400  # This will be the width of the button
+            canvas_width = 260  # This will be the height of the button
+            canvas_height = 550  # This will be the width of the button
             
             self.help_button = tk.Canvas(
                 self.root,
@@ -117,7 +117,7 @@ class KioskUI:
             )
             
             # Position canvas on the left side
-            self.help_button.place(relx=0.2, rely=0.5, anchor='center')
+            self.help_button.place(relx=0.19, rely=0.5, anchor='center')
             
             # Create the rotated text
             text = self.help_button.create_text(
@@ -145,8 +145,8 @@ class KioskUI:
                 self.help_button = None
             
             # Canvas dimensions (swapped due to rotation)
-            canvas_width = 150   # This will be the height of the text area
-            canvas_height = 400  # This will be the width of the text area
+            canvas_width = 260   # This will be the height of the text area
+            canvas_height = 550  # This will be the width of the text area
             
             if self.request_pending_label is None:
                 self.request_pending_label = tk.Canvas(
@@ -157,7 +157,7 @@ class KioskUI:
                     highlightthickness=0
                 )
                 # Position the pending request text on the left side
-                self.request_pending_label.place(relx=0.2, rely=0.5, anchor='center')
+                self.request_pending_label.place(relx=0.19, rely=0.5, anchor='center')
                 
                 # Create the rotated text
                 self.request_pending_label.create_text(
