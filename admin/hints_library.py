@@ -6,7 +6,6 @@ import os
 from PIL import Image, ImageTk
 import shutil
 
-
 class CollapsibleFrame(ttk.Frame):
     def __init__(self, parent, text, **kwargs):
         ttk.Frame.__init__(self, parent, **kwargs)
@@ -51,7 +50,21 @@ class HintManager:
             
     def get_display_name(self, room_id, prop_name):
         """Get the display name for a prop from the mappings"""
-        room_key = room_id.lower()  # Convert room IDs to match mapping keys
+        # Map numeric room IDs to their corresponding keys
+        room_mapping = {
+            '1': 'casino_ma',
+            '2': 'wizard',
+            '3': 'haunted',
+            '4': 'zombie',
+            '5': 'wizard',  # if this exists
+            '6': 'atlantis',
+            '7': 'time_machine'
+        }
+        
+        room_key = room_mapping.get(str(room_id))
+        if not room_key:
+            return prop_name
+            
         if room_key in self.prop_mappings:
             room_mappings = self.prop_mappings[room_key]['mappings']
             if prop_name in room_mappings:
@@ -132,8 +145,20 @@ class HintManager:
             for widget in self.scrollable_frame.winfo_children():
                 widget.destroy()
                 
+            # Room ID to name mapping
+            room_mapping = {
+                '1': 'casino_ma',
+                '2': 'wizard',
+                '3': 'haunted',
+                '4': 'zombie',
+                '5': 'wizard',
+                '6': 'atlantis',
+                '7': 'time_machine'
+            }
+                
             # Display hints by room
             for room_id, room_data in hint_data.get('rooms', {}).items():
+                mapped_room = room_mapping.get(str(room_id))
                 room_frame = CollapsibleFrame(
                     self.scrollable_frame,
                     text=f"Room: {room_id}"
@@ -144,6 +169,8 @@ class HintManager:
                 prop_hints = {}
                 for hint_id, hint_info in room_data.get('hints', {}).items():
                     prop_name = hint_info['prop']
+                    display_name = self.get_display_name(room_id, prop_name)
+                    print(f"Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
                     if prop_name not in prop_hints:
                         prop_hints[prop_name] = []
                     prop_hints[prop_name].append((hint_id, hint_info))

@@ -2,12 +2,6 @@
     "rooms": {
         "4": {
             "hints": {
-                "horse_shoes_hint": {
-                    "prop": "Horse shoes",
-                    "name": "gsdfgsdf",
-                    "text": "sggsdfgd",
-                    "image": "horse_shoes_hint.png"
-                },
                 "antique_tv_hint": {
                     "prop": "Antique TV",
                     "name": "gdfgsdfgfsdhhjdfghjdf",
@@ -28,26 +22,10 @@
         },
         "1": {
             "hints": {
-                "weight_game_hint": {
-                    "prop": "Weight game",
-                    "name": "test",
-                    "text": "ggggggg",
-                    "image": null
-                },
                 "lamp_hint": {
                     "prop": "Lamp",
                     "name": "gdfgsdfg",
                     "text": "test\n\ntest3",
-                    "image": null
-                }
-            }
-        },
-        "7": {
-            "hints": {
-                "professors_hint": {
-                    "prop": "Professors",
-                    "name": "gsdfg gsdfgsfg sdfgsd",
-                    "text": "test",
                     "image": null
                 }
             }
