@@ -201,7 +201,7 @@ class HintManager:
         """Create a display frame for a single hint"""
         hint_frame = ttk.Frame(parent)
         
-        # Header with hint name and delete button
+        # Header with hint name and buttons
         header_frame = ttk.Frame(hint_frame)
         header_frame.pack(fill='x', pady=(0, 5))
         
@@ -211,6 +211,19 @@ class HintManager:
             font=('Arial', 10)
         ).pack(side='left')
         
+        # Status label (hidden by default)
+        status_label = ttk.Label(header_frame, text="", foreground='green')
+        status_label.pack(side='right', padx=5)
+        
+        # Save button
+        save_btn = ttk.Button(
+            header_frame,
+            text="Save Changes",
+            command=lambda: self.save_hint_changes(room_id, hint_id, text, status_label)
+        )
+        save_btn.pack(side='right', padx=(0, 5))
+        
+        # Delete button
         delete_btn = ttk.Button(
             header_frame,
             text="Delete",
@@ -224,7 +237,6 @@ class HintManager:
             text_frame.pack(fill='x', pady=2)
             text = tk.Text(text_frame, height=3, width=50, wrap='word')
             text.insert('1.0', hint_info['text'])
-            text.config(state='disabled')
             text.pack(fill='x')
             
         # Hint image if present
@@ -243,6 +255,57 @@ class HintManager:
                 
         return hint_frame
         
+    def save_hint_changes(self, room_id, hint_id, text_widget, status_label):
+        """Save changes made to a hint's text"""
+        try:
+            # Get the current text from the widget
+            new_text = text_widget.get('1.0', 'end-1c')
+            
+            # Load current hint data
+            with open('saved_hints.json', 'r') as f:
+                hint_data = json.load(f)
+            
+            # Update the hint text
+            hint_data['rooms'][room_id]['hints'][hint_id]['text'] = new_text
+            
+            # Save the updated data
+            with open('saved_hints.json', 'w') as f:
+                json.dump(hint_data, f, indent=4)
+                
+            # Show success message
+            status_label.config(text="Saved!", foreground='green')
+            status_label.after(2000, lambda: status_label.config(text=""))
+                
+        except Exception as e:
+            print(f"Error saving hint changes: {e}")
+            status_label.config(text="Error saving!", foreground='red')
+            status_label.after(2000, lambda: status_label.config(text=""))
+    
+    def show_save_status(self, message, error=False):
+        """Show a temporary status message"""
+        status_window = tk.Toplevel(self.app)
+        status_window.title("Save Status")
+        
+        # Position the window near the center of the main window
+        x = self.app.winfo_x() + (self.app.winfo_width() // 2) - 100
+        y = self.app.winfo_y() + (self.app.winfo_height() // 2) - 50
+        status_window.geometry(f"+{x}+{y}")
+        
+        # Remove window decorations
+        status_window.overrideredirect(True)
+        
+        # Create label with message
+        label = ttk.Label(
+            status_window,
+            text=message,
+            padding=10,
+            foreground='red' if error else 'green'
+        )
+        label.pack()
+        
+        # Auto-close after 2 seconds
+        status_window.after(2000, status_window.destroy)
+
     def delete_hint(self, room_id, hint_id):
         """Delete a hint and its associated image"""
         try:
