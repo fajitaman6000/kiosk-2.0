@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import paho.mqtt.client as mqtt
+from admin_audio_manager import AdminAudioManager
 import json
 from pathlib import Path
 import time
@@ -917,6 +918,16 @@ class PropControl:
         try:
             kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
             
+            # Initialize audio manager if needed
+            audio_manager = AdminAudioManager()
+            
+            # Handle timer expiration sound
+            audio_manager.handle_timer_expired(timer_expired)
+            
+            # Handle game finish sound
+            audio_manager.handle_game_finish(is_finished)
+            
+            # Update visual highlighting
             if timer_expired:
                 new_color = '#FFB6C1'  # Light red for expired timer
             elif is_finished:
@@ -931,7 +942,7 @@ class PropControl:
             for widget in kiosk_frame.winfo_children():
                 if not isinstance(widget, (tk.Button, ttk.Combobox)):
                     widget.configure(bg=new_color)
-                    
+                        
         except tk.TclError:
             print(f"Widget for kiosk {assigned_kiosk} was destroyed")
         except Exception as e:

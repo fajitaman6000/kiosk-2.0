@@ -20,7 +20,6 @@ kiosk-side hint notification sound + manual sound button on admin
 video hints need play button
 hint text and image need to be aligned
 hint cooldown text needs to have background or be universal
-general notifications for significant events to improve gm awareness
 room start upon video finish (optional?)
 reduce music volume while video hint is playing/have no audio in video hints
 alarm "stop doing that" button
