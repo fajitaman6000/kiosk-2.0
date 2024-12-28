@@ -768,9 +768,14 @@ class PropControl:
             finish_btn.pack(side='left', padx=1)
             
             # Prop name
+            # Modify the name label creation to be clickable
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
             name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
             name_label.pack(side='left', padx=5)
+            
+            # Add click handler to the name label
+            name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
+            name_label.config(cursor="hand2")  # Change cursor to hand when hovering
             
             # Status indicator with icon
             status_label = tk.Label(prop_frame)
@@ -995,6 +1000,18 @@ class PropControl:
         # Ensure props_frame spans the full width
         width = self.canvas.winfo_width()
         self.canvas.itemconfig(self.canvas_frame, width=width)
+
+    def notify_prop_select(self, prop_name):
+        """Notify all registered callbacks about prop selection"""
+        if hasattr(self, 'prop_select_callbacks'):
+            for callback in self.prop_select_callbacks:
+                callback(prop_name)
+
+    def add_prop_select_callback(self, callback):
+        """Add a callback to be called when a prop is selected"""
+        if not hasattr(self, 'prop_select_callbacks'):
+            self.prop_select_callbacks = []
+        self.prop_select_callbacks.append(callback)
 
     def on_canvas_configure(self, event):
         """Handle canvas resize"""

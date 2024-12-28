@@ -29,6 +29,28 @@
                     "image": null
                 }
             }
+        },
+        "7": {
+            "hints": {
+                "ignition_hint": {
+                    "prop": "Ignition",
+                    "name": "gggg",
+                    "text": "fdfasdf",
+                    "image": null
+                },
+                "footprints_hint": {
+                    "prop": "Footprints",
+                    "name": "efsdaf",
+                    "text": "gggggg",
+                    "image": null
+                },
+                "ignition_hint_1": {
+                    "prop": "Ignition",
+                    "name": "hrtgrj",
+                    "text": "yujhfh",
+                    "image": null
+                }
+            }
         }
     }
 }

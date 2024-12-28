@@ -240,6 +240,20 @@ class SavedHintsPanel:
             for hint in hints:
                 self.hint_listbox.insert(tk.END, hint)
 
+    def select_prop_by_name(self, prop_name):
+        """Try to select a prop by its original name"""
+        if not hasattr(self, 'prop_name_map'):
+            return
+            
+        # Find the display name for this prop
+        for display_name, original_name in self.prop_name_map.items():
+            if original_name == prop_name:
+                # Set the dropdown value
+                if display_name in self.prop_dropdown['values']:
+                    self.prop_dropdown.set(display_name)
+                    self.on_prop_select(None)  # Trigger hint list update
+                break
+
     def on_hint_select(self, event):
         """Handle hint selection from listbox"""
         selection = self.hint_listbox.curselection()

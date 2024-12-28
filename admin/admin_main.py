@@ -53,6 +53,9 @@ try:
             self.interface_builder = AdminInterfaceBuilder(self)
             self.prop_control = PropControl(self)
             
+            # Set up prop panel synchronization
+            self.setup_prop_panel_sync()
+            
             # Start network handling
             self.network_handler.start()
             
@@ -60,7 +63,42 @@ try:
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
 
-        
+        def setup_prop_panel_sync(self):
+            """Set up synchronization between prop controls and hint panels"""
+            # Create SavedHintsPanel if it doesn't exist (you'll need to import this)
+            from saved_hints_panel import SavedHintsPanel
+            if not hasattr(self.interface_builder, 'saved_hints'):
+                self.interface_builder.saved_hints = SavedHintsPanel(
+                    self.interface_builder.stats_frame,
+                    lambda hint_data: self.interface_builder.send_hint(
+                        self.interface_builder.selected_kiosk, 
+                        hint_data
+                    )
+                )
+
+            # Create ClassicAudioHints if it doesn't exist
+            if not hasattr(self.interface_builder, 'audio_hints'):
+                self.interface_builder.setup_audio_hints()
+
+            # Add prop selection callback to PropControl
+            def on_prop_select(prop_name):
+                """Handle prop selection from PropControl"""
+                if self.interface_builder.selected_kiosk:
+                    room_num = self.kiosk_tracker.kiosk_assignments.get(
+                        self.interface_builder.selected_kiosk
+                    )
+                    if room_num:
+                        # Try to select prop in saved hints panel
+                        if hasattr(self.interface_builder, 'saved_hints'):
+                            self.interface_builder.saved_hints.select_prop_by_name(prop_name)
+                        
+                        # Try to select prop in audio hints panel
+                        if hasattr(self.interface_builder, 'audio_hints'):
+                            self.interface_builder.audio_hints.select_prop_by_name(prop_name)
+
+            # Register callback with PropControl
+            self.prop_control.add_prop_select_callback(on_prop_select)
+
         def run(self):
             print("Starting admin application...")
             self.root.mainloop()

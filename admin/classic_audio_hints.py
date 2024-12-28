@@ -206,6 +206,12 @@ class ClassicAudioHints:
             # Here you would implement the actual sending logic
             self.show_lists()
 
+    def select_prop_by_name(self, prop_name):
+        """Try to select a prop by its name"""
+        if prop_name in self.prop_dropdown['values']:
+            self.prop_dropdown.set(prop_name)
+            self.on_prop_select(None)  # Trigger audio list update
+
     def cleanup(self):
         """Clean up pygame mixer"""
         pygame.mixer.quit()
