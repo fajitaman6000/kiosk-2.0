@@ -237,8 +237,7 @@ class KioskUI:
             })
 
     def show_hint(self, text_or_data):
-        """Shows the hint text and image in separate, non-overlapping areas, rotated 270 degrees.
-        Text appears in left panel, image in right panel if present."""
+        """Shows the hint text and image in the specified coordinates (911,64) to (1499,1015)"""
         print("\n=== PROCESSING NEW HINT ===")
         print(f"Received hint data: {type(text_or_data)}")
         
@@ -250,27 +249,27 @@ class KioskUI:
                 self.request_pending_label.destroy()
                 self.request_pending_label = None
             
+            # Calculate dimensions based on specified coordinates
+            hint_width = 1499 - 911  # = 588
+            hint_height = 1015 - 64  # = 951
             
             # Create hint container if needed
             if self.hint_label is None:
                 print("Creating new hint canvas")
-                # Create much wider canvas to accommodate separated text and image
-                total_width = 600  # Total width for both panels
-                
-                # Initialize canvas with black background (fallback)
                 self.hint_label = tk.Canvas(
                     self.root,
-                    width=total_width,   # Width accommodates both text and image
-                    height=800,          # Height (becomes width when rotated)
-                    bg='#000000',         # Default background
+                    width=hint_width,
+                    height=hint_height,
+                    bg='#000000',
                     highlightthickness=0
                 )
-                self.hint_label.place(relx=0.4, rely=0.5, anchor='center')
+                # Position canvas at exact coordinates
+                self.hint_label.place(x=911, y=64)
             else:
                 print("Clearing existing hint canvas")
                 self.hint_label.delete('all')
 
-            # Load room-specific hint background regardless of whether canvas is new or existing
+            # Load room-specific hint background
             background_name = None
             if hasattr(self.message_handler, 'assigned_room'):
                 room_num = self.message_handler.assigned_room
@@ -291,25 +290,14 @@ class KioskUI:
                     bg_path = os.path.join("hint_backgrounds", background_name)
                     if os.path.exists(bg_path):
                         bg_image = Image.open(bg_path)
-                        # Resize to fit canvas
-                        bg_image = bg_image.resize((600, 800), Image.Resampling.LANCZOS)
+                        # Resize to fit canvas exactly
+                        bg_image = bg_image.resize((hint_width, hint_height), Image.Resampling.LANCZOS)
                         photo = ImageTk.PhotoImage(bg_image)
-                        # Store reference to prevent garbage collection
                         self.hint_label.bg_image = photo
-                        # Create background image on canvas at layer 0
                         self.hint_label.create_image(0, 0, image=photo, anchor='nw', tags='background')
-                        # Move background to bottom layer
                         self.hint_label.tag_lower('background')
                 except Exception as e:
                     print(f"Error loading hint background: {e}")
-
-            # Create visual separator between text and image areas
-            #self.hint_label.create_line(
-                #300, 0,    # Start at middle top
-                #300, 800,  # End at middle bottom
-                #fill='black',
-                #width=2
-            #)
 
             # Parse hint data
             hint_text = ""
@@ -328,9 +316,9 @@ class KioskUI:
                 print(f"WARNING: Unexpected hint data type: {type(text_or_data)}")
                 hint_text = str(text_or_data)
             
-            # Define panel dimensions
-            panel_width = 300   # Width of each panel (text and image)
-            panel_height = 800  # Height of each panel
+            # Define panel dimensions for split layout
+            panel_width = hint_width // 2    # Split width in half for text and image
+            panel_height = hint_height
             
             # Position text in left panel
             if hint_text:
@@ -394,28 +382,28 @@ class KioskUI:
                     print("\nError processing hint image:")
                     traceback.print_exc()
                     self.hint_label.create_text(
-                        225,    # Right side position
-                        400,    # Vertical center
+                        panel_width + panel_width/2,
+                        panel_height/2,
                         text=f"[Error displaying image: {str(e)}]",
                         fill='red',
                         font=('Arial', 16),
-                        width=780,
+                        width=panel_height-40,
                         angle=270,
                         justify='center'
                     )
         except Exception as e:
             print("\nCritical error in show_hint:")
             traceback.print_exc()
-            # Try to show error message in UI
             try:
                 if hasattr(self, 'hint_label') and self.hint_label:
                     self.hint_label.delete('all')
                     self.hint_label.create_text(
-                        150, 400,
+                        hint_width/2,
+                        hint_height/2,
                         text=f"Error displaying hint: {str(e)}",
                         fill='red',
                         font=('Arial', 16),
-                        width=780,
+                        width=hint_height-40,
                         angle=270,
                         justify='center'
                     )
