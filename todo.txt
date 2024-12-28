@@ -24,6 +24,7 @@ room start upon video finish (optional?)
 reduce music volume while video hint is playing/have no audio in video hints
 alarm "stop doing that" button
 hint manager limited access
+edit hint contents within hint manager
 
 
 # known bugs

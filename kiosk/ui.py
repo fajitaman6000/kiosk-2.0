@@ -101,37 +101,96 @@ class KioskUI:
         self.message_handler.timer.lift_to_top()
             
     def create_help_button(self):
-        """Creates the help request button rotated 270 degrees using a canvas"""
+        """Creates the help request button using a room-specific background image"""
         if self.help_button is None and not self.hint_cooldown:
-            # Create a canvas container for the rotated button
-            # Height and width are swapped due to rotation
-            canvas_width = 260  # This will be the height of the button
-            canvas_height = 550  # This will be the width of the button
+            # Define button dimensions
+            canvas_width = 260
+            canvas_height = 550
             
-            self.help_button = tk.Canvas(
-                self.root,
-                width=canvas_width,
-                height=canvas_height,
-                bg='blue',    # Match button background
-                highlightthickness=0  # Remove canvas border
-            )
-            
-            # Position canvas on the left side
-            self.help_button.place(relx=0.19, rely=0.5, anchor='center')
-            
-            # Create the rotated text
-            text = self.help_button.create_text(
-                canvas_width/2,  # Center horizontally
-                canvas_height/2, # Center vertically
-                text="REQUEST NEW HINT",
-                fill='white',    # White text
-                font=('Arial', 24),
-                angle=270        # Rotate text 270 degrees
-            )
-            
-            # Bind click event to the canvas
-            self.help_button.bind('<Button-1>', lambda e: self.request_help())
-            
+            try:
+                # Get room-specific button background name
+                button_name = None
+                if hasattr(self.message_handler, 'assigned_room'):
+                    room_num = self.message_handler.assigned_room
+                    button_map = {
+                        1: "casino_heist.png",
+                        2: "morning_after.png",
+                        3: "wizard_trials.png",
+                        4: "zombie_outbreak.png",
+                        5: "haunted_manor.png",
+                        6: "atlantis_rising.png",
+                        7: "time_machine.png"
+                    }
+                    if room_num in button_map:
+                        button_name = button_map[room_num]
+
+                if button_name:
+                    # Load and rotate the button background image
+                    button_path = os.path.join("hint_button_backgrounds", button_name)
+                    if os.path.exists(button_path):
+                        # Open and rotate the image
+                        button_image = Image.open(button_path)
+                        # Resize maintaining aspect ratio
+                        aspect_ratio = button_image.width / button_image.height
+                        new_height = canvas_height
+                        new_width = int(new_height * aspect_ratio)
+                        button_image = button_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                        # Rotate 90 degrees clockwise
+                        #button_image = button_image.rotate(270, expand=True)
+                        button_photo = ImageTk.PhotoImage(button_image)
+                        
+                        # Create canvas and store the image reference
+                        self.help_button = tk.Canvas(
+                            self.root,
+                            width=canvas_width,
+                            height=canvas_height,
+                            highlightthickness=0
+                        )
+                        self.help_button.button_image = button_photo  # Prevent garbage collection
+                        
+                        # Add the image to the canvas
+                        self.help_button.create_image(
+                            canvas_width/2,
+                            canvas_height/2,
+                            image=button_photo,
+                            anchor='center'
+                        )
+                        
+                        # Position canvas on the left side
+                        self.help_button.place(relx=0.19, rely=0.5, anchor='center')
+                        
+                        # Bind click event to the canvas
+                        self.help_button.bind('<Button-1>', lambda e: self.request_help())
+                    else:
+                        print(f"Button image not found at: {button_path}")
+                        self._create_fallback_button(canvas_width, canvas_height)
+                else:
+                    print("No room assigned or room number not in button map")
+                    self._create_fallback_button(canvas_width, canvas_height)
+            except Exception as e:
+                print(f"Error creating image button: {str(e)}")
+                self._create_fallback_button(canvas_width, canvas_height)
+
+    def _create_fallback_button(self, canvas_width, canvas_height):
+        """Creates a fallback text-only button if the image loading fails"""
+        self.help_button = tk.Canvas(
+            self.root,
+            width=canvas_width,
+            height=canvas_height,
+            bg='blue',
+            highlightthickness=0
+        )
+        self.help_button.place(relx=0.19, rely=0.5, anchor='center')
+        self.help_button.create_text(
+            canvas_width/2,
+            canvas_height/2,
+            text="REQUEST NEW HINT",
+            fill='white',
+            font=('Arial', 24),
+            angle=270
+        )
+        self.help_button.bind('<Button-1>', lambda e: self.request_help())
+                
     def request_help(self):
         """Creates the 'Hint Requested' message with rotated text"""
         if not self.hint_cooldown:
