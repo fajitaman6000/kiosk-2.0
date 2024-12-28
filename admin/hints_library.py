@@ -6,37 +6,77 @@ import os
 from PIL import Image, ImageTk
 import shutil
 
+
+class CollapsibleFrame(ttk.Frame):
+    def __init__(self, parent, text, **kwargs):
+        ttk.Frame.__init__(self, parent, **kwargs)
+        self.columnconfigure(0, weight=1)
+        
+        self.show = tk.BooleanVar(value=False)
+        self.toggle_button = ttk.Checkbutton(
+            self,
+            text=text,
+            command=self.toggle,
+            style='Toolbutton',
+            variable=self.show
+        )
+        self.toggle_button.grid(row=0, column=0, sticky='ew')
+        
+        self.sub_frame = ttk.Frame(self)
+        self.sub_frame.grid(row=1, column=0, sticky='nsew')
+        self.sub_frame.grid_remove()
+        
+    def toggle(self):
+        if bool(self.show.get()):
+            self.sub_frame.grid()
+        else:
+            self.sub_frame.grid_remove()
+
 class HintManager:
     def __init__(self, app, admin_interface):
         self.app = app
         self.admin_interface = admin_interface
         self.main_container = None
         self.original_widgets = []
+        self.load_prop_mappings()
+        
+    def load_prop_mappings(self):
+        """Load prop name mappings from JSON"""
+        try:
+            with open('prop_name_mapping.json', 'r') as f:
+                self.prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"Error loading prop mappings: {e}")
+            self.prop_mappings = {}
+            
+    def get_display_name(self, room_id, prop_name):
+        """Get the display name for a prop from the mappings"""
+        room_key = room_id.lower()  # Convert room IDs to match mapping keys
+        if room_key in self.prop_mappings:
+            room_mappings = self.prop_mappings[room_key]['mappings']
+            if prop_name in room_mappings:
+                return room_mappings[prop_name]['display']
+        return prop_name
         
     def show_hint_manager(self):
         """Store current widgets and show hint management interface"""
-        # Store all current widgets in main container
         self.original_widgets = []
         for widget in self.admin_interface.main_container.winfo_children():
-            widget.pack_forget()  # Unpack but don't destroy
+            widget.pack_forget()
             self.original_widgets.append(widget)
             
-        # Create hint management interface
         self.create_hint_management_view()
         
     def restore_original_view(self):
         """Restore the original interface"""
-        # Remove hint management interface
         if self.main_container:
             self.main_container.destroy()
             
-        # Restore original widgets
         for widget in self.original_widgets:
             widget.pack(side='left', fill='both', expand=True, padx=5)
             
     def create_hint_management_view(self):
         """Create the hint management interface"""
-        # Create main container
         self.main_container = ttk.Frame(self.admin_interface.main_container)
         self.main_container.pack(fill='both', expand=True, padx=10, pady=5)
         
@@ -57,28 +97,27 @@ class HintManager:
             font=('Arial', 14, 'bold')
         ).pack(side='left', padx=20)
         
-        # Create main content area
+        # Create scrollable content area
         content_frame = ttk.Frame(self.main_container)
         content_frame.pack(fill='both', expand=True)
         
-        # Create hint list with scrollbar
-        scroll_frame = ttk.Frame(content_frame)
-        scroll_frame.pack(fill='both', expand=True)
-        
-        self.hint_canvas = tk.Canvas(scroll_frame)
-        scrollbar = ttk.Scrollbar(scroll_frame, orient="vertical", command=self.hint_canvas.yview)
-        self.scrollable_frame = ttk.Frame(self.hint_canvas)
+        canvas = tk.Canvas(content_frame)
+        scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
         
         self.scrollable_frame.bind(
             "<Configure>",
-            lambda e: self.hint_canvas.configure(scrollregion=self.hint_canvas.bbox("all"))
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        self.hint_canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
-        self.hint_canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
         
-        self.hint_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Configure canvas to expand and scroll
+        content_frame.grid_rowconfigure(0, weight=1)
+        content_frame.grid_columnconfigure(0, weight=1)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scrollbar.grid(row=0, column=1, sticky="ns")
         
         # Load and display hints
         self.load_hints()
@@ -95,21 +134,39 @@ class HintManager:
                 
             # Display hints by room
             for room_id, room_data in hint_data.get('rooms', {}).items():
-                room_frame = ttk.LabelFrame(
+                room_frame = CollapsibleFrame(
                     self.scrollable_frame,
-                    text=f"Room {room_id}"
+                    text=f"Room: {room_id}"
                 )
-                room_frame.pack(fill='x', padx=5, pady=5)
+                room_frame.pack(fill='x', padx=5, pady=2)
                 
+                # Group hints by prop
+                prop_hints = {}
                 for hint_id, hint_info in room_data.get('hints', {}).items():
-                    hint_frame = self.create_hint_display(
-                        room_frame,
-                        room_id,
-                        hint_id,
-                        hint_info
+                    prop_name = hint_info['prop']
+                    if prop_name not in prop_hints:
+                        prop_hints[prop_name] = []
+                    prop_hints[prop_name].append((hint_id, hint_info))
+                
+                # Create collapsible sections for each prop
+                for prop_name, hints in prop_hints.items():
+                    display_name = self.get_display_name(room_id, prop_name)
+                    prop_frame = CollapsibleFrame(
+                        room_frame.sub_frame,
+                        text=f"Prop: {display_name}"
                     )
-                    hint_frame.pack(fill='x', padx=5, pady=5)
+                    prop_frame.pack(fill='x', padx=5, pady=2)
                     
+                    # Add hints for this prop
+                    for hint_id, hint_info in hints:
+                        hint_display = self.create_hint_display(
+                            prop_frame.sub_frame,
+                            room_id,
+                            hint_id,
+                            hint_info
+                        )
+                        hint_display.pack(fill='x', padx=5, pady=2)
+                        
         except Exception as e:
             print(f"Error loading hints: {e}")
             
@@ -117,14 +174,14 @@ class HintManager:
         """Create a display frame for a single hint"""
         hint_frame = ttk.Frame(parent)
         
-        # Header with prop name and delete button
+        # Header with hint name and delete button
         header_frame = ttk.Frame(hint_frame)
         header_frame.pack(fill='x', pady=(0, 5))
         
         ttk.Label(
             header_frame,
-            text=f"Prop: {hint_info['prop']} - {hint_info['name']}",
-            font=('Arial', 10, 'bold')
+            text=f"Hint: {hint_info['name']}",
+            font=('Arial', 10)
         ).pack(side='left')
         
         delete_btn = ttk.Button(
@@ -162,31 +219,24 @@ class HintManager:
     def delete_hint(self, room_id, hint_id):
         """Delete a hint and its associated image"""
         try:
-            # Load current hints
             with open('saved_hints.json', 'r') as f:
                 hint_data = json.load(f)
                 
-            # Get image filename before deleting hint
             image_filename = hint_data['rooms'][room_id]['hints'][hint_id].get('image')
             
-            # Delete hint from JSON
             del hint_data['rooms'][room_id]['hints'][hint_id]
             
-            # Remove room if empty
             if not hint_data['rooms'][room_id]['hints']:
                 del hint_data['rooms'][room_id]
                 
-            # Save updated JSON
             with open('saved_hints.json', 'w') as f:
                 json.dump(hint_data, f, indent=4)
                 
-            # Delete image file if it exists
             if image_filename:
                 image_path = os.path.join('saved_hint_images', image_filename)
                 if os.path.exists(image_path):
                     os.remove(image_path)
                     
-            # Reload hints display
             self.load_hints()
             
         except Exception as e:
