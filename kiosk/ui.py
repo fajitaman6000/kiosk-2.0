@@ -264,11 +264,17 @@ class KioskUI:
         self.help_button.bind('<Button-1>', lambda e: self.request_help())
                 
     def request_help(self):
-        """Creates the 'Hint Requested' message in the status frame"""
+        """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
         if not self.hint_cooldown:
             # Increase hint count
             if hasattr(self.message_handler, 'hints_requested'):
                 self.message_handler.hints_requested += 1
+            
+            # Clear any existing hint display
+            if self.hint_label:
+                self.hint_label.destroy()
+                self.hint_label = None
+                self.current_hint = None
             
             # Remove help button if it exists
             if self.help_button:
@@ -276,7 +282,7 @@ class KioskUI:
                 self.help_button = None
             
             # Show status frame and clear any existing text
-            self.show_status_frame()  # Add this line
+            self.show_status_frame()
             self.status_frame.delete('pending_text')
             
             # Add rotated text to the canvas
