@@ -1,4 +1,3 @@
-make hint button disappear when hint is dispensed
 "stop everything" button
 "finish videos" button
 
@@ -25,6 +24,8 @@ reduce music volume while video hint is playing/have no audio in video hints
 alarm "stop doing that" button
 hint manager limited access
 edit hint image content within hint manager
+hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
+make hints impossible if timer > 42
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
