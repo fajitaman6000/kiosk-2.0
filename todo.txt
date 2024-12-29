@@ -26,6 +26,7 @@ hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 make hints impossible if timer > 42
+ending audio is apparently admin app side?
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
