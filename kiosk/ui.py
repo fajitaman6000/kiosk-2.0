@@ -309,8 +309,14 @@ class KioskUI:
         print(f"Received hint data: {type(text_or_data)}")
         
         try:
-            self.current_hint = text_or_data
+            # Remove help button if it exists
+            if self.help_button:
+                self.help_button.destroy()
+                self.help_button = None
             
+            # Start cooldown timer
+            self.start_cooldown()
+            self.current_hint = text_or_data
             # Clear pending request label if it exists
             if self.request_pending_label:
                 self.request_pending_label.destroy()
