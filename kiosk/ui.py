@@ -41,8 +41,19 @@ class KioskUI:
             bg='black',
             highlightthickness=0
         )
-        self.status_frame.place(x=510, y=0)
+        # Initially hide the status frame
+        self.status_frame.place_forget()
     
+    def show_status_frame(self):
+        """Shows the status frame and positions it correctly"""
+        if self.status_frame:
+            self.status_frame.place(x=510, y=0)
+
+    def hide_status_frame(self):
+        """Hides the status frame from view"""
+        if self.status_frame:
+            self.status_frame.place_forget()
+
     def load_background(self, room_number):
         if room_number not in self.room_config['backgrounds']:
             return None
@@ -264,7 +275,8 @@ class KioskUI:
                 self.help_button.destroy()
                 self.help_button = None
             
-            # Clear any existing text in the status frame
+            # Show status frame and clear any existing text
+            self.show_status_frame()  # Add this line
             self.status_frame.delete('pending_text')
             
             # Add rotated text to the canvas
@@ -471,6 +483,7 @@ class KioskUI:
         self.status_frame.delete('pending_text')
         
         self.hint_cooldown = True
+        self.show_status_frame()  # Add this line
         self.update_cooldown(60)  # Start 60 second cooldown
         
     def update_cooldown(self, seconds_left):
@@ -499,6 +512,7 @@ class KioskUI:
             self.hint_cooldown = False
             self.cooldown_after_id = None
             self.status_frame.delete('cooldown_text')
+            self.hide_status_frame()  # Add this line
             self.create_help_button()  # Recreate help button when cooldown ends
 
 
