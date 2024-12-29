@@ -388,7 +388,7 @@
                 "finishing_prop": false
             },
             "Skull eye": {
-                "display": "Skull Ball",
+                "display": "Skull Eye",
                 "order": 3,
                 "finishing_prop": false
             },
@@ -428,7 +428,7 @@
                 "finishing_prop": false
             },
             "Radium matrix": {
-                "display": "Ball Maze",
+                "display": "Desk Ball",
                 "order": 11,
                 "finishing_prop": false
             },

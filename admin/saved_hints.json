@@ -10,16 +10,6 @@
                 }
             }
         },
-        "6": {
-            "hints": {
-                "tangram_hint": {
-                    "prop": "Tangram",
-                    "name": "test",
-                    "text": "gdsfgsdfgsdfg",
-                    "image": "tangram_hint.png"
-                }
-            }
-        },
         "1": {
             "hints": {
                 "lamp_hint": {
@@ -49,6 +39,12 @@
                     "name": "hrtgrj",
                     "text": "yujhfh",
                     "image": null
+                },
+                "calculometer_hint": {
+                    "prop": "Calculometer",
+                    "name": "fuck you",
+                    "text": "jdfjhdgjhdghjfgkh",
+                    "image": "calculometer_hint.png"
                 }
             }
         }

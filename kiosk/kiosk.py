@@ -167,7 +167,7 @@ class KioskApp:
                         hint_data = msg.get('text', '')
                     
                     print(f"Scheduling hint display with data type: {type(hint_data)}")
-                    self.root.after(0, lambda d=hint_data: self.ui.show_hint(d))
+                    self.root.after(0, lambda d=hint_data: self.show_hint(d))
                     
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
                 minutes = msg.get('minutes')
@@ -229,7 +229,15 @@ class KioskApp:
             })
             
     def show_hint(self, text):
+        # Clear any pending request status
+        if self.ui.request_pending_label:
+            self.ui.request_pending_label.destroy()
+            self.ui.request_pending_label = None
+            
+        # Show the hint
         self.ui.show_hint(text)
+        
+        # Start cooldown timer
         self.ui.start_cooldown()
 
     def play_video(self, video_type, minutes):

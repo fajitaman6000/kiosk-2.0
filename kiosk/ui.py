@@ -16,6 +16,7 @@ class KioskUI:
         self.background_image = None
         self.hint_cooldown = False
         self.help_button = None
+        self.status_frame = None
         self.cooldown_label = None
         self.request_pending_label = None
         self.current_hint = None
@@ -23,12 +24,25 @@ class KioskUI:
         self.cooldown_after_id = None
         
         self.setup_root()
+        self.create_status_frame()
         
     def setup_root(self):
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='black')
         self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
         
+    def create_status_frame(self):
+        """Creates a fixed canvas for status messages at coordinates (510,0) to (610,1079)"""
+        # Create the status canvas
+        self.status_frame = tk.Canvas(
+            self.root,
+            width=100,  # 610 - 510 = 100
+            height=1079,
+            bg='black',
+            highlightthickness=0
+        )
+        self.status_frame.place(x=510, y=0)
+    
     def load_background(self, room_number):
         if room_number not in self.room_config['backgrounds']:
             return None
@@ -57,34 +71,81 @@ class KioskUI:
         
     def clear_all_labels(self):
         """Clear all UI elements and cancel any pending cooldown timer"""
-        # Cancel any pending cooldown timer
         if self.cooldown_after_id:
             self.root.after_cancel(self.cooldown_after_id)
             self.cooldown_after_id = None
             
-        # Reset cooldown state
         self.hint_cooldown = False
         
-        for widget in [self.hint_label, self.request_pending_label, 
-                      self.cooldown_label, self.help_button]:
+        if self.status_frame:
+            self.status_frame.delete('all')
+            
+        for widget in [self.hint_label, self.help_button]:
             if widget:
                 widget.destroy()
+                
         self.hint_label = None
-        self.request_pending_label = None
-        self.cooldown_label = None
         self.help_button = None
         
     def setup_room_interface(self, room_number):
+        # Store any existing status messages before clearing
+        pending_text = None
+        cooldown_text = None
+        
+        if self.status_frame:
+            try:
+                # Try to get pending text
+                pending_items = self.status_frame.find_withtag('pending_text')
+                if pending_items:
+                    pending_text = self.status_frame.itemcget(pending_items[0], 'text')
+                
+                # Try to get cooldown text
+                cooldown_items = self.status_frame.find_withtag('cooldown_text')
+                if cooldown_items:
+                    cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
+            except:
+                pass  # Ignore any errors trying to get old text
+        
         # Clear all widgets except timer frame
         for widget in self.root.winfo_children():
-            if widget is not self.message_handler.timer.timer_frame:  # Keep timer frame
+            if widget is not self.message_handler.timer.timer_frame:
                 widget.destroy()
+        
+        # Recreate status frame
+        self.create_status_frame()
+        
+        # Restore any status messages that existed
+        if pending_text:
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text=pending_text,
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='pending_text',
+                justify='center'
+            )
+        
+        if cooldown_text:
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text=cooldown_text,
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='cooldown_text',
+                justify='center',
+                width=1000
+            )
         
         # Set up background first
         self.background_image = self.load_background(room_number)
         if self.background_image:
             background_label = tk.Label(self.root, image=self.background_image)
             background_label.place(x=0, y=0, relwidth=1, relheight=1)
+            background_label.lower()  # Ensure background stays at the bottom
         
         # Load room-specific timer background
         self.message_handler.timer.load_room_background(room_number)
@@ -192,7 +253,7 @@ class KioskUI:
         self.help_button.bind('<Button-1>', lambda e: self.request_help())
                 
     def request_help(self):
-        """Creates the 'Hint Requested' message with rotated text"""
+        """Creates the 'Hint Requested' message in the status frame"""
         if not self.hint_cooldown:
             # Increase hint count
             if hasattr(self.message_handler, 'hints_requested'):
@@ -203,32 +264,20 @@ class KioskUI:
                 self.help_button.destroy()
                 self.help_button = None
             
-            # Canvas dimensions (swapped due to rotation)
-            canvas_width = 260   # This will be the height of the text area
-            canvas_height = 550  # This will be the width of the text area
+            # Clear any existing text in the status frame
+            self.status_frame.delete('pending_text')
             
-            if self.request_pending_label is None:
-                self.request_pending_label = tk.Canvas(
-                    self.root,
-                    width=canvas_width,
-                    height=canvas_height,
-                    bg='black',
-                    highlightthickness=0
-                )
-                # Position the pending request text on the left side
-                self.request_pending_label.place(relx=0.19, rely=0.5, anchor='center')
-                
-                # Create the rotated text
-                self.request_pending_label.create_text(
-                    canvas_width/2,
-                    canvas_height/2,
-                    text="Hint Requested, please wait...",
-                    fill='yellow',
-                    font=('Arial', 24),
-                    width=canvas_height-20,  # Leave some padding
-                    angle=270,
-                    justify='center'
-                )
+            # Add rotated text to the canvas
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text="Hint Requested, please wait...",
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='pending_text',
+                justify='center'
+            )
             
             # Send help request
             self.message_handler.network.send_message({
@@ -412,57 +461,45 @@ class KioskUI:
             
     def start_cooldown(self):
         """Start the cooldown timer, cancelling any existing one first"""
+        print("Starting cooldown timer")
         # Cancel any existing cooldown timer
         if self.cooldown_after_id:
             self.root.after_cancel(self.cooldown_after_id)
             self.cooldown_after_id = None
             
+        # Clear any existing request status
+        self.status_frame.delete('pending_text')
+        
         self.hint_cooldown = True
-        self.update_cooldown(60)
+        self.update_cooldown(60)  # Start 60 second cooldown
         
     def update_cooldown(self, seconds_left):
-        """Updates the cooldown counter with rotated text"""
-        if seconds_left > 0 and self.hint_cooldown:  # Only continue if cooldown is still active
-            # Canvas dimensions (swapped due to rotation)
-            canvas_width = 150   # This will be the height of the text area
-            canvas_height = 600  # This will be the width of the text area
+        """Updates the cooldown counter in the status frame"""
+        if seconds_left > 0 and self.hint_cooldown:
+            # Clear existing text
+            self.status_frame.delete('cooldown_text')
             
-            if self.cooldown_label is None:
-                self.cooldown_label = tk.Canvas(
-                    self.root,
-                    width=canvas_width,
-                    height=canvas_height,
-                    bg='black',
-                    highlightthickness=0
-                )
-                # Position cooldown text on the left side
-                self.cooldown_label.place(relx=0.2, rely=0.5, anchor='center')
-            else:
-                # Clear existing text
-                self.cooldown_label.delete('all')
-            
-            # Create the rotated text
-            self.cooldown_label.create_text(
-                canvas_width/2,
-                canvas_height/2,
+            # Add new cooldown text
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
                 text=f"Please wait {seconds_left} seconds until requesting the next hint.",
                 fill='yellow',
                 font=('Arial', 24),
-                width=canvas_height-20,  # Leave some padding
                 angle=270,
-                justify='center'
+                tags='cooldown_text',
+                justify='center',
+                width=1000  # Allow text to wrap if needed
             )
             
-            # Store the ID of the next timer callback so we can cancel it if needed
             self.cooldown_after_id = self.root.after(1000, lambda: self.update_cooldown(seconds_left - 1))
         else:
             # Clean up the cooldown state
+            print("Cooldown complete - resetting state")
             self.hint_cooldown = False
             self.cooldown_after_id = None
-            if self.cooldown_label:
-                self.cooldown_label.destroy()
-                self.cooldown_label = None
-            self.create_help_button()
+            self.status_frame.delete('cooldown_text')
+            self.create_help_button()  # Recreate help button when cooldown ends
 
 
 
