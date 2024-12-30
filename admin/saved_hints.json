@@ -1,50 +1,12 @@
 {
     "rooms": {
-        "4": {
-            "hints": {
-                "antique_tv_hint": {
-                    "prop": "Antique TV",
-                    "name": "gdfgsdfgfsdhhjdfghjdf",
-                    "text": "gjeeeee",
-                    "image": null
-                }
-            }
-        },
-        "1": {
-            "hints": {
-                "lamp_hint": {
-                    "prop": "Lamp",
-                    "name": "gdfgsdfg",
-                    "text": "test\n\ntest3",
-                    "image": null
-                }
-            }
-        },
         "7": {
             "hints": {
-                "ignition_hint": {
-                    "prop": "Ignition",
-                    "name": "gggg",
-                    "text": "fdfasdf",
+                "radium_cog_hint": {
+                    "prop": "Radium cog",
+                    "name": "yrdy",
+                    "text": "dfghdfgh",
                     "image": null
-                },
-                "footprints_hint": {
-                    "prop": "Footprints",
-                    "name": "efsdaf",
-                    "text": "gggggg",
-                    "image": null
-                },
-                "ignition_hint_1": {
-                    "prop": "Ignition",
-                    "name": "hrtgrj",
-                    "text": "yujhfh",
-                    "image": null
-                },
-                "calculometer_hint": {
-                    "prop": "Calculometer",
-                    "name": "fuck you",
-                    "text": "jdfjhdgjhdghjfgkh",
-                    "image": "calculometer_hint.png"
                 }
             }
         }

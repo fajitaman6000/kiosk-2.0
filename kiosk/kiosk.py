@@ -33,6 +33,8 @@ class KioskApp:
         self.hints_requested = 0
         self.start_time = None
         self.current_video_process = None  # Add this line
+        self.time_exceeded_45 = False
+        print("Initialized time_exceeded_45 flag to False")
         
         # Initialize components as before
         self.network = KioskNetwork(self.computer_name, self)
@@ -85,31 +87,59 @@ class KioskApp:
             if msg.get('room') == self.assigned_room:
                 self.root.after(0, lambda t=msg['text']: self.show_hint(t))
                 
-        elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
+        if msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
             minutes = msg.get('minutes')
+            # Check if timer is being set above 45 minutes
+            if minutes and float(minutes) > 45:
+                print(f"Timer exceeded 45 minutes: {minutes}")
+                self.time_exceeded_45 = True
+                
             self.timer.handle_command(msg['command'], minutes)
+            
+            # Always refresh help button after timer changes
+            print("Refreshing help button after timer change")
+            current_minutes = self.timer.time_remaining / 60
+            print(f"Current timer: {current_minutes:.2f} minutes")
+            print(f"Time exceeded 45: {self.time_exceeded_45}")
+            self.ui.create_help_button()
             
         elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
             self.play_video(msg['video_type'], msg['minutes'])
             
         elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
-            # Reset hints count
-            self.hints_requested = 0
+            print("Resetting kiosk state")
+            # Reset time exceeded flag
+            self.time_exceeded_45 = False
+            print("Reset time_exceeded_45 flag")
             
-            # Clear UI elements
+            # Reset other state
+            self.hints_requested = 0
             self.ui.hint_cooldown = False
             self.ui.current_hint = None
             self.ui.clear_all_labels()
             
-            # Restore room interface if assigned
             if self.assigned_room:
                 self.ui.setup_room_interface(self.assigned_room)
             
-            # Stop any playing videos
             if self.current_video_process:
                 self.current_video_process.terminate()
                 self.current_video_process = None
-                self.root.deiconify()  # Restore UI if hidden
+                self.root.deiconify()
+
+    def update_help_button_state(self):
+        """Check timer and update help button state"""
+        current_minutes = self.timer.time_remaining / 60
+        print(f"\n=== Timer State Update ===")
+        print(f"Current timer: {current_minutes:.2f} minutes")
+        print(f"Time exceeded 45 flag: {self.time_exceeded_45}")
+        
+        # Check if we've exceeded 45 minutes
+        if current_minutes > 45 and not self.time_exceeded_45:
+            print("Timer has exceeded 45 minutes - setting flag")
+            self.time_exceeded_45 = True
+        
+        # Refresh help button
+        self.ui.create_help_button()
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -170,35 +200,49 @@ class KioskApp:
                     self.root.after(0, lambda d=hint_data: self.show_hint(d))
                     
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
+                print("\nProcessing timer command")
                 minutes = msg.get('minutes')
+                
+                # Update time_exceeded_45 flag if timer is being set above 45
+                if minutes is not None:
+                    minutes = float(minutes)
+                    print(f"Setting timer to {minutes} minutes")
+                    if minutes > 45:
+                        print("New time exceeds 45 minutes - setting flag")
+                        self.time_exceeded_45 = True
+                
+                # Handle the timer command
                 self.timer.handle_command(msg['command'], minutes)
+                
+                # Update help button state
+                self.root.after(100, self.update_help_button_state)
                 
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
                 self.play_video(msg['video_type'], msg['minutes'])
                 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
-                print("Received reset command - resetting kiosk state")
-                self.hints_requested = 0
-                self.network.send_message({
-                    'type': 'kiosk_announce',
-                    'computer_name': self.computer_name,
-                    'room': self.assigned_room,
-                    'total_hints': 0,
-                    'timer_time': self.timer.time_remaining,
-                    'timer_running': self.timer.is_running
-                })
+                print("\nProcessing kiosk reset")
+                # Reset time exceeded flag
+                self.time_exceeded_45 = False
+                print("Reset time_exceeded_45 flag to False")
                 
+                # Reset other state
+                self.hints_requested = 0
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
                 self.ui.clear_all_labels()
                 
                 if self.assigned_room:
+                    print("Setting up room interface after reset")
                     self.ui.setup_room_interface(self.assigned_room)
                 
                 if self.current_video_process:
                     self.current_video_process.terminate()
                     self.current_video_process = None
                     self.root.deiconify()
+                
+                # Update help button state after reset
+                self.root.after(100, self.update_help_button_state)
         
         except Exception as e:
             print("\nCritical error in handle_message:")
