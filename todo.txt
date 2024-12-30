@@ -25,7 +25,6 @@ alarm "stop doing that" button
 hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
-make hints impossible if timer > 42
 ending audio is apparently admin app side?
 
 # known bugs

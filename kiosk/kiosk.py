@@ -12,6 +12,7 @@ from audio_server import AudioServer
 from pathlib import Path
 from room_persistence import RoomPersistence
 from kiosk_timer import KioskTimer
+from audio_manager import AudioManager
 import subprocess
 import traceback
 
@@ -36,6 +37,7 @@ class KioskApp:
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
         print("Initialized time_exceeded_45 flag to False")
+        self.audio_manager = AudioManager()  # Initialize audio manager
         
         # Initialize components as before
         self.network = KioskNetwork(self.computer_name, self)
@@ -279,6 +281,9 @@ class KioskApp:
             self.ui.request_pending_label.destroy()
             self.ui.request_pending_label = None
             
+        # Play the hint received sound
+        self.audio_manager.play_sound("hint_received.mp3")
+        
         # Show the hint
         self.ui.show_hint(text)
         

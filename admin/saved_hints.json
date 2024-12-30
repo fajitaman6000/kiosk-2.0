@@ -9,6 +9,16 @@
                     "image": null
                 }
             }
+        },
+        "3": {
+            "hints": {
+                "sit_on_chair_hint": {
+                    "prop": "Sit on chair",
+                    "name": "hg",
+                    "text": "gfgfgfgdg",
+                    "image": null
+                }
+            }
         }
     }
 }
