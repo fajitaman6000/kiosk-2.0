@@ -171,58 +171,9 @@ class KioskUI:
         
         # Ensure timer stays on top
         self.message_handler.timer.lift_to_top()
-            
-    def create_help_button(self):
-        """Creates the help request button using a room-specific background image if conditions are met"""
-        # Get current timer value from message handler
-        current_time = self.message_handler.timer.time_remaining
-        minutes_remaining = current_time / 60
-        print(f"\n=== Help Button Visibility Check ===")
-        print(f"Current timer: {minutes_remaining:.2f} minutes")
-        print(f"In cooldown: {self.hint_cooldown}")
 
-        # Check if timer has ever exceeded 45 minutes
-        has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
-        print(f"Has exceeded 45: {has_exceeded_45}")
-
-        # First check if we're in cooldown
-        if self.hint_cooldown:
-            print("In cooldown - hiding help button")
-            if self.help_button:
-                self.help_button.destroy()
-                self.help_button = None
-            return
-
-        # Hide button if:
-        # - Time is greater than 42 minutes AND
-        # - Time is less than or equal to 45 minutes AND
-        # - Timer has never exceeded 45 minutes since last reset
-        should_hide = (
-            minutes_remaining > 42 and 
-            minutes_remaining <= 45 and 
-            not has_exceeded_45
-        )
-        
-        print(f"Time > 42: {minutes_remaining > 42}")
-        print(f"Time <= 45: {minutes_remaining <= 45}")
-        print(f"Final should_hide: {should_hide}")
-
-        # Remove button if it exists and should be hidden
-        if should_hide:
-            if self.help_button:
-                print("Removing help button due to timer conditions")
-                self.help_button.destroy()
-                self.help_button = None
-            return
-
-        print("Conditions met to show help button")
-        
-        # If we already have a button, no need to recreate
-        if self.help_button is not None:
-            print("Help button already exists")
-            return
-
-        # If we get here, we can show the button
+    def _create_button_with_background(self):
+        """Helper method to create the actual button with background"""
         # Define button dimensions
         canvas_width = 260
         canvas_height = 550
@@ -281,6 +232,56 @@ class KioskUI:
         except Exception as e:
             print(f"Error creating image button: {str(e)}")
             self._create_fallback_button(canvas_width, canvas_height)
+            
+    def create_help_button(self):
+        """Creates the help request button using a room-specific background image if conditions are met"""
+        # Get current timer value from message handler
+        current_time = self.message_handler.timer.time_remaining
+        minutes_remaining = current_time / 60
+        print(f"\n=== Help Button Visibility Check ===")
+        print(f"Current timer: {minutes_remaining:.2f} minutes")
+        print(f"In cooldown: {self.hint_cooldown}")
+        print(f"Timer running: {self.message_handler.timer.is_running}")
+
+        # Check if timer has ever exceeded 45 minutes
+        has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
+        print(f"Has exceeded 45: {has_exceeded_45}")
+
+        # First check if we're in cooldown
+        if self.hint_cooldown:
+            print("In cooldown - hiding help button")
+            if self.help_button:
+                self.help_button.destroy()
+                self.help_button = None
+            return
+
+        # Hide button if:
+        # - Time is greater than 42 minutes AND
+        # - Time is less than or equal to 45 minutes AND
+        # - Timer has never exceeded 45 minutes since last reset
+        should_hide = (
+            minutes_remaining > 42 and 
+            minutes_remaining <= 45 and 
+            not has_exceeded_45
+        )
+        
+        print(f"Time > 42: {minutes_remaining > 42}")
+        print(f"Time <= 45: {minutes_remaining <= 45}")
+        print(f"Should hide based on time window: {should_hide}")
+
+        # Remove button if it exists and should be hidden
+        if should_hide:
+            if self.help_button:
+                print("Removing help button due to timer conditions")
+                self.help_button.destroy()
+                self.help_button = None
+            return
+        elif self.help_button is None:
+            # Only create new button if we don't already have one and conditions are met
+            print("Conditions met to show help button - creating new button")
+            self._create_button_with_background()
+        else:
+            print("Help button already exists")
 
     def _create_fallback_button(self, canvas_width, canvas_height):
         """Creates a fallback text-only button if the image loading fails"""

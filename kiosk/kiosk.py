@@ -11,6 +11,7 @@ from video_server import VideoServer
 from audio_server import AudioServer
 from pathlib import Path
 from room_persistence import RoomPersistence
+from kiosk_timer import KioskTimer
 import subprocess
 import traceback
 
@@ -43,7 +44,7 @@ class KioskApp:
         self.video_server.start()
         
         from kiosk_timer import KioskTimer
-        self.timer = KioskTimer(self.root, self.network)
+        self.timer = KioskTimer(self.root, self)  # Pass self instead of self.network
         
         self.ui = KioskUI(self.root, self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()

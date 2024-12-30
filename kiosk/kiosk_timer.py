@@ -4,9 +4,10 @@ from PIL import Image, ImageTk
 import os
 
 class KioskTimer:
-    def __init__(self, root, network_handler):
+    def __init__(self, root, kiosk_app):
+        """Initialize the timer with root and kiosk_app reference"""
         self.root = root
-        self.network_handler = network_handler
+        self.kiosk_app = kiosk_app  # Store reference to main app
         self.time_remaining = 60 * 45  # Default 45 minutes
         self.is_running = False
         self.last_update = None
@@ -33,7 +34,7 @@ class KioskTimer:
         
         # Position frame on right center of screen
         self.timer_frame.place(
-            relx=1.017,     # Right edge of screen
+            relx=1.017,   # Right edge of screen
             rely=0.5,     # Vertical center
             anchor='e',   # Anchor to east (right) center
             x=-182        # Slight padding from edge
@@ -123,12 +124,28 @@ class KioskTimer:
         self.update_display()
         
     def update_timer(self):
+        """Updates the timer display and checks for threshold crossings"""
         try:
             if self.is_running and self.last_update is not None:
                 current_time = time.time()
                 elapsed = current_time - self.last_update
+                old_time = self.time_remaining
                 self.time_remaining = max(0, self.time_remaining - elapsed)
                 self.last_update = current_time
+                
+                # Check if we crossed any significant thresholds
+                old_minutes = old_time / 60
+                new_minutes = self.time_remaining / 60
+                
+                # If we crossed the 42-minute threshold (going down)
+                if old_minutes > 42 and new_minutes <= 42:
+                    print(f"\nTimer crossed 42-minute threshold (down)")
+                    print(f"Old time: {old_minutes:.2f} minutes")
+                    print(f"New time: {new_minutes:.2f} minutes")
+                    # Use the kiosk_app reference to access UI
+                    if hasattr(self.kiosk_app, 'ui'):
+                        self.root.after(0, self.kiosk_app.ui.create_help_button)
+                
                 self.update_display()
 
             if self.timer_frame.winfo_exists():
