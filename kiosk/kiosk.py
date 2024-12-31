@@ -223,6 +223,12 @@ class KioskApp:
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
                 self.play_video(msg['video_type'], msg['minutes'])
                 
+            elif msg['type'] == 'play_sound' and msg['computer_name'] == self.computer_name:
+                print("\nReceived play sound command")
+                sound_name = msg.get('sound_name')
+                if sound_name:
+                    self.audio_manager.play_sound(sound_name)
+
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
                 print("\nProcessing kiosk reset")
                 # Reset time exceeded flag

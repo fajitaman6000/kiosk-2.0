@@ -198,6 +198,20 @@ class AdminInterfaceBuilder:
                 print(f"Error loading image: {e}")
                 self.current_hint_image = None
 
+    def play_hint_sound(self, computer_name):
+        """
+        Sends a command to play the hint sound on the specified kiosk
+        Uses the app's network handler to broadcast the message
+        """
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'play_sound',
+                'computer_name': computer_name,
+                'sound_name': 'hint_received.mp3'
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+
     def reset_kiosk(self, computer_name):
         """Reset all kiosk stats and state"""
         if computer_name not in self.app.kiosk_tracker.kiosk_stats:

@@ -409,5 +409,16 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['listen_btn'] = listen_btn
         interface_builder.stats_elements['speak_btn'] = speak_btn
 
+        other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
+        other_controls_frame.pack(fill='x', pady=10)
+        
+        # Add play sound button
+        play_sound_btn = tk.Button(
+            other_controls_frame,
+            text="Play Hint Sound",
+            command=lambda: interface_builder.play_hint_sound(computer_name)
+        )
+        play_sound_btn.pack(pady=5, padx=5)
+        
         # Store the computer name for video/audio updates
         interface_builder.stats_elements['current_computer'] = computer_name
