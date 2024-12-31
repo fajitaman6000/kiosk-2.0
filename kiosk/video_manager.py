@@ -21,6 +21,8 @@ class VideoManager:
         self.original_widgets = []
         self._lock = threading.Lock()
         self.temp_dir = tempfile.mkdtemp()
+        self.current_audio_path = None
+        self.completion_callback = None
         
         # Get ffmpeg path from imageio-ffmpeg
         self.ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -84,9 +86,14 @@ class VideoManager:
         
         if not os.path.exists(video_path):
             print(f"VideoManager: Error - Video file not found: {video_path}")
+            if on_complete:
+                self.root.after(0, on_complete)
             return
             
         try:
+            # Store completion callback
+            self.completion_callback = on_complete
+            
             # Stop any existing playback
             if self.is_playing:
                 print("VideoManager: Stopping existing playback")
@@ -96,10 +103,7 @@ class VideoManager:
             print("VideoManager: Storing current window state")
             self.original_widgets = [w for w in self.root.winfo_children()]
             for widget in self.original_widgets:
-                try:
-                    widget.place_forget()
-                except Exception as e:
-                    print(f"VideoManager: Warning - Could not hide widget: {e}")
+                widget.place_forget()
             
             # Create video canvas
             print("VideoManager: Creating video canvas")
@@ -121,6 +125,7 @@ class VideoManager:
 
             # Extract audio from video
             audio_path = self.extract_audio(video_path)
+            self.current_audio_path = audio_path
             has_audio = audio_path is not None
             
             if has_audio:
@@ -131,7 +136,7 @@ class VideoManager:
             print("VideoManager: Starting playback thread")
             self.video_thread = threading.Thread(
                 target=self._play_video_thread,
-                args=(video_path, audio_path, on_complete),
+                args=(video_path, audio_path, self.completion_callback),
                 daemon=True
             )
             self.video_thread.start()
@@ -140,6 +145,8 @@ class VideoManager:
             print("\nVideoManager: Critical error in play_video:")
             traceback.print_exc()
             self._cleanup()
+            if on_complete:
+                self.root.after(0, on_complete)
             
     def _play_video_thread(self, video_path, audio_path, on_complete):
         """Video playback thread with synchronized audio"""
@@ -223,19 +230,42 @@ class VideoManager:
         finally:
             print("VideoManager: Cleaning up video thread")
             cap.release()
-            if audio_path:
+            
+            # Stop audio playback
+            if pygame.mixer.music.get_busy():
                 pygame.mixer.music.stop()
+                time.sleep(0.1)  # Give a small delay for the audio to stop
+            
+            # Schedule cleanup and callback on main thread
+            self.root.after(0, lambda: self._thread_cleanup(on_complete))
+    
+    def _thread_cleanup(self, on_complete=None):
+        """Handle cleanup and callbacks on the main thread"""
+        try:
+            # Clean up temporary audio file
+            if self.current_audio_path and os.path.exists(self.current_audio_path):
                 try:
-                    # Clean up temporary audio file
-                    os.remove(audio_path)
-                    print(f"Removed temporary audio file: {audio_path}")
+                    os.remove(self.current_audio_path)
+                    print(f"Removed temporary audio file: {self.current_audio_path}")
                 except Exception as e:
                     print(f"Error removing temp audio file: {e}")
-            if not self.should_stop and on_complete:
-                print("VideoManager: Calling completion callback")
-                self.root.after(0, on_complete)
-            self.root.after(0, self._cleanup)
-    
+                self.current_audio_path = None
+            
+            # Perform UI cleanup
+            self._cleanup()
+            
+            # Execute completion callback if exists
+            if on_complete:
+                on_complete()  # Execute the passed callback
+            elif self.completion_callback:
+                callback = self.completion_callback
+                self.completion_callback = None  # Clear the callback
+                callback()  # Execute the stored callback
+                
+        except Exception as e:
+            print(f"Error in thread cleanup: {e}")
+            traceback.print_exc()
+
     def _update_frame(self, photo):
         """Update video frame on canvas"""
         try:
