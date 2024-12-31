@@ -415,19 +415,26 @@ def setup_stats_panel(interface_builder, computer_name):
         other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
         other_controls_frame.pack(fill='x', pady=10)
         
-        # Original hint sound button
+        # Add play sound button
         play_sound_btn = tk.Button(
             other_controls_frame,
             text="Play Hint Sound",
             command=lambda: interface_builder.play_hint_sound(computer_name)
         )
         play_sound_btn.pack(pady=5, padx=5)
+
+        # Sound controls container
+        sound_container = tk.Frame(other_controls_frame)
+        sound_container.pack(fill='x', padx=5, pady=5)
         
-        # Warning sounds container (for dropdown and button)
-        warning_container = tk.Frame(other_controls_frame)
-        warning_container.pack(fill='x', padx=5, pady=5)
+        # Add "Issue Warning:" label
+        tk.Label(
+            sound_container,
+            text="Issue Warning:",
+            anchor='e'
+        ).pack(side='left', padx=(0, 5))
         
-        # Warning sound options
+        # Define warning sounds
         warning_sounds = {
             "Be gentle": "be_gentle.mp3",
             "No photos": "no_photos.mp3",
@@ -435,28 +442,29 @@ def setup_stats_panel(interface_builder, computer_name):
         }
         
         # Create variable for dropdown
-        interface_builder.stats_elements['warning_sound'] = tk.StringVar(value=list(warning_sounds.keys())[0])
+        interface_builder.stats_elements['warning_sound'] = tk.StringVar()
         
-        # Create dropdown
+        # Create and configure dropdown
         warning_dropdown = ttk.Combobox(
-            warning_container,
+            sound_container,
             textvariable=interface_builder.stats_elements['warning_sound'],
             values=list(warning_sounds.keys()),
             state='readonly',
             width=15
         )
-        warning_dropdown.pack(side='left', padx=(0, 5))
+        warning_dropdown.pack(side='left')
         
-        # Create play warning button
-        play_warning_btn = tk.Button(
-            warning_container,
-            text="Issue Warning",
-            command=lambda: interface_builder.play_hint_sound(
-                computer_name, 
-                warning_sounds[interface_builder.stats_elements['warning_sound'].get()]
-            )
-        )
-        play_warning_btn.pack(side='left')
+        # Add automatic trigger on selection
+        def on_warning_select(event):
+            selected = interface_builder.stats_elements['warning_sound'].get()
+            if selected:  # Only trigger if something is actually selected
+                interface_builder.play_hint_sound(
+                    computer_name, 
+                    warning_sounds[selected]
+                )
+                warning_dropdown.set('')  # Reset dropdown after playing
+        
+        warning_dropdown.bind('<<ComboboxSelected>>', on_warning_select)
         
         # Store the computer name for video/audio updates
         interface_builder.stats_elements['current_computer'] = computer_name
