@@ -450,8 +450,8 @@ class KioskUI:
 
             # Create image received button in left panel only if image exists
             if self.stored_image_data:
-                button_width = hint_width - 40  # Leave margin
-                button_height = 100  # Fixed height for button
+                button_width = 100  # Make button narrower
+                button_height = 200  # Make button taller for better text visibility
                 
                 # Create button canvas
                 self.image_button = tk.Canvas(
@@ -462,10 +462,10 @@ class KioskUI:
                     highlightthickness=0
                 )
                 
-                # Position button in center of left panel
+                # Position button well to the left of the hint text area
                 self.image_button.place(
-                    x=911 + 20,  # Left margin
-                    y=hint_height/2 - button_height/2 + 64  # Vertical center
+                    x=750,  # Move button further left, away from hint text
+                    y=hint_height/2 - button_height/2 + 64  # Keep vertical center alignment
                 )
                 
                 # Add button text
@@ -581,10 +581,14 @@ class KioskUI:
             
         if self.hint_label:
             self.hint_label.place(x=911, y=64)
+            
+        # Restore image button with consistent positioning
         if self.image_button:
+            hint_height = 1015 - 64  # Same calculation as in show_hint
+            button_height = 200  # Match the height from show_hint
             self.image_button.place(
-                x=911 + 20,
-                y=476  # Center vertically (1015-64)/2 + 64
+                x=750,  # Match the x-position from show_hint
+                y=hint_height/2 - button_height/2 + 64  # Match the centering calculation from show_hint
             )
 
     def start_cooldown(self):
