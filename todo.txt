@@ -3,8 +3,6 @@
 
 
 # planned features: 
-profile creation,
-profile deletion (admin only),
 admin mode (technician/managers),
 save hint to public (usable by all profiles, shown what profile made it, save to own private profile),
 save hint to private (local to profile),
@@ -36,3 +34,5 @@ audio props only load on prop-click if prop is not renamed
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 
 set alarm on prop to make sound when gm-chosen prop finishes
+profile creation,
+profile deletion (admin only)

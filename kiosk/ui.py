@@ -22,7 +22,10 @@ class KioskUI:
         self.current_hint = None
         self.hint_label = None
         self.cooldown_after_id = None
-        
+        self.fullscreen_image = None
+        self.image_button = None
+        self.stored_image_data = None
+
         self.setup_root()
         self.create_status_frame()
         
@@ -344,31 +347,35 @@ class KioskUI:
             })
 
     def show_hint(self, text_or_data):
-        """Shows the hint text and image in the specified coordinates (911,64) to (1499,1015)"""
+        """Shows the hint text and optionally creates an image received button"""
         print("\n=== PROCESSING NEW HINT ===")
         print(f"Received hint data: {type(text_or_data)}")
         
         try:
-            # Remove help button if it exists
+            # Remove existing UI elements
             if self.help_button:
                 self.help_button.destroy()
                 self.help_button = None
             
+            if self.fullscreen_image:
+                self.fullscreen_image.destroy()
+                self.fullscreen_image = None
+                
             # Start cooldown timer
             self.start_cooldown()
             self.current_hint = text_or_data
+            
             # Clear pending request label if it exists
             if self.request_pending_label:
                 self.request_pending_label.destroy()
                 self.request_pending_label = None
             
-            # Calculate dimensions based on specified coordinates
+            # Calculate dimensions for hint area
             hint_width = 1499 - 911  # = 588
             hint_height = 1015 - 64  # = 951
             
-            # Create hint container if needed
+            # Create or clear hint container
             if self.hint_label is None:
-                print("Creating new hint canvas")
                 self.hint_label = tk.Canvas(
                     self.root,
                     width=hint_width,
@@ -376,10 +383,8 @@ class KioskUI:
                     bg='#000000',
                     highlightthickness=0
                 )
-                # Position canvas at exact coordinates
                 self.hint_label.place(x=911, y=64)
             else:
-                print("Clearing existing hint canvas")
                 self.hint_label.delete('all')
 
             # Load room-specific hint background
@@ -412,99 +417,70 @@ class KioskUI:
                 except Exception as e:
                     print(f"Error loading hint background: {e}")
 
-            # Parse hint data
+            # Parse hint data and clear any existing image button
+            if self.image_button:
+                self.image_button.destroy()
+                self.image_button = None
+
             hint_text = ""
-            image_data = None
-            
+            self.stored_image_data = None
+
             if isinstance(text_or_data, str):
-                print("Processing text-only hint")
                 hint_text = text_or_data
             elif isinstance(text_or_data, dict):
-                print("Processing hint dictionary")
                 hint_text = text_or_data.get('text', '')
-                image_data = text_or_data.get('image')
-                print(f"Found text: {bool(hint_text)}")
-                print(f"Found image data: {bool(image_data)}")
+                self.stored_image_data = text_or_data.get('image')
             else:
-                print(f"WARNING: Unexpected hint data type: {type(text_or_data)}")
                 hint_text = str(text_or_data)
-            
-            # Define panel dimensions for split layout
-            panel_width = hint_width // 2    # Split width in half for text and image
-            panel_height = hint_height
-            
-            # Position text in left panel
+
             if hint_text:
-                print("Adding hint text to left panel")
+                # If there's an image, use left half, otherwise use full width
+                text_x = hint_width/2 if self.stored_image_data else hint_width/2
                 self.hint_label.create_text(
-                    panel_width,     # Full width of left panel
-                    panel_height/2,    # Vertical center
+                    text_x,
+                    hint_height/2,
                     text=hint_text,
                     fill='black',
                     font=('Arial', 20),
-                    width=panel_height-40,  # Leave margin
+                    width=hint_height-40,
                     angle=270,
                     justify='center',
-                    anchor='center'  # Ensures text is centered
+                    anchor='center'
                 )
-            
-            # Add image in right panel if present
-            if image_data:
-                print("Processing hint image for right panel")
-                try:
-                    print("Decoding base64 image data")
-                    image_bytes = base64.b64decode(image_data)
-                    print(f"Decoded image size: {len(image_bytes)} bytes")
-                    
-                    print("Opening image from bytes")
-                    image = Image.open(io.BytesIO(image_bytes))
-                    print(f"Original image size: {image.size}")
-                    
-                    # Calculate maximum size for right panel
-                    max_width = panel_height - 40   # Leave margin
-                    max_height = panel_width - 40   # Leave margin
-                    
-                    # Calculate resize ratio maintaining aspect ratio
-                    width_ratio = max_width / image.width
-                    height_ratio = max_height / image.height
-                    ratio = min(width_ratio, height_ratio)
-                    
-                    new_size = (
-                        int(image.width * ratio),
-                        int(image.height * ratio)
-                    )
-                    print(f"Resizing to: {new_size}")
-                    
-                    # Resize and rotate
-                    image = image.resize(new_size, Image.Resampling.LANCZOS)
-                    image = image.rotate(90, expand=True)
-                    
-                    print("Converting to PhotoImage")
-                    photo = ImageTk.PhotoImage(image)
-                    self.hint_label.photo = photo
-                    
-                    # Position image in center of right panel
-                    self.hint_label.create_image(
-                        panel_width + panel_width/2,  # Center of right panel
-                        panel_height/2,               # Vertical center
-                        image=photo,
-                        anchor='center'
-                    )
-                    print("Image successfully added to right panel")
-                    
-                except Exception as e:
-                    print("\nError processing hint image:")
-                    traceback.print_exc()
-                    self.hint_label.create_text(
-                        panel_width + panel_width/2,
-                        panel_height/2,
-                        text=f"[Error displaying image: {str(e)}]",
-                        fill='red',
-                        font=('Arial', 16),
-                        width=panel_height-40,
-                        angle=270,
-                        justify='center'
-                    )
+
+            # Create image received button in left panel only if image exists
+            if self.stored_image_data:
+                button_width = hint_width - 40  # Leave margin
+                button_height = 100  # Fixed height for button
+                
+                # Create button canvas
+                self.image_button = tk.Canvas(
+                    self.root,
+                    width=button_width,
+                    height=button_height,
+                    bg='blue',
+                    highlightthickness=0
+                )
+                
+                # Position button in center of left panel
+                self.image_button.place(
+                    x=911 + 20,  # Left margin
+                    y=hint_height/2 - button_height/2 + 64  # Vertical center
+                )
+                
+                # Add button text
+                self.image_button.create_text(
+                    button_width/2,
+                    button_height/2,
+                    text="IMAGE RECEIVED",
+                    fill='white',
+                    font=('Arial', 24),
+                    angle=270
+                )
+                
+                # Bind click event
+                self.image_button.bind('<Button-1>', lambda e: self.show_fullscreen_image())
+
         except Exception as e:
             print("\nCritical error in show_hint:")
             traceback.print_exc()
@@ -524,6 +500,93 @@ class KioskUI:
             except:
                 pass
             
+    def show_fullscreen_image(self):
+        """Display the image in nearly fullscreen with margins"""
+        if not self.stored_image_data:
+            return
+            
+        try:
+            # Hide hint interface
+            if self.hint_label:
+                self.hint_label.place_forget()
+            if self.image_button:
+                self.image_button.place_forget()
+                
+            # Calculate dimensions (full screen minus margins)
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
+            margin = 50  # pixels on each side
+            
+            # Create fullscreen canvas
+            self.fullscreen_image = tk.Canvas(
+                self.root,
+                width=screen_width - (2 * margin),
+                height=screen_height,
+                bg='black',
+                highlightthickness=0
+            )
+            self.fullscreen_image.place(x=margin, y=0)
+            
+            # Decode and process image
+            image_bytes = base64.b64decode(self.stored_image_data)
+            image = Image.open(io.BytesIO(image_bytes))
+            
+            # Calculate resize ratio maintaining aspect ratio
+            width_ratio = (screen_height - 80) / image.width  # Leave margin for height
+            height_ratio = (screen_width - (2 * margin) - 80) / image.height  # Leave margin for width
+            ratio = min(width_ratio, height_ratio)
+            
+            new_size = (
+                int(image.width * ratio),
+                int(image.height * ratio)
+            )
+            
+            # Resize and rotate image
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            image = image.rotate(90, expand=True)
+            
+            # Convert to PhotoImage and display
+            photo = ImageTk.PhotoImage(image)
+            self.fullscreen_image.photo = photo
+            
+            # Center image in canvas
+            self.fullscreen_image.create_image(
+                (screen_width - (2 * margin)) / 2,
+                screen_height / 2,
+                image=photo,
+                anchor='center'
+            )
+            
+            # Add click handler to return to hint view
+            self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
+            
+        except Exception as e:
+            print("\nError displaying fullscreen image:")
+            traceback.print_exc()
+            if self.fullscreen_image:
+                self.fullscreen_image.create_text(
+                    screen_width/2,
+                    screen_height/2,
+                    text=f"Error displaying image: {str(e)}",
+                    fill='red',
+                    font=('Arial', 16),
+                    angle=270
+                )
+        
+    def restore_hint_view(self):
+        """Return to the original hint view"""
+        if self.fullscreen_image:
+            self.fullscreen_image.destroy()
+            self.fullscreen_image = None
+            
+        if self.hint_label:
+            self.hint_label.place(x=911, y=64)
+        if self.image_button:
+            self.image_button.place(
+                x=911 + 20,
+                y=476  # Center vertically (1015-64)/2 + 64
+            )
+
     def start_cooldown(self):
         """Start the cooldown timer, cancelling any existing one first"""
         print("Starting cooldown timer")
