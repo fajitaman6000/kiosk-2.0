@@ -287,7 +287,16 @@ class VideoManager:
         print("\nVideoManager: Stopping video and audio")
         self.should_stop = True
         self.is_playing = False
-        pygame.mixer.music.stop()
+        
+        # Ensure pygame mixer is properly stopped
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+            pygame.mixer.music.unload()  # Unload current audio
+            
+        # Force stop any ongoing playback
+        if hasattr(self, 'video_thread') and self.video_thread.is_alive():
+            self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
+            
         self._cleanup()
         
     def _cleanup(self):

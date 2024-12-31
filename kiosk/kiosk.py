@@ -16,6 +16,7 @@ from kiosk_timer import KioskTimer
 from audio_manager import AudioManager
 import subprocess
 import traceback
+import pygame
 
 
 class KioskApp:
@@ -73,63 +74,6 @@ class KioskApp:
             self.root.after(100, lambda: self.ui.setup_room_interface(self.assigned_room))
         else:
             self.ui.setup_waiting_screen()
-
-    def handle_message(self, msg):
-        print(f"\nReceived message: {msg}")
-        if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
-            print(f"Processing room assignment: {msg['room']}")            
-            self.assigned_room = msg['room']
-            print("Saving room assignment...")
-            save_result = self.room_persistence.save_room_assignment(msg['room'])
-            print(f"Save result: {save_result}")
-            self.start_time = time.time()
-            self.ui.hint_cooldown = False
-            self.ui.current_hint = None
-            self.ui.clear_all_labels()
-            self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
-            
-        elif msg['type'] == 'hint' and self.assigned_room:
-            if msg.get('room') == self.assigned_room:
-                self.root.after(0, lambda t=msg['text']: self.show_hint(t))
-                
-        if msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
-            minutes = msg.get('minutes')
-            # Check if timer is being set above 45 minutes
-            if minutes and float(minutes) > 45:
-                print(f"Timer exceeded 45 minutes: {minutes}")
-                self.time_exceeded_45 = True
-                
-            self.timer.handle_command(msg['command'], minutes)
-            
-            # Always refresh help button after timer changes
-            print("Refreshing help button after timer change")
-            current_minutes = self.timer.time_remaining / 60
-            print(f"Current timer: {current_minutes:.2f} minutes")
-            print(f"Time exceeded 45: {self.time_exceeded_45}")
-            self.ui.create_help_button()
-            
-        elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
-            self.play_video(msg['video_type'], msg['minutes'])
-            
-        elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
-            print("Resetting kiosk state")
-            # Reset time exceeded flag
-            self.time_exceeded_45 = False
-            print("Reset time_exceeded_45 flag")
-            
-            # Reset other state
-            self.hints_requested = 0
-            self.ui.hint_cooldown = False
-            self.ui.current_hint = None
-            self.ui.clear_all_labels()
-            
-            if self.assigned_room:
-                self.ui.setup_room_interface(self.assigned_room)
-            
-            if self.current_video_process:
-                self.current_video_process.terminate()
-                self.current_video_process = None
-                self.root.deiconify()
 
     def update_help_button_state(self):
         """Check timer and update help button state"""
@@ -233,27 +177,46 @@ class KioskApp:
 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
                 print("\nProcessing kiosk reset")
-                # Reset time exceeded flag
-                self.time_exceeded_45 = False
-                print("Reset time_exceeded_45 flag to False")
                 
-                # Reset other state
+                # First, stop all audio and video playback
+                print("Stopping all media playback...")
+                
+                # Stop video manager (which handles both video and its audio)
+                self.video_manager.stop_video()
+                
+                # Ensure pygame mixer is fully reset
+                if pygame.mixer.get_init():
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+                    pygame.mixer.stop()  # Stop all sound channels
+                
+                # Stop any playing audio from audio manager
+                self.audio_manager.stop_sound()
+                
+                # Kill any remaining video process
+                if self.current_video_process:
+                    print("Terminating external video process")
+                    self.current_video_process.terminate()
+                    self.current_video_process = None
+                    self.root.deiconify()
+                
+                # Reset application state
+                print("Resetting application state...")
+                self.time_exceeded_45 = False
                 self.hints_requested = 0
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
                 self.ui.clear_all_labels()
                 
+                # Restore UI
                 if self.assigned_room:
-                    print("Setting up room interface after reset")
+                    print("Restoring room interface")
                     self.ui.setup_room_interface(self.assigned_room)
-                
-                if self.current_video_process:
-                    self.current_video_process.terminate()
-                    self.current_video_process = None
-                    self.root.deiconify()
                 
                 # Update help button state after reset
                 self.root.after(100, self.update_help_button_state)
+                
+                print("Kiosk reset complete")
         
         except Exception as e:
             print("\nCritical error in handle_message:")
