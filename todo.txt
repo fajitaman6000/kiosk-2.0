@@ -2,6 +2,11 @@
 "finish videos" button
 
 
+# important/immediate todo
+attach video instruction hint from dropdown box list of existing video hints
+visible standby condition for rooms based on prop finish status
+double click are-you-sure on reboot and reset-all buttons
+
 # planned features: 
 admin mode (technician/managers),
 save hint to public (usable by all profiles, shown what profile made it, save to own private profile),
@@ -12,14 +17,14 @@ clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
 soundcheck/touchcheck behavior
-video hints need play button
 room start upon video finish (optional?)
 reduce music volume while video hint is playing/have no audio in video hints
 hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
-standby condition for rooms based on prop finish status
+
+
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
