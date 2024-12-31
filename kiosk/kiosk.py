@@ -8,6 +8,7 @@ from networking import KioskNetwork
 from ui import KioskUI
 from config import ROOM_CONFIG
 from video_server import VideoServer
+from video_manager import VideoManager
 from audio_server import AudioServer
 from pathlib import Path
 from room_persistence import RoomPersistence
@@ -38,6 +39,7 @@ class KioskApp:
         self.time_exceeded_45 = False
         print("Initialized time_exceeded_45 flag to False")
         self.audio_manager = AudioManager()  # Initialize audio manager
+        self.video_manager = VideoManager(self.root) # Initialize video manager
         
         # Initialize components as before
         self.network = KioskNetwork(self.computer_name, self)
@@ -299,41 +301,8 @@ class KioskApp:
     def play_video(self, video_type, minutes):
         print(f"\nStarting play_video with type: {video_type}")
         
-        # Stop any currently playing video
-        if self.current_video_process:
-            self.current_video_process.terminate()
-            self.current_video_process = None
-            
-        # Hide the main UI temporarily
-        self.root.withdraw()
-        
-        # Try to find VLC in common installation paths
-        vlc_paths = [
-            r"C:\Program Files\VideoLAN\VLC\vlc.exe",
-            r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe",
-        ]
-        
-        vlc_exe = None
-        print("Checking VLC paths:")
-        for path in vlc_paths:
-            print(f"Checking {path}...")
-            if os.path.exists(path):
-                vlc_exe = path
-                print(f"Found VLC at: {path}")
-                break
-                
-        if not vlc_exe:
-            print("Error: VLC not found. Please install VLC media player.")
-            self.root.deiconify()
-            return
-            
-        # Debug current directory and video path
-        print(f"Current working directory: {os.getcwd()}")
-        video_dir = Path("videos")
-        print(f"Video directory exists: {video_dir.exists()}")
-        print(f"Video directory absolute path: {video_dir.absolute()}")
-        
         # Define video paths upfront
+        video_dir = Path("intro_videos")
         video_file = video_dir / f"{video_type}.mp4" if video_type != 'game' else None
         game_video = None
         
@@ -342,89 +311,37 @@ class KioskApp:
             game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
             game_video = video_dir / game_video_name
             print(f"Looking for room-specific game video: {game_video}")
-        else:
-            print("No room assigned or invalid room number - skipping room-specific game video")
-
-        try:
-            # VLC arguments for video playback
-            vlc_args = [
-                vlc_exe,
-                '--fullscreen',
-                '--no-repeat',
-                '--no-loop',
-                '--play-and-exit',
-                '--no-video-deco',        
-                '--no-embedded-video',    
-                '--no-video-title-show',  
-                '--no-spu',              
-                '--no-osd',              
-                '--no-interact',
-                '--video-filter=transform{type=270}',
-            ]
-
-            # If not "game", play the intro video first
-            if video_type != 'game':
-                print(f"Looking for intro video file: {video_file.absolute()}")
-                if not video_file.exists():
-                    print(f"video: {video_type} not found")
-                    self.root.deiconify()  # Restore UI if video not found
-                    return
-
-                # Play the intro video
-                print(f"Playing intro video: {video_file}")
-                self.current_video_process = subprocess.Popen(
-                    vlc_args + [str(video_file.absolute())],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-                
-                # Wait for intro video with timeout
-                try:
-                    self.current_video_process.wait(timeout=300)  # 5 minute timeout
-                except subprocess.TimeoutExpired:
-                    self.current_video_process.terminate()
-
-            # Play room-specific game video if it exists
-            if game_video and game_video.exists():
-                print(f"Playing room-specific game video: {game_video}")
-                self.current_video_process = subprocess.Popen(
-                    vlc_args + [str(game_video.absolute())],
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-                try:
-                    self.current_video_process.wait(timeout=300)
-                except subprocess.TimeoutExpired:
-                    self.current_video_process.terminate()
-            else:
-                print("Room-specific game video not found")
-
-            print("Videos complete, restoring UI")
-            # Restore UI
-            self.root.deiconify()  # Restore the main window
-            
-            # Clear any remnant fullscreen states
-            self.root.attributes('-fullscreen', True)  # Re-assert fullscreen
-            self.root.config(cursor="")  # Restore cursor
-            self.root.update()
-            
-            # Reset UI completely
-            self.ui.hint_cooldown = False  # Reset hint cooldown
-            self.ui.clear_all_labels()     # Clear any existing UI elements
-            if self.assigned_room:
-                self.ui.setup_room_interface(self.assigned_room)
-                # Force hint button creation if not in cooldown
-                if not self.ui.hint_cooldown:
-                    self.ui.create_help_button()
-            
-            # Set and start timer
+        
+        def on_video_complete():
+            print("\nVideo playback complete, resetting UI")
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
-            
-        except Exception as e:
-            print(f"Error running VLC: {e}")
-            self.root.deiconify()
-            return
+            self.ui.hint_cooldown = False
+            self.ui.clear_all_labels()
+            if self.assigned_room:
+                self.ui.setup_room_interface(self.assigned_room)
+                if not self.ui.hint_cooldown:
+                    self.ui.create_help_button()
+        
+        # Play video based on type
+        if video_type != 'game':
+            if video_file.exists():
+                print(f"Playing intro video: {video_file}")
+                self.video_manager.play_video(str(video_file), 
+                    on_complete=lambda: self.play_game_video(game_video, on_video_complete))
+            else:
+                print(f"Video not found: {video_file}")
+        else:
+            self.play_game_video(game_video, on_video_complete)
+
+    def play_game_video(self, game_video, on_complete):
+        """Helper to play game video if it exists"""
+        if game_video and game_video.exists():
+            print(f"Playing game video: {game_video}")
+            self.video_manager.play_video(str(game_video), on_complete=on_complete)
+        else:
+            print("No game video to play, calling completion callback")
+            on_complete()
         
     def on_closing(self):
         print("Shutting down kiosk...")
