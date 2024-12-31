@@ -15,7 +15,6 @@ clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
 soundcheck/touchcheck behavior
-kiosk-side hint notification sound + manual sound button on admin
 video hints need play button
 hint text and image need to be aligned
 hint cooldown text needs to have background or be universal

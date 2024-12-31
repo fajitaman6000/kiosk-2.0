@@ -409,16 +409,54 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['listen_btn'] = listen_btn
         interface_builder.stats_elements['speak_btn'] = speak_btn
 
+        # ===========================================
+        # NEW SECTION: Other Controls
+        # ===========================================
         other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
         other_controls_frame.pack(fill='x', pady=10)
         
-        # Add play sound button
+        # Original hint sound button
         play_sound_btn = tk.Button(
             other_controls_frame,
             text="Play Hint Sound",
             command=lambda: interface_builder.play_hint_sound(computer_name)
         )
         play_sound_btn.pack(pady=5, padx=5)
+        
+        # Warning sounds container (for dropdown and button)
+        warning_container = tk.Frame(other_controls_frame)
+        warning_container.pack(fill='x', padx=5, pady=5)
+        
+        # Warning sound options
+        warning_sounds = {
+            "Be gentle": "be_gentle.mp3",
+            "No photos": "no_photos.mp3",
+            "Please stop": "please_stop.mp3"
+        }
+        
+        # Create variable for dropdown
+        interface_builder.stats_elements['warning_sound'] = tk.StringVar(value=list(warning_sounds.keys())[0])
+        
+        # Create dropdown
+        warning_dropdown = ttk.Combobox(
+            warning_container,
+            textvariable=interface_builder.stats_elements['warning_sound'],
+            values=list(warning_sounds.keys()),
+            state='readonly',
+            width=15
+        )
+        warning_dropdown.pack(side='left', padx=(0, 5))
+        
+        # Create play warning button
+        play_warning_btn = tk.Button(
+            warning_container,
+            text="Issue Warning",
+            command=lambda: interface_builder.play_hint_sound(
+                computer_name, 
+                warning_sounds[interface_builder.stats_elements['warning_sound'].get()]
+            )
+        )
+        play_warning_btn.pack(side='left')
         
         # Store the computer name for video/audio updates
         interface_builder.stats_elements['current_computer'] = computer_name

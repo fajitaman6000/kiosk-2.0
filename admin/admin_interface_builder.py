@@ -198,16 +198,20 @@ class AdminInterfaceBuilder:
                 print(f"Error loading image: {e}")
                 self.current_hint_image = None
 
-    def play_hint_sound(self, computer_name):
+    def play_hint_sound(self, computer_name, sound_name='hint_received.mp3'):
         """
-        Sends a command to play the hint sound on the specified kiosk
+        Sends a command to play a sound on the specified kiosk
         Uses the app's network handler to broadcast the message
+        
+        Args:
+            computer_name (str): The target kiosk
+            sound_name (str): The sound file to play, defaults to hint_received.mp3
         """
         self.app.network_handler.socket.sendto(
             json.dumps({
                 'type': 'play_sound',
                 'computer_name': computer_name,
-                'sound_name': 'hint_received.mp3'
+                'sound_name': sound_name
             }).encode(),
             ('255.255.255.255', 12346)
         )
