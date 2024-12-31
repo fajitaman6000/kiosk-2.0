@@ -437,14 +437,15 @@ class KioskUI:
             if hint_text:
                 print("Adding hint text to left panel")
                 self.hint_label.create_text(
-                    panel_width/2,     # Center of left panel
+                    panel_width,     # Full width of left panel
                     panel_height/2,    # Vertical center
                     text=hint_text,
                     fill='black',
                     font=('Arial', 20),
                     width=panel_height-40,  # Leave margin
                     angle=270,
-                    justify='center'
+                    justify='center',
+                    anchor='center'  # Ensures text is centered
                 )
             
             # Add image in right panel if present

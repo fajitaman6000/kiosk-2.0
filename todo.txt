@@ -15,14 +15,13 @@ restarter moved to kiosk app
 last hint given (admin-side)
 soundcheck/touchcheck behavior
 video hints need play button
-hint text and image need to be aligned
-hint cooldown text needs to have background or be universal
 room start upon video finish (optional?)
 reduce music volume while video hint is playing/have no audio in video hints
 hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
+standby condition for rooms based on prop finish status
 
 # known bugs
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
@@ -36,3 +35,4 @@ audio props only load on prop-click if prop is not renamed
 # ambitious extra ideas:
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 
+set alarm on prop to make sound when gm-chosen prop finishes
