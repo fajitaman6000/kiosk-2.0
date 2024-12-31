@@ -10,7 +10,6 @@ save hint to public (usable by all profiles, shown what profile made it, save to
 save hint to private (local to profile),
 save hint to global/default (admin only),
 set hint color,
-hint folders,
 clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
@@ -20,7 +19,6 @@ hint text and image need to be aligned
 hint cooldown text needs to have background or be universal
 room start upon video finish (optional?)
 reduce music volume while video hint is playing/have no audio in video hints
-alarm "stop doing that" button
 hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
