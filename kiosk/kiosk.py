@@ -109,7 +109,7 @@ class KioskApp:
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
-            print(f"\nStats updated: {stats}")
+            #print(f"\nStats updated: {stats}")
             self._last_stats = stats.copy()
         return stats
         
@@ -274,9 +274,10 @@ class KioskApp:
             game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
             game_video = video_dir / game_video_name
             print(f"Looking for room-specific game video: {game_video}")
-        
-        def on_video_complete():
-            print("\nVideo playback complete, resetting UI")
+
+        def finish_video_sequence():
+            """Final callback after all videos are complete"""
+            print("\nVideo sequence complete, resetting UI")
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
             self.ui.hint_cooldown = False
@@ -285,26 +286,26 @@ class KioskApp:
                 self.ui.setup_room_interface(self.assigned_room)
                 if not self.ui.hint_cooldown:
                     self.ui.create_help_button()
-        
+
+        def play_game_video():
+            """Helper to play game video if it exists"""
+            if game_video and game_video.exists():
+                print(f"Playing game video: {game_video}")
+                self.video_manager.play_video(str(game_video), on_complete=finish_video_sequence)
+            else:
+                print("No game video to play, finishing sequence")
+                finish_video_sequence()
+
         # Play video based on type
         if video_type != 'game':
             if video_file.exists():
                 print(f"Playing intro video: {video_file}")
-                self.video_manager.play_video(str(video_file), 
-                    on_complete=lambda: self.play_game_video(game_video, on_video_complete))
+                self.video_manager.play_video(str(video_file), on_complete=play_game_video)
             else:
                 print(f"Video not found: {video_file}")
+                play_game_video()  # Skip to game video if intro doesn't exist
         else:
-            self.play_game_video(game_video, on_video_complete)
-
-    def play_game_video(self, game_video, on_complete):
-        """Helper to play game video if it exists"""
-        if game_video and game_video.exists():
-            print(f"Playing game video: {game_video}")
-            self.video_manager.play_video(str(game_video), on_complete=on_complete)
-        else:
-            print("No game video to play, calling completion callback")
-            on_complete()
+            play_game_video()
         
     def on_closing(self):
         print("Shutting down kiosk...")

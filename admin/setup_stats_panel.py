@@ -124,6 +124,18 @@ def setup_stats_panel(interface_builder, computer_name):
         video_frame = tk.Frame(control_buttons_frame)
         video_frame.pack(side='left', padx=(0,25))
         
+        try:
+            skip_icon = Image.open(os.path.join(icon_dir, "skip.png"))
+            skip_icon = skip_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            skip_icon = ImageTk.PhotoImage(skip_icon)
+        except Exception as e:
+            print(f"Error loading skip icon: {e}")
+            skip_icon = None
+
+        # Video frame with icon button, dropdown and skip button
+        video_frame = tk.Frame(control_buttons_frame)
+        video_frame.pack(side='left', padx=(0,25))
+
         # Video button with icon
         video_btn = tk.Button(
             video_frame,
@@ -133,14 +145,12 @@ def setup_stats_panel(interface_builder, computer_name):
             width=24,
             height=24,
             bd=0,
-            highlightthickness=0,
-            #bg='black',
-            #activebackground='black'
+            highlightthickness=0
         )
         if video_icon:
             video_btn.image = video_icon
         video_btn.pack(side='left', padx=2)
-        
+
         # Video options dropdown
         video_options = ['Intro', 'Late', 'Recent Player', 'Game']
         interface_builder.stats_elements['video_type'] = tk.StringVar(value=video_options[0])
@@ -152,6 +162,22 @@ def setup_stats_panel(interface_builder, computer_name):
             width=10
         )
         video_dropdown.pack(side='left', padx=2)
+
+        # Add skip button
+        skip_btn = tk.Button(
+            video_frame,
+            image=skip_icon if skip_icon else None,
+            text="" if skip_icon else "Skip Video",
+            command=lambda: interface_builder.skip_video(computer_name),
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0
+        )
+        if skip_icon:
+            skip_btn.image = skip_icon
+        skip_btn.pack(side='left', padx=2)
+
 
         # Time setting controls
         time_set_frame = tk.Frame(timer_frame)

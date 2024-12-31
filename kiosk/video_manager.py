@@ -254,14 +254,15 @@ class VideoManager:
             # Perform UI cleanup
             self._cleanup()
             
-            # Execute completion callback if exists
-            if on_complete:
-                on_complete()  # Execute the passed callback
-            elif self.completion_callback:
-                callback = self.completion_callback
-                self.completion_callback = None  # Clear the callback
-                callback()  # Execute the stored callback
-                
+            # Only execute callback if video wasn't stopped manually
+            if not self.should_stop and (on_complete or self.completion_callback):
+                if on_complete:
+                    on_complete()  # Execute the passed callback
+                elif self.completion_callback:
+                    callback = self.completion_callback
+                    self.completion_callback = None  # Clear the callback
+                    callback()  # Execute the stored callback
+                    
         except Exception as e:
             print(f"Error in thread cleanup: {e}")
             traceback.print_exc()
@@ -297,7 +298,14 @@ class VideoManager:
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
             self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
             
+        # Clean up and trigger completion callback
         self._cleanup()
+        
+        # Execute completion callback if it exists
+        if self.completion_callback:
+            callback = self.completion_callback
+            self.completion_callback = None  # Clear the callback before executing
+            self.root.after(0, callback)  # Schedule callback on main thread
         
     def _cleanup(self):
         """Clean up resources"""
