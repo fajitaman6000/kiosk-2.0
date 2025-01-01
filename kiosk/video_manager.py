@@ -19,6 +19,7 @@ class VideoManager:
         self.is_playing = False
         self.should_stop = False
         self.original_widgets = []
+        self.original_widget_info = []  # Store complete widget layout info
         self._lock = threading.Lock()
         self.temp_dir = tempfile.mkdtemp()
         self.current_audio_path = None
@@ -84,12 +85,6 @@ class VideoManager:
         """Play a video file in fullscreen with synchronized audio."""
         print(f"\nVideoManager: Starting video playback: {video_path}")
         
-        if not os.path.exists(video_path):
-            print(f"VideoManager: Error - Video file not found: {video_path}")
-            if on_complete:
-                self.root.after(0, on_complete)
-            return
-            
         try:
             # Store completion callback
             self.completion_callback = on_complete
@@ -99,25 +94,52 @@ class VideoManager:
                 print("VideoManager: Stopping existing playback")
                 self.stop_video()
             
-            # Store and hide current widgets
+            # Store current widgets and their layout info
             print("VideoManager: Storing current window state")
-            self.original_widgets = [w for w in self.root.winfo_children()]
-            for widget in self.original_widgets:
+            self.original_widgets = []
+            self.original_widget_info = []
+            
+            for widget in self.root.winfo_children():
+                self.original_widgets.append(widget)
+                info = {
+                    'widget': widget,
+                    'geometry_info': None,
+                    'manager': None
+                }
+                
+                # Detect geometry manager
+                if widget.winfo_manager():
+                    info['manager'] = widget.winfo_manager()
+                    if info['manager'] == 'place':
+                        info['geometry_info'] = {
+                            'x': widget.winfo_x(),
+                            'y': widget.winfo_y(),
+                            'width': widget.winfo_width(),
+                            'height': widget.winfo_height()
+                        }
+                    elif info['manager'] == 'grid':
+                        info['geometry_info'] = widget.grid_info()
+                    elif info['manager'] == 'pack':
+                        info['geometry_info'] = widget.pack_info()
+                
+                self.original_widget_info.append(info)
                 widget.place_forget()
-            
-            # Create video canvas
+                
+            # Create video canvas and ensure it covers the full window
             print("VideoManager: Creating video canvas")
-            screen_width = self.root.winfo_screenwidth()
-            screen_height = self.root.winfo_screenheight()
-            
             self.video_canvas = tk.Canvas(
                 self.root,
-                width=screen_width,
-                height=screen_height,
+                width=self.root.winfo_screenwidth(),
+                height=self.root.winfo_screenheight(),
                 bg='black',
                 highlightthickness=0
             )
-            self.video_canvas.place(x=0, y=0)
+            # Use place with relwidth/relheight to ensure full coverage
+            self.video_canvas.place(x=0, y=0, relwidth=1, relheight=1)
+            
+            # Ensure the canvas is on top using the proper widget raise method
+            self.root.update_idletasks()  # Make sure geometry is updated
+            self.video_canvas.master.lift(self.video_canvas)
             
             # Reset state flags
             self.should_stop = False
@@ -308,7 +330,7 @@ class VideoManager:
             self.root.after(0, callback)  # Schedule callback on main thread
         
     def _cleanup(self):
-        """Clean up resources"""
+        """Clean up resources and restore UI state"""
         print("\nVideoManager: Starting cleanup")
         try:
             self.is_playing = False
@@ -317,44 +339,69 @@ class VideoManager:
             # Stop audio
             if pygame.mixer.get_init():
                 pygame.mixer.music.stop()
-                pygame.mixer.music.unload()  # Ensure audio is unloaded
+                pygame.mixer.music.unload()
             
-            # Hide video canvas
+            # Clean up video canvas
             if self.video_canvas:
                 try:
+                    # Clear all items from canvas first
+                    self.video_canvas.delete('all')
+                    # Remove from layout manager
                     self.video_canvas.place_forget()
-                    self.video_canvas.destroy()  # Actually destroy the canvas
+                    # Ensure canvas is destroyed
+                    self.video_canvas.destroy()
                     self.video_canvas = None
+                    # Force garbage collection for good measure
+                    self.root.update()
                 except Exception as e:
-                    print(f"VideoManager: Error hiding canvas: {e}")
+                    print(f"VideoManager: Error cleaning up canvas: {e}")
             
-            # Restore original widgets
-            for widget in self.original_widgets:
-                try:
-                    widget.place(x=widget.winfo_x(), y=widget.winfo_y())
-                except Exception as e:
-                    print(f"VideoManager: Error restoring widget: {e}")
-                    
+            # Restore original widgets with their original geometry management
+            for info in self.original_widget_info:
+                widget = info['widget']
+                if widget.winfo_exists():
+                    try:
+                        manager = info['manager']
+                        if manager == 'place':
+                            widget.place(
+                                x=info['geometry_info']['x'],
+                                y=info['geometry_info']['y'],
+                                width=info['geometry_info']['width'],
+                                height=info['geometry_info']['height']
+                            )
+                        elif manager == 'grid':
+                            widget.grid(**info['geometry_info'])
+                        elif manager == 'pack':
+                            widget.pack(**info['geometry_info'])
+                    except Exception as e:
+                        print(f"VideoManager: Error restoring widget: {e}")
+            
+            # Clear stored widget information
             self.original_widgets = []
+            self.original_widget_info = []
             
-            # Clean up temp audio file with retry
+            # Force a complete update of the window
+            self.root.update_idletasks()
+            self.root.update()
+            
+            # Clean up temp audio file
             if self.current_audio_path:
-                for _ in range(3):  # Try up to 3 times
+                for _ in range(3):
                     try:
                         if os.path.exists(self.current_audio_path):
-                            pygame.mixer.quit()  # Ensure mixer is fully closed
-                            time.sleep(0.1)  # Small delay to ensure resources are released
+                            pygame.mixer.quit()
+                            time.sleep(0.1)
                             os.remove(self.current_audio_path)
                             print(f"Removed temporary audio file: {self.current_audio_path}")
                             break
                     except Exception as e:
                         print(f"Attempt to remove temp file failed: {e}")
-                        time.sleep(0.1)  # Wait before retry
+                        time.sleep(0.1)
                 self.current_audio_path = None
-                
+            
             # Reinitialize pygame mixer
             pygame.mixer.init(frequency=44100)
-                
+            
             print("VideoManager: Cleanup complete")
             
         except Exception as e:
