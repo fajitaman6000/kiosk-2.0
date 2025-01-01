@@ -654,17 +654,23 @@ class KioskUI:
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
         try:
-            # Store video info for later use
+            print(f"\nShowing video solution for {room_folder}/{video_filename}")
+            
+            # Store video info first
             self.stored_video_info = {
                 'room_folder': room_folder,
                 'video_filename': video_filename
             }
             
-            # If we already have a video solution button, remove it
-            if hasattr(self, 'video_solution_button'):
-                self.video_solution_button.destroy()
+            # Safely remove existing button if it exists
+            if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                try:
+                    self.video_solution_button.destroy()
+                except:
+                    pass
+                self.video_solution_button = None
                 
-            # Create video solution button with same styling as image button
+            # Create video solution button
             button_width = 100
             button_height = 200
             
@@ -676,7 +682,7 @@ class KioskUI:
                 highlightthickness=0
             )
             
-            # Position button like the image button
+            # Position button
             hint_height = 1015 - 64
             self.video_solution_button.place(
                 x=750,
@@ -695,10 +701,13 @@ class KioskUI:
             
             # Bind click event
             self.video_solution_button.bind('<Button-1>', lambda e: self.toggle_solution_video())
+            print("Successfully created video solution button")
             
         except Exception as e:
-            print(f"Error creating video solution button: {e}")
+            print(f"\nError creating video solution button:")
             traceback.print_exc()
+            self.stored_video_info = None
+            self.video_solution_button = None
 
     def toggle_solution_video(self):
         """Toggle video solution playback"""
@@ -765,34 +774,49 @@ class KioskUI:
         print("\nHandling video completion")
         self.video_is_playing = False
         
-        # Make sure cleanup happens on the main thread
-        self.root.after(0, self._restore_after_video)
+        # Store video info in temporary variable before cleanup
+        temp_video_info = None
+        if hasattr(self, 'stored_video_info') and self.stored_video_info:
+            temp_video_info = self.stored_video_info.copy()
+        
+        # Make sure cleanup happens on main thread with preserved video info
+        self.root.after(0, lambda: self._restore_after_video_with_info(temp_video_info))
         
     def _restore_after_video(self):
         """Restore UI elements after video playback"""
         try:
-            print("Restoring UI after video")
-            # Re-show the solution button
-            if hasattr(self, 'stored_video_info'):
-                # Recreate the button if it doesn't exist
-                if not hasattr(self, 'video_solution_button') or not self.video_solution_button:
-                    print("Recreating solution button")
-                    self.show_video_solution(
-                        self.stored_video_info['room_folder'],
-                        self.stored_video_info['video_filename']
-                    )
-                else:
-                    print("Restoring existing solution button")
-                    self.video_solution_button.place(
-                        x=750,
-                        y=(1015 - 64)/2 - 100 + 64
-                    )
-                    
+            print("\nRestoring UI after video")
+            
+            # Verify we still have valid video info
+            if not hasattr(self, 'stored_video_info') or not self.stored_video_info:
+                print("Warning: No stored video info found during restore")
+                return
+                
+            # Get video info before recreating button
+            room_folder = self.stored_video_info.get('room_folder')
+            video_filename = self.stored_video_info.get('video_filename')
+            
+            if room_folder and video_filename:
+                print(f"Recreating solution button for {room_folder}/{video_filename}")
+                # Recreate the button
+                self.show_video_solution(room_folder, video_filename)
+            else:
+                print("Error: Incomplete video info")
+                
             # Restore hint label if it exists
             if hasattr(self, 'hint_label') and self.hint_label:
                 print("Restoring hint label")
                 self.hint_label.place(x=911, y=64)
                 
         except Exception as e:
-            print(f"Error restoring UI after video: {e}")
+            print(f"\nError restoring UI after video:")
             traceback.print_exc()
+            # Ensure we don't leave invalid state
+            self.stored_video_info = None 
+            self.video_solution_button = None
+
+    def _restore_after_video_with_info(self, video_info):
+        """Restore UI elements with preserved video info"""
+        if video_info:
+            self.stored_video_info = video_info
+        self._restore_after_video()
