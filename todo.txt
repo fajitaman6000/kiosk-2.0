@@ -3,7 +3,6 @@
 
 
 # important/immediate todo
-attach video instruction hint from dropdown box list of existing video hints
 visible standby condition for rooms based on prop finish status
 double click are-you-sure on reboot and reset-all buttons
 
@@ -23,6 +22,7 @@ hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
+video hint should be able to play more than once
 
 
 

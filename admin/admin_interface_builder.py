@@ -843,8 +843,12 @@ class AdminInterfaceBuilder:
         room_num = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
         if room_num and room_num in room_folders:
             room_folder = room_folders[room_num]
-            # Construct video path using room folder
-            video_path = f"video_solutions/{room_folder}/{video_filename}.mp4"
+            
+            # Clear help request status if it exists
+            if computer_name in self.app.kiosk_tracker.help_requested:
+                self.app.kiosk_tracker.help_requested.remove(computer_name)
+                if computer_name in self.connected_kiosks:
+                    self.connected_kiosks[computer_name]['help_label'].config(text="")
             
             # Send video command to kiosk
             self.app.network_handler.socket.sendto(

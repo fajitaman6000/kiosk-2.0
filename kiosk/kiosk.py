@@ -190,10 +190,14 @@ class KioskApp:
                     
                     if os.path.exists(video_path):
                         print(f"Setting up solution video interface: {video_path}")
-                        # Clear any existing hints first
-                        if hasattr(self.ui, 'hint_label') and self.ui.hint_label:
-                            self.ui.hint_label.destroy()
-                            self.ui.hint_label = None
+                        
+                        # Create hint-style message for video solution
+                        hint_data = {
+                            'text': 'Video Solution Received',  # This will show in the hint text box
+                        }
+                        
+                        # Show hint first, then show video interface
+                        self.show_hint(hint_data)
                         
                         # Show the solution video interface
                         self.ui.show_video_solution(room_folder, video_filename)
