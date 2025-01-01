@@ -435,6 +435,66 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['listen_btn'] = listen_btn
         interface_builder.stats_elements['speak_btn'] = speak_btn
 
+         # ===========================================
+        # NEW SECTION: Video Solutions
+        # ===========================================
+        video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions")
+        video_solutions_frame.pack(fill='x', pady=10)
+        
+        # Container for dropdown and play button
+        solutions_container = tk.Frame(video_solutions_frame)
+        solutions_container.pack(fill='x', padx=5, pady=5)
+        
+        # Load prop mappings
+        try:
+            with open('prop_name_mapping.json', 'r') as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"Error loading prop mappings: {e}")
+            prop_mappings = {}
+            
+        # Get room-specific props if room is assigned
+        props_list = []
+        if computer_name in interface_builder.app.kiosk_tracker.kiosk_assignments:
+            room_num = interface_builder.app.kiosk_tracker.kiosk_assignments[computer_name]
+            room_map = {
+                3: "wizard",
+                1: "casino_ma",
+                2: "casino_ma",
+                5: "haunted",
+                4: "zombie",
+                6: "atlantis",
+                7: "time_machine"
+            }
+            
+            if room_num in room_map:
+                room_key = room_map[room_num]
+                if room_key in prop_mappings:
+                    # Sort props by order
+                    props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
+                    props.sort(key=lambda x: x[1]["order"])
+                    props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
+        
+        # Create dropdown for props
+        interface_builder.stats_elements['solution_prop'] = tk.StringVar()
+        props_dropdown = ttk.Combobox(
+            solutions_container,
+            textvariable=interface_builder.stats_elements['solution_prop'],
+            values=props_list,
+            state='readonly' if props_list else 'disabled',
+            width=30
+        )
+        props_dropdown.pack(side='left', padx=(0, 5))
+        
+        # Add play button
+        play_solution_btn = tk.Button(
+            solutions_container,
+            text="Play Solution",
+            command=lambda: interface_builder.play_solution_video(computer_name),
+            state='normal' if props_list else 'disabled'
+        )
+        play_solution_btn.pack(side='left')
+
         # ===========================================
         # NEW SECTION: Other Controls
         # ===========================================

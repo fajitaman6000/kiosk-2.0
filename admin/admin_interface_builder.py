@@ -817,6 +817,46 @@ class AdminInterfaceBuilder:
         # Wrapper for the extracted send_hint function
         send_hint(self, computer_name, hint_data)
 
+    def play_solution_video(self, computer_name):
+        """Play a solution video for the selected prop"""
+        if not self.stats_elements['solution_prop'].get():
+            return
+            
+        # Extract the display name from the dropdown value
+        # Format is "Display Name (original_name)"
+        display_name = self.stats_elements['solution_prop'].get().split('(')[0].strip()
+        
+        # Convert display name to lowercase and replace spaces with underscores
+        video_filename = display_name.lower().replace(' ', '_')
+        
+        # Get the room folder name based on room number
+        room_folders = {
+            3: "wizard",
+            1: "casino",
+            2: "ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time"
+        }
+        
+        room_num = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+        if room_num and room_num in room_folders:
+            room_folder = room_folders[room_num]
+            # Construct video path using room folder
+            video_path = f"video_solutions/{room_folder}/{video_filename}.mp4"
+            
+            # Send video command to kiosk
+            self.app.network_handler.socket.sendto(
+                json.dumps({
+                    'type': 'solution_video',
+                    'computer_name': computer_name,
+                    'room_folder': room_folder,
+                    'video_filename': video_filename
+                }).encode(),
+                ('255.255.255.255', 12346)
+            )
+
     def cleanup(self):
         """Clean up resources before closing"""
         if hasattr(self, 'audio_manager'):

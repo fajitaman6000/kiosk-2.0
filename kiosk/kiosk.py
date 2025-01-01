@@ -174,6 +174,21 @@ class KioskApp:
                 sound_name = msg.get('sound_name')
                 if sound_name:
                     self.audio_manager.play_sound(sound_name)
+                    
+            elif msg['type'] == 'solution_video' and msg['computer_name'] == self.computer_name:
+                print("\nReceived solution video command")
+                room_folder = msg.get('room_folder')
+                video_filename = msg.get('video_filename')
+                
+                if room_folder and video_filename:
+                    video_path = os.path.join("video_solutions", room_folder, f"{video_filename}.mp4")
+                    print(f"Looking for solution video at: {video_path}")
+                    
+                    if os.path.exists(video_path):
+                        print(f"Playing solution video: {video_path}")
+                        self.video_manager.play_video(video_path)
+                    else:
+                        print(f"Solution video not found: {video_path}")
 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
                 print("\nProcessing kiosk reset")
