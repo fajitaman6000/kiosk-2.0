@@ -47,9 +47,9 @@ class VideoManager:
                 print("Error: ffmpeg not available")
                 return None
                 
-            # Create unique temp WAV file name
+            # Create unique temp WAV file name using timestamp
             base_name = os.path.splitext(os.path.basename(video_path))[0]
-            temp_audio = os.path.join(self.temp_dir, f"{base_name}.wav")
+            temp_audio = os.path.join(self.temp_dir, f"{base_name}_{int(time.time())}.wav")
             
             # Extract audio using ffmpeg
             print(f"Extracting audio from video to: {temp_audio}")
@@ -315,12 +315,15 @@ class VideoManager:
             self.should_stop = True
             
             # Stop audio
-            pygame.mixer.music.stop()
+            if pygame.mixer.get_init():
+                pygame.mixer.music.stop()
+                pygame.mixer.music.unload()  # Ensure audio is unloaded
             
             # Hide video canvas
             if self.video_canvas:
                 try:
                     self.video_canvas.place_forget()
+                    self.video_canvas.destroy()  # Actually destroy the canvas
                     self.video_canvas = None
                 except Exception as e:
                     print(f"VideoManager: Error hiding canvas: {e}")
@@ -333,6 +336,25 @@ class VideoManager:
                     print(f"VideoManager: Error restoring widget: {e}")
                     
             self.original_widgets = []
+            
+            # Clean up temp audio file with retry
+            if self.current_audio_path:
+                for _ in range(3):  # Try up to 3 times
+                    try:
+                        if os.path.exists(self.current_audio_path):
+                            pygame.mixer.quit()  # Ensure mixer is fully closed
+                            time.sleep(0.1)  # Small delay to ensure resources are released
+                            os.remove(self.current_audio_path)
+                            print(f"Removed temporary audio file: {self.current_audio_path}")
+                            break
+                    except Exception as e:
+                        print(f"Attempt to remove temp file failed: {e}")
+                        time.sleep(0.1)  # Wait before retry
+                self.current_audio_path = None
+                
+            # Reinitialize pygame mixer
+            pygame.mixer.init(frequency=44100)
+                
             print("VideoManager: Cleanup complete")
             
         except Exception as e:
