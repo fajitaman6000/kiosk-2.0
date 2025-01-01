@@ -774,13 +774,26 @@ class KioskUI:
         print("\nHandling video completion")
         self.video_is_playing = False
         
-        # Store video info in temporary variable before cleanup
-        temp_video_info = None
-        if hasattr(self, 'stored_video_info') and self.stored_video_info:
-            temp_video_info = self.stored_video_info.copy()
+        # Clear UI state
+        print("Clearing UI state...")
+        self.clear_all_labels()
         
-        # Make sure cleanup happens on main thread with preserved video info
-        self.root.after(0, lambda: self._restore_after_video_with_info(temp_video_info))
+        # Restore room interface - this will properly recreate the hint display area
+        if self.message_handler.assigned_room:
+            print("Restoring room interface")
+            self.setup_room_interface(self.message_handler.assigned_room)
+            
+            # If we had a video solution, recreate its button
+            if hasattr(self, 'stored_video_info') and self.stored_video_info:
+                print("Recreating video solution button")
+                self.show_video_solution(
+                    self.stored_video_info['room_folder'],
+                    self.stored_video_info['video_filename']
+                )
+        
+        # Refresh help button state if needed
+        if not self.hint_cooldown:
+            self.message_handler.root.after(100, self.message_handler.update_help_button_state)
         
     def _restore_after_video(self):
         """Restore UI elements after video playback"""
@@ -803,10 +816,10 @@ class KioskUI:
             else:
                 print("Error: Incomplete video info")
                 
-            # Restore hint label if it exists
-            if hasattr(self, 'hint_label') and self.hint_label:
-                print("Restoring hint label")
-                self.hint_label.place(x=911, y=64)
+            # Only recreate hint label if we still have a current hint
+            if self.current_hint:
+                print("Restoring hint label with current hint")
+                self.show_hint(self.current_hint)
                 
         except Exception as e:
             print(f"\nError restoring UI after video:")

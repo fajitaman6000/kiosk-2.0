@@ -370,12 +370,14 @@ class VideoManager:
                     try:
                         manager = info['manager']
                         if manager == 'place':
-                            widget.place(
-                                x=info['geometry_info']['x'],
-                                y=info['geometry_info']['y'],
-                                width=info['geometry_info']['width'],
-                                height=info['geometry_info']['height']
-                            )
+                            # Don't restore hint label here - let UI class handle it
+                            if not (hasattr(widget, 'winfo_name') and 'hint_label' in widget.winfo_name()):
+                                widget.place(
+                                    x=info['geometry_info']['x'],
+                                    y=info['geometry_info']['y'],
+                                    width=info['geometry_info']['width'],
+                                    height=info['geometry_info']['height']
+                                )
                         elif manager == 'grid':
                             widget.grid(**info['geometry_info'])
                         elif manager == 'pack':
