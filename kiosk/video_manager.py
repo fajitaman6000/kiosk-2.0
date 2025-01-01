@@ -198,6 +198,13 @@ class VideoManager:
                     print(f"VideoManager: Error starting audio: {e}")
                     audio_path = None
             
+            # Add click handler to video canvas to allow exit on click
+            def on_canvas_click(event):
+                print("VideoManager: Video canvas clicked, stopping playback")
+                self.stop_video()
+                
+            self.root.after(0, lambda: self.video_canvas.bind('<Button-1>', on_canvas_click))
+            
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
                 # Calculate desired frame position based on elapsed time

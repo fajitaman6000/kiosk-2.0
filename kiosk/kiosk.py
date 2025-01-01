@@ -177,18 +177,32 @@ class KioskApp:
                     
             elif msg['type'] == 'solution_video' and msg['computer_name'] == self.computer_name:
                 print("\nReceived solution video command")
-                room_folder = msg.get('room_folder')
-                video_filename = msg.get('video_filename')
-                
-                if room_folder and video_filename:
+                try:
+                    room_folder = msg.get('room_folder')
+                    video_filename = msg.get('video_filename')
+                    
+                    if not room_folder or not video_filename:
+                        print("Error: Missing room_folder or video_filename in message")
+                        return
+                        
                     video_path = os.path.join("video_solutions", room_folder, f"{video_filename}.mp4")
                     print(f"Looking for solution video at: {video_path}")
                     
                     if os.path.exists(video_path):
-                        print(f"Playing solution video: {video_path}")
-                        self.video_manager.play_video(video_path)
+                        print(f"Setting up solution video interface: {video_path}")
+                        # Clear any existing hints first
+                        if hasattr(self.ui, 'hint_label') and self.ui.hint_label:
+                            self.ui.hint_label.destroy()
+                            self.ui.hint_label = None
+                        
+                        # Show the solution video interface
+                        self.ui.show_video_solution(room_folder, video_filename)
                     else:
-                        print(f"Solution video not found: {video_path}")
+                        print(f"Error: Solution video not found at {video_path}")
+                        
+                except Exception as e:
+                    print(f"Error processing solution video command: {e}")
+                    traceback.print_exc()
 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
                 print("\nProcessing kiosk reset")

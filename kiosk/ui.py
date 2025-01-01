@@ -361,6 +361,22 @@ class KioskUI:
                 self.fullscreen_image.destroy()
                 self.fullscreen_image = None
                 
+            # Clear any existing video solution
+            if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                print("Clearing existing video solution")
+                self.video_solution_button.destroy()
+                self.video_solution_button = None
+                
+            # Stop any playing video
+            if hasattr(self, 'video_is_playing') and self.video_is_playing:
+                print("Stopping playing video")
+                self.message_handler.video_manager.stop_video()
+                self.video_is_playing = False
+                
+            # Clear stored video info
+            if hasattr(self, 'stored_video_info'):
+                self.stored_video_info = None
+
             # Start cooldown timer
             self.start_cooldown()
             self.current_hint = text_or_data
@@ -635,5 +651,148 @@ class KioskUI:
             self.hide_status_frame()  # Add this line
             self.create_help_button()  # Recreate help button when cooldown ends
 
+    def show_video_solution(self, room_folder, video_filename):
+        """Shows a button to play the video solution, similar to image hints"""
+        try:
+            # Store video info for later use
+            self.stored_video_info = {
+                'room_folder': room_folder,
+                'video_filename': video_filename
+            }
+            
+            # If we already have a video solution button, remove it
+            if hasattr(self, 'video_solution_button'):
+                self.video_solution_button.destroy()
+                
+            # Create video solution button with same styling as image button
+            button_width = 100
+            button_height = 200
+            
+            self.video_solution_button = tk.Canvas(
+                self.root,
+                width=button_width,
+                height=button_height,
+                bg='blue',
+                highlightthickness=0
+            )
+            
+            # Position button like the image button
+            hint_height = 1015 - 64
+            self.video_solution_button.place(
+                x=750,
+                y=hint_height/2 - button_height/2 + 64
+            )
+            
+            # Add button text
+            self.video_solution_button.create_text(
+                button_width/2,
+                button_height/2,
+                text="VIEW SOLUTION",
+                fill='white',
+                font=('Arial', 24),
+                angle=270
+            )
+            
+            # Bind click event
+            self.video_solution_button.bind('<Button-1>', lambda e: self.toggle_solution_video())
+            
+        except Exception as e:
+            print(f"Error creating video solution button: {e}")
+            traceback.print_exc()
 
+    def toggle_solution_video(self):
+        """Toggle video solution playback"""
+        try:
+            print("\nToggling solution video")
+            # If video is already playing, stop it
+            if hasattr(self, 'video_is_playing') and self.video_is_playing:
+                print("Stopping current video")
+                self.message_handler.video_manager.stop_video()
+                self.video_is_playing = False
+                
+                # Restore the button
+                if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                    print("Restoring solution button")
+                    self.video_solution_button.place(
+                        x=750,
+                        y=(1015 - 64)/2 - 100 + 64
+                    )
+                
+                # Restore hint label if it exists
+                if hasattr(self, 'hint_label') and self.hint_label:
+                    print("Restoring hint label")
+                    self.hint_label.place(x=911, y=64)
+                    
+            # If video is not playing, start it
+            else:
+                print("Starting video playback")
+                if hasattr(self, 'stored_video_info'):
+                    # Only hide UI elements that exist
+                    if hasattr(self, 'hint_label') and self.hint_label:
+                        print("Hiding hint label")
+                        self.hint_label.place_forget()
+                    
+                    if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                        print("Hiding solution button")
+                        self.video_solution_button.place_forget()
+                        
+                    # Construct video path
+                    video_path = os.path.join(
+                        "video_solutions",
+                        self.stored_video_info['room_folder'],
+                        f"{self.stored_video_info['video_filename']}.mp4"
+                    )
+                    
+                    print(f"Video path: {video_path}")
+                    if os.path.exists(video_path):
+                        print("Playing video")
+                        self.video_is_playing = True
+                        self.message_handler.video_manager.play_video(
+                            video_path,
+                            on_complete=self.handle_video_completion
+                        )
+                    else:
+                        print(f"Error: Video file not found at {video_path}")
+                else:
+                    print("Error: No video info stored")
+                    
+        except Exception as e:
+            print(f"\nError in toggle_solution_video: {e}")
+            traceback.print_exc()
 
+    def handle_video_completion(self):
+        """Handle cleanup after video finishes playing"""
+        print("\nHandling video completion")
+        self.video_is_playing = False
+        
+        # Make sure cleanup happens on the main thread
+        self.root.after(0, self._restore_after_video)
+        
+    def _restore_after_video(self):
+        """Restore UI elements after video playback"""
+        try:
+            print("Restoring UI after video")
+            # Re-show the solution button
+            if hasattr(self, 'stored_video_info'):
+                # Recreate the button if it doesn't exist
+                if not hasattr(self, 'video_solution_button') or not self.video_solution_button:
+                    print("Recreating solution button")
+                    self.show_video_solution(
+                        self.stored_video_info['room_folder'],
+                        self.stored_video_info['video_filename']
+                    )
+                else:
+                    print("Restoring existing solution button")
+                    self.video_solution_button.place(
+                        x=750,
+                        y=(1015 - 64)/2 - 100 + 64
+                    )
+                    
+            # Restore hint label if it exists
+            if hasattr(self, 'hint_label') and self.hint_label:
+                print("Restoring hint label")
+                self.hint_label.place(x=911, y=64)
+                
+        except Exception as e:
+            print(f"Error restoring UI after video: {e}")
+            traceback.print_exc()
