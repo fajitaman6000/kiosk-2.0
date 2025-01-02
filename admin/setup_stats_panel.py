@@ -489,7 +489,7 @@ def setup_stats_panel(interface_builder, computer_name):
         # Add play button
         play_solution_btn = tk.Button(
             solutions_container,
-            text="Play Solution",
+            text="Send Video Solution",
             command=lambda: interface_builder.play_solution_video(computer_name),
             state='normal' if props_list else 'disabled'
         )
