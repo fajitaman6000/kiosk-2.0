@@ -102,11 +102,11 @@ class ClassicAudioHints:
         room_map = {
             "wizard": "wizard",
             "casino": "casino_ma",
-            "morning_after": "casino_ma",
+            "ma": "casino_ma",
             "haunted": "haunted",
             "zombie": "zombie",
             "atlantis": "atlantis",
-            "time_machine": "time_machine"
+            "time": "time_machine"
         }
         
         room_key = room_map.get(room_name)
@@ -205,11 +205,11 @@ class ClassicAudioHints:
         room_map = {
             "wizard": "wizard",
             "casino": "casino_ma",
-            "morning_after": "casino_ma",
+            "ma": "casino_ma",
             "haunted": "haunted",
             "zombie": "zombie",
             "atlantis": "atlantis",
-            "time_machine": "time_machine"
+            "time": "time_machine"
         }
         
         if not self.current_room:
