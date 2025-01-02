@@ -438,13 +438,14 @@ def setup_stats_panel(interface_builder, computer_name):
          # ===========================================
         # NEW SECTION: Video Solutions
         # ===========================================
+        
         video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions")
         video_solutions_frame.pack(fill='x', pady=10)
-        
+
         # Container for dropdown and play button
         solutions_container = tk.Frame(video_solutions_frame)
         solutions_container.pack(fill='x', padx=5, pady=5)
-        
+
         # Load prop mappings
         try:
             with open('prop_name_mapping.json', 'r') as f:
@@ -474,18 +475,17 @@ def setup_stats_panel(interface_builder, computer_name):
                     props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
                     props.sort(key=lambda x: x[1]["order"])
                     props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
-        
-        # Create dropdown for props
-        interface_builder.stats_elements['solution_prop'] = tk.StringVar()
-        props_dropdown = ttk.Combobox(
+
+        # Store dropdown as instance variable to prevent garbage collection
+        interface_builder.stats_elements['props_dropdown'] = ttk.Combobox(
             solutions_container,
-            textvariable=interface_builder.stats_elements['solution_prop'],
+            textvariable=interface_builder.stats_elements.get('solution_prop', tk.StringVar()),
             values=props_list,
             state='readonly' if props_list else 'disabled',
             width=30
         )
-        props_dropdown.pack(side='left', padx=(0, 5))
-        
+        interface_builder.stats_elements['props_dropdown'].pack(side='left', padx=(0, 5))
+
         # Add play button
         play_solution_btn = tk.Button(
             solutions_container,
@@ -498,11 +498,27 @@ def setup_stats_panel(interface_builder, computer_name):
         # Add callback for prop selection
         def on_prop_select(prop_name):
             """Handle prop selection from PropControl click"""
+            # Safety check - ensure dropdown still exists
+            dropdown = interface_builder.stats_elements.get('props_dropdown')
+            if not dropdown:
+                print("Warning: Dropdown no longer exists")
+                return
+                
+            # Get current values
+            current_values = dropdown.cget('values')
+            if not current_values:
+                print("Warning: No values in dropdown")
+                return
+                
             # Find matching prop in dropdown
-            for prop_item in props_list:
+            for prop_item in current_values:
                 if f"({prop_name})" in prop_item:
-                    props_dropdown.set(prop_item)
-                    break
+                    try:
+                        dropdown.set(prop_item)
+                        #print(f"Successfully set dropdown to: {prop_item}")
+                        break
+                    except Exception as e:
+                        print(f"Error setting dropdown value: {e}")
 
         # Register for prop selection notifications
         if hasattr(interface_builder.app.prop_control, 'add_prop_select_callback'):

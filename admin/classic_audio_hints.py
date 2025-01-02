@@ -84,7 +84,11 @@ class ClassicAudioHints:
     def update_room(self, room_name):
         """Update the prop list for the selected room"""
         print(f"\n=== UPDATING AUDIO HINTS FOR {room_name} ===")
+        
+        # Convert room_name to lowercase for consistent comparison
+        room_name = room_name.lower() if room_name else None
         self.current_room = room_name
+        
         self.show_lists()
         self.prop_dropdown['values'] = ()
         self.audio_listbox.delete(0, tk.END)
@@ -102,7 +106,7 @@ class ClassicAudioHints:
         room_map = {
             "wizard": "wizard",
             "casino": "casino",
-            "ma": "ma",
+            "ma": "casino",  # Using casino props for MA room
             "haunted": "haunted",
             "zombie": "zombie",
             "atlantis": "atlantis",
