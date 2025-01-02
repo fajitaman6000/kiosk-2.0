@@ -135,7 +135,7 @@ class SavedHintsPanel:
             5: "haunted",
             4: "zombie",
             6: "atlantis",
-            7: "time_machine"
+            7: "time"
         }
         
         if self.current_room not in room_map:

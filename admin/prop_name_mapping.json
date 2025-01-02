@@ -89,8 +89,93 @@
             }
         }
     },
-    "casino_ma": {
-        "comments": "Combined Casino Heist and Morning After props",
+    "casino": {
+        "comments": "Casino Props",
+        "mappings": {
+            "Tubes": {
+                "display": "Buzzwire",
+                "order": 8,
+                "finishing_prop": false
+            },
+            "Wardrobe": {
+                "display": "Sliding Shelf",
+                "order": 7,
+                "finishing_prop": false
+            },
+            "Lamp": {
+                "display": "Spinning Lamp",
+                "order": 2,
+                "finishing_prop": false
+            },
+            "Memory": {
+                "display": "Memory Hotel",
+                "order": 1,
+                "finishing_prop": false
+            },
+            "Boxes": {
+                "display": "Drawers",
+                "order": 12,
+                "finishing_prop": false
+            },
+            "Code panel": {
+                "display": "Case Code",
+                "order": 13,
+                "finishing_prop": true
+            },
+            "Weight game": {
+                "display": "Weight Game",
+                "order": 3,
+                "finishing_prop": false
+            },
+            "Painting 1": {
+                "display": "Painting 1",
+                "order": 5,
+                "finishing_prop": false
+            },
+            "Cache in table": {
+                "display": "Table Cache",
+                "order": 7,
+                "finishing_prop": false
+            },
+            "Painting cache": {
+                "display": "Painting Cache",
+                "order": 6,
+                "finishing_prop": false
+            },
+            "Dildo": {
+                "display": "Dildo Game",
+                "order": 6,
+                "finishing_prop": false
+            },
+            "Painting 2": {
+                "display": "Painting 2",
+                "order": 5,
+                "finishing_prop": false
+            },
+            "Cameras": {
+                "display": "Cameras",
+                "order": 11,
+                "finishing_prop": false
+            },
+            "Planting bomb": {
+                "display": "Plant Bombs",
+                "order": 9,
+                "finishing_prop": false
+            },
+            "Blast": {
+                "display": "Blast Open",
+                "order": 10,
+                "finishing_prop": false
+            },
+            "Clocks": {
+                "display": "Clocks",
+                "order": 4,
+                "finishing_prop": false
+            }
+        }
+    },
+    "ma": {
+        "comments": "Morning After props",
         "mappings": {
             "Tubes": {
                 "display": "Buzzwire",
@@ -374,7 +459,7 @@
             }
         }
     },
-    "time_machine": {
+    "time": {
         "comments": "Time Machine room props",
         "mappings": {
             "Clock": {

@@ -206,12 +206,12 @@ class PropControl:
         # Map room numbers to config sections
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
-            7: "time_machine"
+            7: "time"
         }
         
         if room_number not in room_map:
@@ -709,12 +709,12 @@ class PropControl:
                 
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
-            7: "time_machine"
+            7: "time"
         }
         
         # Get the order number for this prop
@@ -810,8 +810,8 @@ class PropControl:
         """Check if a prop is marked as a finishing prop"""
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
@@ -851,12 +851,12 @@ class PropControl:
         # Map room numbers to config sections
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
-            7: "time_machine"
+            7: "time"
         }
         
         if self.current_room not in room_map:

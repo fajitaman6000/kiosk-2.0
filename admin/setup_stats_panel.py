@@ -459,12 +459,12 @@ def setup_stats_panel(interface_builder, computer_name):
             room_num = interface_builder.app.kiosk_tracker.kiosk_assignments[computer_name]
             room_map = {
                 3: "wizard",
-                1: "casino_ma",
-                2: "casino_ma",
+                1: "casino",
+                2: "ma",
                 5: "haunted",
                 4: "zombie",
                 6: "atlantis",
-                7: "time_machine"
+                7: "time"
             }
             
             if room_num in room_map:

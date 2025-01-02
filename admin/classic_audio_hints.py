@@ -101,12 +101,12 @@ class ClassicAudioHints:
         props_list = []
         room_map = {
             "wizard": "wizard",
-            "casino": "casino_ma",
-            "ma": "casino_ma",
+            "casino": "casino",
+            "ma": "ma",
             "haunted": "haunted",
             "zombie": "zombie",
             "atlantis": "atlantis",
-            "time": "time_machine"
+            "time": "time"
         }
         
         room_key = room_map.get(room_name)
@@ -204,12 +204,12 @@ class ClassicAudioHints:
         # Get current room mapping - using same mapping as update_room
         room_map = {
             "wizard": "wizard",
-            "casino": "casino_ma",
-            "ma": "casino_ma",
+            "casino": "casino",
+            "ma": "ma",
             "haunted": "haunted",
             "zombie": "zombie",
             "atlantis": "atlantis",
-            "time": "time_machine"
+            "time": "time"
         }
         
         if not self.current_room:
