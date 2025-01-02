@@ -224,7 +224,7 @@ class KioskApp:
                     pygame.mixer.stop()  # Stop all sound channels
                 
                 # Stop any playing audio from audio manager
-                self.audio_manager.stop_sound()
+                #self.audio_manager.stop_sound()
                 
                 # Kill any remaining video process
                 if self.current_video_process:
@@ -237,9 +237,41 @@ class KioskApp:
                 print("Resetting application state...")
                 self.time_exceeded_45 = False
                 self.hints_requested = 0
+                
+                # Reset UI hint-related state
+                print("Resetting UI hint state...")
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
+                self.ui.stored_image_data = None
+                if hasattr(self.ui, 'stored_video_info'):
+                    self.ui.stored_video_info = None
+                if hasattr(self.ui, 'video_is_playing'):
+                    self.ui.video_is_playing = False
+                
+                # Cancel any existing cooldown timer
+                if self.ui.cooldown_after_id:
+                    self.root.after_cancel(self.ui.cooldown_after_id)
+                    self.ui.cooldown_after_id = None
+                
+                # Clear all UI elements
+                print("Clearing UI elements...")
                 self.ui.clear_all_labels()
+                
+                # Clear specific hint-related elements
+                if hasattr(self.ui, 'image_button') and self.ui.image_button:
+                    self.ui.image_button.destroy()
+                    self.ui.image_button = None
+                if hasattr(self.ui, 'video_solution_button') and self.ui.video_solution_button:
+                    self.ui.video_solution_button.destroy()
+                    self.ui.video_solution_button = None
+                if hasattr(self.ui, 'fullscreen_image') and self.ui.fullscreen_image:
+                    self.ui.fullscreen_image.destroy()
+                    self.ui.fullscreen_image = None
+                
+                # Clear any pending request status
+                if self.ui.status_frame:
+                    self.ui.status_frame.delete('all')
+                    self.ui.hide_status_frame()
                 
                 # Restore UI
                 if self.assigned_room:
