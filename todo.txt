@@ -22,8 +22,8 @@ edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
 video hint should be able to play more than once
-clicking props loads video solution hint too
 intro+outro audio + music
+audio hints need a means of playing the audio kiosk side
 
 
 
