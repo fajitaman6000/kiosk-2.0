@@ -295,7 +295,9 @@ class KioskApp:
         self.ui.start_cooldown()
 
     def play_video(self, video_type, minutes):
-        print(f"\nStarting play_video with type: {video_type}")
+        print(f"\n=== Video Playback Sequence Start ===")
+        print(f"Starting play_video with type: {video_type}")
+        print(f"Current room assignment: {self.assigned_room}")
         
         # Define video paths upfront
         video_dir = Path("intro_videos")
@@ -306,38 +308,54 @@ class KioskApp:
         if self.assigned_room is not None and self.assigned_room in ROOM_CONFIG['backgrounds']:
             game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
             game_video = video_dir / game_video_name
-            print(f"Looking for room-specific game video: {game_video}")
+            print(f"Found room-specific game video path: {game_video}")
+            print(f"Game video exists? {game_video.exists() if game_video else False}")
 
         def finish_video_sequence():
             """Final callback after all videos are complete"""
-            print("\nVideo sequence complete, resetting UI")
+            print("\n=== Video Sequence Completion ===")
+            print("Executing finish_video_sequence callback")
+            print(f"Setting timer to {minutes} minutes")
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
+            print("Resetting UI state...")
             self.ui.hint_cooldown = False
             self.ui.clear_all_labels()
             if self.assigned_room:
+                print(f"Restoring room interface for: {self.assigned_room}")
                 self.ui.setup_room_interface(self.assigned_room)
                 if not self.ui.hint_cooldown:
+                    print("Creating help button")
                     self.ui.create_help_button()
+            print("=== Video Sequence Complete ===\n")
 
         def play_game_video():
             """Helper to play game video if it exists"""
+            print("\n=== Starting Game Video Sequence ===")
+            print(f"Game video path: {game_video}")
             if game_video and game_video.exists():
-                print(f"Playing game video: {game_video}")
+                print(f"Starting playback of game video: {game_video}")
+                print("Setting up completion callback to finish_video_sequence")
                 self.video_manager.play_video(str(game_video), on_complete=finish_video_sequence)
             else:
-                print("No game video to play, finishing sequence")
+                print("No valid game video found, proceeding to finish sequence")
+                print(f"Game video exists? {game_video.exists() if game_video else False}")
                 finish_video_sequence()
+            print("=== Game Video Sequence Initiated ===\n")
 
         # Play video based on type
         if video_type != 'game':
+            print("\n=== Starting Intro Video Sequence ===")
             if video_file.exists():
-                print(f"Playing intro video: {video_file}")
+                print(f"Found intro video at: {video_file}")
+                print("Setting up completion callback to play_game_video")
                 self.video_manager.play_video(str(video_file), on_complete=play_game_video)
             else:
-                print(f"Video not found: {video_file}")
+                print(f"Intro video not found at: {video_file}")
+                print("Skipping to game video")
                 play_game_video()  # Skip to game video if intro doesn't exist
         else:
+            print("\n=== Skipping Intro, Playing Game Video ===")
             play_game_video()
         
     def on_closing(self):

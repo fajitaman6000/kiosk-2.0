@@ -270,27 +270,52 @@ class VideoManager:
     
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
+        print("\n=== Video Manager Thread Cleanup ===")
+        print(f"should_stop flag: {self.should_stop}")
+        print(f"on_complete callback present: {on_complete is not None}")
+        print(f"stored completion callback present: {self.completion_callback is not None}")
+        
         try:
-            # Clean up temporary audio file
-            if self.current_audio_path and os.path.exists(self.current_audio_path):
-                try:
-                    os.remove(self.current_audio_path)
-                    print(f"Removed temporary audio file: {self.current_audio_path}")
-                except Exception as e:
-                    print(f"Error removing temp audio file: {e}")
-                self.current_audio_path = None
+            # Stop audio first
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.stop()
+                pygame.mixer.music.unload()
+                time.sleep(0.1)  # Give a small delay for audio to stop
+            
+            # Store the should_stop state early
+            was_stopped_manually = self.should_stop
             
             # Perform UI cleanup
+            print("Starting UI cleanup...")
             self._cleanup()
+            print("UI cleanup complete")
             
-            # Only execute callback if video wasn't stopped manually
-            if not self.should_stop and (on_complete or self.completion_callback):
+            # Clean up temporary audio file with retries
+            if self.current_audio_path and os.path.exists(self.current_audio_path):
+                for attempt in range(3):
+                    try:
+                        time.sleep(0.1 * (attempt + 1))  # Increasing delay between attempts
+                        os.remove(self.current_audio_path)
+                        print(f"Removed temporary audio file on attempt {attempt + 1}")
+                        break
+                    except Exception as e:
+                        print(f"Error removing temp file (attempt {attempt + 1}): {e}")
+                self.current_audio_path = None
+            
+            # Execute callbacks based on the stored manual stop state
+            if not was_stopped_manually and (on_complete or self.completion_callback):
+                print("Video completed normally, executing callbacks...")
                 if on_complete:
-                    on_complete()  # Execute the passed callback
+                    print("Executing passed completion callback")
+                    self.root.after(100, on_complete)  # Schedule callback with slight delay
                 elif self.completion_callback:
+                    print("Executing stored completion callback")
                     callback = self.completion_callback
                     self.completion_callback = None  # Clear the callback
-                    callback()  # Execute the stored callback
+                    self.root.after(100, callback)  # Schedule callback with slight delay
+            else:
+                print(f"Skipping callbacks - Video was stopped manually: {was_stopped_manually}")
+            print("=== Thread Cleanup Complete ===\n")
                     
         except Exception as e:
             print(f"Error in thread cleanup: {e}")

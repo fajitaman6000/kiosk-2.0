@@ -1,10 +1,10 @@
 "stop everything" button
-"finish videos" button
 
 
 # important/immediate todo
 visible standby condition for rooms based on prop finish status
 double click are-you-sure on reboot and reset-all buttons
+make both videos play
 
 # planned features: 
 admin mode (technician/managers),
