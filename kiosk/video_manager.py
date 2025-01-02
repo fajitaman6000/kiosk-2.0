@@ -343,22 +343,27 @@ class VideoManager:
         self.should_stop = True
         self.is_playing = False
         
+        # Store callback before cleanup
+        callback = self.completion_callback
+        self.completion_callback = None  # Clear immediately to prevent double execution
+        
         # Ensure pygame mixer is properly stopped
         if pygame.mixer.get_init():
-            pygame.mixer.music.stop()
-            pygame.mixer.music.unload()  # Unload current audio
+            try:
+                pygame.mixer.music.stop()
+                pygame.mixer.music.unload()  # Unload current audio
+            except Exception as e:
+                print(f"Error stopping pygame mixer: {e}")
             
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
             self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
             
-        # Clean up and trigger completion callback
+        # Clean up UI and resources
         self._cleanup()
         
         # Execute completion callback if it exists
-        if self.completion_callback:
-            callback = self.completion_callback
-            self.completion_callback = None  # Clear the callback before executing
+        if callback:
             self.root.after(0, callback)  # Schedule callback on main thread
         
     def _cleanup(self):
@@ -368,31 +373,52 @@ class VideoManager:
             self.is_playing = False
             self.should_stop = True
             
-            # Stop audio
+            # Stop audio first
             if pygame.mixer.get_init():
-                pygame.mixer.music.stop()
-                pygame.mixer.music.unload()
+                try:
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+                except Exception as e:
+                    print(f"Error stopping audio: {e}")
             
-            # Clean up video canvas
+            # Clean up video canvas with additional checks
             if self.video_canvas:
                 try:
-                    # Clear all items from canvas first
-                    self.video_canvas.delete('all')
-                    # Remove from layout manager
-                    self.video_canvas.place_forget()
-                    # Ensure canvas is destroyed
-                    self.video_canvas.destroy()
+                    if self.video_canvas.winfo_exists():
+                        # Clear all items from canvas first
+                        try:
+                            self.video_canvas.delete('all')
+                        except tk.TclError:
+                            pass
+                        
+                        # Remove from layout manager
+                        try:
+                            self.video_canvas.place_forget()
+                        except tk.TclError:
+                            pass
+                            
+                        # Ensure canvas is destroyed
+                        try:
+                            self.video_canvas.destroy()
+                        except tk.TclError:
+                            pass
                     self.video_canvas = None
                     # Force garbage collection for good measure
-                    self.root.update()
+                    try:
+                        self.root.update()
+                    except tk.TclError:
+                        pass
                 except Exception as e:
                     print(f"VideoManager: Error cleaning up canvas: {e}")
+                finally:
+                    self.video_canvas = None
             
             # Restore original widgets with their original geometry management
+            restored_widgets = []
             for info in self.original_widget_info:
                 widget = info['widget']
-                if widget.winfo_exists():
-                    try:
+                try:
+                    if widget.winfo_exists():
                         manager = info['manager']
                         if manager == 'place':
                             # Don't restore hint label here - let UI class handle it
@@ -403,20 +429,29 @@ class VideoManager:
                                     width=info['geometry_info']['width'],
                                     height=info['geometry_info']['height']
                                 )
+                                restored_widgets.append(widget)
                         elif manager == 'grid':
                             widget.grid(**info['geometry_info'])
+                            restored_widgets.append(widget)
                         elif manager == 'pack':
                             widget.pack(**info['geometry_info'])
-                    except Exception as e:
-                        print(f"VideoManager: Error restoring widget: {e}")
+                            restored_widgets.append(widget)
+                except tk.TclError:
+                    print(f"Widget no longer exists, skipping restoration")
+                except Exception as e:
+                    print(f"Error restoring widget: {e}")
             
-            # Clear stored widget information
-            self.original_widgets = []
-            self.original_widget_info = []
+            # Only keep track of successfully restored widgets
+            self.original_widgets = restored_widgets
+            self.original_widget_info = [info for info in self.original_widget_info 
+                                       if info['widget'] in restored_widgets]
             
-            # Force a complete update of the window
-            self.root.update_idletasks()
-            self.root.update()
+            # Force a complete update of the window with error handling
+            try:
+                self.root.update_idletasks()
+                self.root.update()
+            except tk.TclError:
+                pass
             
             # Clean up temp audio file
             if self.current_audio_path:
@@ -434,13 +469,21 @@ class VideoManager:
                 self.current_audio_path = None
             
             # Reinitialize pygame mixer
-            pygame.mixer.init(frequency=44100)
+            try:
+                pygame.mixer.init(frequency=44100)
+            except Exception as e:
+                print(f"Error reinitializing pygame mixer: {e}")
             
             print("VideoManager: Cleanup complete")
             
         except Exception as e:
             print("\nVideoManager: Error during cleanup:")
             traceback.print_exc()
+        finally:
+            # Ensure these are always reset
+            self.is_playing = False
+            self.should_stop = True
+            self.video_canvas = None
 
     def __del__(self):
         """Cleanup temp directory on object destruction"""
