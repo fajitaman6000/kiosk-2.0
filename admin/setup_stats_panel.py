@@ -495,6 +495,19 @@ def setup_stats_panel(interface_builder, computer_name):
         )
         play_solution_btn.pack(side='left')
 
+        # Add callback for prop selection
+        def on_prop_select(prop_name):
+            """Handle prop selection from PropControl click"""
+            # Find matching prop in dropdown
+            for prop_item in props_list:
+                if f"({prop_name})" in prop_item:
+                    props_dropdown.set(prop_item)
+                    break
+
+        # Register for prop selection notifications
+        if hasattr(interface_builder.app.prop_control, 'add_prop_select_callback'):
+            interface_builder.app.prop_control.add_prop_select_callback(on_prop_select)
+
         # ===========================================
         # NEW SECTION: Other Controls
         # ===========================================

@@ -23,6 +23,7 @@ hint requested status needs to be tracked kiosk-side to manage multiple gamemast
 ending audio is apparently admin app side?
 video hint should be able to play more than once
 clicking props loads video solution hint too
+intro+outro audio + music
 
 
 

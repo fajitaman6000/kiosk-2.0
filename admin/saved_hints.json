@@ -1,24 +1,3 @@
 {
-    "rooms": {
-        "7": {
-            "hints": {
-                "radium_cog_hint": {
-                    "prop": "Radium cog",
-                    "name": "yrdy",
-                    "text": "dfghdfgh",
-                    "image": null
-                }
-            }
-        },
-        "3": {
-            "hints": {
-                "sit_on_chair_hint": {
-                    "prop": "Sit on chair",
-                    "name": "hg",
-                    "text": "gfgfgfgdg",
-                    "image": null
-                }
-            }
-        }
-    }
+    "rooms": {}
 }
