@@ -168,7 +168,11 @@ class KioskApp:
                 
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
                 self.play_video(msg['video_type'], msg['minutes'])
-                
+
+            elif msg['type'] == 'clear_hints' and msg['computer_name'] == self.computer_name:
+                print("\nProcessing clear hints command")
+                self.clear_hints()
+
             elif msg['type'] == 'play_sound' and msg['computer_name'] == self.computer_name:
                 print("\nReceived play sound command")
                 sound_name = msg.get('sound_name')
@@ -399,7 +403,45 @@ class KioskApp:
         self.audio_server.stop()
         self.root.destroy()
         sys.exit(0)
+
+    def clear_hints(self):
+        """Clear all visible hints without resetting other kiosk state"""
+        print("\nClearing visible hints...")
         
+        # Reset UI hint-related state
+        self.ui.hint_cooldown = False
+        self.ui.current_hint = None
+        self.ui.stored_image_data = None
+        
+        # Cancel any existing cooldown timer
+        if self.ui.cooldown_after_id:
+            self.root.after_cancel(self.ui.cooldown_after_id)
+            self.ui.cooldown_after_id = None
+        
+        # Clear UI elements related to hints
+        self.ui.clear_all_labels()
+        
+        # Clear specific hint-related elements
+        if hasattr(self.ui, 'image_button') and self.ui.image_button:
+            self.ui.image_button.destroy()
+            self.ui.image_button = None
+        if hasattr(self.ui, 'video_solution_button') and self.ui.video_solution_button:
+            self.ui.video_solution_button.destroy()
+            self.ui.video_solution_button = None
+        if hasattr(self.ui, 'fullscreen_image') and self.ui.fullscreen_image:
+            self.ui.fullscreen_image.destroy()
+            self.ui.fullscreen_image = None
+        
+        # Clear any pending request status
+        if self.ui.status_frame:
+            self.ui.status_frame.delete('all')
+            self.ui.hide_status_frame()
+            
+        # Update help button state
+        self.root.after(100, self.update_help_button_state)
+        
+        print("Hint clearing complete")
+
     def run(self):
         self.root.mainloop()
 

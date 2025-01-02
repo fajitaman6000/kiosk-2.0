@@ -813,6 +813,17 @@ class AdminInterfaceBuilder:
         # Wrapper for the extracted clear_manual_hint function
         clear_manual_hint(self)
 
+    def clear_kiosk_hints(self, computer_name):
+        """Send command to clear hints on specified kiosk"""
+        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+            self.app.network_handler.socket.sendto(
+                json.dumps({
+                    'type': 'clear_hints',
+                    'computer_name': computer_name
+                }).encode(),
+                ('255.255.255.255', 12346)
+            )
+
     def send_hint(self, computer_name, hint_data=None):
         # Wrapper for the extracted send_hint function
         send_hint(self, computer_name, hint_data)

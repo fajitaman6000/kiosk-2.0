@@ -500,7 +500,15 @@ def setup_stats_panel(interface_builder, computer_name):
         # ===========================================
         other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
         other_controls_frame.pack(fill='x', pady=10)
-        
+
+        # Add clear hints button
+        clear_hints_btn = tk.Button(
+            other_controls_frame,
+            text="Clear Hints",
+            command=lambda: interface_builder.clear_kiosk_hints(computer_name)
+        )
+        clear_hints_btn.pack(pady=5, padx=5)
+
         # Add play sound button
         play_sound_btn = tk.Button(
             other_controls_frame,
