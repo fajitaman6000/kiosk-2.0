@@ -1,3 +1,20 @@
 {
-    "rooms": {}
+    "rooms": {
+        "7": {
+            "hints": {
+                "clock_hint": {
+                    "prop": "Clock",
+                    "name": "test",
+                    "text": "test",
+                    "image": null
+                },
+                "cylinders_hint": {
+                    "prop": "Cylinders",
+                    "name": "test",
+                    "text": "yyyyy",
+                    "image": null
+                }
+            }
+        }
+    }
 }

@@ -2,6 +2,7 @@ import os
 import pygame
 import tkinter as tk
 from tkinter import ttk
+import json
 
 class ClassicAudioHints:
     def __init__(self, parent, room_change_callback):
@@ -78,71 +79,61 @@ class ClassicAudioHints:
         
         print("=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
 
+        self.load_prop_name_mappings()
+
     def update_room(self, room_name):
-        """Update the prop list for the selected room with enhanced path checking and logging"""
-        print("\n=== AUDIO HINTS UPDATE START ===")
-        print(f"Updating room to: {room_name}")
-        
-        # Store current room and clear existing lists
+        """Update the prop list for the selected room"""
+        print(f"\n=== UPDATING AUDIO HINTS FOR {room_name} ===")
         self.current_room = room_name
         self.show_lists()
-        self.prop_dropdown['values'] = ()  # Clear dropdown
+        self.prop_dropdown['values'] = ()
         self.audio_listbox.delete(0, tk.END)
-        
-        # Get absolute paths
-        working_dir = os.getcwd()
-        print(f"Current working directory: {working_dir}")
-        
-        # Construct and verify audio_hints base path
-        audio_base = os.path.join(working_dir, self.audio_root)
-        print(f"Audio base path: {audio_base}")
-        print(f"Audio base exists: {os.path.exists(audio_base)}")
-        
-        # Construct and verify room path
-        room_path = os.path.join(audio_base, room_name)
-        print(f"Room path: {room_path}")
-        print(f"Room path exists: {os.path.exists(room_path)}")
-        
-        if not os.path.exists(room_path):
-            print("ERROR: Room path does not exist!")
-            print(f"Attempted path: {room_path}")
-            print("Directory contents at audio_base:")
-            if os.path.exists(audio_base):
-                print(os.listdir(audio_base))
-            return
-            
-        # Get and verify props
+
+        # Load prop mappings
         try:
-            props = [d for d in os.listdir(room_path) 
-                    if os.path.isdir(os.path.join(room_path, d))]
-            print(f"Found props: {props}")
-            
-            if not props:
-                print("No prop directories found!")
-                print(f"Contents of room directory:")
-                print(os.listdir(room_path))
-                return
-                
-            # Update dropdown with sorted props
-            self.prop_dropdown['values'] = sorted(props)
-            print(f"Successfully added {len(props)} props to dropdown")
-            
+            with open('prop_name_mapping.json', 'r') as f:
+                prop_mappings = json.load(f)
         except Exception as e:
-            print(f"ERROR reading props: {str(e)}")
-            import traceback
-            print(traceback.format_exc())
-            
-        print("=== AUDIO HINTS UPDATE END ===")
+            print(f"Error loading prop mappings: {e}")
+            prop_mappings = {}
+
+        # Get room-specific props if room is assigned
+        props_list = []
+        room_map = {
+            "wizard": "wizard",
+            "casino": "casino_ma",
+            "morning_after": "casino_ma",
+            "haunted": "haunted",
+            "zombie": "zombie",
+            "atlantis": "atlantis",
+            "time_machine": "time_machine"
+        }
         
+        room_key = room_map.get(room_name)
+        print(f"Room name: {room_name}, Room key: {room_key}")
+        
+        if room_key and room_key in prop_mappings:
+            # Sort props by order like in video solutions
+            props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
+            props.sort(key=lambda x: x[1]["order"])
+            props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
+
+        # Update dropdown with the combined display name + original name format
+        self.prop_dropdown['values'] = props_list
+
     def on_prop_select(self, event):
         """Handle prop selection from dropdown"""
         self.audio_listbox.delete(0, tk.END)
-        selected_prop = self.prop_var.get()
+        selected_item = self.prop_var.get()
         
-        if not selected_prop:
+        if not selected_item:
             return
             
-        prop_path = os.path.join(self.audio_root, self.current_room, selected_prop)
+        # Extract original prop name from the combined format
+        # Format is "Display Name (original_name)"
+        original_name = selected_item.split('(')[-1].rstrip(')')
+        
+        prop_path = os.path.join(self.audio_root, self.current_room, original_name)
         
         if os.path.exists(prop_path):
             audio_files = [f for f in os.listdir(prop_path) 
@@ -208,9 +199,64 @@ class ClassicAudioHints:
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its name"""
-        if prop_name in self.prop_dropdown['values']:
-            self.prop_dropdown.set(prop_name)
-            self.on_prop_select(None)  # Trigger audio list update
+        print(f"\nTrying to select prop: {prop_name}")
+        
+        # Get current room mapping - using same mapping as update_room
+        room_map = {
+            "wizard": "wizard",
+            "casino": "casino_ma",
+            "morning_after": "casino_ma",
+            "haunted": "haunted",
+            "zombie": "zombie",
+            "atlantis": "atlantis",
+            "time_machine": "time_machine"
+        }
+        
+        if not self.current_room:
+            print("No current room")
+            return
+            
+        room_key = room_map.get(self.current_room)
+        print(f"Current room: {self.current_room}, Room key: {room_key}")
+        
+        if not room_key:
+            print(f"No room key for {self.current_room}")
+            return
+
+        # Search for prop in dropdown items
+        for item in self.prop_dropdown['values']:
+            if f"({prop_name})" in item:  # Match by original name in parentheses
+                print(f"Found matching prop: {item}")
+                self.prop_dropdown.set(item)
+                self.on_prop_select(None)
+                return
+
+    def load_prop_name_mappings(self):
+        """Load prop name mappings from JSON file"""
+        try:
+            with open("prop_name_mapping.json", 'r') as f:
+                self.prop_name_mappings = json.load(f)
+            print("Loaded prop name mappings successfully")
+        except Exception as e:
+            print(f"Error loading prop name mappings: {e}")
+            self.prop_name_mappings = {}
+
+    def get_display_name(self, room_key, prop_name):
+        """Get the display name for a prop in a given room"""
+        if room_key in self.prop_name_mappings:
+            mappings = self.prop_name_mappings[room_key]['mappings']
+            if prop_name in mappings:
+                return mappings[prop_name]['display']
+        return prop_name
+
+    def get_original_name(self, room_key, display_name):
+        """Find original prop name from display name"""
+        if room_key in self.prop_name_mappings:
+            mappings = self.prop_name_mappings[room_key]['mappings']
+            for orig_name, prop_info in mappings.items():
+                if prop_info.get('display') == display_name:
+                    return orig_name
+        return display_name
 
     def cleanup(self):
         """Clean up pygame mixer"""
