@@ -12,6 +12,15 @@ from PIL import Image, ImageTk
 import os
 
 class PropControl:
+    ROOM_MAP = {
+        3: "wizard",
+        1: "casino",
+        2: "ma",
+        5: "haunted",
+        4: "zombie",
+        6: "atlantis",
+        7: "time"  # Note: This maps to "time_machine" in some contexts
+    }
     def __init__(self, app):
         self.app = app
         self.props = {}  # strId -> prop info
@@ -203,21 +212,10 @@ class PropControl:
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
         
-        # Map room numbers to config sections
-        room_map = {
-            3: "wizard",
-            1: "casino",
-            2: "ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time"
-        }
-        
-        if room_number not in room_map:
+        if room_number not in self.ROOM_MAP:
             return original_name
             
-        room_key = room_map[room_number]
+        room_key = self.ROOM_MAP[room_number]
         room_mappings = self.prop_name_mappings.get(room_key, {}).get('mappings', {})
         
         # Get the mapping info for this prop
@@ -707,20 +705,10 @@ class PropControl:
                 print(f"Error loading status icons: {e}")
                 self.status_icons = None
                 
-        room_map = {
-            3: "wizard",
-            1: "casino",
-            2: "ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time"
-        }
-        
         # Get the order number for this prop
         order = 999  # Default high number for props not in mapping
-        if self.current_room in room_map:
-            room_key = room_map[self.current_room]
+        if self.current_room in self.ROOM_MAP:
+            room_key = self.ROOM_MAP[self.current_room]
             if room_key in self.prop_name_mappings:
                 prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_data["strName"], {})
                 order = prop_info.get('order', 999)
@@ -808,20 +796,10 @@ class PropControl:
 
     def is_finishing_prop(self, room_number, prop_name):
         """Check if a prop is marked as a finishing prop"""
-        room_map = {
-            3: "wizard",
-            1: "casino",
-            2: "ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time_machine"
-        }
-        
-        if room_number not in room_map:
+        if room_number not in self.ROOM_MAP:
             return False
             
-        room_key = room_map[room_number]
+        room_key = self.ROOM_MAP[room_number]
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
             
@@ -835,10 +813,6 @@ class PropControl:
         """
         Check prop status and update kiosk display accordingly.
         Checks finishing props, activated states, and timer status.
-        
-        Args:
-            prop_id: The ID of the prop being updated
-            prop_data: The updated prop data including status
         """
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
@@ -848,21 +822,10 @@ class PropControl:
         if not prop_name:
             return
             
-        # Map room numbers to config sections
-        room_map = {
-            3: "wizard",
-            1: "casino",
-            2: "ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time"
-        }
-        
-        if self.current_room not in room_map:
+        if self.current_room not in self.ROOM_MAP:
             return
             
-        room_key = room_map[self.current_room]
+        room_key = self.ROOM_MAP[self.current_room]
         
         # Find the kiosk assigned to this room
         assigned_kiosk = None

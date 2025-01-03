@@ -5,6 +5,17 @@ from tkinter import ttk
 import json
 
 class ClassicAudioHints:
+    # Room mapping dictionary to convert room names to their canonical forms
+    ROOM_MAP = {
+        "wizard": "wizard",
+        "casino": "casino",
+        "ma": "casino",  # Using casino props for MA room
+        "haunted": "haunted",
+        "zombie": "zombie",
+        "atlantis": "atlantis",
+        "time": "time"
+    }
+
     def __init__(self, parent, room_change_callback):
         print("\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
         self.parent = parent
@@ -103,17 +114,8 @@ class ClassicAudioHints:
 
         # Get room-specific props if room is assigned
         props_list = []
-        room_map = {
-            "wizard": "wizard",
-            "casino": "casino",
-            "ma": "casino",  # Using casino props for MA room
-            "haunted": "haunted",
-            "zombie": "zombie",
-            "atlantis": "atlantis",
-            "time": "time"
-        }
         
-        room_key = room_map.get(room_name)
+        room_key = self.ROOM_MAP.get(room_name)
         print(f"Room name: {room_name}, Room key: {room_key}")
         
         if room_key and room_key in prop_mappings:
@@ -205,22 +207,11 @@ class ClassicAudioHints:
         """Try to select a prop by its name"""
         print(f"\nTrying to select prop: {prop_name}")
         
-        # Get current room mapping - using same mapping as update_room
-        room_map = {
-            "wizard": "wizard",
-            "casino": "casino",
-            "ma": "ma",
-            "haunted": "haunted",
-            "zombie": "zombie",
-            "atlantis": "atlantis",
-            "time": "time"
-        }
-        
         if not self.current_room:
             print("No current room")
             return
             
-        room_key = room_map.get(self.current_room)
+        room_key = self.ROOM_MAP.get(self.current_room)
         print(f"Current room: {self.current_room}, Room key: {room_key}")
         
         if not room_key:
