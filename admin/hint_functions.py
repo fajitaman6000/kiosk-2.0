@@ -40,12 +40,12 @@ def save_manual_hint(interface_builder):
     # Map room number to config key
     room_map = {
         3: "wizard",
-        1: "casino_ma",
-        2: "casino_ma",
+        1: "casino",
+        2: "ma",
         5: "haunted",
         4: "zombie",
         6: "atlantis",
-        7: "time_machine"
+        7: "time"
     }
     room_key = room_map.get(room_number)
     

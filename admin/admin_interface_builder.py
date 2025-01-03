@@ -140,7 +140,7 @@ class AdminInterfaceBuilder:
                     6: "atlantis",
                     1: "casino",
                     5: "haunted",
-                    2: "MA",
+                    2: "ma",
                     7: "time",
                     3: "wizard",
                     4: "zombie"
@@ -645,7 +645,7 @@ class AdminInterfaceBuilder:
                     6: "atlantis",
                     1: "casino",
                     5: "haunted",
-                    2: "MA",
+                    2: "ma",
                     7: "time",
                     3: "wizard",
                     4: "zombie"
