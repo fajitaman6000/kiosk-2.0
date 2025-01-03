@@ -436,10 +436,9 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['listen_btn'] = listen_btn
         interface_builder.stats_elements['speak_btn'] = speak_btn
 
-         # ===========================================
-        # NEW SECTION: Video Solutions
         # ===========================================
-        
+        # Video Solutions Section
+        # ===========================================
         video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions")
         video_solutions_frame.pack(fill='x', pady=10)
 
@@ -477,10 +476,13 @@ def setup_stats_panel(interface_builder, computer_name):
                     props.sort(key=lambda x: x[1]["order"])
                     props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
 
-        # Store dropdown as instance variable to prevent garbage collection
+        # IMPORTANT: Initialize the StringVar before creating the dropdown
+        interface_builder.stats_elements['solution_prop'] = tk.StringVar()
+
+        # Create dropdown with the initialized StringVar
         interface_builder.stats_elements['props_dropdown'] = ttk.Combobox(
             solutions_container,
-            textvariable=interface_builder.stats_elements.get('solution_prop', tk.StringVar()),
+            textvariable=interface_builder.stats_elements['solution_prop'],  # Use the initialized StringVar
             values=props_list,
             state='readonly' if props_list else 'disabled',
             width=30
