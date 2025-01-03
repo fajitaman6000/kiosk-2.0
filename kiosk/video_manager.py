@@ -41,22 +41,40 @@ class VideoManager:
         """
         try:
             if not pygame.mixer.music.get_busy():
+                print("No background music playing, skipping fade")
                 return
                 
             current_volume = pygame.mixer.music.get_volume()
+            print(f"Starting volume fade from {current_volume} to {target_volume}")
+            
+            # Force volume to current value before starting fade
+            pygame.mixer.music.set_volume(current_volume)
+            time.sleep(0.05)  # Small delay to ensure volume is set
+            
             volume_diff = target_volume - current_volume
             step_size = volume_diff / steps
             step_duration = duration / steps
             
-            for _ in range(steps):
+            for i in range(steps):
                 if self.should_stop:  # Check if video was stopped
+                    print("Video stopped during fade, breaking")
                     break
-                current_volume += step_size
-                pygame.mixer.music.set_volume(max(0.0, min(1.0, current_volume)))
+                next_volume = current_volume + (step_size * (i + 1))
+                new_volume = max(0.0, min(1.0, next_volume))
+                pygame.mixer.music.set_volume(new_volume)
+                print(f"Fade step {i+1}/{steps}: Volume set to {new_volume}")
                 time.sleep(step_duration)
+                
+            # Force final volume
+            pygame.mixer.music.set_volume(target_volume)
+            time.sleep(0.05)  # Small delay to ensure final volume is set
+            
+            final_volume = pygame.mixer.music.get_volume()
+            print(f"Fade complete. Final volume: {final_volume}")
                 
         except Exception as e:
             print(f"Error fading background music: {e}")
+            traceback.print_exc()
 
     def _check_ffmpeg_in_path(self):
         """Check if ffmpeg is available in system PATH"""
@@ -114,8 +132,14 @@ class VideoManager:
             # Store completion callback
             self.completion_callback = on_complete
             
-            # Fade out background music if it's playing
+            # Ensure background music is at full volume before fading
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.set_volume(1.0)
+                time.sleep(0.1)  # Small delay to ensure volume is set
+            
+            # Now fade out background music
             self._fade_background_music(0.3)  # Reduce to 30% volume
+            print(f"Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
 
             # Stop any existing playback
             if self.is_playing:
@@ -165,8 +189,8 @@ class VideoManager:
             # Use place with relwidth/relheight to ensure full coverage
             self.video_canvas.place(x=0, y=0, relwidth=1, relheight=1)
             
-            # Ensure the canvas is on top using the proper widget raise method
-            self.root.update_idletasks()  # Make sure geometry is updated
+            # Ensure the canvas is on top
+            self.root.update_idletasks()
             self.video_canvas.master.lift(self.video_canvas)
             
             # Reset state flags
@@ -308,6 +332,7 @@ class VideoManager:
         print(f"should_stop flag: {self.should_stop}")
         print(f"on_complete callback present: {on_complete is not None}")
         print(f"stored completion callback present: {self.completion_callback is not None}")
+        print("Current background music volume:", pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else "No music playing")
         
         try:
             # Stop video audio first (not the background music)
@@ -318,40 +343,24 @@ class VideoManager:
             # Store the should_stop state early
             was_stopped_manually = self.should_stop
             
-            # Perform UI cleanup
+            # Ensure background music volume is restored first
+            print("Restoring background music volume...")
+            if pygame.mixer.music.get_busy():
+                # Force immediate volume restoration by first ensuring volume is at reduced level
+                current_vol = pygame.mixer.music.get_volume()
+                print(f"Current music volume before restore: {current_vol}")
+                if current_vol > 0.3:  # If volume is somehow above our fade level
+                    pygame.mixer.music.set_volume(0.3)  # Reset to faded state
+                # Now do the fade up
+                self._fade_background_music(1.0, duration=0.3)
+                print(f"Background music volume after restore: {pygame.mixer.music.get_volume()}")
+            else:
+                print("No background music playing to restore")
+            
+            # Perform UI cleanup after volume is restored
             print("Starting UI cleanup...")
             self._cleanup()
             print("UI cleanup complete")
-            # Restore background music volume
-            self._fade_background_music(1.0)  # Return to 100% volume
-
-
-            # Clean up temporary audio file with retries
-            if self.current_audio_path and os.path.exists(self.current_audio_path):
-                for attempt in range(3):
-                    try:
-                        time.sleep(0.1 * (attempt + 1))  # Increasing delay between attempts
-                        os.remove(self.current_audio_path)
-                        print(f"Removed temporary audio file on attempt {attempt + 1}")
-                        break
-                    except Exception as e:
-                        print(f"Error removing temp file (attempt {attempt + 1}): {e}")
-                self.current_audio_path = None
-            
-            # Execute callbacks based on the stored manual stop state
-            if not was_stopped_manually and (on_complete or self.completion_callback):
-                print("Video completed normally, executing callbacks...")
-                if on_complete:
-                    print("Executing passed completion callback")
-                    self.root.after(100, on_complete)  # Schedule callback with slight delay
-                elif self.completion_callback:
-                    print("Executing stored completion callback")
-                    callback = self.completion_callback
-                    self.completion_callback = None  # Clear the callback
-                    self.root.after(100, callback)  # Schedule callback with slight delay
-            else:
-                print(f"Skipping callbacks - Video was stopped manually: {was_stopped_manually}")
-            print("=== Thread Cleanup Complete ===\n")
                     
         except Exception as e:
             print(f"Error in thread cleanup: {e}")

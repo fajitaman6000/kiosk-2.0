@@ -23,14 +23,19 @@ class AudioManager:
             # Only block if it's the same sound AND not enough time has passed
             if (sound_name == self._last_played and 
                 current_time - self._last_played_time < self.MIN_REPLAY_DELAY):
+                print(f"Skipping sound {sound_name} - too soon since last play")
                 return
                 
             sound_path = os.path.join(self.sound_dir, sound_name)
             if os.path.exists(sound_path):
+                # Create sound object and force it to use a different channel than video
                 sound = pygame.mixer.Sound(sound_path)
-                sound.play()
+                # Use channel 1 for sound effects (channel 0 is reserved for video audio)
+                sound_channel = pygame.mixer.Channel(1)
+                sound_channel.play(sound)
                 self._last_played = sound_name
                 self._last_played_time = current_time
+                print(f"Playing sound {sound_name} on channel 1")
         except Exception as e:
             print(f"Error playing sound {sound_name}: {e}")
 
