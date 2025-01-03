@@ -35,6 +35,7 @@ reset all makes a call for kiosk tracker log that doesn't exist
 two gamemasters requesting the same video stream crashes that kiosk
 skip button starts timer despite skipping only one video
 resets during intro videos cause crashing/audio bugs
+room finish makes sound repeatedly
 
 
 
