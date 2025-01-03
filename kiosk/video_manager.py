@@ -198,12 +198,16 @@ class VideoManager:
                     print(f"VideoManager: Error starting audio: {e}")
                     audio_path = None
             
-            # Add click handler to video canvas to allow exit on click
-            def on_canvas_click(event):
-                print("VideoManager: Video canvas clicked, stopping playback")
-                self.stop_video()
-                
-            self.root.after(0, lambda: self.video_canvas.bind('<Button-1>', on_canvas_click))
+            # Add click handler ONLY for solution videos (which contain 'video_solutions' in their path)
+            if 'video_solutions' in video_path:
+                def on_canvas_click(event):
+                    print("VideoManager: Video canvas clicked, stopping solution video playback")
+                    self.stop_video()
+                    
+                self.root.after(0, lambda: self.video_canvas.bind('<Button-1>', on_canvas_click))
+                print("VideoManager: Added click-to-skip for solution video")
+            else:
+                print("VideoManager: Intro video - skip functionality disabled")
             
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
