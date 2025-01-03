@@ -114,7 +114,7 @@ class SavedHintsPanel:
             if mapping_file.exists():
                 with open(mapping_file, 'r') as f:
                     self.prop_name_mappings = json.load(f)
-                print("Loaded prop name mappings successfully")
+                #print("Loaded prop name mappings successfully")
             else:
                 self.prop_name_mappings = {}
                 print("No prop name mapping file found")
@@ -154,10 +154,10 @@ class SavedHintsPanel:
     def load_hints(self):
         """Load all hints from the JSON file"""
         try:
-            print("\n=== LOADING SAVED HINTS ===")
+            #print("\n=== LOADING SAVED HINTS ===")
             hints_path = os.path.join(os.getcwd(), 'saved_hints.json')
-            print(f"Looking for hints file at: {hints_path}")
-            print(f"File exists: {os.path.exists(hints_path)}")
+            ##print(f"Looking for hints file at: {hints_path}")
+            #print(f"File exists: {os.path.exists(hints_path)}")
             
             if os.path.exists(hints_path):
                 with open(hints_path, 'r') as f:

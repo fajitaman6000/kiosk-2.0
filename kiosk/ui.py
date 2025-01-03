@@ -268,9 +268,9 @@ class KioskUI:
             not has_exceeded_45
         )
         
-        print(f"Time > 42: {minutes_remaining > 42}")
-        print(f"Time <= 45: {minutes_remaining <= 45}")
-        print(f"Should hide based on time window: {should_hide}")
+        #print(f"Time > 42: {minutes_remaining > 42}")
+        #print(f"Time <= 45: {minutes_remaining <= 45}")
+        #print(f"Should hide based on time window: {should_hide}")
 
         # Remove button if it exists and should be hidden
         if should_hide:

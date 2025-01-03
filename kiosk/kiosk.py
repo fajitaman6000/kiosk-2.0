@@ -38,7 +38,7 @@ class KioskApp:
         self.start_time = None
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
-        print("Initialized time_exceeded_45 flag to False")
+        #print("Initialized time_exceeded_45 flag to False")
         self.audio_manager = AudioManager()  # Initialize audio manager
         self.video_manager = VideoManager(self.root) # Initialize video manager
         
@@ -64,7 +64,7 @@ class KioskApp:
         print(f"Computer name: {self.computer_name}")
         print("Creating RoomPersistence...")
         self.room_persistence = RoomPersistence()
-        print("Loading saved room...")
+        #print("Loading saved room...")
         self.assigned_room = self.room_persistence.load_room_assignment()
         print(f"Loaded room assignment: {self.assigned_room}")
 

@@ -199,7 +199,7 @@ class PropControl:
             if mapping_file.exists():
                 with open(mapping_file, 'r') as f:
                     self.prop_name_mappings = json.load(f)
-                print("Loaded prop name mappings successfully")
+                #print("Loaded prop name mappings successfully")
             else:
                 self.prop_name_mappings = {}
                 print("No prop name mapping file found")

@@ -26,7 +26,7 @@ class AdminAudioManager:
         # Initialize pygame mixer
         try:
             pygame.mixer.init()
-            print("Audio manager initialized successfully")
+            #print("Audio manager initialized successfully")
         except Exception as e:
             print(f"Failed to initialize audio manager: {e}")
             return
@@ -60,7 +60,7 @@ class AdminAudioManager:
             filepath = self.sound_dir / filename
             if filepath.exists():
                 self.sounds[sound_id] = pygame.mixer.Sound(str(filepath))
-                print(f"Loaded sound: {sound_id} from {filename}")
+                #print(f"Loaded sound: {sound_id} from {filename}")
             else:
                 print(f"Sound file not found: {filepath}")
         except Exception as e:
