@@ -166,7 +166,7 @@ class KioskUI:
         
         # Restore hint if there was one
         if self.current_hint:
-            self.show_hint(self.current_hint)
+            self.show_hint(self.current_hint, start_cooldown=False)
         
         # Restore help button if not in cooldown
         if not self.hint_cooldown:
@@ -346,8 +346,13 @@ class KioskUI:
                 **self.message_handler.get_stats()
             })
 
-    def show_hint(self, text_or_data):
-        """Shows the hint text and optionally creates an image received button"""
+    def show_hint(self, text_or_data, start_cooldown=True):
+        """Shows the hint text and optionally creates an image received button
+        
+        Args:
+            text_or_data: Either a string containing hint text or a dict with 'text' and optional 'image' keys
+            start_cooldown: Boolean indicating whether to start the cooldown timer (default: True)
+        """
         print("\n=== PROCESSING NEW HINT ===")
         print(f"Received hint data: {type(text_or_data)}")
         
@@ -377,8 +382,9 @@ class KioskUI:
             if hasattr(self, 'stored_video_info'):
                 self.stored_video_info = None
 
-            # Start cooldown timer
-            self.start_cooldown()
+            # Start cooldown timer only if requested
+            if start_cooldown:
+                self.start_cooldown()
             self.current_hint = text_or_data
             
             # Clear pending request label if it exists
@@ -620,7 +626,7 @@ class KioskUI:
         
         self.hint_cooldown = True
         self.show_status_frame()  # Add this line
-        self.update_cooldown(60)  # Start 60 second cooldown
+        self.update_cooldown(45)  # Start 45 second cooldown
         
     def update_cooldown(self, seconds_left):
         """Updates the cooldown counter in the status frame"""
@@ -672,7 +678,7 @@ class KioskUI:
                 
             # Create video solution button
             button_width = 100
-            button_height = 200
+            button_height = 400
             
             self.video_solution_button = tk.Canvas(
                 self.root,
@@ -710,7 +716,7 @@ class KioskUI:
             self.video_solution_button = None
 
     def toggle_solution_video(self):
-        """Toggle video solution playback"""
+        """Toggle video solution playback while preserving cooldown state"""
         try:
             print("\nToggling solution video")
             # If video is already playing, stop it
@@ -732,10 +738,22 @@ class KioskUI:
                     print("Restoring hint label")
                     self.hint_label.place(x=911, y=64)
                     
+                # Restore cooldown display if still in cooldown
+                if self.hint_cooldown:
+                    print("Restoring cooldown display")
+                    self.show_status_frame()
+                    
             # If video is not playing, start it
             else:
                 print("Starting video playback")
                 if hasattr(self, 'stored_video_info'):
+                    # Store cooldown state before hiding UI
+                    cooldown_items = self.status_frame.find_withtag('cooldown_text')
+                    if cooldown_items:
+                        self.stored_cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
+                    else:
+                        self.stored_cooldown_text = None
+                    
                     # Only hide UI elements that exist
                     if hasattr(self, 'hint_label') and self.hint_label:
                         print("Hiding hint label")
@@ -744,6 +762,9 @@ class KioskUI:
                     if hasattr(self, 'video_solution_button') and self.video_solution_button:
                         print("Hiding solution button")
                         self.video_solution_button.place_forget()
+                        
+                    if self.hint_cooldown:
+                        self.status_frame.place_forget()
                         
                     # Construct video path
                     video_path = os.path.join(
@@ -770,7 +791,7 @@ class KioskUI:
             traceback.print_exc()
 
     def handle_video_completion(self):
-        """Handle cleanup after video finishes playing"""
+        """Handle cleanup after video finishes playing while maintaining cooldown state"""
         print("\nHandling video completion")
         self.video_is_playing = False
         
@@ -780,10 +801,23 @@ class KioskUI:
             if hasattr(self, 'stored_video_info') and self.stored_video_info:
                 stored_video_info = self.stored_video_info.copy()
             
-            # Clear UI state
-            print("Clearing UI state...")
-            self.clear_all_labels()
+            # Store cooldown state
+            was_in_cooldown = self.hint_cooldown
+            cooldown_after_id = self.cooldown_after_id
             
+            # Clear UI state without affecting cooldown
+            print("Clearing UI state...")
+            # Don't call clear_all_labels() as it would reset cooldown
+            if self.hint_label:
+                self.hint_label.destroy()
+                self.hint_label = None
+            if self.help_button:
+                self.help_button.destroy()
+                self.help_button = None
+            if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                self.video_solution_button.destroy()
+                self.video_solution_button = None
+                
             # Restore room interface - this will properly recreate the hint display area
             if self.message_handler.assigned_room:
                 print("Restoring room interface")
@@ -797,8 +831,26 @@ class KioskUI:
                         stored_video_info['video_filename']
                     )
             
-            # Refresh help button state if needed
-            if not self.hint_cooldown:
+            # Restore cooldown state if it was active
+            if was_in_cooldown:
+                print("Restoring cooldown state")
+                self.hint_cooldown = True
+                self.cooldown_after_id = cooldown_after_id
+                self.show_status_frame()
+                if hasattr(self, 'stored_cooldown_text') and self.stored_cooldown_text:
+                    self.status_frame.create_text(
+                        50,
+                        540,
+                        text=self.stored_cooldown_text,
+                        fill='yellow',
+                        font=('Arial', 24),
+                        angle=270,
+                        tags='cooldown_text',
+                        justify='center',
+                        width=1000
+                    )
+            else:
+                # Only refresh help button if not in cooldown
                 self.message_handler.root.after(100, self.message_handler.update_help_button_state)
                 
         except Exception as e:

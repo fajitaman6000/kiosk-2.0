@@ -4,6 +4,7 @@
 # important/immediate todo
 visible standby condition for rooms based on prop finish status
 double click are-you-sure on reboot and reset-all buttons
+game music
 
 # planned features: 
 admin mode (technician/managers),
