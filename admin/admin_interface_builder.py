@@ -659,8 +659,8 @@ class AdminInterfaceBuilder:
                     print(f"Audio path relative to working dir: {audio_path}")
                     print(f"Full audio path: {os.path.abspath(audio_path)}")
                     print(f"Path exists: {os.path.exists(audio_path)}")
-                    if os.path.exists(audio_path):
-                        print(f"Directory contents: {os.listdir(audio_path)}")
+                    #if os.path.exists(audio_path):
+                       # print(f"Directory contents: {os.listdir(audio_path)}")
                     
                     if hasattr(self, 'audio_hints'):
                         print("Audio hints object exists, updating room")

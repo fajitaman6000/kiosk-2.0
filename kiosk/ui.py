@@ -245,10 +245,11 @@ class KioskUI:
         #print(f"Current timer: {minutes_remaining:.2f} minutes")
         #print(f"In cooldown: {self.hint_cooldown}")
         #print(f"Timer running: {self.message_handler.timer.is_running}")
+        print("attempting to create help button if it is needed")
 
         # Check if timer has ever exceeded 45 minutes
         has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
-        print(f"Has exceeded 45: {has_exceeded_45}")
+        #print(f"Has exceeded 45: {has_exceeded_45}")
 
         # First check if we're in cooldown
         if self.hint_cooldown:

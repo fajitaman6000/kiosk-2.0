@@ -4,7 +4,7 @@
 # important/immediate todo
 visible standby condition for rooms based on prop finish status
 double click are-you-sure on reboot and reset-all buttons
-game music
+reduce volume of background music while video solution is playing and ensure they don't clash
 
 # planned features: 
 admin mode (technician/managers),
@@ -44,3 +44,4 @@ walkie to lobby: room states for automatic standbys/room victory/out of time
 set alarm on prop to make sound when gm-chosen prop finishes
 profile creation,
 profile deletion (admin only)
+automatic room restoration for all props upon full pause
