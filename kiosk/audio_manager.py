@@ -73,3 +73,14 @@ class AudioManager:
                 print("Stopped background music")
         except Exception as e:
             print(f"Error stopping background music: {e}")
+
+    def set_music_volume(self, volume):
+        """
+        Sets the volume of currently playing background music.
+        Volume should be between 0.0 and 1.0
+        """
+        try:
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.set_volume(volume)
+        except Exception as e:
+            print(f"Error setting music volume: {e}")

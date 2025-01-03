@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import sys
 import imageio_ffmpeg
+from pygame import mixer
 
 class VideoManager:
     def __init__(self, root):
@@ -31,7 +32,31 @@ class VideoManager:
             
         # Initialize Pygame mixer
         pygame.mixer.init(frequency=44100)
-        #print("Pygame mixer initialized")
+        # Initialize a dedicated channel for video audio
+        self.video_sound_channel = pygame.mixer.Channel(0)  # Use channel 0 for video audio
+
+    def _fade_background_music(self, target_volume, duration=0.2, steps=10):
+        """
+        Gradually changes background music volume over the specified duration.
+        """
+        try:
+            if not pygame.mixer.music.get_busy():
+                return
+                
+            current_volume = pygame.mixer.music.get_volume()
+            volume_diff = target_volume - current_volume
+            step_size = volume_diff / steps
+            step_duration = duration / steps
+            
+            for _ in range(steps):
+                if self.should_stop:  # Check if video was stopped
+                    break
+                current_volume += step_size
+                pygame.mixer.music.set_volume(max(0.0, min(1.0, current_volume)))
+                time.sleep(step_duration)
+                
+        except Exception as e:
+            print(f"Error fading background music: {e}")
 
     def _check_ffmpeg_in_path(self):
         """Check if ffmpeg is available in system PATH"""
@@ -89,6 +114,9 @@ class VideoManager:
             # Store completion callback
             self.completion_callback = on_complete
             
+            # Fade out background music if it's playing
+            self._fade_background_music(0.3)  # Reduce to 30% volume
+
             # Stop any existing playback
             if self.is_playing:
                 print("VideoManager: Stopping existing playback")
@@ -190,14 +218,16 @@ class VideoManager:
             # Start audio playback if available
             if audio_path:
                 try:
-                    pygame.mixer.music.load(audio_path)
-                    pygame.mixer.music.play()
+                    # Load audio as a Sound object instead of using music
+                    video_sound = pygame.mixer.Sound(audio_path)
+                    self.video_sound_channel.play(video_sound)
                     start_time = time.time()
                     print("VideoManager: Started audio playback")
                 except Exception as e:
                     print(f"VideoManager: Error starting audio: {e}")
                     audio_path = None
             
+            # Rest of the method remains exactly the same...
             # Add click handler ONLY for solution videos (which contain 'video_solutions' in their path)
             if 'video_solutions' in video_path:
                 def on_canvas_click(event):
@@ -264,9 +294,9 @@ class VideoManager:
             print("VideoManager: Cleaning up video thread")
             cap.release()
             
-            # Stop audio playback
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.stop()
+            # Stop video audio channel instead of music
+            if self.video_sound_channel.get_busy():
+                self.video_sound_channel.stop()
                 time.sleep(0.1)  # Give a small delay for the audio to stop
             
             # Schedule cleanup and callback on main thread
@@ -280,10 +310,9 @@ class VideoManager:
         print(f"stored completion callback present: {self.completion_callback is not None}")
         
         try:
-            # Stop audio first
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.stop()
-                pygame.mixer.music.unload()
+            # Stop video audio first (not the background music)
+            if self.video_sound_channel.get_busy():
+                self.video_sound_channel.stop()
                 time.sleep(0.1)  # Give a small delay for audio to stop
             
             # Store the should_stop state early
@@ -293,7 +322,10 @@ class VideoManager:
             print("Starting UI cleanup...")
             self._cleanup()
             print("UI cleanup complete")
-            
+            # Restore background music volume
+            self._fade_background_music(1.0)  # Return to 100% volume
+
+
             # Clean up temporary audio file with retries
             if self.current_audio_path and os.path.exists(self.current_audio_path):
                 for attempt in range(3):
@@ -351,13 +383,9 @@ class VideoManager:
         callback = self.completion_callback
         self.completion_callback = None  # Clear immediately to prevent double execution
         
-        # Ensure pygame mixer is properly stopped
-        if pygame.mixer.get_init():
-            try:
-                pygame.mixer.music.stop()
-                pygame.mixer.music.unload()  # Unload current audio
-            except Exception as e:
-                print(f"Error stopping pygame mixer: {e}")
+        # Stop video audio channel instead of music
+        if self.video_sound_channel.get_busy():
+            self.video_sound_channel.stop()
             
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
@@ -377,13 +405,9 @@ class VideoManager:
             self.is_playing = False
             self.should_stop = True
             
-            # Stop audio first
-            if pygame.mixer.get_init():
-                try:
-                    pygame.mixer.music.stop()
-                    pygame.mixer.music.unload()
-                except Exception as e:
-                    print(f"Error stopping audio: {e}")
+            # Stop only the video audio channel, not the music
+            if self.video_sound_channel.get_busy():
+                self.video_sound_channel.stop()
             
             # Clean up video canvas with additional checks
             if self.video_canvas:
@@ -465,7 +489,6 @@ class VideoManager:
                 for _ in range(3):
                     try:
                         if os.path.exists(self.current_audio_path):
-                            pygame.mixer.quit()
                             time.sleep(0.1)
                             os.remove(self.current_audio_path)
                             print(f"Removed temporary audio file: {self.current_audio_path}")
@@ -474,13 +497,7 @@ class VideoManager:
                         print(f"Attempt to remove temp file failed: {e}")
                         time.sleep(0.1)
                 self.current_audio_path = None
-            
-            # Reinitialize pygame mixer
-            try:
-                pygame.mixer.init(frequency=44100)
-            except Exception as e:
-                print(f"Error reinitializing pygame mixer: {e}")
-            
+                        
             print("VideoManager: Cleanup complete")
             
         except Exception as e:

@@ -90,6 +90,7 @@ class AdminAudioManager:
         if is_finished and not self.sound_states['game_finish']:
             self.play_sound('game_finish')
             self.sound_states['game_finish'] = True
+            print("admin_audio_manager.py calling finish")
         elif not is_finished:
             self.sound_states['game_finish'] = False
     
