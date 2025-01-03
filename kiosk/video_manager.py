@@ -419,17 +419,20 @@ class VideoManager:
                 widget = info['widget']
                 try:
                     if widget.winfo_exists():
+                        # Skip hint-related widgets - let UI class handle these
+                        widget_name = widget.winfo_name() if hasattr(widget, 'winfo_name') else ''
+                        if any(name in widget_name.lower() for name in ['hint', 'video_solution', 'help']):
+                            continue
+                            
                         manager = info['manager']
                         if manager == 'place':
-                            # Don't restore hint label here - let UI class handle it
-                            if not (hasattr(widget, 'winfo_name') and 'hint_label' in widget.winfo_name()):
-                                widget.place(
-                                    x=info['geometry_info']['x'],
-                                    y=info['geometry_info']['y'],
-                                    width=info['geometry_info']['width'],
-                                    height=info['geometry_info']['height']
-                                )
-                                restored_widgets.append(widget)
+                            widget.place(
+                                x=info['geometry_info']['x'],
+                                y=info['geometry_info']['y'],
+                                width=info['geometry_info']['width'],
+                                height=info['geometry_info']['height']
+                            )
+                            restored_widgets.append(widget)
                         elif manager == 'grid':
                             widget.grid(**info['geometry_info'])
                             restored_widgets.append(widget)

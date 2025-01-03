@@ -774,62 +774,33 @@ class KioskUI:
         print("\nHandling video completion")
         self.video_is_playing = False
         
-        # Clear UI state
-        print("Clearing UI state...")
-        self.clear_all_labels()
-        
-        # Restore room interface - this will properly recreate the hint display area
-        if self.message_handler.assigned_room:
-            print("Restoring room interface")
-            self.setup_room_interface(self.message_handler.assigned_room)
-            
-            # If we had a video solution, recreate its button
-            if hasattr(self, 'stored_video_info') and self.stored_video_info:
-                print("Recreating video solution button")
-                self.show_video_solution(
-                    self.stored_video_info['room_folder'],
-                    self.stored_video_info['video_filename']
-                )
-        
-        # Refresh help button state if needed
-        if not self.hint_cooldown:
-            self.message_handler.root.after(100, self.message_handler.update_help_button_state)
-        
-    def _restore_after_video(self):
-        """Restore UI elements after video playback"""
         try:
-            print("\nRestoring UI after video")
+            # Store video info before cleanup
+            stored_video_info = None
+            if hasattr(self, 'stored_video_info') and self.stored_video_info:
+                stored_video_info = self.stored_video_info.copy()
             
-            # Verify we still have valid video info
-            if not hasattr(self, 'stored_video_info') or not self.stored_video_info:
-                print("Warning: No stored video info found during restore")
-                return
-                
-            # Get video info before recreating button
-            room_folder = self.stored_video_info.get('room_folder')
-            video_filename = self.stored_video_info.get('video_filename')
+            # Clear UI state
+            print("Clearing UI state...")
+            self.clear_all_labels()
             
-            if room_folder and video_filename:
-                print(f"Recreating solution button for {room_folder}/{video_filename}")
-                # Recreate the button
-                self.show_video_solution(room_folder, video_filename)
-            else:
-                print("Error: Incomplete video info")
+            # Restore room interface - this will properly recreate the hint display area
+            if self.message_handler.assigned_room:
+                print("Restoring room interface")
+                self.setup_room_interface(self.message_handler.assigned_room)
                 
-            # Only recreate hint label if we still have a current hint
-            if self.current_hint:
-                print("Restoring hint label with current hint")
-                self.show_hint(self.current_hint)
+                # If we had a video solution, create a fresh button
+                if stored_video_info:
+                    print("Creating fresh video solution button")
+                    self.show_video_solution(
+                        stored_video_info['room_folder'],
+                        stored_video_info['video_filename']
+                    )
+            
+            # Refresh help button state if needed
+            if not self.hint_cooldown:
+                self.message_handler.root.after(100, self.message_handler.update_help_button_state)
                 
         except Exception as e:
-            print(f"\nError restoring UI after video:")
+            print(f"\nError in handle_video_completion: {e}")
             traceback.print_exc()
-            # Ensure we don't leave invalid state
-            self.stored_video_info = None 
-            self.video_solution_button = None
-
-    def _restore_after_video_with_info(self, video_info):
-        """Restore UI elements with preserved video info"""
-        if video_info:
-            self.stored_video_info = video_info
-        self._restore_after_video()
