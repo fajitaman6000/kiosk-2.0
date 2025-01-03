@@ -78,9 +78,9 @@ class KioskApp:
     def update_help_button_state(self):
         """Check timer and update help button state"""
         current_minutes = self.timer.time_remaining / 60
-        print(f"\n=== Timer State Update ===")
-        print(f"Current timer: {current_minutes:.2f} minutes")
-        print(f"Time exceeded 45 flag: {self.time_exceeded_45}")
+        #print(f"\n=== Timer State Update ===")
+        #print(f"Current timer: {current_minutes:.2f} minutes")
+        #print(f"Time exceeded 45 flag: {self.time_exceeded_45}")
         
         # Check if we've exceeded 45 minutes
         if current_minutes > 45 and not self.time_exceeded_45:
@@ -125,7 +125,12 @@ class KioskApp:
                 self.start_time = time.time()
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
+                
+                # Safely clear UI elements
+                if hasattr(self.ui, 'status_frame') and self.ui.status_frame:
+                    self.ui.status_frame.delete('all')
                 self.ui.clear_all_labels()
+                
                 self.root.after(0, lambda: self.ui.setup_room_interface(msg['room']))
                 
             elif msg['type'] == 'hint' and self.assigned_room:
@@ -151,6 +156,7 @@ class KioskApp:
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
                 print("\nProcessing timer command")
                 minutes = msg.get('minutes')
+                command = msg['command']
                 
                 # Update time_exceeded_45 flag if timer is being set above 45
                 if minutes is not None:
@@ -160,8 +166,26 @@ class KioskApp:
                         print("New time exceeds 45 minutes - setting flag")
                         self.time_exceeded_45 = True
                 
+                # Start background music when timer starts
+                room_names = {
+                2: "morning_after",
+                1: "casino_heist", 
+                5: "haunted_manor",
+                4: "zombie_outbreak",
+                6: "time_machine",
+                5: "atlantis_rising",
+                3: "wizard_trials"
+                }
+
+                if command == "start":
+                    if self.assigned_room and isinstance(self.assigned_room, int):
+                        room_name = room_names.get(self.assigned_room)
+                        if room_name:
+                            print(f"Timer starting - playing background music for room: {room_name}")
+                            self.audio_manager.play_background_music(room_name)
+                
                 # Handle the timer command
-                self.timer.handle_command(msg['command'], minutes)
+                self.timer.handle_command(command, minutes)
                 
                 # Update help button state
                 self.root.after(100, self.update_help_button_state)
@@ -218,6 +242,9 @@ class KioskApp:
                 # First, stop all audio and video playback
                 print("Stopping all media playback...")
                 
+                # Stop background music
+                self.audio_manager.stop_background_music()
+                
                 # Stop video manager (which handles both video and its audio)
                 self.video_manager.stop_video()
                 
@@ -226,9 +253,6 @@ class KioskApp:
                     pygame.mixer.music.stop()
                     pygame.mixer.music.unload()
                     pygame.mixer.stop()  # Stop all sound channels
-                
-                # Stop any playing audio from audio manager
-                #self.audio_manager.stop_sound()
                 
                 # Kill any remaining video process
                 if self.current_video_process:
@@ -257,8 +281,11 @@ class KioskApp:
                     self.root.after_cancel(self.ui.cooldown_after_id)
                     self.ui.cooldown_after_id = None
                 
-                # Clear all UI elements
+                # Clear UI elements safely
                 print("Clearing UI elements...")
+                if hasattr(self.ui, 'status_frame') and self.ui.status_frame:
+                    self.ui.status_frame.delete('all')
+                    self.ui.hide_status_frame()
                 self.ui.clear_all_labels()
                 
                 # Clear specific hint-related elements
@@ -271,11 +298,6 @@ class KioskApp:
                 if hasattr(self.ui, 'fullscreen_image') and self.ui.fullscreen_image:
                     self.ui.fullscreen_image.destroy()
                     self.ui.fullscreen_image = None
-                
-                # Clear any pending request status
-                if self.ui.status_frame:
-                    self.ui.status_frame.delete('all')
-                    self.ui.hide_status_frame()
                 
                 # Restore UI
                 if self.assigned_room:
@@ -354,6 +376,12 @@ class KioskApp:
             print(f"Setting timer to {minutes} minutes")
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
+            
+            # Start playing background music for the assigned room
+            if self.assigned_room:
+                print(f"Starting background music for room: {self.assigned_room}")
+                self.audio_manager.play_background_music(self.assigned_room)
+            
             print("Resetting UI state...")
             self.ui.hint_cooldown = False
             self.ui.clear_all_labels()

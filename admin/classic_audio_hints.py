@@ -17,7 +17,7 @@ class ClassicAudioHints:
     }
 
     def __init__(self, parent, room_change_callback):
-        print("\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
+        #print("\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
         self.parent = parent
         self.room_change_callback = room_change_callback
         self.current_room = None
@@ -88,13 +88,13 @@ class ClassicAudioHints:
         self.back_btn = ttk.Button(self.control_frame, text="Back", command=self.show_lists)
         self.back_btn.pack(side='left', padx=5)
         
-        print("=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
+        #print("=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
 
         self.load_prop_name_mappings()
 
     def update_room(self, room_name):
         """Update the prop list for the selected room"""
-        print(f"\n=== UPDATING AUDIO HINTS FOR {room_name} ===")
+        #print(f"\n=== UPDATING AUDIO HINTS FOR {room_name} ===")
         
         # Convert room_name to lowercase for consistent comparison
         room_name = room_name.lower() if room_name else None
@@ -212,7 +212,7 @@ class ClassicAudioHints:
             return
             
         room_key = self.ROOM_MAP.get(self.current_room)
-        print(f"Current room: {self.current_room}, Room key: {room_key}")
+        #print(f"Current room: {self.current_room}, Room key: {room_key}")
         
         if not room_key:
             print(f"No room key for {self.current_room}")
@@ -221,7 +221,7 @@ class ClassicAudioHints:
         # Search for prop in dropdown items
         for item in self.prop_dropdown['values']:
             if f"({prop_name})" in item:  # Match by original name in parentheses
-                print(f"Found matching prop: {item}")
+                #print(f"Found matching prop: {item}")
                 self.prop_dropdown.set(item)
                 self.on_prop_select(None)
                 return
@@ -231,7 +231,7 @@ class ClassicAudioHints:
         try:
             with open("prop_name_mapping.json", 'r') as f:
                 self.prop_name_mappings = json.load(f)
-            print("Loaded prop name mappings successfully")
+            #print("Loaded prop name mappings successfully")
         except Exception as e:
             print(f"Error loading prop name mappings: {e}")
             self.prop_name_mappings = {}

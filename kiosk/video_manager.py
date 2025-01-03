@@ -27,11 +27,11 @@ class VideoManager:
         
         # Get ffmpeg path from imageio-ffmpeg
         self.ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-        print(f"Using ffmpeg from: {self.ffmpeg_path}")
+        #print(f"Using ffmpeg from: {self.ffmpeg_path}")
             
         # Initialize Pygame mixer
         pygame.mixer.init(frequency=44100)
-        print("Pygame mixer initialized")
+        #print("Pygame mixer initialized")
 
     def _check_ffmpeg_in_path(self):
         """Check if ffmpeg is available in system PATH"""

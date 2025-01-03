@@ -241,10 +241,10 @@ class KioskUI:
         # Get current timer value from message handler
         current_time = self.message_handler.timer.time_remaining
         minutes_remaining = current_time / 60
-        print(f"\n=== Help Button Visibility Check ===")
-        print(f"Current timer: {minutes_remaining:.2f} minutes")
-        print(f"In cooldown: {self.hint_cooldown}")
-        print(f"Timer running: {self.message_handler.timer.is_running}")
+        #print(f"\n=== Help Button Visibility Check ===")
+        #print(f"Current timer: {minutes_remaining:.2f} minutes")
+        #print(f"In cooldown: {self.hint_cooldown}")
+        #print(f"Timer running: {self.message_handler.timer.is_running}")
 
         # Check if timer has ever exceeded 45 minutes
         has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
@@ -473,7 +473,7 @@ class KioskUI:
             # Create image received button in left panel only if image exists
             if self.stored_image_data:
                 button_width = 100  # Make button narrower
-                button_height = 200  # Make button taller for better text visibility
+                button_height = 300  # Make button taller for better text visibility
                 
                 # Create button canvas
                 self.image_button = tk.Canvas(
@@ -494,7 +494,7 @@ class KioskUI:
                 self.image_button.create_text(
                     button_width/2,
                     button_height/2,
-                    text="IMAGE RECEIVED",
+                    text="VIEW IMAGE HINT",
                     fill='white',
                     font=('Arial', 24),
                     angle=270

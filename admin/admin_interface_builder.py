@@ -125,7 +125,7 @@ class AdminInterfaceBuilder:
 
     def setup_audio_hints(self):
         """Set up the Classic Audio Hints panel"""
-        print("\n=== AUDIO HINTS SETUP START ===")
+        #print("\n=== AUDIO HINTS SETUP START ===")
         
         def on_room_change(room_name):
             print(f"\n=== ROOM CHANGE CALLBACK ===")
@@ -151,9 +151,9 @@ class AdminInterfaceBuilder:
             print("=== ROOM CHANGE CALLBACK END ===\n")
         
         # Create ClassicAudioHints instance
-        print("Creating new ClassicAudioHints instance...")
+        #print("Creating new ClassicAudioHints instance...")
         self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change)
-        print("=== AUDIO HINTS SETUP END ===\n")
+        #print("=== AUDIO HINTS SETUP END ===\n")
 
     def setup_stats_panel(self, computer_name):
         # use helper function setup_stats_panel.py
@@ -594,7 +594,7 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
         try:
-            print(f"\n=== KIOSK SELECTION START: {computer_name} ===")
+            #print(f"\n=== KIOSK SELECTION START: {computer_name} ===")
             
             # Clean up existing audio/video streams before switching
             if hasattr(self, 'camera_active') and self.camera_active:
@@ -640,7 +640,7 @@ class AdminInterfaceBuilder:
                 )
                 
                 # Map room number to directory name for audio hints
-                print("\n=== AUDIO HINTS UPDATE START ===")
+                #print("\n=== AUDIO HINTS UPDATE START ===")
                 room_dirs = {
                     6: "atlantis",
                     1: "casino",
@@ -667,7 +667,7 @@ class AdminInterfaceBuilder:
                         self.audio_hints.update_room(room_dir)
                     else:
                         print("WARNING: No audio_hints object found!")
-                print("=== AUDIO HINTS UPDATE END ===\n")
+                #print("=== AUDIO HINTS UPDATE END ===\n")
             else:
                 title = f"Unassigned ({computer_name})"
                 print("No room assigned")
@@ -678,7 +678,7 @@ class AdminInterfaceBuilder:
                 )
             
             if hasattr(self, 'saved_hints'):
-                print("Updating saved hints for room")
+                #print("Updating saved hints for room")
                 if room_num:
                     self.saved_hints.update_room(room_num)
                 else:
@@ -731,7 +731,7 @@ class AdminInterfaceBuilder:
                 else:
                     print("No room assignment, skipping prop control notification")
                     
-            print(f"=== KIOSK SELECTION END: {computer_name} ===\n")
+            #print(f"=== KIOSK SELECTION END: {computer_name} ===\n")
             
         except Exception as e:
             print(f"Error in select_kiosk: {e}")

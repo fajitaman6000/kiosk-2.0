@@ -101,7 +101,7 @@ class KioskTimer:
             self.current_image = ImageTk.PhotoImage(bg_img)
             self.canvas.itemconfig(self.bg_image_item, image=self.current_image)
             
-            print(f"Successfully loaded timer background for room {room_number}")
+            #print(f"Successfully loaded timer background for room {room_number}")
             
         except Exception as e:
             print(f"Error loading timer background for room {room_number}: {e}")
