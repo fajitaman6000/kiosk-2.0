@@ -18,6 +18,7 @@ def setup_stats_panel(interface_builder, computer_name):
         stats_container.pack(fill='both', expand=True, padx=10, pady=5)
         
         # Left side panel for stats and controls
+        left_panel = tk.Frame(stats_container, width=350)  # Reduced from ~500px default
         left_panel = tk.Frame(stats_container)
         left_panel.pack(side='left', fill='y', padx=(0, 10))
         
@@ -292,31 +293,31 @@ def setup_stats_panel(interface_builder, computer_name):
             saved_hint_callback
         )
 
-        # Right side panel
+        # Right side panel - with adjusted proportions
         right_panel = tk.Frame(
             stats_container,
-            width=500,  # Fixed width for entire right panel
+            width=600,  # Increased to accommodate video better
             bg='systemButtonFace'
         )
         right_panel.pack(
             side='left',     # Ensure it stays on right
-            fill='y',         # Fill vertical space
-            expand=False,     # Don't expand horizontally
-            padx=(10, 0)      # Padding only on left side
+            fill='y',        # Fill vertical space
+            expand=True,     # Allow expansion to fill space
+            padx=(10, 0)     # Padding only on left side
         )
         right_panel.pack_propagate(False)  # Prevent panel from shrinking
-        
-        # Video feed panel with fixed size
+
+        # Video feed panel with reduced size (60% of original)
         video_frame = tk.Frame(
             right_panel,
             bg='black',
-            width=500,
-            height=375
+            width=300,      # Reduced from 500
+            height=225      # Reduced from 375
         )
         video_frame.pack(
-            expand=False,     # Don't expand
-            pady=1,           # Slight vertical padding
-            anchor='n'        # Anchor to top
+            expand=False,   # Don't expand
+            pady=1,         # Slight vertical padding
+            anchor='n'      # Anchor to top
         )
         video_frame.pack_propagate(False)  # Prevent frame from shrinking
         
@@ -530,21 +531,25 @@ def setup_stats_panel(interface_builder, computer_name):
         other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
         other_controls_frame.pack(fill='x', pady=10)
 
+        # Create container for horizontal button layout
+        button_container = tk.Frame(other_controls_frame)
+        button_container.pack(fill='x', padx=5, pady=5)
+        
         # Add clear hints button
         clear_hints_btn = tk.Button(
-            other_controls_frame,
+            button_container,  # Note: Parent changed to button_container
             text="Clear Hints",
             command=lambda: interface_builder.clear_kiosk_hints(computer_name)
         )
-        clear_hints_btn.pack(pady=5, padx=5)
+        clear_hints_btn.pack(side='left', padx=5)  # Added side='left'
 
         # Add play sound button
         play_sound_btn = tk.Button(
-            other_controls_frame,
+            button_container,  # Note: Parent changed to button_container
             text="Play Hint Sound",
             command=lambda: interface_builder.play_hint_sound(computer_name)
         )
-        play_sound_btn.pack(pady=5, padx=5)
+        play_sound_btn.pack(side='left', padx=5)  # Added side='left'
 
         # Sound controls container
         sound_container = tk.Frame(other_controls_frame)
