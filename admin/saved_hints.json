@@ -13,6 +13,12 @@
                     "name": "test",
                     "text": "yyyyy",
                     "image": null
+                },
+                "clock_hint_1": {
+                    "prop": "Clock",
+                    "name": "jjj",
+                    "text": "hdfghdfhg",
+                    "image": null
                 }
             }
         }

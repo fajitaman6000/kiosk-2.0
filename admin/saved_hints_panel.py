@@ -195,9 +195,11 @@ class SavedHintsPanel:
             for hint in room_hints.values():
                 original_name = hint['prop']
                 display_name = self.get_display_name(original_name)
-                props[display_name] = original_name
+                # Format as "[Display Name] ([Original Name])"
+                formatted_name = f"{display_name} ({original_name})"
+                props[formatted_name] = original_name
         
-        # Sort by display names but maintain mapping
+        # Sort by formatted names but maintain mapping
         sorted_display_names = sorted(props.keys())
         self.prop_name_map = props  # Store mapping for later use
         return sorted_display_names
@@ -245,13 +247,12 @@ class SavedHintsPanel:
         if not hasattr(self, 'prop_name_map'):
             return
             
-        # Find the display name for this prop
-        for display_name, original_name in self.prop_name_map.items():
-            if original_name == prop_name:
+        # Find the display name that contains this prop name in parentheses
+        for formatted_name in self.prop_dropdown['values']:
+            if f"({prop_name})" in formatted_name:
                 # Set the dropdown value
-                if display_name in self.prop_dropdown['values']:
-                    self.prop_dropdown.set(display_name)
-                    self.on_prop_select(None)  # Trigger hint list update
+                self.prop_dropdown.set(formatted_name)
+                self.on_prop_select(None)  # Trigger hint list update
                 break
 
     def on_hint_select(self, event):
