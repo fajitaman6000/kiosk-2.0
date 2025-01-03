@@ -357,10 +357,37 @@ class VideoManager:
             else:
                 print("No background music playing to restore")
             
-            # Perform UI cleanup after volume is restored
+            # Perform UI cleanup
             print("Starting UI cleanup...")
             self._cleanup()
             print("UI cleanup complete")
+
+            # Clean up temporary audio file with retries
+            if self.current_audio_path and os.path.exists(self.current_audio_path):
+                for attempt in range(3):
+                    try:
+                        time.sleep(0.1 * (attempt + 1))  # Increasing delay between attempts
+                        os.remove(self.current_audio_path)
+                        print(f"Removed temporary audio file on attempt {attempt + 1}")
+                        break
+                    except Exception as e:
+                        print(f"Attempt to remove temp file (attempt {attempt + 1}): {e}")
+                self.current_audio_path = None
+            
+            # Execute callbacks based on the stored manual stop state
+            if not was_stopped_manually and (on_complete or self.completion_callback):
+                print("Video completed normally, executing callbacks...")
+                if on_complete:
+                    print("Executing passed completion callback")
+                    self.root.after(100, on_complete)  # Schedule callback with slight delay
+                elif self.completion_callback:
+                    print("Executing stored completion callback")
+                    callback = self.completion_callback
+                    self.completion_callback = None  # Clear the callback
+                    self.root.after(100, callback)  # Schedule callback with slight delay
+            else:
+                print(f"Skipping callbacks - Video was stopped manually: {was_stopped_manually}")
+            print("=== Thread Cleanup Complete ===\n")
                     
         except Exception as e:
             print(f"Error in thread cleanup: {e}")
