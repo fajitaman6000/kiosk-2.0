@@ -885,10 +885,10 @@ class PropControl:
             audio_manager = AdminAudioManager()
             
             # Handle timer expiration sound
-            audio_manager.handle_timer_expired(timer_expired)
+            audio_manager.handle_timer_expired(timer_expired, room_number)
             
             # Handle game finish sound
-            audio_manager.handle_game_finish(is_finished)
+            audio_manager.handle_game_finish(is_finished, room_number)
             
             # Update visual highlighting
             if timer_expired:

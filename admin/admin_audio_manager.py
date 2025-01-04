@@ -36,10 +36,7 @@ class AdminAudioManager:
         self.sounds = {}
         
         # Track sound play states
-        self.sound_states = {
-            'game_finish': False,  # True if finish sound has played and game is still finished
-            'game_fail': False,    # True if fail sound has played and timer is still at 0
-        }
+        self.sound_states = {}  # Changed from dict to empty dict
         
         # Predefined sound mappings
         self._load_sound("hint_notification", "hint_notification.mp3")
@@ -85,22 +82,33 @@ class AdminAudioManager:
         else:
             print(f"Sound not found: {sound_id}")
     
-    def handle_game_finish(self, is_finished):
-        """Handle game finish state change and play sound if needed"""
-        if is_finished and not self.sound_states['game_finish']:
+    def handle_game_finish(self, is_finished, room_number):  # Added room_number parameter
+        # Initialize state for this room if needed
+        if room_number not in self.sound_states:
+            self.sound_states[room_number] = {
+                'game_finish': False,
+                'game_fail': False
+            }
+        
+        if is_finished and not self.sound_states[room_number]['game_finish']:
             self.play_sound('game_finish')
-            self.sound_states['game_finish'] = True
-            print("admin_audio_manager.py calling finish")
+            self.sound_states[room_number]['game_finish'] = True
         elif not is_finished:
-            self.sound_states['game_finish'] = False
+            self.sound_states[room_number]['game_finish'] = False
     
-    def handle_timer_expired(self, is_expired):
-        """Handle timer expiration state change and play sound if needed"""
-        if is_expired and not self.sound_states['game_fail']:
+    def handle_timer_expired(self, is_expired, room_number):  # Added room_number parameter
+        # Initialize state for this room if needed
+        if room_number not in self.sound_states:
+            self.sound_states[room_number] = {
+                'game_finish': False,
+                'game_fail': False
+            }
+        
+        if is_expired and not self.sound_states[room_number]['game_fail']:
             self.play_sound('game_fail')
-            self.sound_states['game_fail'] = True
+            self.sound_states[room_number]['game_fail'] = True
         elif not is_expired:
-            self.sound_states['game_fail'] = False
+            self.sound_states[room_number]['game_fail'] = False
     
     def cleanup(self):
         """Clean up pygame mixer resources"""

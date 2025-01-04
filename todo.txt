@@ -4,7 +4,6 @@
 # important/immediate todo
 visible standby condition for rooms based on prop finish status
 double click are-you-sure on reboot and reset-all buttons
-reduce volume of background music while video solution is playing and ensure they don't clash
 
 # planned features: 
 admin mode (technician/managers),
