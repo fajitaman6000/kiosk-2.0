@@ -100,13 +100,41 @@ class PropControl:
         )
         self.start_button.pack(fill='x', pady=2)
 
+        def reset_reset_button():
+            """Reset the button to its original state"""
+            self.reset_button.confirmation_pending = False
+            self.reset_button.config(text="RESET ALL PROPS")
+            self.reset_button.after_id = None
+            
+        def handle_reset_click():
+            """Handle reset button clicks with confirmation"""
+            if self.reset_button.confirmation_pending:
+                # Second click - perform reset
+                self.reset_all()
+                reset_reset_button()
+            else:
+                # First click - show confirmation
+                self.reset_button.confirmation_pending = True
+                self.reset_button.config(text="Confirm")
+                
+                # Cancel any existing timer
+                if self.reset_button.after_id:
+                    self.reset_button.after_cancel(self.reset_button.after_id)
+                    
+                # Set timer to reset button after 2 seconds
+                self.reset_button.after_id = self.reset_button.after(2000, reset_reset_button)
+
         self.reset_button = tk.Button(
             self.global_controls,
             text="RESET ALL PROPS",
-            command=self.reset_all,
+            command=handle_reset_click,  # Use the new handler
             bg='#DB4260',   # Red
             fg='white'
         )
+        
+        # Track confirmation state
+        self.reset_button.confirmation_pending = False
+        self.reset_button.after_id = None
         self.reset_button.pack(fill='x', pady=2)
         
         # Special buttons section
@@ -1033,6 +1061,8 @@ class PropControl:
                 self.app.kiosk_tracker.log_action(f"Reset all props in room {self.current_room}")
         except Exception as e:
             print(f"Failed to send reset all command: {e}")
+
+    
 
     def send_quest_command(self, quest_type):
         if self.current_room is None or self.current_room not in self.mqtt_clients:

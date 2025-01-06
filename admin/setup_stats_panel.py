@@ -43,15 +43,44 @@ def setup_stats_panel(interface_builder, computer_name):
         )
         interface_builder.stats_elements['hints_label'].pack(side='left')
         
-        # Add reset button next to hints label
+        # Add reset button next to hints label with confirmation behavior
         reset_btn = tk.Button(
             hints_frame,
             text="Reset Kiosk",
-            command=lambda: interface_builder.reset_kiosk(computer_name),
             bg='#7897bf',
             fg='white',
             padx=10
         )
+
+        # Track confirmation state
+        reset_btn.confirmation_pending = False
+        reset_btn.after_id = None
+
+        def reset_reset_button():
+            """Reset the button to its original state"""
+            reset_btn.confirmation_pending = False
+            reset_btn.config(text="Reset Kiosk")
+            reset_btn.after_id = None
+            
+        def handle_reset_click():
+            """Handle reset button clicks with confirmation"""
+            if reset_btn.confirmation_pending:
+                # Second click - perform reset
+                interface_builder.reset_kiosk(computer_name)
+                reset_reset_button()
+            else:
+                # First click - show confirmation
+                reset_btn.confirmation_pending = True
+                reset_btn.config(text="Confirm")
+                
+                # Cancel any existing timer
+                if reset_btn.after_id:
+                    reset_btn.after_cancel(reset_btn.after_id)
+                    
+                # Set timer to reset button after 2 seconds
+                reset_btn.after_id = reset_btn.after(2000, reset_reset_button)
+
+        reset_btn.config(command=handle_reset_click)
         reset_btn.pack(side='left', padx=10)
 
         # Timer controls section

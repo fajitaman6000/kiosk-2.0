@@ -1,25 +1,16 @@
-"stop everything" button
-
-
 # important/immediate todo
-double click are-you-sure on reboot and reset-all buttons
+
+
 
 # planned features: 
 admin mode (technician/managers),
-save hint to public (usable by all profiles, shown what profile made it, save to own private profile),
-save hint to private (local to profile),
-save hint to global/default (admin only),
-set hint color,
 clear hints requested when starting timer
 restarter moved to kiosk app
 last hint given (admin-side)
-soundcheck/touchcheck behavior
 room start upon video finish (optional?)
-hint manager limited access
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
-video hint should be able to play more than once
 intro+outro audio + music
 audio hints need a means of playing the audio on kiosk side
 kiosk needs to have as much info as possible in case of admin crash
@@ -42,3 +33,8 @@ set alarm on prop to make sound when gm-chosen prop finishes
 profile creation,
 profile deletion (admin only)
 automatic room restoration for all props upon full pause
+soundcheck/touchcheck behavior
+save hint to public (usable by all profiles, shown what profile made it, save to own private profile),
+save hint to private (local to profile),
+save hint to global/default (admin only),
+set hint color,

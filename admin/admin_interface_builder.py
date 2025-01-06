@@ -516,10 +516,39 @@ class AdminInterfaceBuilder:
         reboot_btn = tk.Button(
             frame, 
             text="Reboot Kiosk",
-            command=lambda: self.app.network_handler.send_reboot_signal(computer_name),
             bg='#FF6B6B',
             fg='white'
         )
+        
+        # Track confirmation state
+        reboot_btn.confirmation_pending = False
+        reboot_btn.after_id = None
+        
+        def reset_reboot_button():
+            """Reset the button to its original state"""
+            reboot_btn.confirmation_pending = False
+            reboot_btn.config(text="Reboot Kiosk")
+            reboot_btn.after_id = None
+            
+        def handle_reboot_click():
+            """Handle reboot button clicks with confirmation"""
+            if reboot_btn.confirmation_pending:
+                # Second click - perform reboot
+                self.app.network_handler.send_reboot_signal(computer_name)
+                reset_reboot_button()
+            else:
+                # First click - show confirmation
+                reboot_btn.confirmation_pending = True
+                reboot_btn.config(text="Confirm")
+                
+                # Cancel any existing timer
+                if reboot_btn.after_id:
+                    reboot_btn.after_cancel(reboot_btn.after_id)
+                    
+                # Set timer to reset button after 2 seconds
+                reboot_btn.after_id = reboot_btn.after(2000, reset_reboot_button)
+        
+        reboot_btn.config(command=handle_reboot_click)
         reboot_btn.pack(side='left', padx=(20, 5))
 
         # Add mini timer label at the end
