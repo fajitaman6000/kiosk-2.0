@@ -176,12 +176,39 @@ class KioskUI:
         self.message_handler.timer.lift_to_top()
 
     def _create_button_with_background(self):
-        """Helper method to create the actual button with background"""
+        """Helper method to create the actual button with background and shadow effect"""
         # Define button dimensions
         canvas_width = 260
         canvas_height = 550
         
         try:
+            # Create a frame to hold both shadow and button
+            container_frame = tk.Frame(
+                self.root,
+                width=canvas_width + 40,  # Extra width for shadow
+                height=canvas_height + 40,  # Extra height for shadow
+                bg='black'  # Match root background
+            )
+            container_frame.place(relx=0.19, rely=0.5, anchor='center')
+            
+            # Load and create shadow first
+            try:
+                shadow_path = os.path.join("hint_button_backgrounds", "shadow.png")
+                if os.path.exists(shadow_path):
+                    shadow_image = Image.open(shadow_path)
+                    shadow_image = shadow_image.resize((canvas_width + 40, canvas_height + 40), Image.Resampling.LANCZOS)
+                    shadow_photo = ImageTk.PhotoImage(shadow_image)
+                    
+                    shadow_label = tk.Label(
+                        container_frame,
+                        image=shadow_photo,
+                        bg='black'
+                    )
+                    shadow_label.shadow_image = shadow_photo  # Prevent garbage collection
+                    shadow_label.place(x=0, y=0)
+            except Exception as e:
+                print(f"Error loading shadow: {str(e)}")
+            
             # Get room-specific button background name
             button_name = None
             if hasattr(self.message_handler, 'assigned_room'):
@@ -209,7 +236,7 @@ class KioskUI:
                     button_photo = ImageTk.PhotoImage(button_image)
                     
                     self.help_button = tk.Canvas(
-                        self.root,
+                        container_frame,
                         width=canvas_width,
                         height=canvas_height,
                         highlightthickness=0
@@ -223,15 +250,17 @@ class KioskUI:
                         anchor='center'
                     )
                     
-                    self.help_button.place(relx=0.19, rely=0.5, anchor='center')
+                    # Center the button in the container, accounting for shadow margins
+                    self.help_button.place(x=20, y=20)  # Offset by shadow margin
                     self.help_button.bind('<Button-1>', lambda e: self.request_help())
-                    print("Successfully created new help button")
+                    print("Successfully created new help button with shadow")
                 else:
                     print(f"Button image not found at: {button_path}")
                     self._create_fallback_button(canvas_width, canvas_height)
             else:
                 print("No room assigned or room number not in button map")
                 self._create_fallback_button(canvas_width, canvas_height)
+                
         except Exception as e:
             print(f"Error creating image button: {str(e)}")
             self._create_fallback_button(canvas_width, canvas_height)

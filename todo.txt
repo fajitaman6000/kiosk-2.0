@@ -1,5 +1,6 @@
 # important/immediate todo
-
+outro audio
+put shadow behind hint button
 
 
 # planned features: 
@@ -11,7 +12,6 @@ room start upon video finish (optional?)
 edit hint image content within hint manager
 hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
-intro+outro audio + music
 audio hints need a means of playing the audio on kiosk side
 kiosk needs to have as much info as possible in case of admin crash
 
