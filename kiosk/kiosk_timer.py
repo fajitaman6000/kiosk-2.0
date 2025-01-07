@@ -1,20 +1,37 @@
-import tkinter as tk
-import time
-from PIL import Image, ImageTk
+from PyQt5.QtWidgets import QWidget, QVBoxLayout
+from PyQt5.QtCore import QTimer, Qt, pyqtSignal
+from PyQt5.QtGui import QPixmap, QPainter, QColor
+from rotated_widget import RotatedWidget
 import os
+from PIL import Image
+import time
 
-class KioskTimer:
-    def __init__(self, root, kiosk_app):
-        """Initialize the timer with root and kiosk_app reference"""
-        self.root = root
-        self.kiosk_app = kiosk_app  # Store reference to main app
+class KioskTimer(QWidget):
+    """
+    PyQt5 implementation of the kiosk timer system.
+    This replaces the Tkinter-based timer while maintaining identical functionality.
+    
+    Key differences from Tkinter version:
+    - Uses QTimer instead of after() calls
+    - Implements proper Qt parent-child relationships
+    - Uses RotatedWidget for display
+    - Handles transparency correctly
+    """
+    
+    # Signal emitted when timer crosses thresholds
+    threshold_crossed = pyqtSignal(float, float)  # old_minutes, new_minutes
+    
+    def __init__(self, parent=None):
+        """Initialize the timer with parent widget reference"""
+        super().__init__(parent)
+        
+        # State variables (maintained from Tkinter version)
         self.time_remaining = 60 * 45  # Default 45 minutes
         self.is_running = False
         self.last_update = None
-        self.current_image = None  # Store reference to prevent garbage collection
         self.current_room = None
         
-        # Define room to timer background mapping
+        # Define room to timer background mapping (same as Tkinter version)
         self.timer_backgrounds = {
             1: "casino_heist.png",
             2: "morning_after.png",
@@ -25,54 +42,29 @@ class KioskTimer:
             7: "time_machine.png"
         }
         
-        # Create a frame container for the timer that will stay on top
-        self.timer_frame = tk.Frame(
-            root,
-            width=270,     # Height of the rotated text display
-            height=530,    # Width of the rotated text display
-        )
+        # Setup widget properties
+        self.setFixedSize(270, 530)  # Match Tkinter dimensions
         
-        # Position frame on right center of screen
-        self.timer_frame.place(
-            relx=1.017,   # Right edge of screen
-            rely=0.5,     # Vertical center
-            anchor='e',   # Anchor to east (right) center
-            x=-182        # Slight padding from edge
-        )
+        # Create rotated timer display
+        self.timer_display = RotatedWidget(self)
+        self.timer_display.setRotatedFont('Arial')
+        self.timer_display.setRotatedTextColor('white')
+        self.timer_display.setAlignment(Qt.AlignCenter)
         
-        # Prevent frame from shrinking
-        self.timer_frame.pack_propagate(False)
+        # Setup layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.timer_display)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(layout)
         
-        # Create canvas inside the frame
-        self.canvas = tk.Canvas(
-            self.timer_frame,
-            width=200,    
-            height=400,  
-            highlightthickness=0,
-            bg='black'  # Fallback color if no background loaded
-        )
-        self.canvas.pack(fill='both', expand=True)
+        # Create update timer
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_timer_display)
+        self.update_timer.start(100)  # 100ms interval, same as Tkinter
         
-        # Create background image on canvas (initially None)
-        self.bg_image_item = self.canvas.create_image(
-            135,              # Horizontal center
-            265,             # Vertical center
-            image=None       # Will be set when room is assigned
-        )
+        # Initial display update
+        self.update_display()
         
-        # Create text item on canvas, rotated 90 degrees
-        self.time_text = self.canvas.create_text(
-            135,              # Horizontal center of canvas
-            265,             # Vertical center of canvas
-            text="45:00",
-            font=('Arial', 70, 'bold'),
-            fill='white',
-            angle=270         # Rotate text 90 degrees clockwise
-        )
-        
-        # Start update loop
-        self.update_timer()
-    
     def load_room_background(self, room_number):
         """Load the timer background for the specified room"""
         try:
@@ -95,18 +87,17 @@ class KioskTimer:
                 
             # Load and resize the background image
             bg_img = Image.open(bg_path)
-            bg_img = bg_img.resize((270, 530), Image.Resampling.LANCZOS)
+            bg_img = bg_img.resize((270, 530))  # Use exact dimensions
             
-            # Store the PhotoImage and update canvas
-            self.current_image = ImageTk.PhotoImage(bg_img)
-            self.canvas.itemconfig(self.bg_image_item, image=self.current_image)
-            
-            #print(f"Successfully loaded timer background for room {room_number}")
+            # Convert PIL image to QPixmap
+            pixmap = QPixmap.fromImage(bg_img.toqimage())
+            self.timer_display.setBackgroundImage(pixmap)
             
         except Exception as e:
             print(f"Error loading timer background for room {room_number}: {e}")
-        
+            
     def handle_command(self, command, minutes=None):
+        """Handle timer commands (start/stop/set)"""
         if command == "start":
             self.is_running = True
             self.last_update = time.time()
@@ -123,7 +114,7 @@ class KioskTimer:
             
         self.update_display()
         
-    def update_timer(self):
+    def update_timer_display(self):
         """Updates the timer display and checks for threshold crossings"""
         try:
             if self.is_running and self.last_update is not None:
@@ -142,32 +133,36 @@ class KioskTimer:
                     print(f"\nTimer crossed 42-minute threshold (down)")
                     print(f"Old time: {old_minutes:.2f} minutes")
                     print(f"New time: {new_minutes:.2f} minutes")
-                    # Use the kiosk_app reference to access UI
-                    if hasattr(self.kiosk_app, 'ui'):
-                        self.root.after(0, self.kiosk_app.ui.create_help_button)
+                    # Emit signal for threshold crossing
+                    self.threshold_crossed.emit(old_minutes, new_minutes)
                 
                 self.update_display()
-
-            if self.timer_frame.winfo_exists():
-                self.root.after(100, self.update_timer)
-        except tk.TclError:
-            pass  # Widget was destroyed
-        
+                
+        except Exception as e:
+            print(f"Error in timer update: {e}")
+            
     def update_display(self):
+        """Update the timer display text"""
         try:
-            if self.canvas.winfo_exists():
-                minutes = int(self.time_remaining // 60)
-                seconds = int(self.time_remaining % 60)
-                self.canvas.itemconfig(
-                    self.time_text,
-                    text=f"{minutes:02d}:{seconds:02d}",
-                    fill='white'
-                )
-                self.timer_frame.lift()  # Keep entire timer frame on top
-        except tk.TclError:
-            pass  # Widget was destroyed
+            minutes = int(self.time_remaining // 60)
+            seconds = int(self.time_remaining % 60)
+            display_text = f"{minutes:02d}:{seconds:02d}"
+            
+            # Update rotated text display
+            self.timer_display.setRotatedText(display_text)
+            
+        except Exception as e:
+            print(f"Error updating timer display: {e}")
+            
+    def raise_to_top(self):
+        """Ensure timer stays on top of other widgets"""
+        self.raise_()
         
-    def lift_to_top(self):
-        """Call this method when new UI elements are added"""
-        if hasattr(self, 'timer_frame') and self.timer_frame.winfo_exists():
-            self.timer_frame.lift()
+    def paintEvent(self, event):
+        """Custom paint event to handle background and ensure proper layering"""
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Draw widget background (black by default)
+        painter.fillRect(self.rect(), QColor('black'))
