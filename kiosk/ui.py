@@ -3,9 +3,10 @@ from PyQt5.QtWidgets import (
     QWidget, QLabel, QPushButton, QFrame, QVBoxLayout, 
     QSizePolicy, QApplication
 )
-from PyQt5.QtCore import (
-    Qt, QTimer, QSize, pyqtSignal, QPoint, QRect,
-    QPropertyAnimation
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QSize, QRect
+from PyQt5.QtGui import (
+    QPainter, QColor, QFont, QPixmap, QImage,
+    QPainterPath
 )
 from PyQt5.QtGui import (
     QPixmap, QPainter, QImage, QColor, QTransform,
@@ -15,15 +16,21 @@ from PyQt5.QtGui import (
 # Custom widget imports
 from rotated_widget import RotatedWidget, RotatedLabel, RotatedButton
 
-# Python standard library
+# Image processing
+from PIL import Image  # Still needed for some image operations
+
+
+from rotated_widget import (
+    RotatedLabel, RotatedButton 
+)
+
+from PIL import Image
 import os
 import base64
 import io
 import traceback
 import time
 
-# Image processing
-from PIL import Image  # Still needed for some image operations
 
 class FullscreenImageViewer(QWidget):
     """Custom widget for displaying fullscreen rotated images with touch support"""
@@ -58,6 +65,282 @@ class FullscreenImageViewer(QWidget):
     def mousePressEvent(self, event):
         """Handle mouse/touch press events"""
         self.clicked.emit()
+
+class StatusFrame(QFrame):
+    """
+    Frame for displaying status messages with proper rotation.
+    Equivalent to Tkinter canvas-based status frame.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFixedSize(100, 1079)  # Match original dimensions
+        self.setStyleSheet("background-color: black;")
+        
+        self._pending_text = ""
+        self._cooldown_text = ""
+        self._show_pending = False
+        self._show_cooldown = False
+        
+    def showPendingText(self, text):
+        """Display pending request message"""
+        self._pending_text = text
+        self._show_pending = True
+        self._show_cooldown = False
+        self.update()
+        
+    def showCooldownText(self, text):
+        """Display cooldown status message"""
+        self._cooldown_text = text
+        self._show_cooldown = True
+        self._show_pending = False
+        self.update()
+        
+    def clear(self):
+        """Clear all status messages"""
+        self._show_pending = False
+        self._show_cooldown = False
+        self._pending_text = ""
+        self._cooldown_text = ""
+        self.update()
+        
+    def paintEvent(self, event):
+        """Custom paint event for rotated text"""
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+        
+        # Setup font
+        font = QFont('Arial', 24)
+        painter.setFont(font)
+        
+        # Setup transform for rotation
+        painter.translate(self.width()/2, self.height()/2)
+        painter.rotate(270)
+        
+        if self._show_pending and self._pending_text:
+            painter.setPen(QColor('yellow'))
+            text_rect = QRect(
+                -self.height()/2,
+                -self.width()/2,
+                self.height(),
+                self.width()
+            )
+            painter.drawText(text_rect, Qt.AlignCenter, self._pending_text)
+            
+        elif self._show_cooldown and self._cooldown_text:
+            painter.setPen(QColor('yellow'))
+            text_rect = QRect(
+                -self.height()/2,
+                -self.width()/2,
+                self.height(),
+                self.width()
+            )
+            painter.drawText(text_rect, Qt.AlignCenter, self._cooldown_text)
+
+class HintDisplay(QFrame):
+    """
+    Custom widget for displaying hints with background images and rotation.
+    Handles both text and image hints.
+    """
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("background-color: black;")
+        
+        self._text = ""
+        self._background_image = None
+        self._background_pixmap = None  # Prevent GC
+        
+    def setText(self, text):
+        """Set hint text"""
+        self._text = text
+        self.update()
+        
+    def setBackgroundImage(self, image_path):
+        """Set hint background image"""
+        try:
+            if image_path and os.path.exists(image_path):
+                pil_image = Image.open(image_path)
+                pil_image = pil_image.resize((self.width(), self.height()))
+                self._background_pixmap = QPixmap.fromImage(pil_image.toqimage())
+                self._background_image = self._background_pixmap
+                self.update()
+                return True
+        except Exception as e:
+            print(f"Error loading hint background: {e}")
+        return False
+        
+    def paintEvent(self, event):
+        """Custom paint event for rotated hint display"""
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.TextAntialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        
+        # Draw background
+        if self._background_image and not self._background_image.isNull():
+            painter.drawPixmap(self.rect(), self._background_image)
+        else:
+            painter.fillRect(self.rect(), QColor('black'))
+            
+        if self._text:
+            # Setup for rotated text
+            painter.setPen(QColor('black'))
+            painter.setFont(QFont('Arial', 20))
+            
+            # Create transform for rotation
+            painter.translate(self.width()/2, self.height()/2)
+            painter.rotate(270)
+            
+            # Calculate text rectangle
+            metrics = painter.fontMetrics()
+            text_rect = QRect(
+                -self.height()/2,
+                -self.width()/2,
+                self.height(),
+                self.width()
+            )
+            
+            # Draw text with word wrap
+            painter.drawText(
+                text_rect,
+                Qt.AlignCenter | Qt.TextWordWrap,
+                self._text
+            )
+
+class ImageViewerWidget(QWidget):
+    """
+    Widget for displaying fullscreen images with proper rotation.
+    """
+    clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("background-color: black;")
+        self._image = None
+        self._pixmap = None  # Prevent GC
+        
+    def setImage(self, image_data):
+        """Set image from base64 data"""
+        try:
+            image_bytes = base64.b64decode(image_data)
+            image = QImage()
+            if image.loadFromData(image_bytes):
+                # Calculate rotation and scaling
+                screen_size = self.size()
+                scaled_size = image.size()
+                scaled_size.scale(screen_size, Qt.KeepAspectRatio)
+                
+                # Create scaled and rotated image
+                scaled_image = image.scaled(
+                    scaled_size,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                
+                # Create transform for 90-degree rotation
+                transform = QTransform()
+                transform.rotate(90)
+                rotated_image = scaled_image.transformed(transform)
+                
+                self._pixmap = QPixmap.fromImage(rotated_image)
+                self._image = self._pixmap
+                self.update()
+                return True
+        except Exception as e:
+            print(f"Error loading image data: {e}")
+        return False
+        
+    def paintEvent(self, event):
+        """Custom paint event for image display"""
+        super().paintEvent(event)
+        if self._image and not self._image.isNull():
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+            
+            # Center image in widget
+            x = (self.width() - self._image.width()) // 2
+            y = (self.height() - self._image.height()) // 2
+            painter.drawPixmap(x, y, self._image)
+            
+    def mousePressEvent(self, event):
+        """Handle click events"""
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+
+class HelpButton(QWidget):
+    """
+    Custom help button with background image support and rotation.
+    """
+    clicked = pyqtSignal()
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._background_image = None
+        self._background_pixmap = None  # Prevent GC
+        self._hover = False
+        
+        self.setMouseTracking(True)
+        
+    def setBackgroundImage(self, image_path):
+        """Set button background image"""
+        try:
+            if image_path and os.path.exists(image_path):
+                pil_image = Image.open(image_path)
+                pil_image = pil_image.resize((self.width(), self.height()))
+                self._background_pixmap = QPixmap.fromImage(pil_image.toqimage())
+                self._background_image = self._background_pixmap
+                self.update()
+                return True
+        except Exception as e:
+            print(f"Error loading button background: {e}")
+        return False
+        
+    def paintEvent(self, event):
+        """Custom paint event for button"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+        
+        if self._background_image and not self._background_image.isNull():
+            painter.drawPixmap(self.rect(), self._background_image)
+        else:
+            # Fallback appearance
+            painter.fillRect(self.rect(), QColor('blue'))
+            painter.setPen(QColor('white'))
+            painter.setFont(QFont('Arial', 24))
+            
+            # Setup transform for rotation
+            painter.translate(self.width()/2, self.height()/2)
+            painter.rotate(270)
+            
+            text_rect = QRect(
+                -self.height()/2,
+                -self.width()/2,
+                self.height(),
+                self.width()
+            )
+            painter.drawText(text_rect, Qt.AlignCenter, "REQUEST HINT")
+            
+        # Draw hover effect if needed
+        if self._hover:
+            painter.fillRect(self.rect(), QColor(255, 255, 255, 30))
+            
+    def enterEvent(self, event):
+        """Handle mouse enter for hover effect"""
+        self._hover = True
+        self.update()
+        
+    def leaveEvent(self, event):
+        """Handle mouse leave for hover effect"""
+        self._hover = False
+        self.update()
+        
+    def mousePressEvent(self, event):
+        """Handle click events"""
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
 
 class KioskUI(QWidget):
     """
