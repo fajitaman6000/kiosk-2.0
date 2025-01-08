@@ -1,415 +1,63 @@
-# Core PyQt5 imports
-from PyQt5.QtWidgets import (
-    QWidget, QLabel, QPushButton, QFrame, QVBoxLayout, 
-    QSizePolicy, QApplication
-)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QSize, QRect
-from PyQt5.QtGui import (
-    QPainter, QColor, QFont, QPixmap, QImage,
-    QPainterPath
-)
-from PyQt5.QtGui import (
-    QPixmap, QPainter, QImage, QColor, QTransform,
-    QFont, QPalette, QBrush
-)
-
-# Custom widget imports
-from rotated_widget import RotatedWidget, RotatedLabel, RotatedButton
-
-# Image processing
-from PIL import Image  # Still needed for some image operations
-
-
-from rotated_widget import (
-    RotatedLabel, RotatedButton 
-)
-
-from PIL import Image
+# ui.py
+import tkinter as tk
+from PIL import Image, ImageTk
 import os
 import base64
 import io
 import traceback
-import time
 
-
-class FullscreenImageViewer(QWidget):
-    """Custom widget for displaying fullscreen rotated images with touch support"""
-    
-    clicked = pyqtSignal()  # Signal emitted when widget is clicked
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.image = None
-        self.setAttribute(Qt.WA_StyledBackground, True)
-        self.setStyleSheet("background-color: black;")
-        
-    def setImage(self, image):
-        """Set the image to display"""
-        self.image = image
-        self.update()
-        
-    def paintEvent(self, event):
-        """Custom paint event to handle rotated image display"""
-        if not self.image:
-            return
-            
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Calculate centered position
-        x = (self.width() - self.image.width()) // 2
-        y = (self.height() - self.image.height()) // 2
-        painter.drawPixmap(x, y, self.image)
-        
-    def mousePressEvent(self, event):
-        """Handle mouse/touch press events"""
-        self.clicked.emit()
-
-class StatusFrame(QFrame):
-    """
-    Frame for displaying status messages with proper rotation.
-    Equivalent to Tkinter canvas-based status frame.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setFixedSize(100, 1079)  # Match original dimensions
-        self.setStyleSheet("background-color: black;")
-        
-        self._pending_text = ""
-        self._cooldown_text = ""
-        self._show_pending = False
-        self._show_cooldown = False
-        
-    def showPendingText(self, text):
-        """Display pending request message"""
-        self._pending_text = text
-        self._show_pending = True
-        self._show_cooldown = False
-        self.update()
-        
-    def showCooldownText(self, text):
-        """Display cooldown status message"""
-        self._cooldown_text = text
-        self._show_cooldown = True
-        self._show_pending = False
-        self.update()
-        
-    def clear(self):
-        """Clear all status messages"""
-        self._show_pending = False
-        self._show_cooldown = False
-        self._pending_text = ""
-        self._cooldown_text = ""
-        self.update()
-        
-    def paintEvent(self, event):
-        """Custom paint event for rotated text"""
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.TextAntialiasing)
-        
-        # Setup font
-        font = QFont('Arial', 24)
-        painter.setFont(font)
-        
-        # Setup transform for rotation
-        painter.translate(self.width()/2, self.height()/2)
-        painter.rotate(270)
-        
-        if self._show_pending and self._pending_text:
-            painter.setPen(QColor('yellow'))
-            text_rect = QRect(
-                -self.height()/2,
-                -self.width()/2,
-                self.height(),
-                self.width()
-            )
-            painter.drawText(text_rect, Qt.AlignCenter, self._pending_text)
-            
-        elif self._show_cooldown and self._cooldown_text:
-            painter.setPen(QColor('yellow'))
-            text_rect = QRect(
-                -self.height()/2,
-                -self.width()/2,
-                self.height(),
-                self.width()
-            )
-            painter.drawText(text_rect, Qt.AlignCenter, self._cooldown_text)
-
-class HintDisplay(QFrame):
-    """
-    Custom widget for displaying hints with background images and rotation.
-    Handles both text and image hints.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setStyleSheet("background-color: black;")
-        
-        self._text = ""
-        self._background_image = None
-        self._background_pixmap = None  # Prevent GC
-        
-    def setText(self, text):
-        """Set hint text"""
-        self._text = text
-        self.update()
-        
-    def setBackgroundImage(self, image_path):
-        """Set hint background image"""
-        try:
-            if image_path and os.path.exists(image_path):
-                pil_image = Image.open(image_path)
-                pil_image = pil_image.resize((self.width(), self.height()))
-                self._background_pixmap = QPixmap.fromImage(pil_image.toqimage())
-                self._background_image = self._background_pixmap
-                self.update()
-                return True
-        except Exception as e:
-            print(f"Error loading hint background: {e}")
-        return False
-        
-    def paintEvent(self, event):
-        """Custom paint event for rotated hint display"""
-        super().paintEvent(event)
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.TextAntialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        
-        # Draw background
-        if self._background_image and not self._background_image.isNull():
-            painter.drawPixmap(self.rect(), self._background_image)
-        else:
-            painter.fillRect(self.rect(), QColor('black'))
-            
-        if self._text:
-            # Setup for rotated text
-            painter.setPen(QColor('black'))
-            painter.setFont(QFont('Arial', 20))
-            
-            # Create transform for rotation
-            painter.translate(self.width()/2, self.height()/2)
-            painter.rotate(270)
-            
-            # Calculate text rectangle
-            metrics = painter.fontMetrics()
-            text_rect = QRect(
-                -self.height()/2,
-                -self.width()/2,
-                self.height(),
-                self.width()
-            )
-            
-            # Draw text with word wrap
-            painter.drawText(
-                text_rect,
-                Qt.AlignCenter | Qt.TextWordWrap,
-                self._text
-            )
-
-class ImageViewerWidget(QWidget):
-    """
-    Widget for displaying fullscreen images with proper rotation.
-    """
-    clicked = pyqtSignal()
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setStyleSheet("background-color: black;")
-        self._image = None
-        self._pixmap = None  # Prevent GC
-        
-    def setImage(self, image_data):
-        """Set image from base64 data"""
-        try:
-            image_bytes = base64.b64decode(image_data)
-            image = QImage()
-            if image.loadFromData(image_bytes):
-                # Calculate rotation and scaling
-                screen_size = self.size()
-                scaled_size = image.size()
-                scaled_size.scale(screen_size, Qt.KeepAspectRatio)
-                
-                # Create scaled and rotated image
-                scaled_image = image.scaled(
-                    scaled_size,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                )
-                
-                # Create transform for 90-degree rotation
-                transform = QTransform()
-                transform.rotate(90)
-                rotated_image = scaled_image.transformed(transform)
-                
-                self._pixmap = QPixmap.fromImage(rotated_image)
-                self._image = self._pixmap
-                self.update()
-                return True
-        except Exception as e:
-            print(f"Error loading image data: {e}")
-        return False
-        
-    def paintEvent(self, event):
-        """Custom paint event for image display"""
-        super().paintEvent(event)
-        if self._image and not self._image.isNull():
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.SmoothPixmapTransform)
-            
-            # Center image in widget
-            x = (self.width() - self._image.width()) // 2
-            y = (self.height() - self._image.height()) // 2
-            painter.drawPixmap(x, y, self._image)
-            
-    def mousePressEvent(self, event):
-        """Handle click events"""
-        if event.button() == Qt.LeftButton:
-            self.clicked.emit()
-
-class HelpButton(QWidget):
-    """
-    Custom help button with background image support and rotation.
-    """
-    clicked = pyqtSignal()
-    
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._background_image = None
-        self._background_pixmap = None  # Prevent GC
-        self._hover = False
-        
-        self.setMouseTracking(True)
-        
-    def setBackgroundImage(self, image_path):
-        """Set button background image"""
-        try:
-            if image_path and os.path.exists(image_path):
-                pil_image = Image.open(image_path)
-                pil_image = pil_image.resize((self.width(), self.height()))
-                self._background_pixmap = QPixmap.fromImage(pil_image.toqimage())
-                self._background_image = self._background_pixmap
-                self.update()
-                return True
-        except Exception as e:
-            print(f"Error loading button background: {e}")
-        return False
-        
-    def paintEvent(self, event):
-        """Custom paint event for button"""
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        painter.setRenderHint(QPainter.SmoothPixmapTransform)
-        
-        if self._background_image and not self._background_image.isNull():
-            painter.drawPixmap(self.rect(), self._background_image)
-        else:
-            # Fallback appearance
-            painter.fillRect(self.rect(), QColor('blue'))
-            painter.setPen(QColor('white'))
-            painter.setFont(QFont('Arial', 24))
-            
-            # Setup transform for rotation
-            painter.translate(self.width()/2, self.height()/2)
-            painter.rotate(270)
-            
-            text_rect = QRect(
-                -self.height()/2,
-                -self.width()/2,
-                self.height(),
-                self.width()
-            )
-            painter.drawText(text_rect, Qt.AlignCenter, "REQUEST HINT")
-            
-        # Draw hover effect if needed
-        if self._hover:
-            painter.fillRect(self.rect(), QColor(255, 255, 255, 30))
-            
-    def enterEvent(self, event):
-        """Handle mouse enter for hover effect"""
-        self._hover = True
-        self.update()
-        
-    def leaveEvent(self, event):
-        """Handle mouse leave for hover effect"""
-        self._hover = False
-        self.update()
-        
-    def mousePressEvent(self, event):
-        """Handle click events"""
-        if event.button() == Qt.LeftButton:
-            self.clicked.emit()
-
-class KioskUI(QWidget):
-    """
-    Main UI container for the kiosk application.
-    Handles all widget creation, status displays, and hint system.
-    Direct replacement for Tkinter UI with identical functionality.
-    """
-    
-    # Signals for state changes
-    hint_requested = pyqtSignal()
-    cooldown_complete = pyqtSignal()
-    
-    def __init__(self, parent, computer_name, room_config, message_handler):
-        super().__init__(parent)
+class KioskUI:
+    def __init__(self, root, computer_name, room_config, message_handler):
+        self.root = root
         self.computer_name = computer_name
         self.room_config = room_config
         self.message_handler = message_handler
         
-        # State variables (maintained from Tkinter version)
         self.background_image = None
         self.hint_cooldown = False
+        self.help_button = None
+        self.status_frame = None
+        self.cooldown_label = None
+        self.request_pending_label = None
         self.current_hint = None
+        self.hint_label = None
+        self.cooldown_after_id = None
+        self.fullscreen_image = None
+        self.image_button = None
         self.stored_image_data = None
-        self.video_is_playing = False
+
+        self.setup_root()
+        self.create_status_frame()
         
-        # Initialize UI components
-        self._setup_root()
-        self._create_status_frame()
+    def setup_root(self):
+        self.root.attributes('-fullscreen', True)
+        self.root.configure(bg='black')
+        self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
         
-        # Timer for cooldown
-        self.cooldown_timer = QTimer(self)
-        self.cooldown_timer.timeout.connect(self._update_cooldown)
-        self.cooldown_seconds_left = 0
-        
-        # Set up proper widget cleanup
-        self.destroyed.connect(self._cleanup)
-        
-    def _setup_root(self):
-        """Configure the root widget properties"""
-        self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setStyleSheet("background-color: black;")
-        
-    def _create_status_frame(self):
-        """Create the status display frame (510,0 to 610,1079)"""
-        self.status_frame = QFrame(self)
-        self.status_frame.setFixedSize(100, 1079)
-        self.status_frame.setStyleSheet("background-color: black;")
-        self.status_frame.hide()
-        
-        # Create rotated text displays
-        self.pending_text = RotatedLabel(self.status_frame)
-        self.pending_text.setFixedSize(100, 1079)
-        self.pending_text.hide()
-        
-        self.cooldown_text = RotatedLabel(self.status_frame)
-        self.cooldown_text.setFixedSize(100, 1079)
-        self.cooldown_text.hide()
+    def create_status_frame(self):
+        """Creates a fixed canvas for status messages at coordinates (510,0) to (610,1079)"""
+        # Create the status canvas
+        self.status_frame = tk.Canvas(
+            self.root,
+            width=100,  # 610 - 510 = 100
+            height=1079,
+            bg='black',
+            highlightthickness=0
+        )
+        # Initially hide the status frame
+        self.status_frame.place_forget()
     
     def show_status_frame(self):
-        """Show and position the status frame"""
-        self.status_frame.move(510, 0)  # Use move for Qt positioning
-        self.status_frame.show()
+        """Shows the status frame and positions it correctly"""
+        if self.status_frame:
+            self.status_frame.place(x=510, y=0)
 
     def hide_status_frame(self):
-        """Hide the status frame"""
-        self.status_frame.hide()
+        """Hides the status frame from view"""
+        if self.status_frame:
+            self.status_frame.place_forget()
 
     def load_background(self, room_number):
-        """Load and set the room-specific background image"""
         if room_number not in self.room_config['backgrounds']:
             return None
             
@@ -418,152 +66,153 @@ class KioskUI(QWidget):
         
         try:
             if os.path.exists(path):
-                image = QImage(path)
-                if not image.isNull():
-                    # Scale image to screen size
-                    screen_size = self.window().size()
-                    image = image.scaled(screen_size, Qt.KeepAspectRatio, 
-                                      Qt.SmoothTransformation)
-                    return QPixmap.fromImage(image)
+                image = Image.open(path)
+                screen_width = self.root.winfo_screenwidth()
+                screen_height = self.root.winfo_screenheight()
+                image = image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(image)
         except Exception as e:
             print(f"Error loading background: {str(e)}")
         return None
         
     def setup_waiting_screen(self):
-        """Display the initial waiting screen"""
-        waiting_text = (f"Waiting for room assignment...\n"
-                    f"Computer Name: {self.computer_name}")
-        
-        self.waiting_label = RotatedLabel(self)
-        self.waiting_label.setRotatedText(waiting_text)
-        self.waiting_label.setFixedSize(400, 100)
-        
-        # Center the waiting label
-        x = self.width() // 2 - 200
-        y = self.height() // 2 - 50
-        self.waiting_label.move(x, y)
-        self.waiting_label.show()
+        self.status_label = tk.Label(
+            self.root, 
+            text=f"Waiting for room assignment...\nComputer Name: {self.computer_name}",
+            fg='white', bg='black', font=('Arial', 24)
+        )
+        self.status_label.place(relx=0.5, rely=0.5, anchor='center')
         
     def clear_all_labels(self):
-        """Clear all UI elements and cancel pending timers"""
-        if self.cooldown_timer.isActive():
-            self.cooldown_timer.stop()
+        """Clear all UI elements and cancel any pending cooldown timer"""
+        if self.cooldown_after_id:
+            self.root.after_cancel(self.cooldown_after_id)
+            self.cooldown_after_id = None
             
         self.hint_cooldown = False
         
-        # Clear UI elements
-        for widget in [self.pending_text, self.cooldown_text]:
+        if self.status_frame:
+            self.status_frame.delete('all')
+            
+        for widget in [self.hint_label, self.help_button]:
             if widget:
-                widget.hide()
+                widget.destroy()
                 
-        if hasattr(self, 'hint_label') and self.hint_label:
-            self.hint_label.deleteLater()
-            self.hint_label = None
-            
-        if hasattr(self, 'help_button') and self.help_button:
-            self.help_button.deleteLater()
-            self.help_button = None
+        self.hint_label = None
+        self.help_button = None
         
-    def clear_hints(self):
-        """Clear all visible hints without resetting other kiosk state"""
-        print("\nClearing visible hints...")
-        
-        # Clear hint-related widgets
-        if hasattr(self, 'hint_label') and self.hint_label:
-            self.hint_label.deleteLater()
-            self.hint_label = None
-            
-        if hasattr(self, 'image_button') and self.image_button:
-            self.image_button.deleteLater()
-            self.image_button = None
-            
-        if hasattr(self, 'video_solution_button') and self.video_solution_button:
-            self.video_solution_button.deleteLater()
-            self.video_solution_button = None
-            
-        # Reset hint state
-        self.current_hint = None
-        self.stored_image_data = None
-        self.stored_video_info = None
-        
-        print("Hint clearing complete")
-
     def setup_room_interface(self, room_number):
-        """Set up the room-specific interface"""
-        # Store any existing status messages
-        pending_text = self.pending_text.text() if hasattr(self, 'pending_text') else None
-        cooldown_text = self.cooldown_text.text() if hasattr(self, 'cooldown_text') else None
+        # Store any existing status messages before clearing
+        pending_text = None
+        cooldown_text = None
         
-        # Clear existing widgets except timer
-        for child in self.findChildren(QWidget):
-            if child is not self.message_handler.timer.timer_frame:
-                child.deleteLater()
+        if self.status_frame:
+            try:
+                # Try to get pending text
+                pending_items = self.status_frame.find_withtag('pending_text')
+                if pending_items:
+                    pending_text = self.status_frame.itemcget(pending_items[0], 'text')
                 
-        # Recreate status frame
-        self._create_status_frame()
+                # Try to get cooldown text
+                cooldown_items = self.status_frame.find_withtag('cooldown_text')
+                if cooldown_items:
+                    cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
+            except:
+                pass  # Ignore any errors trying to get old text
         
-        # Restore status messages if they existed
+        # Clear all widgets except timer frame
+        for widget in self.root.winfo_children():
+            if widget is not self.message_handler.timer.timer_frame:
+                widget.destroy()
+        
+        # Recreate status frame
+        self.create_status_frame()
+        
+        # Restore any status messages that existed
         if pending_text:
-            self.pending_text.setRotatedText(pending_text)
-            self.pending_text.show()
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text=pending_text,
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='pending_text',
+                justify='center'
+            )
         
         if cooldown_text:
-            self.cooldown_text.setRotatedText(cooldown_text)
-            self.cooldown_text.show()
-            
-        # Set up background
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text=cooldown_text,
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='cooldown_text',
+                justify='center',
+                width=1000
+            )
+        
+        # Set up background first
         self.background_image = self.load_background(room_number)
         if self.background_image:
-            background_label = QLabel(self)
-            background_label.setPixmap(self.background_image)
-            background_label.setGeometry(0, 0, self.width(), self.height())
-            background_label.lower()
-            
+            background_label = tk.Label(self.root, image=self.background_image)
+            background_label.place(x=0, y=0, relwidth=1, relheight=1)
+            background_label.lower()  # Ensure background stays at the bottom
+        
         # Load room-specific timer background
         self.message_handler.timer.load_room_background(room_number)
         
         # Restore hint if there was one
         if self.current_hint:
             self.show_hint(self.current_hint, start_cooldown=False)
-            
+        
         # Restore help button if not in cooldown
         if not self.hint_cooldown:
             self.create_help_button()
-            
+        
         # Ensure timer stays on top
-        self.message_handler.timer.raise_()
+        self.message_handler.timer.lift_to_top()
 
     def _create_button_with_background(self):
-        """Create the help button with room-specific background and shadow"""
+        """Helper method to create the actual button with background and shadow effect"""
         # Define button dimensions
         canvas_width = 260
         canvas_height = 550
         
         try:
-            # Create container for button and shadow
-            container = QWidget(self)
-            container.setFixedSize(canvas_width + 40, canvas_height + 40)
-            container.move(
-                int(self.width() * 0.19 - container.width()/2),
-                int(self.height() * 0.5 - container.height()/2)
+            # Create a frame to hold both shadow and button
+            container_frame = tk.Frame(
+                self.root,
+                width=canvas_width + 40,  # Extra width for shadow
+                height=canvas_height + 40,  # Extra height for shadow
+                bg='black'  # Match root background
             )
+            container_frame.place(relx=0.19, rely=0.5, anchor='center')
             
-            # Load and create shadow
-            shadow_path = os.path.join("hint_button_backgrounds", "shadow.png")
-            if os.path.exists(shadow_path):
-                shadow_image = QImage(shadow_path)
-                shadow_image = shadow_image.scaled(
-                    container.size(),
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                )
-                shadow_label = QLabel(container)
-                shadow_label.setPixmap(QPixmap.fromImage(shadow_image))
-                shadow_label.setGeometry(0, 0, container.width(), container.height())
+            # Load and create shadow first
+            try:
+                shadow_path = os.path.join("hint_button_backgrounds", "shadow.png")
+                if os.path.exists(shadow_path):
+                    shadow_image = Image.open(shadow_path)
+                    shadow_image = shadow_image.resize((canvas_width + 40, canvas_height + 40), Image.Resampling.LANCZOS)
+                    shadow_photo = ImageTk.PhotoImage(shadow_image)
+                    
+                    shadow_label = tk.Label(
+                        container_frame,
+                        image=shadow_photo,
+                        bg='black'
+                    )
+                    shadow_label.shadow_image = shadow_photo  # Prevent garbage collection
+                    shadow_label.place(x=0, y=0)
+            except Exception as e:
+                print(f"Error loading shadow: {str(e)}")
             
-            # Get room-specific button background
+            # Get room-specific button background name
             button_name = None
             if hasattr(self.message_handler, 'assigned_room'):
+                room_num = self.message_handler.assigned_room
                 button_map = {
                     1: "casino_heist.png",
                     2: "morning_after.png",
@@ -573,131 +222,153 @@ class KioskUI(QWidget):
                     6: "atlantis_rising.png",
                     7: "time_machine.png"
                 }
-                room_num = self.message_handler.assigned_room
-                button_name = button_map.get(room_num)
-            
+                if room_num in button_map:
+                    button_name = button_map[room_num]
+
             if button_name:
                 button_path = os.path.join("hint_button_backgrounds", button_name)
                 if os.path.exists(button_path):
-                    # Create rotated button widget
-                    self.help_button = RotatedButton(container)
-                    self.help_button.setFixedSize(canvas_width, canvas_height)
-                    self.help_button.move(20, 20)  # Offset for shadow
+                    button_image = Image.open(button_path)
+                    aspect_ratio = button_image.width / button_image.height
+                    new_height = canvas_height
+                    new_width = int(new_height * aspect_ratio)
+                    button_image = button_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    button_photo = ImageTk.PhotoImage(button_image)
                     
-                    # Load and set background
-                    button_image = QImage(button_path)
-                    if not button_image.isNull():
-                        self.help_button.setBackgroundImage(button_image)
-                        self.help_button.clicked.connect(self.request_help)
-                        print("Successfully created help button with background")
-                    else:
-                        print(f"Failed to load button image: {button_path}")
-                        self._create_fallback_button(container)
+                    self.help_button = tk.Canvas(
+                        container_frame,
+                        width=canvas_width,
+                        height=canvas_height,
+                        highlightthickness=0
+                    )
+                    self.help_button.button_image = button_photo
+                    
+                    self.help_button.create_image(
+                        canvas_width/2,
+                        canvas_height/2,
+                        image=button_photo,
+                        anchor='center'
+                    )
+                    
+                    # Center the button in the container, accounting for shadow margins
+                    self.help_button.place(x=20, y=20)  # Offset by shadow margin
+                    self.help_button.bind('<Button-1>', lambda e: self.request_help())
+                    print("Successfully created new help button with shadow")
                 else:
-                    print(f"Button image not found: {button_path}")
-                    self._create_fallback_button(container)
+                    print(f"Button image not found at: {button_path}")
+                    self._create_fallback_button(canvas_width, canvas_height)
             else:
                 print("No room assigned or room number not in button map")
-                self._create_fallback_button(container)
+                self._create_fallback_button(canvas_width, canvas_height)
                 
         except Exception as e:
             print(f"Error creating image button: {str(e)}")
-            traceback.print_exc()
-            self._create_fallback_button(None)
-       
+            self._create_fallback_button(canvas_width, canvas_height)
+            
     def create_help_button(self):
-        """Create the help request button if conditions are met"""
-        # Get current timer value
+        """Creates the help request button using a room-specific background image if conditions are met"""
+        # Get current timer value from message handler
         current_time = self.message_handler.timer.time_remaining
         minutes_remaining = current_time / 60
-        
-        print("Attempting to create help button if needed")
-        
-        # Check timer conditions
-        has_exceeded_45 = (hasattr(self.message_handler, 'time_exceeded_45') and 
-                          self.message_handler.time_exceeded_45)
-                          
-        # First check cooldown
+        #print(f"\n=== Help Button Visibility Check ===")
+        #print(f"Current timer: {minutes_remaining:.2f} minutes")
+        #print(f"In cooldown: {self.hint_cooldown}")
+        #print(f"Timer running: {self.message_handler.timer.is_running}")
+        print("attempting to create help button if it is needed")
+
+        # Check if timer has ever exceeded 45 minutes
+        has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
+        #print(f"Has exceeded 45: {has_exceeded_45}")
+
+        # First check if we're in cooldown
         if self.hint_cooldown:
             print("In cooldown - hiding help button")
-            if hasattr(self, 'help_button'):
-                self.help_button.deleteLater()
+            if self.help_button:
+                self.help_button.destroy()
                 self.help_button = None
             return
-            
-        # Check visibility conditions
+
+        # Hide button if:
+        # - Time is greater than 42 minutes AND
+        # - Time is less than or equal to 45 minutes AND
+        # - Timer has never exceeded 45 minutes since last reset
         should_hide = (
             minutes_remaining > 42 and 
             minutes_remaining <= 45 and 
             not has_exceeded_45
         )
         
+        #print(f"Time > 42: {minutes_remaining > 42}")
+        #print(f"Time <= 45: {minutes_remaining <= 45}")
+        #print(f"Should hide based on time window: {should_hide}")
+
+        # Remove button if it exists and should be hidden
         if should_hide:
-            if hasattr(self, 'help_button'):
+            if self.help_button:
                 print("Removing help button due to timer conditions")
-                self.help_button.deleteLater()
+                self.help_button.destroy()
                 self.help_button = None
             return
-        elif not hasattr(self, 'help_button') or self.help_button is None:
+        elif self.help_button is None:
+            # Only create new button if we don't already have one and conditions are met
             print("Conditions met to show help button - creating new button")
             self._create_button_with_background()
         else:
             print("Help button already exists")
 
-    def _create_fallback_button(self, container=None):
-        """Create a basic fallback button when image loading fails"""
-        try:
-            button_width = 260
-            button_height = 550
-            
-            if container is None:
-                # Create container widget
-                container = QWidget(self)
-                container.setFixedSize(button_width + 40, button_height + 40)
-                container.move(
-                    int(self.width() * 0.19 - container.width()/2),
-                    int(self.height() * 0.5 - container.height()/2)
-                )
-            
-            # Create simple button with solid background
-            self.help_button = RotatedButton(container)
-            self.help_button.setFixedSize(button_width, button_height)
-            self.help_button.move(20, 20)  # Offset for shadow effect
-            self.help_button.setRotatedText("REQUEST HINT")
-            self.help_button.setRotatedFont(QFont('Arial', 24))
-            self.help_button.setRotatedTextColor(QColor('white'))
-            self.help_button.setBackgroundColor(QColor('blue'))
-            self.help_button.clicked.connect(self.request_help)
-            self.help_button.show()
-            
-            print("Created fallback help button")
-            
-        except Exception as e:
-            print(f"Error creating fallback button: {e}")
-            traceback.print_exc()
-
+    def _create_fallback_button(self, canvas_width, canvas_height):
+        """Creates a fallback text-only button if the image loading fails"""
+        self.help_button = tk.Canvas(
+            self.root,
+            width=canvas_width,
+            height=canvas_height,
+            bg='blue',
+            highlightthickness=0
+        )
+        self.help_button.place(relx=0.19, rely=0.5, anchor='center')
+        self.help_button.create_text(
+            canvas_width/2,
+            canvas_height/2,
+            text="REQUEST NEW HINT",
+            fill='white',
+            font=('Arial', 24),
+            angle=270
+        )
+        self.help_button.bind('<Button-1>', lambda e: self.request_help())
+                
     def request_help(self):
-        """Process help request and show status message"""
+        """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
         if not self.hint_cooldown:
-            # Update hint count
+            # Increase hint count
             if hasattr(self.message_handler, 'hints_requested'):
                 self.message_handler.hints_requested += 1
-                
-            # Clear existing hint
-            if hasattr(self, 'hint_label') and self.hint_label:
-                self.hint_label.hide()
+            
+            # Clear any existing hint display
+            if self.hint_label:
+                self.hint_label.destroy()
+                self.hint_label = None
                 self.current_hint = None
-                
-            # Remove help button
-            if hasattr(self, 'help_button') and self.help_button:
-                self.help_button.deleteLater()
+            
+            # Remove help button if it exists
+            if self.help_button:
+                self.help_button.destroy()
                 self.help_button = None
-                
-            # Show status frame with message
+            
+            # Show status frame and clear any existing text
             self.show_status_frame()
-            self.pending_text.setRotatedText("Hint Requested, please wait...")
-            self.pending_text.show()
-            self.cooldown_text.hide()
+            self.status_frame.delete('pending_text')
+            
+            # Add rotated text to the canvas
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text="Hint Requested, please wait...",
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='pending_text',
+                justify='center'
+            )
             
             # Send help request
             self.message_handler.network.send_message({
@@ -718,17 +389,17 @@ class KioskUI(QWidget):
         try:
             # Remove existing UI elements
             if self.help_button:
-                self.help_button.deleteLater()
+                self.help_button.destroy()
                 self.help_button = None
             
-            if hasattr(self, 'fullscreen_image') and self.fullscreen_image:
-                self.fullscreen_image.deleteLater()
+            if self.fullscreen_image:
+                self.fullscreen_image.destroy()
                 self.fullscreen_image = None
                 
             # Clear any existing video solution
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
                 print("Clearing existing video solution")
-                self.video_solution_button.deleteLater()
+                self.video_solution_button.destroy()
                 self.video_solution_button = None
                 
             # Stop any playing video
@@ -746,28 +417,27 @@ class KioskUI(QWidget):
                 self.start_cooldown()
             self.current_hint = text_or_data
             
+            # Clear pending request label if it exists
+            if self.request_pending_label:
+                self.request_pending_label.destroy()
+                self.request_pending_label = None
+            
             # Calculate dimensions for hint area
             hint_width = 1499 - 911  # = 588
             hint_height = 1015 - 64  # = 951
             
-            # Create or update hint container
-            if not hasattr(self, 'hint_label') or self.hint_label is None:
-                # Create hint container widget
-                self.hint_label = QWidget(self)
-                self.hint_label.setFixedSize(hint_width, hint_height)
-                self.hint_label.setStyleSheet("background-color: black;")
-                self.hint_label.move(911, 64)
-                
-                # Create layout for hint content
-                self.hint_layout = QVBoxLayout(self.hint_label)
-                self.hint_layout.setContentsMargins(0, 0, 0, 0)
-                self.hint_layout.setSpacing(0)
-                
-            # Clear existing content
-            while self.hint_layout.count():
-                item = self.hint_layout.takeAt(0)
-                if item.widget():
-                    item.widget().deleteLater()
+            # Create or clear hint container
+            if self.hint_label is None:
+                self.hint_label = tk.Canvas(
+                    self.root,
+                    width=hint_width,
+                    height=hint_height,
+                    bg='#000000',
+                    highlightthickness=0
+                )
+                self.hint_label.place(x=911, y=64)
+            else:
+                self.hint_label.delete('all')
 
             # Load room-specific hint background
             background_name = None
@@ -789,25 +459,21 @@ class KioskUI(QWidget):
                 try:
                     bg_path = os.path.join("hint_backgrounds", background_name)
                     if os.path.exists(bg_path):
-                        # Load and set background
-                        bg_image = QImage(bg_path)
-                        if not bg_image.isNull():
-                            bg_image = bg_image.scaled(
-                                hint_width, 
-                                hint_height,
-                                Qt.KeepAspectRatio,
-                                Qt.SmoothTransformation
-                            )
-                            # Set background using stylesheet with QWidget
-                            self.hint_label.setStyleSheet(
-                                f"background-image: url({bg_path});"
-                                f"background-position: center;"
-                                f"background-repeat: no-repeat;"
-                            )
+                        bg_image = Image.open(bg_path)
+                        # Resize to fit canvas exactly
+                        bg_image = bg_image.resize((hint_width, hint_height), Image.Resampling.LANCZOS)
+                        photo = ImageTk.PhotoImage(bg_image)
+                        self.hint_label.bg_image = photo
+                        self.hint_label.create_image(0, 0, image=photo, anchor='nw', tags='background')
+                        self.hint_label.tag_lower('background')
                 except Exception as e:
                     print(f"Error loading hint background: {e}")
 
-            # Parse hint data
+            # Parse hint data and clear any existing image button
+            if self.image_button:
+                self.image_button.destroy()
+                self.image_button = None
+
             hint_text = ""
             self.stored_image_data = None
 
@@ -820,61 +486,69 @@ class KioskUI(QWidget):
                 hint_text = str(text_or_data)
 
             if hint_text:
-                # Create rotated text display
-                text_widget = RotatedLabel(self.hint_label)
-                text_widget.setRotatedText(hint_text)
-                text_widget.setRotatedFont(QFont('Arial', 20))
-                text_widget.setRotatedTextColor(QColor('black'))
-                
-                # Position text widget
+                # If there's an image, use left half, otherwise use full width
                 text_x = hint_width/2 if self.stored_image_data else hint_width/2
-                text_widget.move(int(text_x), hint_height//2)
-                text_widget.setAlignment(Qt.AlignCenter)
-                
-                # Add to layout
-                self.hint_layout.addWidget(text_widget)
+                self.hint_label.create_text(
+                    text_x,
+                    hint_height/2,
+                    text=hint_text,
+                    fill='black',
+                    font=('Arial', 20),
+                    width=hint_height-40,
+                    angle=270,
+                    justify='center',
+                    anchor='center'
+                )
 
-            # Create image received button if image exists
+            # Create image received button in left panel only if image exists
             if self.stored_image_data:
-                button_width = 100  # Narrower button
-                button_height = 300  # Taller for better text visibility
+                button_width = 100  # Make button narrower
+                button_height = 300  # Make button taller for better text visibility
                 
-                # Create image button using RotatedButton
-                self.image_button = RotatedButton(self)
-                self.image_button.setFixedSize(button_width, button_height)
-                self.image_button.setRotatedText("VIEW IMAGE HINT")
-                self.image_button.setRotatedFont(QFont('Arial', 24))
-                self.image_button.setRotatedTextColor(QColor('white'))
-                self.image_button.setBackgroundColor(QColor('blue'))
-                
-                # Position button
-                self.image_button.move(
-                    750,  # Further left, away from hint text
-                    hint_height//2 - button_height//2 + 64  # Keep vertical center alignment
+                # Create button canvas
+                self.image_button = tk.Canvas(
+                    self.root,
+                    width=button_width,
+                    height=button_height,
+                    bg='blue',
+                    highlightthickness=0
                 )
                 
-                # Connect click handler
-                self.image_button.clicked.connect(self.show_fullscreen_image)
-                self.image_button.show()
+                # Position button well to the left of the hint text area
+                self.image_button.place(
+                    x=750,  # Move button further left, away from hint text
+                    y=hint_height/2 - button_height/2 + 64  # Keep vertical center alignment
+                )
+                
+                # Add button text
+                self.image_button.create_text(
+                    button_width/2,
+                    button_height/2,
+                    text="VIEW IMAGE HINT",
+                    fill='white',
+                    font=('Arial', 24),
+                    angle=270
+                )
+                
+                # Bind click event
+                self.image_button.bind('<Button-1>', lambda e: self.show_fullscreen_image())
 
         except Exception as e:
             print("\nCritical error in show_hint:")
             traceback.print_exc()
             try:
                 if hasattr(self, 'hint_label') and self.hint_label:
-                    # Clear existing content
-                    while self.hint_layout.count():
-                        item = self.hint_layout.takeAt(0)
-                        if item.widget():
-                            item.widget().deleteLater()
-                            
-                    # Show error message
-                    error_text = RotatedLabel(self.hint_label)
-                    error_text.setRotatedText(f"Error displaying hint: {str(e)}")
-                    error_text.setRotatedFont(QFont('Arial', 16))
-                    error_text.setRotatedTextColor(QColor('red'))
-                    error_text.setAlignment(Qt.AlignCenter)
-                    self.hint_layout.addWidget(error_text)
+                    self.hint_label.delete('all')
+                    self.hint_label.create_text(
+                        hint_width/2,
+                        hint_height/2,
+                        text=f"Error displaying hint: {str(e)}",
+                        fill='red',
+                        font=('Arial', 16),
+                        width=hint_height-40,
+                        angle=270,
+                        justify='center'
+                    )
             except:
                 pass
             
@@ -886,135 +560,132 @@ class KioskUI(QWidget):
         try:
             # Hide hint interface
             if self.hint_label:
-                self.hint_label.hide()
-            if hasattr(self, 'image_button') and self.image_button:
-                self.image_button.hide()
+                self.hint_label.place_forget()
+            if self.image_button:
+                self.image_button.place_forget()
                 
             # Calculate dimensions (full screen minus margins)
-            screen_width = self.window().width()
-            screen_height = self.window().height()
+            screen_width = self.root.winfo_screenwidth()
+            screen_height = self.root.winfo_screenheight()
             margin = 50  # pixels on each side
             
-            # Create fullscreen widget
-            self.fullscreen_image = FullscreenImageViewer(self)
-            self.fullscreen_image.setFixedSize(screen_width - (2 * margin), screen_height)
-            self.fullscreen_image.move(margin, 0)
+            # Create fullscreen canvas
+            self.fullscreen_image = tk.Canvas(
+                self.root,
+                width=screen_width - (2 * margin),
+                height=screen_height,
+                bg='black',
+                highlightthickness=0
+            )
+            self.fullscreen_image.place(x=margin, y=0)
             
-            # Connect click handler
-            self.fullscreen_image.clicked.connect(self.restore_hint_view)
+            # Decode and process image
+            image_bytes = base64.b64decode(self.stored_image_data)
+            image = Image.open(io.BytesIO(image_bytes))
             
-            try:
-                # Decode and process image
-                image_bytes = base64.b64decode(self.stored_image_data)
-                image = QImage()
-                if not image.loadFromData(image_bytes):
-                    raise Exception("Failed to load image data")
-                
-                # Calculate resize ratio maintaining aspect ratio
-                width_ratio = (screen_height - 80) / image.width()  # Leave margin for height
-                height_ratio = (screen_width - (2 * margin) - 80) / image.height()  # Leave margin for width
-                ratio = min(width_ratio, height_ratio)
-                
-                # Resize image
-                new_size = QSize(
-                    int(image.width() * ratio),
-                    int(image.height() * ratio)
-                )
-                image = image.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                
-                # Rotate image 90 degrees
-                transform = QTransform()
-                transform.rotate(90)
-                image = image.transformed(transform, Qt.SmoothTransformation)
-                
-                # Convert to QPixmap for display
-                pixmap = QPixmap.fromImage(image)
-                self.fullscreen_image.setImage(pixmap)
-                
-            except Exception as e:
-                print(f"Error processing image: {e}")
-                # Show error message using RotatedLabel
-                error_label = RotatedLabel(self.fullscreen_image)
-                error_label.setRotatedText(f"Error displaying image: {str(e)}")
-                error_label.setRotatedFont(QFont('Arial', 16))
-                error_label.setRotatedTextColor(QColor('red'))
-                error_label.setAlignment(Qt.AlignCenter)
-                error_label.show()
-                
-            # Show the fullscreen viewer
-            self.fullscreen_image.show()
-            self.fullscreen_image.raise_()
+            # Calculate resize ratio maintaining aspect ratio
+            width_ratio = (screen_height - 80) / image.width  # Leave margin for height
+            height_ratio = (screen_width - (2 * margin) - 80) / image.height  # Leave margin for width
+            ratio = min(width_ratio, height_ratio)
+            
+            new_size = (
+                int(image.width * ratio),
+                int(image.height * ratio)
+            )
+            
+            # Resize and rotate image
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            image = image.rotate(90, expand=True)
+            
+            # Convert to PhotoImage and display
+            photo = ImageTk.PhotoImage(image)
+            self.fullscreen_image.photo = photo
+            
+            # Center image in canvas
+            self.fullscreen_image.create_image(
+                (screen_width - (2 * margin)) / 2,
+                screen_height / 2,
+                image=photo,
+                anchor='center'
+            )
+            
+            # Add click handler to return to hint view
+            self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
             
         except Exception as e:
-            print("\nError in show_fullscreen_image:")
+            print("\nError displaying fullscreen image:")
             traceback.print_exc()
-            if hasattr(self, 'fullscreen_image') and self.fullscreen_image:
-                self.fullscreen_image.deleteLater()
-            self.fullscreen_image = None
+            if self.fullscreen_image:
+                self.fullscreen_image.create_text(
+                    screen_width/2,
+                    screen_height/2,
+                    text=f"Error displaying image: {str(e)}",
+                    fill='red',
+                    font=('Arial', 16),
+                    angle=270
+                )
         
     def restore_hint_view(self):
         """Return to the original hint view"""
         if self.fullscreen_image:
-            self.fullscreen_image.deleteLater()
+            self.fullscreen_image.destroy()
             self.fullscreen_image = None
             
         if self.hint_label:
-            self.hint_label.move(911, 64)  # Use move instead of place
-            self.hint_label.show()
+            self.hint_label.place(x=911, y=64)
             
         # Restore image button with consistent positioning
         if self.image_button:
-            hint_height = 1015 - 64  # Maintain original calculations
-            button_height = 200
-            self.image_button.move(
-                750,  # Match previous x-position
-                int(hint_height/2 - button_height/2 + 64)  # Keep centered
+            hint_height = 1015 - 64  # Same calculation as in show_hint
+            button_height = 200  # Match the height from show_hint
+            self.image_button.place(
+                x=750,  # Match the x-position from show_hint
+                y=hint_height/2 - button_height/2 + 64  # Match the centering calculation from show_hint
             )
-            self.image_button.show()
 
     def start_cooldown(self):
-        """Start the cooldown timer"""
+        """Start the cooldown timer, cancelling any existing one first"""
         print("Starting cooldown timer")
-        
         # Cancel any existing cooldown timer
-        if self.cooldown_timer.isActive():
-            self.cooldown_timer.stop()
-        
+        if self.cooldown_after_id:
+            self.root.after_cancel(self.cooldown_after_id)
+            self.cooldown_after_id = None
+            
         # Clear any existing request status
-        self.pending_text.hide()
+        self.status_frame.delete('pending_text')
         
         self.hint_cooldown = True
-        self.show_status_frame()
-        self.cooldown_seconds_left = 45  # Start 45 second cooldown
-        self.update_cooldown()
+        self.show_status_frame()  # Add this line
+        self.update_cooldown(45)  # Start 45 second cooldown
         
-    def update_cooldown(self):
+    def update_cooldown(self, seconds_left):
         """Updates the cooldown counter in the status frame"""
-        try:
-            if self.cooldown_seconds_left > 0 and self.hint_cooldown:
-                # Update cooldown text
-                cooldown_text = (
-                    f"Please wait {self.cooldown_seconds_left} seconds "
-                    "until requesting the next hint."
-                )
-                self.cooldown_text.setRotatedText(cooldown_text)
-                self.cooldown_text.show()
-                
-                # Decrement counter
-                self.cooldown_seconds_left -= 1
-                
-                # Start timer for next update
-                self.cooldown_timer.start(1000)  # 1 second interval
-            else:
-                # Clean up cooldown state
-                print("Cooldown complete - resetting state")
-                self.hint_cooldown = False
-                self.cooldown_text.hide()
-                self.hide_status_frame()
-                self.create_help_button()  # Recreate help button when cooldown ends
-                
-        except Exception as e:
-            print(f"Error in cooldown update: {e}")
+        if seconds_left > 0 and self.hint_cooldown:
+            # Clear existing text
+            self.status_frame.delete('cooldown_text')
+            
+            # Add new cooldown text
+            self.status_frame.create_text(
+                50,  # center of width (100/2)
+                540,  # center of height (1079/2)
+                text=f"Please wait {seconds_left} seconds until requesting the next hint.",
+                fill='yellow',
+                font=('Arial', 24),
+                angle=270,
+                tags='cooldown_text',
+                justify='center',
+                width=1000  # Allow text to wrap if needed
+            )
+            
+            self.cooldown_after_id = self.root.after(1000, lambda: self.update_cooldown(seconds_left - 1))
+        else:
+            # Clean up the cooldown state
+            print("Cooldown complete - resetting state")
+            self.hint_cooldown = False
+            self.cooldown_after_id = None
+            self.status_frame.delete('cooldown_text')
+            self.hide_status_frame()  # Add this line
+            self.create_help_button()  # Recreate help button when cooldown ends
 
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
@@ -1029,31 +700,43 @@ class KioskUI(QWidget):
             
             # Safely remove existing button if it exists
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                self.video_solution_button.deleteLater()
+                try:
+                    self.video_solution_button.destroy()
+                except:
+                    pass
                 self.video_solution_button = None
                 
-            # Create video solution button using RotatedButton
+            # Create video solution button
             button_width = 100
             button_height = 400
             
-            self.video_solution_button = RotatedButton(self)
-            self.video_solution_button.setFixedSize(button_width, button_height)
-            self.video_solution_button.setRotatedText("VIEW SOLUTION")
-            self.video_solution_button.setRotatedFont(QFont('Arial', 24))
-            self.video_solution_button.setRotatedTextColor(QColor('white'))
-            self.video_solution_button.setBackgroundColor(QColor('blue'))
+            self.video_solution_button = tk.Canvas(
+                self.root,
+                width=button_width,
+                height=button_height,
+                bg='blue',
+                highlightthickness=0
+            )
             
             # Position button
             hint_height = 1015 - 64
-            self.video_solution_button.move(
-                750,
-                hint_height//2 - button_height//2 + 64
+            self.video_solution_button.place(
+                x=750,
+                y=hint_height/2 - button_height/2 + 64
             )
             
-            # Connect click handler
-            self.video_solution_button.clicked.connect(self.toggle_solution_video)
-            self.video_solution_button.show()
+            # Add button text
+            self.video_solution_button.create_text(
+                button_width/2,
+                button_height/2,
+                text="VIEW SOLUTION",
+                fill='white',
+                font=('Arial', 24),
+                angle=270
+            )
             
+            # Bind click event
+            self.video_solution_button.bind('<Button-1>', lambda e: self.toggle_solution_video())
             print("Successfully created video solution button")
             
         except Exception as e:
@@ -1075,16 +758,15 @@ class KioskUI(QWidget):
                 # Restore the button
                 if hasattr(self, 'video_solution_button') and self.video_solution_button:
                     print("Restoring solution button")
-                    self.video_solution_button.move(
-                        750,
-                        (1015 - 64)//2 - 100 + 64
+                    self.video_solution_button.place(
+                        x=750,
+                        y=(1015 - 64)/2 - 100 + 64
                     )
-                    self.video_solution_button.show()
                 
                 # Restore hint label if it exists
                 if hasattr(self, 'hint_label') and self.hint_label:
                     print("Restoring hint label")
-                    self.hint_label.show()
+                    self.hint_label.place(x=911, y=64)
                     
                 # Restore cooldown display if still in cooldown
                 if self.hint_cooldown:
@@ -1096,22 +778,23 @@ class KioskUI(QWidget):
                 print("Starting video playback")
                 if hasattr(self, 'stored_video_info'):
                     # Store cooldown state before hiding UI
-                    if self.hint_cooldown and hasattr(self, 'cooldown_text'):
-                        self.stored_cooldown_text = self.cooldown_text.text()
+                    cooldown_items = self.status_frame.find_withtag('cooldown_text')
+                    if cooldown_items:
+                        self.stored_cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
                     else:
                         self.stored_cooldown_text = None
                     
-                    # Hide UI elements
+                    # Only hide UI elements that exist
                     if hasattr(self, 'hint_label') and self.hint_label:
                         print("Hiding hint label")
-                        self.hint_label.hide()
+                        self.hint_label.place_forget()
                     
                     if hasattr(self, 'video_solution_button') and self.video_solution_button:
                         print("Hiding solution button")
-                        self.video_solution_button.hide()
+                        self.video_solution_button.place_forget()
                         
                     if self.hint_cooldown:
-                        self.status_frame.hide()
+                        self.status_frame.place_forget()
                         
                     # Construct video path
                     video_path = os.path.join(
@@ -1150,18 +833,19 @@ class KioskUI(QWidget):
             
             # Store cooldown state
             was_in_cooldown = self.hint_cooldown
-            cooldown_timer_active = self.cooldown_timer.isActive()
-            cooldown_seconds = self.cooldown_seconds_left if hasattr(self, 'cooldown_seconds_left') else 0
+            cooldown_after_id = self.cooldown_after_id
             
             # Clear UI state without affecting cooldown
             print("Clearing UI state...")
-            if hasattr(self, 'hint_label') and self.hint_label:
-                self.hint_label.hide()
-            if hasattr(self, 'help_button') and self.help_button:
-                self.help_button.deleteLater()
+            # Don't call clear_all_labels() as it would reset cooldown
+            if self.hint_label:
+                self.hint_label.destroy()
+                self.hint_label = None
+            if self.help_button:
+                self.help_button.destroy()
                 self.help_button = None
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                self.video_solution_button.deleteLater()
+                self.video_solution_button.destroy()
                 self.video_solution_button = None
                 
             # Restore room interface - this will properly recreate the hint display area
@@ -1181,34 +865,24 @@ class KioskUI(QWidget):
             if was_in_cooldown:
                 print("Restoring cooldown state")
                 self.hint_cooldown = True
-                if cooldown_timer_active:
-                    self.cooldown_seconds_left = cooldown_seconds
-                    self.update_cooldown()
-                    self.cooldown_timer.start(1000)
+                self.cooldown_after_id = cooldown_after_id
                 self.show_status_frame()
+                if hasattr(self, 'stored_cooldown_text') and self.stored_cooldown_text:
+                    self.status_frame.create_text(
+                        50,
+                        540,
+                        text=self.stored_cooldown_text,
+                        fill='yellow',
+                        font=('Arial', 24),
+                        angle=270,
+                        tags='cooldown_text',
+                        justify='center',
+                        width=1000
+                    )
             else:
                 # Only refresh help button if not in cooldown
-                QTimer.singleShot(100, self.create_help_button)
+                self.message_handler.root.after(100, self.message_handler.update_help_button_state)
                 
         except Exception as e:
             print(f"\nError in handle_video_completion: {e}")
             traceback.print_exc()
-            
-    def _cleanup(self):
-        """Proper cleanup when widget is destroyed"""
-        print("\nCleaning up KioskUI...")
-        
-        # Stop timers
-        if self.cooldown_timer.isActive():
-            self.cooldown_timer.stop()
-            
-        # Clean up video manager if it exists
-        if hasattr(self.message_handler, 'video_manager'):
-            if self.video_is_playing:
-                self.message_handler.video_manager.stop_video()
-                
-        # Clear stored data
-        self.stored_image_data = None
-        self.current_hint = None
-        
-        print("KioskUI cleanup complete")

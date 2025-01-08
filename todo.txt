@@ -1,6 +1,6 @@
 # important/immediate todo
 outro audio
-transition kiosk to pyqt
+put shadow behind hint button
 
 
 # planned features: 
