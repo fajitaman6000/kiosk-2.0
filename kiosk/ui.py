@@ -106,6 +106,7 @@ class KioskUI:
         self.help_button = None
         
     def setup_room_interface(self, room_number):
+        """Creates the room interface without relying on Tkinter timer frame"""
         # Store any existing status messages before clearing
         pending_text = None
         cooldown_text = None
@@ -124,10 +125,9 @@ class KioskUI:
             except:
                 pass  # Ignore any errors trying to get old text
         
-        # Clear all widgets except timer frame
+        # Clear all widgets
         for widget in self.root.winfo_children():
-            if widget is not self.message_handler.timer.timer_frame:
-                widget.destroy()
+            widget.destroy()
         
         # Recreate status frame
         self.create_status_frame()
@@ -175,9 +175,6 @@ class KioskUI:
         # Restore help button if not in cooldown
         if not self.hint_cooldown:
             self.create_help_button()
-        
-        # Ensure timer stays on top
-        self.message_handler.timer.lift_to_top()
 
     def _create_button_with_background(self):
         """Helper method to create the actual button with background and shadow effect"""
