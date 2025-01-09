@@ -5,6 +5,7 @@ import os
 import base64
 import io
 import traceback
+from qt_overlay import Overlay
 
 class KioskUI:
     def __init__(self, root, computer_name, room_config, message_handler):
@@ -28,6 +29,9 @@ class KioskUI:
 
         self.setup_root()
         self.create_status_frame()
+
+        # Pass the Tkinter root window to Overlay.init()
+        Overlay.init(tkinter_root=self.root)
         
     def setup_root(self):
         self.root.attributes('-fullscreen', True)
@@ -644,48 +648,28 @@ class KioskUI:
             )
 
     def start_cooldown(self):
-        """Start the cooldown timer, cancelling any existing one first"""
+        """Start cooldown timer with matching overlay"""
         print("Starting cooldown timer")
-        # Cancel any existing cooldown timer
         if self.cooldown_after_id:
             self.root.after_cancel(self.cooldown_after_id)
             self.cooldown_after_id = None
-            
-        # Clear any existing request status
-        self.status_frame.delete('pending_text')
         
         self.hint_cooldown = True
-        self.show_status_frame()  # Add this line
-        self.update_cooldown(45)  # Start 45 second cooldown
+        Overlay.show_cooldown(45)  # Show initial cooldown
+        self.update_cooldown(45)
         
     def update_cooldown(self, seconds_left):
-        """Updates the cooldown counter in the status frame"""
         if seconds_left > 0 and self.hint_cooldown:
-            # Clear existing text
-            self.status_frame.delete('cooldown_text')
-            
-            # Add new cooldown text
-            self.status_frame.create_text(
-                50,  # center of width (100/2)
-                540,  # center of height (1079/2)
-                text=f"Please wait {seconds_left} seconds until requesting the next hint.",
-                fill='yellow',
-                font=('Arial', 24),
-                angle=270,
-                tags='cooldown_text',
-                justify='center',
-                width=1000  # Allow text to wrap if needed
+            Overlay.show_cooldown(seconds_left)
+            self.cooldown_after_id = self.root.after(
+                1000, 
+                lambda: self.update_cooldown(seconds_left - 1)
             )
-            
-            self.cooldown_after_id = self.root.after(1000, lambda: self.update_cooldown(seconds_left - 1))
         else:
-            # Clean up the cooldown state
-            print("Cooldown complete - resetting state")
             self.hint_cooldown = False
             self.cooldown_after_id = None
-            self.status_frame.delete('cooldown_text')
-            self.hide_status_frame()  # Add this line
-            self.create_help_button()  # Recreate help button when cooldown ends
+            Overlay.hide()
+            self.create_help_button()
 
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
