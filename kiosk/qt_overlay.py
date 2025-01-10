@@ -287,8 +287,20 @@ class Overlay:
 
     @classmethod
     def hide(cls):
-        """Hide all overlay windows"""
+        """Hide all overlay windows and clean up timer resources"""
         if cls._window:
             cls._window.hide()
-        if hasattr(cls, '_timer_window'):
+        if hasattr(cls, '_timer_window') and cls._timer_window:
             cls._timer_window.hide()
+            
+        # Clean up timer thread if it exists
+        if cls._timer_thread is not None:
+            cls._timer_thread.quit()
+            cls._timer_thread.wait()
+            cls._timer_thread = None
+            
+        # Clear timer display
+        if hasattr(cls, '_timer') and cls._timer and cls._timer.text_item:
+            cls._timer.text_item.setPlainText("")
+            if cls._timer.bg_image_item:
+                cls._timer.bg_image_item.setPixmap(QPixmap())

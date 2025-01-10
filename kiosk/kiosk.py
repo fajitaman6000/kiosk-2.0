@@ -17,6 +17,7 @@ from audio_manager import AudioManager
 import subprocess
 import traceback
 import pygame
+from qt_overlay import Overlay
 
 
 class KioskApp:
@@ -276,10 +277,13 @@ class KioskApp:
                 if hasattr(self.ui, 'video_is_playing'):
                     self.ui.video_is_playing = False
                 
-                # Cancel any existing cooldown timer
+                # Cancel any existing cooldown timer and hide overlay
+                print("Clearing cooldown state...")
                 if self.ui.cooldown_after_id:
                     self.root.after_cancel(self.ui.cooldown_after_id)
                     self.ui.cooldown_after_id = None
+                # Schedule overlay hide on main thread
+                self.root.after(0, lambda: Overlay.hide())
                 
                 # Clear UI elements safely
                 print("Clearing UI elements...")
@@ -299,15 +303,20 @@ class KioskApp:
                     self.ui.fullscreen_image.destroy()
                     self.ui.fullscreen_image = None
                 
-                # Restore UI
-                if self.assigned_room:
-                    print("Restoring room interface")
-                    self.ui.setup_room_interface(self.assigned_room)
+                # Schedule timer reset on main thread
+                self.root.after(0, lambda: self.timer._delayed_init())
                 
-                # Update help button state after reset
-                self.root.after(100, self.update_help_button_state)
+                # Restore UI after timer reinitialization
+                def restore_ui():
+                    if self.assigned_room:
+                        print("Restoring room interface")
+                        self.ui.setup_room_interface(self.assigned_room)
+                    # Update help button state after reset
+                    self.root.after(100, self.update_help_button_state)
+                    print("Kiosk reset complete")
                 
-                print("Kiosk reset complete")
+                # Schedule UI restoration after timer reset
+                self.root.after(100, restore_ui)
         
         except Exception as e:
             print("\nCritical error in handle_message:")
