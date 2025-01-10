@@ -176,7 +176,7 @@ class Overlay:
             
             # Apply rotation to text
             cls._timer.text_item.setTransform(QTransform())
-            cls._timer.text_item.setRotation(270)
+            cls._timer.text_item.setRotation(90)
 
     @classmethod
     def update_timer_display(cls, time_str):
@@ -215,8 +215,6 @@ class Overlay:
             bg_img = Image.open(bg_path)
             bg_img = bg_img.resize((270, 530))
             
-            # THIS IS WHERE THE NEW CODE GOES - REPLACE THE OLD CONVERSION CODE HERE
-            # Convert PIL image to QPixmap via bytes buffer
             from io import BytesIO
             from PyQt5.QtGui import QImage
             buf = BytesIO()
