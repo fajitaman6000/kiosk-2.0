@@ -1,17 +1,37 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, 
                               QGraphicsScene, QGraphicsView, QGraphicsTextItem)
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QTransform, QFont, QPainter, QImage, QPixmap
+from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap
+from PIL import Image
 import sys
 import win32gui
 import win32con
 import os
 
+class TimerDisplay:
+    """Handles the visual elements of the timer display"""
+    def __init__(self):
+        self.scene = None
+        self.text_item = None
+        self.bg_image_item = None
+        self._current_image = None
+        
+        # Define room to timer background mapping
+        self.timer_backgrounds = {
+            1: "casino_heist.png",
+            2: "morning_after.png",
+            3: "wizard_trials.png",
+            4: "zombie_outbreak.png",
+            5: "haunted_manor.png",
+            6: "atlantis_rising.png",
+            7: "time_machine.png"
+        }
+
+
 class Overlay:
     _app = None
     _window = None
     _parent_hwnd = None
-    _timer_window = None
     
     @classmethod
     def init(cls, tkinter_root=None):
@@ -23,7 +43,7 @@ class Overlay:
             if tkinter_root:
                 cls._parent_hwnd = tkinter_root.winfo_id()
             
-            # Create single persistent window for cooldown
+            # Create single persistent window
             cls._window = QWidget()
             cls._window.setAttribute(Qt.WA_TranslucentBackground)
             cls._window.setWindowFlags(
@@ -33,7 +53,7 @@ class Overlay:
                 Qt.WindowDoesNotAcceptFocus
             )
             
-            # Create graphics scene and view for cooldown
+            # Create graphics scene and view for rotation
             cls._scene = QGraphicsScene()
             cls._view = QGraphicsView(cls._scene, cls._window)
             cls._view.setStyleSheet("""
@@ -46,57 +66,26 @@ class Overlay:
             cls._view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
-            # Create text item for cooldown
+            # Create text item
             cls._text_item = QGraphicsTextItem()
             cls._text_item.setDefaultTextColor(Qt.yellow)
             font = QFont('Arial', 24)
             cls._text_item.setFont(font)
             cls._scene.addItem(cls._text_item)
             
-            # Create timer window and its components
-            cls._timer_window = QWidget()
-            cls._timer_window.setAttribute(Qt.WA_TranslucentBackground)
-            cls._timer_window.setWindowFlags(
-                Qt.FramelessWindowHint |
-                Qt.WindowStaysOnTopHint |
-                Qt.Tool |
-                Qt.WindowDoesNotAcceptFocus
-            )
-            
-            # Create timer scene and view
-            cls._timer_scene = QGraphicsScene()
-            cls._timer_view = QGraphicsView(cls._timer_scene, cls._timer_window)
-            cls._timer_view.setStyleSheet("""
-                QGraphicsView {
-                    background: transparent;
-                    border: none;
-                }
-            """)
-            cls._timer_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cls._timer_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-            
-            # Create timer text item
-            cls._timer_text = QGraphicsTextItem()
-            cls._timer_text.setDefaultTextColor(Qt.white)
-            timer_font = QFont('Arial', 70, QFont.Bold)
-            cls._timer_text.setFont(timer_font)
-            cls._timer_scene.addItem(cls._timer_text)
-            
-            # Create background image item for timer
-            cls._timer_bg = cls._timer_scene.addPixmap(QPixmap())
-            
-            # Set windows to be active without focus
+            # Set window to be an active window without focus
             cls._window.setAttribute(Qt.WA_ShowWithoutActivating)
-            cls._timer_window.setAttribute(Qt.WA_ShowWithoutActivating)
             
-            # Set the Qt windows as children of Tkinter window
+            # Set the Qt window as child of Tkinter window
             if cls._parent_hwnd:
-                win32gui.SetParent(int(cls._window.winId()), cls._parent_hwnd)
-                win32gui.SetParent(int(cls._timer_window.winId()), cls._parent_hwnd)
+                # Use the win32gui SetParent function instead of SetWindowLong
+                win32gui.SetParent(
+                    int(cls._window.winId()),
+                    cls._parent_hwnd
+                )
     
     @classmethod
-    def show_cooldown(cls, seconds):
+    def show_hint_cooldown(cls, seconds):
         """Show cooldown message with proper rotation"""
         if not cls._app:
             cls.init()
@@ -133,81 +122,118 @@ class Overlay:
         # Show and raise window
         cls._window.show()
         cls._window.raise_()
-        
+    
     @classmethod
-    def show_timer(cls, time_str, room_number=None):
-        """Show timer display with optional background"""
+    def init_timer(cls):
+        """Initialize the timer display components"""
         if not cls._app:
             cls.init()
             
-        # Set timer window dimensions
-        width = 270     # Match original timer frame width
-        height = 530    # Match original timer frame height
-        
-        # Position timer window (matching original placement)
-        cls._timer_window.setGeometry(
-            -182,    # Matches original x position
-            (1079 // 2) - (height // 2),  # Center vertically
-            width,
-            height
-        )
-        
-        # Configure view
-        cls._timer_view.setGeometry(0, 0, width, height)
-        cls._timer_scene.setSceneRect(QRectF(0, 0, width, height))
-        
-        # Load room-specific background if provided
-        if room_number is not None:
-            bg_filename = {
-                1: "casino_heist.png",
-                2: "morning_after.png",
-                3: "wizard_trials.png",
-                4: "zombie_outbreak.png",
-                5: "haunted_manor.png",
-                6: "atlantis_rising.png",
-                7: "time_machine.png"
-            }.get(room_number)
+        # Create timer instance if it doesn't exist
+        if not hasattr(cls, '_timer'):
+            cls._timer = TimerDisplay()
+            cls._timer.scene = QGraphicsScene()
+            cls._timer_view = QGraphicsView(cls._timer.scene, cls._window)
+            cls._timer_view.setStyleSheet("""
+                QGraphicsView {
+                    background: transparent;
+                    border: none;
+                }
+            """)
+            cls._timer_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._timer_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
-            if bg_filename:
-                bg_path = os.path.join("timer_backgrounds", bg_filename)
-                if os.path.exists(bg_path):
-                    bg_image = QImage(bg_path)
-                    bg_pixmap = QPixmap.fromImage(bg_image).scaled(
-                        width,
-                        height,
-                        Qt.KeepAspectRatio,
-                        Qt.SmoothTransformation
-                    )
-                    cls._timer_bg.setPixmap(bg_pixmap)
-                    cls._timer_bg.setPos(0, 0)
-        
-        # Set up timer text
-        cls._timer_text.setPlainText(time_str)
-        
-        # Reset and apply rotation transform
-        cls._timer_text.setTransform(QTransform())
-        cls._timer_text.setRotation(270)
-        
-        # Center the text
-        text_width = cls._timer_text.boundingRect().width()
-        text_height = cls._timer_text.boundingRect().height()
-        cls._timer_text.setPos(
-            width // 2 + text_height // 2,
-            height // 2 + text_width // 2
-        )
-        
-        # Show and raise window
-        cls._timer_window.show()
-        cls._timer_window.raise_()
-    
+            # Set up background placeholder first
+            cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
+            
+            # Create timer text and add it after background
+            cls._timer.text_item = QGraphicsTextItem()
+            cls._timer.text_item.setDefaultTextColor(Qt.white)
+            
+            # Create font with correct weight parameter (QFont.Bold is 75)
+            font = QFont('Arial', 70)
+            font.setWeight(75)  # QFont.Bold
+            cls._timer.text_item.setFont(font)
+            
+            # Add text item last so it appears on top
+            cls._timer.scene.addItem(cls._timer.text_item)
+
+            
+            # Position window
+            width = 270
+            height = 530
+            cls._timer_view.setGeometry(0, 0, width, height)
+            cls._timer.scene.setSceneRect(QRectF(0, 0, width, height))
+            
+            # Position the window on the right side
+            cls._window.setGeometry(
+                510 + (610 - 510) - 182,  # Right edge with padding
+                int((1079 - height) / 2),  # Vertical center
+                width,
+                height
+            )
+            
+            # Apply rotation to text
+            cls._timer.text_item.setTransform(QTransform())
+            cls._timer.text_item.setRotation(270)
+
     @classmethod
-    def hide_timer(cls):
-        """Hide the timer overlay"""
-        if cls._timer_window:
-            cls._timer_window.hide()
-    
+    def update_timer_display(cls, time_str):
+        """Update the timer display with the given time string"""
+        if hasattr(cls, '_timer') and cls._timer.text_item:
+            cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
+            
+            # Center the text
+            text_width = cls._timer.text_item.boundingRect().width()
+            text_height = cls._timer.text_item.boundingRect().height()
+            cls._timer.text_item.setPos(
+                135,  # Horizontal center
+                265   # Vertical center
+            )
+            cls._window.show()
+            cls._window.raise_()
+
+    @classmethod
+    def load_timer_background(cls, room_number):
+        """Load the timer background for the specified room"""
+        if not hasattr(cls, '_timer'):
+            return
+            
+        try:
+            bg_filename = cls._timer.timer_backgrounds.get(room_number)
+            if not bg_filename:
+                print(f"No timer background defined for room {room_number}")
+                return
+                
+            bg_path = os.path.join("timer_backgrounds", bg_filename)
+            if not os.path.exists(bg_path):
+                print(f"Timer background not found: {bg_path}")
+                return
+                
+            # Load and resize the background image
+            bg_img = Image.open(bg_path)
+            bg_img = bg_img.resize((270, 530))
+            
+            # THIS IS WHERE THE NEW CODE GOES - REPLACE THE OLD CONVERSION CODE HERE
+            # Convert PIL image to QPixmap via bytes buffer
+            from io import BytesIO
+            from PyQt5.QtGui import QImage
+            buf = BytesIO()
+            bg_img.save(buf, format='PNG')
+            qimg = QImage()
+            qimg.loadFromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(qimg)
+            
+            # Update the background
+            cls._timer.bg_image_item.setPixmap(pixmap)
+            cls._timer._current_image = pixmap  # Store reference
+            
+        except Exception as e:
+            print(f"Error loading timer background for room {room_number}: {e}")
+
     @classmethod
     def hide(cls):
-        """Hide the cooldown overlay"""
+        """Hide the overlay"""
         if cls._window:
             cls._window.hide()

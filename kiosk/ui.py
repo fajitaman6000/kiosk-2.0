@@ -106,75 +106,31 @@ class KioskUI:
         self.help_button = None
         
     def setup_room_interface(self, room_number):
-        """Creates the room interface without relying on Tkinter timer frame"""
-        # Store any existing status messages before clearing
-        pending_text = None
-        cooldown_text = None
-        
-        if self.status_frame:
-            try:
-                # Try to get pending text
-                pending_items = self.status_frame.find_withtag('pending_text')
-                if pending_items:
-                    pending_text = self.status_frame.itemcget(pending_items[0], 'text')
-                
-                # Try to get cooldown text
-                cooldown_items = self.status_frame.find_withtag('cooldown_text')
-                if cooldown_items:
-                    cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
-            except:
-                pass  # Ignore any errors trying to get old text
-        
-        # Clear all widgets
+        """Set up the room interface for the given room number"""
+        # Clear any existing widgets except persistent ones
         for widget in self.root.winfo_children():
+            # Skip destroying widgets marked as persistent
+            if hasattr(widget, 'is_persistent'):
+                continue
+            # Skip status frame if it exists
+            if widget is self.status_frame:
+                continue
             widget.destroy()
-        
-        # Recreate status frame
-        self.create_status_frame()
-        
-        # Restore any status messages that existed
-        if pending_text:
-            self.status_frame.create_text(
-                50,  # center of width (100/2)
-                540,  # center of height (1079/2)
-                text=pending_text,
-                fill='yellow',
-                font=('Arial', 24),
-                angle=270,
-                tags='pending_text',
-                justify='center'
-            )
-        
-        if cooldown_text:
-            self.status_frame.create_text(
-                50,  # center of width (100/2)
-                540,  # center of height (1079/2)
-                text=cooldown_text,
-                fill='yellow',
-                font=('Arial', 24),
-                angle=270,
-                tags='cooldown_text',
-                justify='center',
-                width=1000
-            )
-        
-        # Set up background first
-        self.background_image = self.load_background(room_number)
-        if self.background_image:
-            background_label = tk.Label(self.root, image=self.background_image)
-            background_label.place(x=0, y=0, relwidth=1, relheight=1)
-            background_label.lower()  # Ensure background stays at the bottom
-        
-        # Load room-specific timer background
-        self.message_handler.timer.load_room_background(room_number)
-        
-        # Restore hint if there was one
-        if self.current_hint:
-            self.show_hint(self.current_hint, start_cooldown=False)
-        
-        # Restore help button if not in cooldown
-        if not self.hint_cooldown:
-            self.create_help_button()
+            
+        # Configure the room-specific elements
+        if room_number > 0:
+            self.current_room = room_number
+            self.background_image = self.load_background(room_number)
+            if self.background_image:
+                bg_label = tk.Label(self.root, image=self.background_image)
+                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            
+            # Load room-specific timer background
+            self.message_handler.timer.load_room_background(room_number)
+            
+            # Show the timer if it exists
+            if hasattr(self.message_handler, 'timer'):
+                Overlay.update_timer_display(self.message_handler.timer.get_time_str())
 
     def _create_button_with_background(self):
         """Helper method to create the actual button with background and shadow effect"""
@@ -652,12 +608,12 @@ class KioskUI:
             self.cooldown_after_id = None
         
         self.hint_cooldown = True
-        Overlay.show_cooldown(45)  # Show initial cooldown
+        Overlay.show_hint_cooldown(45)  # Show initial cooldown
         self.update_cooldown(45)
         
     def update_cooldown(self, seconds_left):
         if seconds_left > 0 and self.hint_cooldown:
-            Overlay.show_cooldown(seconds_left)
+            Overlay.show_hint_cooldown(seconds_left)
             self.cooldown_after_id = self.root.after(
                 1000, 
                 lambda: self.update_cooldown(seconds_left - 1)
