@@ -1,7 +1,6 @@
-from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, 
-                              QGraphicsScene, QGraphicsView, QGraphicsTextItem)
-from PyQt5.QtCore import Qt, QRectF
+from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem
 from PIL import Image
 import sys
 import win32gui
@@ -10,6 +9,19 @@ import os
 import io
 import traceback
 
+class TimerThread(QThread):
+    """Dedicated thread for timer updates"""
+    update_signal = pyqtSignal(str)
+    
+    def __init__(self):
+        super().__init__()
+        
+    def run(self):
+        # Thread just emits signals, actual updates happen in main thread
+        pass
+        
+    def update_display(self, time_str):
+        self.update_signal.emit(time_str)
 
 class TimerDisplay:
     """Handles the visual elements of the timer display"""
@@ -36,6 +48,7 @@ class Overlay:
     _window = None
     _parent_hwnd = None
     _initialized = False
+    _timer_thread = None
     
     @classmethod
     def init(cls, tkinter_root=None):
@@ -203,14 +216,27 @@ class Overlay:
     @classmethod
     def update_timer_display(cls, time_str):
         """Update the timer display with the given time string"""
-        print("attempting to load timer")
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
             return
             
-        cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
-        cls._timer.text_item.setPos(350, 145)  # Adjust the values to center the text
-        cls._timer_window.show()
-        cls._timer_window.raise_()
+        # Initialize timer thread if needed
+        if cls._timer_thread is None:
+            cls._timer_thread = TimerThread()
+            cls._timer_thread.update_signal.connect(cls._actual_timer_update)
+            cls._timer_thread.start()
+        
+        # Send update through thread
+        cls._timer_thread.update_display(time_str)
+
+    @classmethod
+    def _actual_timer_update(cls, time_str):
+        """Actual update method that runs in the main thread"""
+        if hasattr(cls, '_timer') and cls._timer.text_item:
+            cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
+            cls._timer.text_item.setPos(350, 145)
+            if cls._timer_window:
+                cls._timer_window.show()
+                cls._timer_window.raise_()
 
 
     @classmethod

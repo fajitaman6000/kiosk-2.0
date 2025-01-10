@@ -168,13 +168,13 @@ class KioskApp:
                 
                 # Start background music when timer starts
                 room_names = {
-                2: "morning_after",
-                1: "casino_heist", 
-                5: "haunted_manor",
-                4: "zombie_outbreak",
-                6: "time_machine",
-                5: "atlantis_rising",
-                3: "wizard_trials"
+                    2: "morning_after",
+                    1: "casino_heist", 
+                    5: "haunted_manor",
+                    4: "zombie_outbreak",
+                    6: "time_machine",
+                    5: "atlantis_rising",
+                    3: "wizard_trials"
                 }
 
                 if command == "start":
@@ -184,8 +184,8 @@ class KioskApp:
                             print(f"Timer starting - playing background music for room: {room_name}")
                             self.audio_manager.play_background_music(room_name)
                 
-                # Handle the timer command
-                self.timer.handle_command(command, minutes)
+                # Handle the timer command using root.after
+                self.root.after(0, lambda: self.timer.handle_command(command, minutes))
                 
                 # Update help button state
                 self.root.after(100, self.update_help_button_state)

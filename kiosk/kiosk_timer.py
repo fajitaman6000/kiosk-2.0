@@ -93,10 +93,10 @@ class KioskTimer:
         return f"{minutes:02d}:{seconds:02d}"
 
     def update_display(self):
+        """Updates the timer display safely"""
         try:
             time_str = self.get_time_str()
-            # Only update if timer is initialized
-            if hasattr(Overlay, '_timer'):
-                Overlay.update_timer_display(time_str)
+            # Use root.after to ensure we're on the main thread
+            self.root.after(0, lambda: Overlay.update_timer_display(time_str))
         except Exception as e:
             print(f"Error updating timer display: {e}")
