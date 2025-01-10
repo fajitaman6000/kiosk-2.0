@@ -32,18 +32,20 @@ class Overlay:
     _app = None
     _window = None
     _parent_hwnd = None
+    _initialized = False
     
     @classmethod
     def init(cls, tkinter_root=None):
-        """Initialize Qt application once"""
+        """Initialize Qt application and base window"""
         if not cls._app:
             cls._app = QApplication(sys.argv)
             
-            # Store Tkinter window handle if provided
-            if tkinter_root:
-                cls._parent_hwnd = tkinter_root.winfo_id()
+        # Store Tkinter window handle
+        if tkinter_root:
+            cls._parent_hwnd = tkinter_root.winfo_id()
             
-            # Create single persistent window
+        # Create single persistent window if not already created
+        if not cls._window:
             cls._window = QWidget()
             cls._window.setAttribute(Qt.WA_TranslucentBackground)
             cls._window.setWindowFlags(
@@ -53,7 +55,20 @@ class Overlay:
                 Qt.WindowDoesNotAcceptFocus
             )
             
-            # Create graphics scene and view for rotation
+            # Set window to be an active window without focus
+            cls._window.setAttribute(Qt.WA_ShowWithoutActivating)
+            
+            # Set the Qt window as child of Tkinter window
+            if cls._parent_hwnd:
+                win32gui.SetParent(int(cls._window.winId()), cls._parent_hwnd)
+                style = win32gui.GetWindowLong(int(cls._window.winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(
+                    int(cls._window.winId()),
+                    win32con.GWL_EXSTYLE,
+                    style | win32con.WS_EX_NOACTIVATE
+                )
+            
+            # Create scene and view for cooldown text
             cls._scene = QGraphicsScene()
             cls._view = QGraphicsView(cls._scene, cls._window)
             cls._view.setStyleSheet("""
@@ -66,52 +81,36 @@ class Overlay:
             cls._view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
-            # Create text item
+            # Create text item for cooldown
             cls._text_item = QGraphicsTextItem()
             cls._text_item.setDefaultTextColor(Qt.yellow)
             font = QFont('Arial', 24)
             cls._text_item.setFont(font)
             cls._scene.addItem(cls._text_item)
             
-            # Set window to be an active window without focus
-            cls._window.setAttribute(Qt.WA_ShowWithoutActivating)
-            
-            # Set the Qt window as child of Tkinter window
-            if cls._parent_hwnd:
-                # Use the win32gui SetParent function instead of SetWindowLong
-                win32gui.SetParent(
-                    int(cls._window.winId()),
-                    cls._parent_hwnd
-                )
+        cls._initialized = True
     
     @classmethod
     def show_hint_cooldown(cls, seconds):
         """Show cooldown message with proper rotation"""
-        if not cls._app:
-            cls.init()
-        
-        # Set window and view dimensions
-        width = 100   # 610 - 510
+        if not cls._initialized or not cls._window:
+            return
+            
+        width = 100
         height = 1079
         
-        # Position window
         cls._window.setGeometry(510, 0, width, height)
         cls._view.setGeometry(0, 0, width, height)
-        
-        # Set scene rect to match view
         cls._scene.setSceneRect(QRectF(0, 0, width, height))
         
-        # Set up text
         message = f"Please wait {seconds} seconds until requesting the next hint."
         cls._text_item.setHtml(
             f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
         )
         
-        # Reset and apply rotation transform
         cls._text_item.setTransform(QTransform())
         cls._text_item.setRotation(90)
         
-        # Center the text
         text_width = cls._text_item.boundingRect().width()
         text_height = cls._text_item.boundingRect().height()
         cls._text_item.setPos(
@@ -119,21 +118,33 @@ class Overlay:
             (height - text_width) / 2
         )
         
-        # Show and raise window
         cls._window.show()
         cls._window.raise_()
     
     @classmethod
     def init_timer(cls):
-        """Initialize the timer display components"""
-        if not cls._app:
-            cls.init()
+        """Initialize timer display components"""
+        if not cls._initialized:
+            print("Warning: Attempting to init_timer before base initialization")
+            return
             
-        # Create timer instance if it doesn't exist
         if not hasattr(cls, '_timer'):
             cls._timer = TimerDisplay()
+            
+            # Create a separate window for the timer
+            cls._timer_window = QWidget(cls._window)  # Make it a child of main window
+            cls._timer_window.setAttribute(Qt.WA_TranslucentBackground)
+            cls._timer_window.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            cls._timer_window.setAttribute(Qt.WA_ShowWithoutActivating)
+            
+            # Set up timer scene and view
             cls._timer.scene = QGraphicsScene()
-            cls._timer_view = QGraphicsView(cls._timer.scene, cls._window)
+            cls._timer_view = QGraphicsView(cls._timer.scene, cls._timer_window)
             cls._timer_view.setStyleSheet("""
                 QGraphicsView {
                     background: transparent;
@@ -144,32 +155,25 @@ class Overlay:
             cls._timer_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
-            # Set up background placeholder first
+            # Set up timer components
             cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
-            
-            # Create timer text and add it after background
             cls._timer.text_item = QGraphicsTextItem()
             cls._timer.text_item.setDefaultTextColor(Qt.white)
-            
-            # Create font with correct weight parameter (QFont.Bold is 75)
             font = QFont('Arial', 70)
-            font.setWeight(75)  # QFont.Bold
+            font.setWeight(75)
             cls._timer.text_item.setFont(font)
-            
-            # Add text item last so it appears on top
             cls._timer.scene.addItem(cls._timer.text_item)
-
             
-            # Position window
+            # Set up timer window dimensions and position
             width = 270
             height = 530
             cls._timer_view.setGeometry(0, 0, width, height)
             cls._timer.scene.setSceneRect(QRectF(0, 0, width, height))
             
-            # Position the window on the right side
-            cls._window.setGeometry(
-                510 + (610 - 510) - 182,  # Right edge with padding
-                int((1079 - height) / 2),  # Vertical center
+            # Position the timer window
+            cls._timer_window.setGeometry(
+                510 + (610 - 510) - 182,
+                int((1079 - height) / 2),
                 width,
                 height
             )
@@ -178,25 +182,30 @@ class Overlay:
             cls._timer.text_item.setTransform(QTransform())
             cls._timer.text_item.setRotation(90)
 
+            if cls._parent_hwnd:
+                style = win32gui.GetWindowLong(int(cls._timer_window.winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(
+                    int(cls._timer_window.winId()),
+                    win32con.GWL_EXSTYLE,
+                    style | win32con.WS_EX_NOACTIVATE
+                )
+
     @classmethod
     def update_timer_display(cls, time_str):
         """Update the timer display with the given time string"""
-        if hasattr(cls, '_timer') and cls._timer.text_item:
-            cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
+        print("attempting to load timer")
+        if not hasattr(cls, '_timer') or not cls._timer.text_item:
+            return
             
-            # Center the text
-            text_width = cls._timer.text_item.boundingRect().width()
-            text_height = cls._timer.text_item.boundingRect().height()
-            cls._timer.text_item.setPos(
-                135,  # Horizontal center
-                265   # Vertical center
-            )
-            cls._window.show()
-            cls._window.raise_()
+        cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
+        cls._timer.text_item.setPos(135, 265)
+        cls._timer_window.show()
+        cls._timer_window.raise_()
 
     @classmethod
     def load_timer_background(cls, room_number):
         """Load the timer background for the specified room"""
+        print("attempting to load timer bg")
         if not hasattr(cls, '_timer'):
             return
             
@@ -232,6 +241,8 @@ class Overlay:
 
     @classmethod
     def hide(cls):
-        """Hide the overlay"""
+        """Hide all overlay windows"""
         if cls._window:
             cls._window.hide()
+        if hasattr(cls, '_timer_window'):
+            cls._timer_window.hide()

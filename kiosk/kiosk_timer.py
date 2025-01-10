@@ -14,18 +14,31 @@ class KioskTimer:
         self.last_update = None
         self.current_room = None
         
-        # Initialize Qt timer display
-        Overlay.init_timer()
+        # Delay Qt timer initialization until UI is ready
+        self.root.after(1000, self._delayed_init)
         
         # Start update loop
         self.update_timer()
     
+    def _delayed_init(self):
+            """Initialize Qt timer after UI has had time to initialize"""
+            # Initialize Qt timer display
+            Overlay.init_timer()
+            # Initial display update
+            self.update_display()
+
     # Update these methods to use Qt display
     def load_room_background(self, room_number):
         if room_number == self.current_room:
             return
         self.current_room = room_number
-        Overlay.load_timer_background(room_number)
+        # Ensure timer is initialized before loading background
+        if hasattr(Overlay, '_timer'):
+            Overlay.load_timer_background(room_number)
+        else:
+            # Schedule another attempt if timer isn't ready
+            self.root.after(500, lambda: self.load_room_background(room_number))
+
         
     def handle_command(self, command, minutes=None):
         if command == "start":
@@ -84,6 +97,8 @@ class KioskTimer:
     def update_display(self):
         try:
             time_str = self.get_time_str()
-            Overlay.update_timer_display(time_str)
+            # Only update if timer is initialized
+            if hasattr(Overlay, '_timer'):
+                Overlay.update_timer_display(time_str)
         except Exception as e:
             print(f"Error updating timer display: {e}")
