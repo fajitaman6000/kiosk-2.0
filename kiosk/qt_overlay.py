@@ -167,21 +167,21 @@ class Overlay:
             print("Setting up timer text...")
             cls._timer.text_item = QGraphicsTextItem()
             cls._timer.text_item.setDefaultTextColor(Qt.white)
-            font = QFont('Arial', 70)
+            font = QFont('Arial', 120)
             font.setWeight(75)
             cls._timer.text_item.setFont(font)
             cls._timer.scene.addItem(cls._timer.text_item)
                 
             # Set up timer window dimensions and position
-            width = 270
-            height = 530
+            width = 500
+            height = 750
             cls._timer_view.setGeometry(0, 0, width, height)
             cls._timer.scene.setSceneRect(QRectF(0, 0, width, height))
                 
             # Position the timer window
             cls._timer_window.setGeometry(
-                510 + (610 - 510) - 182,
-                int((1079 - height) / 2),
+                1300,
+                170,
                 width,
                 height
             )
@@ -208,9 +208,10 @@ class Overlay:
             return
             
         cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
-        cls._timer.text_item.setPos(135, 265)
+        cls._timer.text_item.setPos(350, 145)  # Adjust the values to center the text
         cls._timer_window.show()
         cls._timer_window.raise_()
+
 
     @classmethod
     def load_timer_background(cls, room_number):
@@ -237,7 +238,7 @@ class Overlay:
             # Load and resize the background image
             print("Loading background image...")
             bg_img = Image.open(bg_path)
-            bg_img = bg_img.resize((270, 530))
+            bg_img = bg_img.resize((500,750))
             
             # Convert to QPixmap
             print("Converting to QPixmap...")
