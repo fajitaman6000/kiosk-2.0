@@ -29,8 +29,6 @@ class KioskTimer:
 
     # Update these methods to use Qt display
     def load_room_background(self, room_number):
-        if room_number == self.current_room:
-            return
         self.current_room = room_number
         # Ensure timer is initialized before loading background
         if hasattr(Overlay, '_timer'):

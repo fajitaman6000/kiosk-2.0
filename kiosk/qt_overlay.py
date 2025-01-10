@@ -1,12 +1,15 @@
 from PyQt5.QtWidgets import (QApplication, QWidget, QLabel, 
                               QGraphicsScene, QGraphicsView, QGraphicsTextItem)
 from PyQt5.QtCore import Qt, QRectF
-from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap
+from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage
 from PIL import Image
 import sys
 import win32gui
 import win32con
 import os
+import io
+import traceback
+
 
 class TimerDisplay:
     """Handles the visual elements of the timer display"""
@@ -123,14 +126,15 @@ class Overlay:
     
     @classmethod
     def init_timer(cls):
-        """Initialize timer display components"""
+        """Initialize the timer display components"""
         if not cls._initialized:
             print("Warning: Attempting to init_timer before base initialization")
             return
-            
+                
         if not hasattr(cls, '_timer'):
+            print("\nInitializing timer components...")
             cls._timer = TimerDisplay()
-            
+                
             # Create a separate window for the timer
             cls._timer_window = QWidget(cls._window)  # Make it a child of main window
             cls._timer_window.setAttribute(Qt.WA_TranslucentBackground)
@@ -141,7 +145,7 @@ class Overlay:
                 Qt.WindowDoesNotAcceptFocus
             )
             cls._timer_window.setAttribute(Qt.WA_ShowWithoutActivating)
-            
+                
             # Set up timer scene and view
             cls._timer.scene = QGraphicsScene()
             cls._timer_view = QGraphicsView(cls._timer.scene, cls._timer_window)
@@ -154,22 +158,26 @@ class Overlay:
             cls._timer_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._timer_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-            
-            # Set up timer components
+                
+            # Set up background image first
+            print("Setting up background placeholder...")
             cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
+            
+            # Create timer text and add it after background
+            print("Setting up timer text...")
             cls._timer.text_item = QGraphicsTextItem()
             cls._timer.text_item.setDefaultTextColor(Qt.white)
             font = QFont('Arial', 70)
             font.setWeight(75)
             cls._timer.text_item.setFont(font)
             cls._timer.scene.addItem(cls._timer.text_item)
-            
+                
             # Set up timer window dimensions and position
             width = 270
             height = 530
             cls._timer_view.setGeometry(0, 0, width, height)
             cls._timer.scene.setSceneRect(QRectF(0, 0, width, height))
-            
+                
             # Position the timer window
             cls._timer_window.setGeometry(
                 510 + (610 - 510) - 182,
@@ -177,7 +185,7 @@ class Overlay:
                 width,
                 height
             )
-            
+                
             # Apply rotation to text
             cls._timer.text_item.setTransform(QTransform())
             cls._timer.text_item.setRotation(90)
@@ -189,6 +197,8 @@ class Overlay:
                     win32con.GWL_EXSTYLE,
                     style | win32con.WS_EX_NOACTIVATE
                 )
+                
+            print("Timer initialization complete")
 
     @classmethod
     def update_timer_display(cls, time_str):
@@ -205,8 +215,10 @@ class Overlay:
     @classmethod
     def load_timer_background(cls, room_number):
         """Load the timer background for the specified room"""
-        print("attempting to load timer bg")
+        print(f"\nAttempting to load timer background for room {room_number}")
+        
         if not hasattr(cls, '_timer'):
+            print("Timer not initialized yet")
             return
             
         try:
@@ -216,28 +228,35 @@ class Overlay:
                 return
                 
             bg_path = os.path.join("timer_backgrounds", bg_filename)
+            print(f"Looking for background at: {bg_path}")
+            
             if not os.path.exists(bg_path):
                 print(f"Timer background not found: {bg_path}")
                 return
                 
             # Load and resize the background image
+            print("Loading background image...")
             bg_img = Image.open(bg_path)
             bg_img = bg_img.resize((270, 530))
             
-            from io import BytesIO
-            from PyQt5.QtGui import QImage
-            buf = BytesIO()
+            # Convert to QPixmap
+            print("Converting to QPixmap...")
+            buf = io.BytesIO()
             bg_img.save(buf, format='PNG')
             qimg = QImage()
             qimg.loadFromData(buf.getvalue())
             pixmap = QPixmap.fromImage(qimg)
             
             # Update the background
+            print("Setting background pixmap...")
             cls._timer.bg_image_item.setPixmap(pixmap)
             cls._timer._current_image = pixmap  # Store reference
+            cls._timer_window.update()  # Force refresh
+            print("Background loaded successfully")
             
         except Exception as e:
-            print(f"Error loading timer background for room {room_number}: {e}")
+            print(f"Error loading timer background for room {room_number}:")
+            traceback.print_exc()
 
     @classmethod
     def hide(cls):
