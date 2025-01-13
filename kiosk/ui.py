@@ -13,6 +13,7 @@ class KioskUI:
         self.computer_name = computer_name
         self.room_config = room_config
         self.message_handler = message_handler
+        self.parent_app = message_handler
         
         self.background_image = None
         self.hint_cooldown = False
@@ -167,7 +168,7 @@ class KioskUI:
                 text="Hint Requested, please wait...",
                 fill='yellow',
                 font=('Arial', 24),
-                angle=270,
+                angle=90,
                 tags='pending_text',
                 justify='center'
             )

@@ -1,7 +1,7 @@
 # qt_overlay.py
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem
 from PIL import Image
 import sys
 import win32gui
@@ -10,6 +10,27 @@ import os
 import io
 import traceback
 from config import ROOM_CONFIG
+
+class ClickableView(QGraphicsView):
+    """Custom QGraphicsView that handles mouse clicks"""
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+        self._click_callback = None
+        
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton and self._click_callback:
+            # Get the scene position
+            scene_pos = self.mapToScene(event.pos())
+            # Check if click is within button bounds
+            items = self.scene().items(scene_pos)
+            for item in items:
+                if isinstance(item, QGraphicsPixmapItem):
+                    self._click_callback()
+                    break
+        super().mousePressEvent(event)
+        
+    def set_click_callback(self, callback):
+        self._click_callback = callback
 
 class TimerThread(QThread):
     """Dedicated thread for timer updates"""
@@ -308,9 +329,9 @@ class Overlay:
             )
             cls._button_window.setAttribute(Qt.WA_ShowWithoutActivating)
 
-            # Set up button scene and view
+            # Set up button scene and view using ClickableView instead of QGraphicsView
             cls._button['scene'] = QGraphicsScene()
-            cls._button_view = QGraphicsView(cls._button['scene'], cls._button_window)
+            cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
 
             # Define view dimensions (increased to accommodate shadow)
             width = 330  # Increased width
@@ -428,6 +449,9 @@ class Overlay:
                     if not cls.load_button_images(assigned_room):
                         print("Failed to load button images.")
                         return
+
+                # Set up click handling
+                cls._button_view.set_click_callback(ui.message_handler.request_help)
 
                 # Rotate the button image item 90 degrees clockwise
                 cls._button['bg_image_item'].setRotation(360)
