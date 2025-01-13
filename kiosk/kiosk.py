@@ -19,7 +19,6 @@ import traceback
 import pygame
 from qt_overlay import Overlay
 
-
 class KioskApp:
     def __init__(self):
         print("\nStarting KioskApp initialization...")
@@ -89,7 +88,7 @@ class KioskApp:
             self.time_exceeded_45 = True
         
         # Refresh help button
-        self.ui.create_help_button()
+        Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -327,10 +326,8 @@ class KioskApp:
     def request_help(self):
         if not self.ui.hint_cooldown:
             self.hints_requested += 1
-            if self.ui.help_button:
-                self.ui.help_button.destroy()
-                self.ui.help_button = None
-                
+            Overlay.hide_help_button()
+            
             if self.ui.request_pending_label is None:
                 self.ui.request_pending_label = tk.Label(
                     self.root,
@@ -399,7 +396,7 @@ class KioskApp:
                 self.ui.setup_room_interface(self.assigned_room)
                 if not self.ui.hint_cooldown:
                     print("Creating help button")
-                    self.ui.create_help_button()
+                    Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
             print("=== Video Sequence Complete ===\n")
 
         def play_game_video():

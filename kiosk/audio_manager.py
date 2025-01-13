@@ -9,7 +9,7 @@ class AudioManager:
         self.music_dir = "music"
         self._last_played = None
         self._last_played_time = 0
-        self.MIN_REPLAY_DELAY = 1
+        self.MIN_REPLAY_DELAY = .05
         self.current_music = None
 
     def play_sound(self, sound_name):

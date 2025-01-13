@@ -16,7 +16,7 @@ class KioskUI:
         
         self.background_image = None
         self.hint_cooldown = False
-        self.help_button = None
+        #self.help_button = None # Removed help button from here
         self.status_frame = None
         self.cooldown_label = None
         self.request_pending_label = None
@@ -37,7 +37,7 @@ class KioskUI:
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='black')
         self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
-        
+
     def create_status_frame(self):
         """Creates a fixed canvas for status messages at coordinates (510,0) to (610,1079)"""
         # Create the status canvas
@@ -98,12 +98,12 @@ class KioskUI:
         if self.status_frame:
             self.status_frame.delete('all')
             
-        for widget in [self.hint_label, self.help_button]:
+        for widget in [self.hint_label]: # Removed self.help_button from here
             if widget:
                 widget.destroy()
                 
         self.hint_label = None
-        self.help_button = None
+        # self.help_button = None  # Removed help_button from here
         
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
@@ -131,168 +131,12 @@ class KioskUI:
             # Show the timer if it exists
             if hasattr(self.message_handler, 'timer'):
                 Overlay.update_timer_display(self.message_handler.timer.get_time_str())
-
-    def _create_button_with_background(self):
-        """Helper method to create the actual button with background and shadow effect"""
-        # Define button dimensions
-        canvas_width = 260
-        canvas_height = 550
-        
-        try:
-            # Create a frame to hold both shadow and button
-            container_frame = tk.Frame(
-                self.root,
-                width=canvas_width + 40,  # Extra width for shadow
-                height=canvas_height + 40,  # Extra height for shadow
-                bg='black'  # Match root background
-            )
-            container_frame.place(relx=0.19, rely=0.5, anchor='center')
-            
-            # Load and create shadow first
-            try:
-                shadow_path = os.path.join("hint_button_backgrounds", "shadow.png")
-                if os.path.exists(shadow_path):
-                    shadow_image = Image.open(shadow_path)
-                    shadow_image = shadow_image.resize((canvas_width + 40, canvas_height + 40), Image.Resampling.LANCZOS)
-                    shadow_photo = ImageTk.PhotoImage(shadow_image)
-                    
-                    shadow_label = tk.Label(
-                        container_frame,
-                        image=shadow_photo,
-                        bg='black'
-                    )
-                    shadow_label.shadow_image = shadow_photo  # Prevent garbage collection
-                    shadow_label.place(x=0, y=0)
-            except Exception as e:
-                print(f"Error loading shadow: {str(e)}")
-            
-            # Get room-specific button background name
-            button_name = None
-            if hasattr(self.message_handler, 'assigned_room'):
-                room_num = self.message_handler.assigned_room
-                button_map = {
-                    1: "casino_heist.png",
-                    2: "morning_after.png",
-                    3: "wizard_trials.png",
-                    4: "zombie_outbreak.png",
-                    5: "haunted_manor.png",
-                    6: "atlantis_rising.png",
-                    7: "time_machine.png"
-                }
-                if room_num in button_map:
-                    button_name = button_map[room_num]
-
-            if button_name:
-                button_path = os.path.join("hint_button_backgrounds", button_name)
-                if os.path.exists(button_path):
-                    button_image = Image.open(button_path)
-                    aspect_ratio = button_image.width / button_image.height
-                    new_height = canvas_height
-                    new_width = int(new_height * aspect_ratio)
-                    button_image = button_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                    button_photo = ImageTk.PhotoImage(button_image)
-                    
-                    self.help_button = tk.Canvas(
-                        container_frame,
-                        width=canvas_width,
-                        height=canvas_height,
-                        highlightthickness=0
-                    )
-                    self.help_button.button_image = button_photo
-                    
-                    self.help_button.create_image(
-                        canvas_width/2,
-                        canvas_height/2,
-                        image=button_photo,
-                        anchor='center'
-                    )
-                    
-                    # Center the button in the container, accounting for shadow margins
-                    self.help_button.place(x=20, y=20)  # Offset by shadow margin
-                    self.help_button.bind('<Button-1>', lambda e: self.request_help())
-                    print("Successfully created new help button with shadow")
-                else:
-                    print(f"Button image not found at: {button_path}")
-                    self._create_fallback_button(canvas_width, canvas_height)
-            else:
-                print("No room assigned or room number not in button map")
-                self._create_fallback_button(canvas_width, canvas_height)
                 
-        except Exception as e:
-            print(f"Error creating image button: {str(e)}")
-            self._create_fallback_button(canvas_width, canvas_height)
-            
-    def create_help_button(self):
-        """Creates the help request button using a room-specific background image if conditions are met"""
-        # Get current timer value from message handler
-        current_time = self.message_handler.timer.time_remaining
-        minutes_remaining = current_time / 60
-        #print(f"\n=== Help Button Visibility Check ===")
-        #print(f"Current timer: {minutes_remaining:.2f} minutes")
-        #print(f"In cooldown: {self.hint_cooldown}")
-        #print(f"Timer running: {self.message_handler.timer.is_running}")
-        print("attempting to create help button if it is needed")
+            # Update help button state after room setup
+            self.message_handler.root.after(100, self.message_handler.update_help_button_state)
 
-        # Check if timer has ever exceeded 45 minutes
-        has_exceeded_45 = hasattr(self.message_handler, 'time_exceeded_45') and self.message_handler.time_exceeded_45
-        #print(f"Has exceeded 45: {has_exceeded_45}")
-
-        # First check if we're in cooldown
-        if self.hint_cooldown:
-            print("In cooldown - hiding help button")
-            if self.help_button:
-                self.help_button.destroy()
-                self.help_button = None
-            return
-
-        # Hide button if:
-        # - Time is greater than 42 minutes AND
-        # - Time is less than or equal to 45 minutes AND
-        # - Timer has never exceeded 45 minutes since last reset
-        should_hide = (
-            minutes_remaining > 42 and 
-            minutes_remaining <= 45 and 
-            not has_exceeded_45
-        )
-        
-        #print(f"Time > 42: {minutes_remaining > 42}")
-        #print(f"Time <= 45: {minutes_remaining <= 45}")
-        #print(f"Should hide based on time window: {should_hide}")
-
-        # Remove button if it exists and should be hidden
-        if should_hide:
-            if self.help_button:
-                print("Removing help button due to timer conditions")
-                self.help_button.destroy()
-                self.help_button = None
-            return
-        elif self.help_button is None:
-            # Only create new button if we don't already have one and conditions are met
-            print("Conditions met to show help button - creating new button")
-            self._create_button_with_background()
-        else:
-            print("Help button already exists")
-
-    def _create_fallback_button(self, canvas_width, canvas_height):
-        """Creates a fallback text-only button if the image loading fails"""
-        self.help_button = tk.Canvas(
-            self.root,
-            width=canvas_width,
-            height=canvas_height,
-            bg='blue',
-            highlightthickness=0
-        )
-        self.help_button.place(relx=0.19, rely=0.5, anchor='center')
-        self.help_button.create_text(
-            canvas_width/2,
-            canvas_height/2,
-            text="REQUEST NEW HINT",
-            fill='white',
-            font=('Arial', 24),
-            angle=270
-        )
-        self.help_button.bind('<Button-1>', lambda e: self.request_help())
-                
+    #Removed create_help_button and _create_button_with_background, _create_fallback_button
+    
     def request_help(self):
         """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
         if not self.hint_cooldown:
@@ -307,9 +151,10 @@ class KioskUI:
                 self.current_hint = None
             
             # Remove help button if it exists
-            if self.help_button:
-                self.help_button.destroy()
-                self.help_button = None
+            # if self.help_button:
+            #     self.help_button.destroy()
+            #     self.help_button = None
+            Overlay.hide_help_button() # Replaced with this
             
             # Show status frame and clear any existing text
             self.show_status_frame()
@@ -345,9 +190,10 @@ class KioskUI:
         
         try:
             # Remove existing UI elements
-            if self.help_button:
-                self.help_button.destroy()
-                self.help_button = None
+            # if self.help_button:
+            #     self.help_button.destroy()
+            #     self.help_button = None
+            Overlay.hide_help_button() # Removed help button and replaced with this line
             
             if self.fullscreen_image:
                 self.fullscreen_image.destroy()
@@ -622,7 +468,8 @@ class KioskUI:
             self.hint_cooldown = False
             self.cooldown_after_id = None
             Overlay.hide()
-            self.create_help_button()
+            #self.create_help_button() # Removed help button creation from here
+            self.message_handler.update_help_button_state() # Help button logic is now in update_help_button_state
 
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
@@ -778,9 +625,10 @@ class KioskUI:
             if self.hint_label:
                 self.hint_label.destroy()
                 self.hint_label = None
-            if self.help_button:
-                self.help_button.destroy()
-                self.help_button = None
+            # if self.help_button:
+            #     self.help_button.destroy()
+            #     self.help_button = None
+            Overlay.hide_help_button() # Replaced help button removal with this
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
                 self.video_solution_button.destroy()
                 self.video_solution_button = None
@@ -818,6 +666,7 @@ class KioskUI:
                     )
             else:
                 # Only refresh help button if not in cooldown
+                #self.message_handler.root.after(100, self.message_handler.update_help_button_state) # Removed from here
                 self.message_handler.root.after(100, self.message_handler.update_help_button_state)
                 
         except Exception as e:
