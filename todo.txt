@@ -1,6 +1,6 @@
 # important/immediate todo
 outro audio
-put shadow behind hint button
+hint button coming back deletes the timer
 
 
 # planned features: 
