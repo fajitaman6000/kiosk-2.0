@@ -299,7 +299,7 @@ class Overlay:
 
             # Create a separate window for the button
             cls._button_window = QWidget(cls._window)
-            cls._button_window.setAttribute(Qt.WA_TranslucentBackground)  # Ensure transparency
+            cls._button_window.setAttribute(Qt.WA_TranslucentBackground)
             cls._button_window.setWindowFlags(
                 Qt.FramelessWindowHint |
                 Qt.WindowStaysOnTopHint |
@@ -312,9 +312,9 @@ class Overlay:
             cls._button['scene'] = QGraphicsScene()
             cls._button_view = QGraphicsView(cls._button['scene'], cls._button_window)
 
-            # Define view dimensions
-            width = 550
-            height = 260
+            # Define view dimensions (increased to accommodate shadow)
+            width = 330  # Increased width
+            height = 620  # Increased height
 
             # Configure view
             cls._button_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -322,7 +322,7 @@ class Overlay:
             cls._button_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             cls._button_view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
             cls._button_view.setFrameStyle(0)
-            cls._button_view.setStyleSheet("background: transparent;")  # Ensure transparent background
+            cls._button_view.setStyleSheet("background: transparent;")
 
             # Set view geometry
             cls._button_view.setGeometry(0, 0, width, height)
@@ -342,7 +342,7 @@ class Overlay:
             cls._button['bg_image_item'] = cls._button['scene'].addPixmap(QPixmap())
 
             # Position button window
-            cls._button_window.setGeometry(340, 290, width, height)
+            cls._button_window.setGeometry(340, 290, width, height) # Adjusted button window size
 
             if cls._parent_hwnd:
                 style = win32gui.GetWindowLong(int(cls._button_window.winId()), win32con.GWL_EXSTYLE)
@@ -374,7 +374,7 @@ class Overlay:
 
             # Convert to pixmap and scale
             button_pixmap = QPixmap.fromImage(qimage).scaled(
-                260, 550, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                240, 530, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Keep adjusted scaling for button
             )
             cls._button['bg_image_item'].setPixmap(button_pixmap)
 
@@ -385,11 +385,14 @@ class Overlay:
                 print("Failed to load shadow image directly")
                 return False
 
-            # Convert to pixmap and scale
+            # Convert to pixmap and scale (larger scaling for shadow)
             shadow_pixmap = QPixmap.fromImage(shadow_qimage).scaled(
-                300, 590, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                330, 620, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Increased shadow size
             )
             cls._button['shadow_item'].setPixmap(shadow_pixmap)
+
+            # Set the origin for rotation to the center of the pixmap
+            cls._button['bg_image_item'].setTransformOriginPoint(button_pixmap.width() / 2, button_pixmap.height() / 2)
 
             # Debug info
             print(f"\nImage Debug:")
@@ -426,8 +429,8 @@ class Overlay:
                         print("Failed to load button images.")
                         return
 
-                # Rotate the view by 90 degrees clockwise
-                cls._button_view.setTransform(QTransform().rotate(90))
+                # Rotate the button image item 90 degrees clockwise
+                cls._button['bg_image_item'].setRotation(360)
 
                 # Get scene and view dimensions
                 scene_rect = cls._button['scene'].sceneRect()
