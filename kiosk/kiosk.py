@@ -281,9 +281,11 @@ class KioskApp:
                 if self.ui.cooldown_after_id:
                     self.root.after_cancel(self.ui.cooldown_after_id)
                     self.ui.cooldown_after_id = None
-                # Schedule overlay hide on main thread
+
+                # Hide and Clear Overlay
                 self.root.after(0, lambda: Overlay.hide())
-                
+
+
                 # Clear UI elements safely
                 print("Clearing UI elements...")
                 if hasattr(self.ui, 'status_frame') and self.ui.status_frame:

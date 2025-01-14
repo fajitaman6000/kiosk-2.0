@@ -266,29 +266,29 @@ class Overlay:
     def load_timer_background(cls, room_number):
         """Load the timer background for the specified room"""
         print(f"\nAttempting to load timer background for room {room_number}")
-        
+
         if not hasattr(cls, '_timer'):
             print("Timer not initialized yet")
             return
-            
+
         try:
             bg_filename = cls._timer.timer_backgrounds.get(room_number)
             if not bg_filename:
                 print(f"No timer background defined for room {room_number}")
                 return
-                
+
             bg_path = os.path.join("timer_backgrounds", bg_filename)
             print(f"Looking for background at: {bg_path}")
-            
+
             if not os.path.exists(bg_path):
                 print(f"Timer background not found: {bg_path}")
                 return
-                
+
             # Load and resize the background image
             print("Loading background image...")
             bg_img = Image.open(bg_path)
             bg_img = bg_img.resize((500,750))
-            
+
             # Convert to QPixmap
             print("Converting to QPixmap...")
             buf = io.BytesIO()
@@ -297,13 +297,17 @@ class Overlay:
             qimg.loadFromData(buf.getvalue())
             pixmap = QPixmap.fromImage(qimg)
 
+            # Clear Previous
+            if cls._timer.bg_image_item:
+                cls._timer.bg_image_item.setPixmap(QPixmap())
+            
             # Update the background
             print("Setting background pixmap...")
             cls._timer.bg_image_item.setPixmap(pixmap)
             cls._timer._current_image = pixmap  # Store reference
             cls._timer_window.update()  # Force refresh
             print("Background loaded successfully")
-            
+
         except Exception as e:
             print(f"Error loading timer background for room {room_number}:")
             traceback.print_exc()
@@ -449,6 +453,10 @@ class Overlay:
                     if not cls.load_button_images(assigned_room):
                         print("Failed to load button images.")
                         return
+                
+                # Set the origin for rotation to the center of the pixmap
+                button_rect = cls._button['bg_image_item'].boundingRect()
+                cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
 
                 # Set up click handling
                 cls._button_view.set_click_callback(ui.message_handler.request_help)
@@ -458,11 +466,10 @@ class Overlay:
 
                 # Get scene and view dimensions
                 scene_rect = cls._button['scene'].sceneRect()
-                view_rect = cls._button_view.rect()
 
                 # Center the button within the scene
-                button_x = (scene_rect.width() - cls._button['bg_image_item'].boundingRect().width()) / 2
-                button_y = (scene_rect.height() - cls._button['bg_image_item'].boundingRect().height()) / 2
+                button_x = (scene_rect.width() - button_rect.width()) / 2
+                button_y = (scene_rect.height() - button_rect.height()) / 2
                 cls._button['bg_image_item'].setPos(button_x, button_y)
 
                 # Center the shadow within the scene
@@ -493,6 +500,12 @@ class Overlay:
             cls._button_window.hide()
 
     @classmethod
+    def hide_cooldown(cls):
+        """Hide just the cooldown overlay"""
+        if cls._window:
+            cls._window.hide()
+
+    @classmethod
     def hide(cls):
         """Hide all overlay windows and clean up timer resources"""
         if cls._window:
@@ -501,15 +514,24 @@ class Overlay:
             cls._timer_window.hide()
         if hasattr(cls, '_button_window') and cls._button_window:
             cls._button_window.hide()
-            
+
         # Clean up timer thread if it exists
         if cls._timer_thread is not None:
             cls._timer_thread.quit()
             cls._timer_thread.wait()
             cls._timer_thread = None
-            
-        # Clear timer display
-        if hasattr(cls, '_timer') and cls._timer and cls._timer.text_item:
-            cls._timer.text_item.setPlainText("")
+
+        # Clear timer display and associated items
+        if hasattr(cls, '_timer') and cls._timer:
+            if cls._timer.text_item:
+                cls._timer.text_item.setPlainText("")
             if cls._timer.bg_image_item:
-                cls._timer.bg_image_item.setPixmap(QPixmap())
+                cls._timer.bg_image_item.setPixmap(QPixmap()) # Clear the pixmap
+            if hasattr(cls, '_timer_scene') and cls._timer.scene:
+                cls._timer.scene.clear() # Clear the scene of existing items
+        
+        # Clear button view if it exists
+        if hasattr(cls, '_button_view') and cls._button_view:
+            cls._button['scene'].clear()
+            cls._button_view.set_click_callback(None) # Deregister callback
+            

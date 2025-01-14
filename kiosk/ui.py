@@ -455,8 +455,8 @@ class KioskUI:
             self.cooldown_after_id = None
         
         self.hint_cooldown = True
-        Overlay.show_hint_cooldown(45)  # Show initial cooldown
-        self.update_cooldown(45)
+        Overlay.show_hint_cooldown(10)  # Show initial cooldown
+        self.update_cooldown(10)
         
     def update_cooldown(self, seconds_left):
         if seconds_left > 0 and self.hint_cooldown:
@@ -468,9 +468,8 @@ class KioskUI:
         else:
             self.hint_cooldown = False
             self.cooldown_after_id = None
-            Overlay.hide()
-            #self.create_help_button() # Removed help button creation from here
-            self.message_handler.update_help_button_state() # Help button logic is now in update_help_button_state
+            Overlay.hide_cooldown()
+            self.message_handler.update_help_button_state()
 
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
