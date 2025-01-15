@@ -178,7 +178,8 @@ class Overlay:
                 'current_background': None
             }
 
-            # Create hint window
+        # Create hint window if needed
+        if not cls._hint_text['window']:
             cls._hint_text['window'] = QWidget(cls._window)
             cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground)
             cls._hint_text['window'].setWindowFlags(
@@ -189,8 +190,10 @@ class Overlay:
             )
             cls._hint_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
 
-            # Create scene and view
+        # Create scene and view if needed
+        if not cls._hint_text['scene']:
             cls._hint_text['scene'] = QGraphicsScene()
+        if not cls._hint_text['view']:
             cls._hint_text['view'] = QGraphicsView(cls._hint_text['scene'], cls._hint_text['window'])
             cls._hint_text['view'].setStyleSheet("""
                 QGraphicsView {
@@ -202,24 +205,26 @@ class Overlay:
             cls._hint_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._hint_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
-            # Create text item
+        # Create text item if needed
+        if not cls._hint_text['text_item']:
             cls._hint_text['text_item'] = QGraphicsTextItem()
             cls._hint_text['text_item'].setDefaultTextColor(Qt.white)
             font = QFont('Arial', 20)
             cls._hint_text['text_item'].setFont(font)
             cls._hint_text['scene'].addItem(cls._hint_text['text_item'])
 
-             # Set up background image first
-            cls._hint_text['bg_image_item'] = cls._hint_text['scene'].addPixmap(QPixmap())
-            cls._hint_text['bg_image_item'].setZValue(-1) # Set the image to the background layer
+        # Set up background image first
+        if not cls._hint_text['bg_image_item']:
+           cls._hint_text['bg_image_item'] = cls._hint_text['scene'].addPixmap(QPixmap())
+           cls._hint_text['bg_image_item'].setZValue(-1) # Set the image to the background layer
 
-            if cls._parent_hwnd:
-                style = win32gui.GetWindowLong(int(cls._hint_text['window'].winId()), win32con.GWL_EXSTYLE)
-                win32gui.SetWindowLong(
-                    int(cls._hint_text['window'].winId()),
-                    win32con.GWL_EXSTYLE,
-                    style | win32con.WS_EX_NOACTIVATE
-                )
+        if cls._parent_hwnd:
+            style = win32gui.GetWindowLong(int(cls._hint_text['window'].winId()), win32con.GWL_EXSTYLE)
+            win32gui.SetWindowLong(
+                int(cls._hint_text['window'].winId()),
+                win32con.GWL_EXSTYLE,
+                style | win32con.WS_EX_NOACTIVATE
+            )
 
     @classmethod
     def show_hint_text(cls, text, room_number=None):
@@ -733,7 +738,7 @@ class Overlay:
             cls._button_window.hide()
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             cls._hint_text['window'].hide()
-        
+
 
         # Clean up timer thread if it exists
         if cls._timer_thread is not None:
@@ -754,12 +759,3 @@ class Overlay:
         if hasattr(cls, '_button_view') and cls._button_view:
             cls._button['scene'].clear()
             cls._button_view.set_click_callback(None) # Deregister callback
-
-         # Clear hint text overlay
-        if hasattr(cls, '_hint_text') and cls._hint_text:
-             if cls._hint_text['text_item']:
-                 cls._hint_text['text_item'].setPlainText("")
-             if cls._hint_text['bg_image_item']:
-                 cls._hint_text['bg_image_item'].setPixmap(QPixmap())
-             if cls._hint_text['scene']:
-                cls._hint_text['scene'].clear()
