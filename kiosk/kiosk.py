@@ -214,10 +214,9 @@ class KioskApp:
                         }
                         
                         # Show hint first, then show video interface
-                        self.root.after(0, lambda d=hint_data: self.show_hint(d))
-                        
-                        # Show the solution video interface
-                        self.ui.show_video_solution(room_folder, video_filename)
+                        self.root.after(0, lambda d=hint_data: self.show_hint(d, start_cooldown=False))
+                        self.root.after(0, lambda: self.ui.show_video_solution(room_folder, video_filename)) # Call this after the hint
+
                     else:
                         print(f"Error: Solution video not found at {video_path}")
                         
@@ -334,7 +333,7 @@ class KioskApp:
                 **self.get_stats()
             })
             
-    def show_hint(self, text):
+    def show_hint(self, text, start_cooldown=True):
         # Clear any pending request status
         if self.ui.request_pending_label:
             self.ui.request_pending_label.destroy()
@@ -344,7 +343,7 @@ class KioskApp:
         self.audio_manager.play_sound("hint_received.mp3")
         
         # Show the hint
-        self.ui.show_hint(text)
+        self.ui.show_hint(text, start_cooldown)
         
         # Start cooldown timer
         self.ui.start_cooldown()
