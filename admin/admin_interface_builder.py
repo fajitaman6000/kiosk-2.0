@@ -589,6 +589,7 @@ class AdminInterfaceBuilder:
                         self.stats_elements['send_btn'].config(state='normal')
 
     def mark_help_requested(self, computer_name):
+        #this function needs evaluation and perhaps removal by the next AI to encounter it. See if it's being used because the text "HINT REQUESTED" verbatim has not appeared anywhere in a long time
         """Mark a kiosk as requesting help and play notification sound"""
         if computer_name in self.connected_kiosks:
             self.connected_kiosks[computer_name]['help_label'].config(
