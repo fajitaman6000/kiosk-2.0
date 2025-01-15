@@ -278,6 +278,10 @@ class KioskUI:
                 self.stored_image_data = text_or_data.get('image')
             else:
                 hint_text = str(text_or_data)
+            
+            # Default text if no text and image data
+            if not hint_text and self.stored_image_data:
+                hint_text = "Image hint received"
 
             if hint_text:
                 # If there's an image, use left half, otherwise use full width
