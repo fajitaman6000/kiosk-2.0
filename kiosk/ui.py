@@ -6,6 +6,7 @@ import base64
 import io
 import traceback
 from qt_overlay import Overlay
+import threading
 
 class KioskUI:
     def __init__(self, root, computer_name, room_config, message_handler):
@@ -26,6 +27,8 @@ class KioskUI:
         self.fullscreen_image = None
         self.image_button = None
         self.stored_image_data = None
+        self.video_solution_button = None # keep the video solution button
+        self._lock = threading.Lock()
 
         self.setup_root()
         self.create_status_frame()
@@ -216,53 +219,6 @@ class KioskUI:
                 self.request_pending_label.destroy()
                 self.request_pending_label = None
             
-            # Calculate dimensions for hint area
-            hint_width = 1499 - 911  # = 588
-            hint_height = 1015 - 64  # = 951
-            
-            # Create or clear hint container
-            if self.hint_label is None:
-                self.hint_label = tk.Canvas(
-                    self.root,
-                    width=hint_width,
-                    height=hint_height,
-                    bg='#000000',
-                    highlightthickness=0
-                )
-                self.hint_label.place(x=911, y=64)
-            else:
-                self.hint_label.delete('all')
-
-            # Load room-specific hint background
-            background_name = None
-            if hasattr(self.message_handler, 'assigned_room'):
-                room_num = self.message_handler.assigned_room
-                background_map = {
-                    1: "casino_heist.png",
-                    2: "morning_after.png",
-                    3: "wizard_trials.png",
-                    4: "zombie_outbreak.png",
-                    5: "haunted_manor.png",
-                    6: "atlantis_rising.png",
-                    7: "time_machine.png"
-                }
-                if room_num in background_map:
-                    background_name = background_map[room_num]
-
-            if background_name:
-                try:
-                    bg_path = os.path.join("hint_backgrounds", background_name)
-                    if os.path.exists(bg_path):
-                        bg_image = Image.open(bg_path)
-                        # Resize to fit canvas exactly
-                        bg_image = bg_image.resize((hint_width, hint_height), Image.Resampling.LANCZOS)
-                        photo = ImageTk.PhotoImage(bg_image)
-                        self.hint_label.bg_image = photo
-                        self.hint_label.create_image(0, 0, image=photo, anchor='nw', tags='background')
-                        self.hint_label.tag_lower('background')
-                except Exception as e:
-                    print(f"Error loading hint background: {e}")
-
             # Parse hint data and clear any existing image button
             if self.image_button:
                 self.image_button.destroy()
@@ -283,20 +239,8 @@ class KioskUI:
             if not hint_text and self.stored_image_data:
                 hint_text = "Image hint received"
 
-            if hint_text:
-                # If there's an image, use left half, otherwise use full width
-                text_x = hint_width/2 if self.stored_image_data else hint_width/2
-                self.hint_label.create_text(
-                    text_x,
-                    hint_height/2,
-                    text=hint_text,
-                    fill='black',
-                    font=('Arial', 20),
-                    width=hint_height-40,
-                    angle=270,
-                    justify='center',
-                    anchor='center'
-                )
+            # Call PyQt text hint display
+            Overlay.show_hint_text(hint_text, self.current_room)
 
             # Create image received button in left panel only if image exists
             if self.stored_image_data:
@@ -315,7 +259,7 @@ class KioskUI:
                 # Position button well to the left of the hint text area
                 self.image_button.place(
                     x=750,  # Move button further left, away from hint text
-                    y=hint_height/2 - button_height/2 + 64  # Keep vertical center alignment
+                    y= (1015-64)/2 - button_height/2 + 64  # Keep vertical center alignment
                 )
                 
                 # Add button text
@@ -334,21 +278,6 @@ class KioskUI:
         except Exception as e:
             print("\nCritical error in show_hint:")
             traceback.print_exc()
-            try:
-                if hasattr(self, 'hint_label') and self.hint_label:
-                    self.hint_label.delete('all')
-                    self.hint_label.create_text(
-                        hint_width/2,
-                        hint_height/2,
-                        text=f"Error displaying hint: {str(e)}",
-                        fill='red',
-                        font=('Arial', 16),
-                        width=hint_height-40,
-                        angle=270,
-                        justify='center'
-                    )
-            except:
-                pass
             
     def show_fullscreen_image(self):
         """Display the image in nearly fullscreen with margins"""
@@ -357,8 +286,10 @@ class KioskUI:
             
         try:
             # Hide hint interface
-            if self.hint_label:
-                self.hint_label.place_forget()
+            # if self.hint_label:
+            #     self.hint_label.place_forget()
+            Overlay.hide_hint_text()
+
             if self.image_button:
                 self.image_button.place_forget()
                 
@@ -429,16 +360,18 @@ class KioskUI:
             self.fullscreen_image.destroy()
             self.fullscreen_image = None
             
-        if self.hint_label:
-            self.hint_label.place(x=911, y=64)
-            
+        # if self.hint_label:
+        #     self.hint_label.place(x=911, y=64)
+        
+        Overlay.show_hint_text(self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', ''), self.current_room)
+
         # Restore image button with consistent positioning
         if self.image_button:
-            hint_height = 1015 - 64  # Same calculation as in show_hint
+            # hint_height = 1015 - 64  # Same calculation as in show_hint
             button_height = 200  # Match the height from show_hint
             self.image_button.place(
                 x=750,  # Match the x-position from show_hint
-                y=hint_height/2 - button_height/2 + 64  # Match the centering calculation from show_hint
+                y= (1015-64)/2 - button_height/2 + 64  # Match the centering calculation from show_hint
             )
 
     def start_cooldown(self):
@@ -524,79 +457,77 @@ class KioskUI:
             self.video_solution_button = None
 
     def toggle_solution_video(self):
-        """Toggle video solution playback while preserving cooldown state"""
-        try:
-            print("\nToggling solution video")
-            # If video is already playing, stop it
-            if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                print("Stopping current video")
-                self.message_handler.video_manager.stop_video()
-                self.video_is_playing = False
-                
-                # Restore the button
-                if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                    print("Restoring solution button")
-                    self.video_solution_button.place(
-                        x=750,
-                        y=(1015 - 64)/2 - 100 + 64
-                    )
-                
-                # Restore hint label if it exists
-                if hasattr(self, 'hint_label') and self.hint_label:
-                    print("Restoring hint label")
-                    self.hint_label.place(x=911, y=64)
+         """Toggle video solution playback while preserving cooldown state"""
+         # Wrap the logic in a thread-safe lock
+         with self._lock:
+            try:
+                print("\nToggling solution video")
+                # If video is already playing, stop it
+                if hasattr(self, 'video_is_playing') and self.video_is_playing:
+                    print("Stopping current video")
+                    self.message_handler.video_manager.stop_video()
+                    self.video_is_playing = False
                     
-                # Restore cooldown display if still in cooldown
-                if self.hint_cooldown:
-                    print("Restoring cooldown display")
-                    self.show_status_frame()
-                    
-            # If video is not playing, start it
-            else:
-                print("Starting video playback")
-                if hasattr(self, 'stored_video_info'):
-                    # Store cooldown state before hiding UI
-                    cooldown_items = self.status_frame.find_withtag('cooldown_text')
-                    if cooldown_items:
-                        self.stored_cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
-                    else:
-                        self.stored_cooldown_text = None
-                    
-                    # Only hide UI elements that exist
-                    if hasattr(self, 'hint_label') and self.hint_label:
-                        print("Hiding hint label")
-                        self.hint_label.place_forget()
-                    
+                    # Restore the button
                     if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                        print("Hiding solution button")
-                        self.video_solution_button.place_forget()
-                        
-                    if self.hint_cooldown:
-                        self.status_frame.place_forget()
-                        
-                    # Construct video path
-                    video_path = os.path.join(
-                        "video_solutions",
-                        self.stored_video_info['room_folder'],
-                        f"{self.stored_video_info['video_filename']}.mp4"
-                    )
-                    
-                    print(f"Video path: {video_path}")
-                    if os.path.exists(video_path):
-                        print("Playing video")
-                        self.video_is_playing = True
-                        self.message_handler.video_manager.play_video(
-                            video_path,
-                            on_complete=self.handle_video_completion
+                        print("Restoring solution button")
+                        self.video_solution_button.place(
+                            x=750,
+                            y=(1015 - 64)/2 - 100 + 64
                         )
-                    else:
-                        print(f"Error: Video file not found at {video_path}")
-                else:
-                    print("Error: No video info stored")
                     
-        except Exception as e:
-            print(f"\nError in toggle_solution_video: {e}")
-            traceback.print_exc()
+                    # Restore the text overlay
+                    Overlay.show_hint_text(self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', ''), self.current_room)
+
+                    # Restore cooldown display if still in cooldown
+                    if self.hint_cooldown:
+                        print("Restoring cooldown display")
+                        self.show_status_frame()
+                        
+                # If video is not playing, start it
+                else:
+                    print("Starting video playback")
+                    if hasattr(self, 'stored_video_info'):
+                        # Store cooldown state before hiding UI
+                        cooldown_items = self.status_frame.find_withtag('cooldown_text')
+                        if cooldown_items:
+                            self.stored_cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
+                        else:
+                            self.stored_cooldown_text = None
+                        
+                        # Only hide UI elements that exist
+                        Overlay.hide_hint_text()
+                        
+                        if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                            print("Hiding solution button")
+                            self.video_solution_button.place_forget()
+                            
+                        if self.hint_cooldown:
+                            self.status_frame.place_forget()
+                            
+                        # Construct video path
+                        video_path = os.path.join(
+                            "video_solutions",
+                            self.stored_video_info['room_folder'],
+                            f"{self.stored_video_info['video_filename']}.mp4"
+                        )
+                        
+                        print(f"Video path: {video_path}")
+                        if os.path.exists(video_path):
+                            print("Playing video")
+                            self.video_is_playing = True
+                            self.message_handler.video_manager.play_video(
+                                video_path,
+                                on_complete=self.handle_video_completion
+                            )
+                        else:
+                            print(f"Error: Video file not found at {video_path}")
+                    else:
+                        print("Error: No video info stored")
+                        
+            except Exception as e:
+                print(f"\nError in toggle_solution_video: {e}")
+                traceback.print_exc()
 
     def handle_video_completion(self):
         """Handle cleanup after video finishes playing while maintaining cooldown state"""
@@ -616,9 +547,7 @@ class KioskUI:
             # Clear UI state without affecting cooldown
             print("Clearing UI state...")
             # Don't call clear_all_labels() as it would reset cooldown
-            if self.hint_label:
-                self.hint_label.destroy()
-                self.hint_label = None
+            Overlay.hide_hint_text()
             Overlay.hide_help_button() # Replaced help button removal with this
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
                 self.video_solution_button.destroy()

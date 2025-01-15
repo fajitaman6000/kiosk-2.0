@@ -79,6 +79,21 @@ class HelpButtonThread(QThread):
     def update_button(self, button_data):
         self.update_signal.emit(button_data)
 
+class HintTextThread(QThread):
+    """Dedicated thread for hint text updates"""
+    update_signal = pyqtSignal(dict)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        # Thread just emits signals, actual updates happen in main thread
+        pass
+
+    def update_text(self, text_data):
+        self.update_signal.emit(text_data)
+
+
 class Overlay:
     _app = None
     _window = None
@@ -86,7 +101,9 @@ class Overlay:
     _initialized = False
     _timer_thread = None
     _button_thread = None
-    
+    _hint_text_thread = None  # Add thread for hint text
+    _hint_text = None # Add a dedicated class variable for the hint text scene, view and related logic
+
     @classmethod
     def init(cls, tkinter_root=None):
         """Initialize Qt application and base window"""
@@ -140,10 +157,169 @@ class Overlay:
             font = QFont('Arial', 24)
             cls._text_item.setFont(font)
             cls._scene.addItem(cls._text_item)
+
+            # Initialize hint text overlay
+            cls._init_hint_text_overlay()
             
         cls._initialized = True
         cls.init_timer()
         cls.init_help_button()
+
+    @classmethod
+    def _init_hint_text_overlay(cls):
+        """Initialize hint text overlay components."""
+        if not hasattr(cls, '_hint_text') or not cls._hint_text:
+            cls._hint_text = {
+                'window': None,
+                'scene': None,
+                'view': None,
+                'text_item': None,
+                'bg_image_item': None,
+                'current_background': None
+            }
+
+            # Create hint window
+            cls._hint_text['window'] = QWidget(cls._window)
+            cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground)
+            cls._hint_text['window'].setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            cls._hint_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Create scene and view
+            cls._hint_text['scene'] = QGraphicsScene()
+            cls._hint_text['view'] = QGraphicsView(cls._hint_text['scene'], cls._hint_text['window'])
+            cls._hint_text['view'].setStyleSheet("""
+                QGraphicsView {
+                    background: transparent;
+                    border: none;
+                }
+            """)
+            cls._hint_text['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+            # Create text item
+            cls._hint_text['text_item'] = QGraphicsTextItem()
+            cls._hint_text['text_item'].setDefaultTextColor(Qt.white)
+            font = QFont('Arial', 20)
+            cls._hint_text['text_item'].setFont(font)
+            cls._hint_text['scene'].addItem(cls._hint_text['text_item'])
+
+             # Set up background image first
+            cls._hint_text['bg_image_item'] = cls._hint_text['scene'].addPixmap(QPixmap())
+            cls._hint_text['bg_image_item'].setZValue(-1) # Set the image to the background layer
+
+            if cls._parent_hwnd:
+                style = win32gui.GetWindowLong(int(cls._hint_text['window'].winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(
+                    int(cls._hint_text['window'].winId()),
+                    win32con.GWL_EXSTYLE,
+                    style | win32con.WS_EX_NOACTIVATE
+                )
+
+    @classmethod
+    def show_hint_text(cls, text, room_number=None):
+        """Show hint text using a Qt overlay."""
+        if not cls._initialized or not cls._hint_text['window']:
+            return
+
+         # Initialize hint text thread if needed
+        if cls._hint_text_thread is None:
+            cls._hint_text_thread = HintTextThread()
+            cls._hint_text_thread.update_signal.connect(cls._actual_hint_text_update)
+            cls._hint_text_thread.start()
+
+        # Send update through thread
+        cls._hint_text_thread.update_text({'text':text, 'room_number':room_number})
+
+    @classmethod
+    def _actual_hint_text_update(cls, data):
+        """Update the hint text in the main thread."""
+        try:
+            if not cls._hint_text['window']:
+                print("Error: Hint text window not initialized")
+                return
+
+            text = data.get('text', "")
+            room_number = data.get('room_number')
+
+            width = 588
+            height = 951
+            
+            # Set hint window size and position
+            cls._hint_text['window'].setGeometry(911, 64, width, height)
+            cls._hint_text['view'].setGeometry(0, 0, width, height)
+            cls._hint_text['scene'].setSceneRect(QRectF(0, 0, width, height))
+
+            # Update hint background only if a room number is present
+            if room_number:
+                background_name = None
+                background_map = {
+                    1: "casino_heist.png",
+                    2: "morning_after.png",
+                    3: "wizard_trials.png",
+                    4: "zombie_outbreak.png",
+                    5: "haunted_manor.png",
+                    6: "atlantis_rising.png",
+                    7: "time_machine.png"
+                }
+
+                if room_number in background_map:
+                    background_name = background_map[room_number]
+
+                if background_name:
+                   # Load and resize the background image
+                    bg_path = os.path.join("hint_backgrounds", background_name)
+                    if os.path.exists(bg_path):
+                         bg_img = Image.open(bg_path)
+                         bg_img = bg_img.resize((width, height))
+                         # Convert to QPixmap
+                         buf = io.BytesIO()
+                         bg_img.save(buf, format='PNG')
+                         qimg = QImage()
+                         qimg.loadFromData(buf.getvalue())
+                         pixmap = QPixmap.fromImage(qimg)
+                         cls._hint_text['bg_image_item'].setPixmap(pixmap)
+                         cls._hint_text['current_background'] = pixmap
+                         
+            # Clear the existing text before updating
+            cls._hint_text['text_item'].setHtml("")
+
+            cls._hint_text['text_item'].setHtml(
+                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;text-align:center;width:{height-40}px">{text}</div>'
+            )
+
+            cls._hint_text['text_item'].setTransform(QTransform())
+            cls._hint_text['text_item'].setRotation(90)
+            cls._hint_text['text_item'].setZValue(1)  # Text should be above the background
+
+            text_width = cls._hint_text['text_item'].boundingRect().width()
+            text_height = cls._hint_text['text_item'].boundingRect().height()
+            cls._hint_text['text_item'].setPos(
+                (width + text_height) / 2,
+                (height - text_width) / 2
+            )
+            print(f"Text position set to: {cls._hint_text['text_item'].pos()}")
+            
+            print(f"Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
+            
+            
+            
+            cls._hint_text['window'].show()
+            cls._hint_text['window'].raise_()
+        except Exception as e:
+            print(f"Error in _actual_hint_text_update: {e}")
+            traceback.print_exc()
+    
+    @classmethod
+    def hide_hint_text(cls):
+        """Hide the hint text overlay"""
+        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+            cls._hint_text['window'].hide()
     
     @classmethod
     def show_hint_cooldown(cls, seconds):
@@ -545,7 +721,7 @@ class Overlay:
         """Hide just the cooldown overlay"""
         if cls._window:
             cls._window.hide()
-
+    
     @classmethod
     def hide(cls):
         """Hide all overlay windows and clean up timer resources"""
@@ -555,6 +731,9 @@ class Overlay:
             cls._timer_window.hide()
         if hasattr(cls, '_button_window') and cls._button_window:
             cls._button_window.hide()
+        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+            cls._hint_text['window'].hide()
+        
 
         # Clean up timer thread if it exists
         if cls._timer_thread is not None:
@@ -570,8 +749,17 @@ class Overlay:
                 cls._timer.bg_image_item.setPixmap(QPixmap()) # Clear the pixmap
             if hasattr(cls, '_timer_scene') and cls._timer.scene:
                 cls._timer.scene.clear() # Clear the scene of existing items
-        
+
         # Clear button view if it exists
         if hasattr(cls, '_button_view') and cls._button_view:
             cls._button['scene'].clear()
             cls._button_view.set_click_callback(None) # Deregister callback
+
+         # Clear hint text overlay
+        if hasattr(cls, '_hint_text') and cls._hint_text:
+             if cls._hint_text['text_item']:
+                 cls._hint_text['text_item'].setPlainText("")
+             if cls._hint_text['bg_image_item']:
+                 cls._hint_text['bg_image_item'].setPixmap(QPixmap())
+             if cls._hint_text['scene']:
+                cls._hint_text['scene'].clear()
