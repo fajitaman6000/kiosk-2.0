@@ -64,6 +64,20 @@ class TimerDisplay:
             6: "atlantis_rising.png",
             7: "time_machine.png"
         }
+        
+class HelpButtonThread(QThread):
+    """Dedicated thread for button updates"""
+    update_signal = pyqtSignal(dict)
+    
+    def __init__(self):
+        super().__init__()
+        
+    def run(self):
+        # Thread just emits signals, actual updates happen in main thread
+        pass
+    
+    def update_button(self, button_data):
+        self.update_signal.emit(button_data)
 
 class Overlay:
     _app = None
@@ -71,6 +85,7 @@ class Overlay:
     _parent_hwnd = None
     _initialized = False
     _timer_thread = None
+    _button_thread = None
     
     @classmethod
     def init(cls, tkinter_root=None):
@@ -436,6 +451,32 @@ class Overlay:
     @classmethod
     def update_help_button(cls, ui, timer, hints_requested, time_exceeded_45, assigned_room):
         """Update the help button based on current state"""
+        # Prepare data for button update thread
+        button_data = {
+            'ui': ui,
+            'timer': timer,
+            'hints_requested': hints_requested,
+            'time_exceeded_45': time_exceeded_45,
+            'assigned_room': assigned_room
+        }
+
+        # Initialize button thread if needed
+        if cls._button_thread is None:
+            cls._button_thread = HelpButtonThread()
+            cls._button_thread.update_signal.connect(cls._actual_help_button_update)
+            cls._button_thread.start()
+
+        # Send the update to the button thread
+        cls._button_thread.update_button(button_data)
+        
+    @classmethod
+    def _actual_help_button_update(cls, button_data):
+        """Actual help button update method that runs in the main thread"""
+        ui = button_data['ui']
+        timer = button_data['timer']
+        hints_requested = button_data['hints_requested']
+        time_exceeded_45 = button_data['time_exceeded_45']
+        assigned_room = button_data['assigned_room']
         current_minutes = timer.time_remaining / 60
 
         # Check visibility conditions
@@ -534,4 +575,3 @@ class Overlay:
         if hasattr(cls, '_button_view') and cls._button_view:
             cls._button['scene'].clear()
             cls._button_view.set_click_callback(None) # Deregister callback
-            

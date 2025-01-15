@@ -75,19 +75,8 @@ class KioskApp:
         else:
             self.ui.setup_waiting_screen()
 
-    def update_help_button_state(self):
+    def _actual_help_button_update(self):
         """Check timer and update help button state"""
-        current_minutes = self.timer.time_remaining / 60
-        #print(f"\n=== Timer State Update ===")
-        #print(f"Current timer: {current_minutes:.2f} minutes")
-        #print(f"Time exceeded 45 flag: {self.time_exceeded_45}")
-        
-        # Check if we've exceeded 45 minutes
-        if current_minutes > 45 and not self.time_exceeded_45:
-            print("Timer has exceeded 45 minutes - setting flag")
-            self.time_exceeded_45 = True
-        
-        # Refresh help button
         Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
 
     def toggle_fullscreen(self):
@@ -188,7 +177,7 @@ class KioskApp:
                 self.root.after(0, lambda: self.timer.handle_command(command, minutes))
                 
                 # Update help button state
-                self.root.after(100, self.update_help_button_state)
+                self.root.after(100, lambda: self._actual_help_button_update())
                 
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
                 self.play_video(msg['video_type'], msg['minutes'])
@@ -225,7 +214,7 @@ class KioskApp:
                         }
                         
                         # Show hint first, then show video interface
-                        self.show_hint(hint_data)
+                        self.root.after(0, lambda d=hint_data: self.show_hint(d))
                         
                         # Show the solution video interface
                         self.ui.show_video_solution(room_folder, video_filename)
@@ -313,7 +302,7 @@ class KioskApp:
                         print("Restoring room interface")
                         self.ui.setup_room_interface(self.assigned_room)
                     # Update help button state after reset
-                    self.root.after(100, self.update_help_button_state)
+                    self.root.after(100, lambda: self._actual_help_button_update())
                     print("Kiosk reset complete")
                 
                 # Schedule UI restoration after timer reset
@@ -474,7 +463,7 @@ class KioskApp:
             self.ui.hide_status_frame()
             
         # Update help button state
-        self.root.after(100, self.update_help_button_state)
+        self.root.after(100, lambda: self._actual_help_button_update())
         
         print("Hint clearing complete")
 

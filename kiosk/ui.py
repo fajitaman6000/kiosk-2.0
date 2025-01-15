@@ -17,7 +17,6 @@ class KioskUI:
         
         self.background_image = None
         self.hint_cooldown = False
-        #self.help_button = None # Removed help button from here
         self.status_frame = None
         self.cooldown_label = None
         self.request_pending_label = None
@@ -104,7 +103,6 @@ class KioskUI:
                 widget.destroy()
                 
         self.hint_label = None
-        # self.help_button = None  # Removed help_button from here
         
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
@@ -134,9 +132,7 @@ class KioskUI:
                 Overlay.update_timer_display(self.message_handler.timer.get_time_str())
                 
             # Update help button state after room setup
-            self.message_handler.root.after(100, self.message_handler.update_help_button_state)
-
-    #Removed create_help_button and _create_button_with_background, _create_fallback_button
+            self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Change to lambda for thread safety
     
     def request_help(self):
         """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
@@ -152,9 +148,6 @@ class KioskUI:
                 self.current_hint = None
             
             # Remove help button if it exists
-            # if self.help_button:
-            #     self.help_button.destroy()
-            #     self.help_button = None
             Overlay.hide_help_button() # Replaced with this
             
             # Show status frame and clear any existing text
@@ -191,9 +184,6 @@ class KioskUI:
         
         try:
             # Remove existing UI elements
-            # if self.help_button:
-            #     self.help_button.destroy()
-            #     self.help_button = None
             Overlay.hide_help_button() # Removed help button and replaced with this line
             
             if self.fullscreen_image:
@@ -469,7 +459,7 @@ class KioskUI:
             self.hint_cooldown = False
             self.cooldown_after_id = None
             Overlay.hide_cooldown()
-            self.message_handler.update_help_button_state()
+            self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
 
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
@@ -625,9 +615,6 @@ class KioskUI:
             if self.hint_label:
                 self.hint_label.destroy()
                 self.hint_label = None
-            # if self.help_button:
-            #     self.help_button.destroy()
-            #     self.help_button = None
             Overlay.hide_help_button() # Replaced help button removal with this
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
                 self.video_solution_button.destroy()
@@ -666,8 +653,7 @@ class KioskUI:
                     )
             else:
                 # Only refresh help button if not in cooldown
-                #self.message_handler.root.after(100, self.message_handler.update_help_button_state) # Removed from here
-                self.message_handler.root.after(100, self.message_handler.update_help_button_state)
+                self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
                 
         except Exception as e:
             print(f"\nError in handle_video_completion: {e}")
