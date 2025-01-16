@@ -662,8 +662,8 @@ class Overlay:
             cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
 
             # Define view dimensions (increased to accommodate shadow)
-            width = 330  # Increased width
-            height = 620  # Increased height
+            width = 440  # Increased width
+            height = 780  # Increased height
 
             # Configure view
             cls._button_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -723,7 +723,7 @@ class Overlay:
 
             # Convert to pixmap and scale
             button_pixmap = QPixmap.fromImage(qimage).scaled(
-                240, 530, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Keep adjusted scaling for button
+                320, 700, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Keep adjusted scaling for button
             )
             cls._button['bg_image_item'].setPixmap(button_pixmap)
 
@@ -736,7 +736,7 @@ class Overlay:
 
             # Convert to pixmap and scale (larger scaling for shadow)
             shadow_pixmap = QPixmap.fromImage(shadow_qimage).scaled(
-                330, 620, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Increased shadow size
+                440, 780, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Increased shadow size
             )
             cls._button['shadow_item'].setPixmap(shadow_pixmap)
 
@@ -814,18 +814,17 @@ class Overlay:
                 # Rotate the button image item 90 degrees clockwise
                 cls._button['bg_image_item'].setRotation(360)
 
-                # Get scene and view dimensions
-                scene_rect = cls._button['scene'].sceneRect()
+                # MANUAL POSITIONING BEGINS HERE
+                # Define offsets for position
+                button_x_offset = -40 # Adjust to move the button within it's parent window
+                button_y_offset = -73 # Adjust to move the button within it's parent window
+                
+                shadow_x_offset = 0  # Adjust to move the shadow within it's parent window
+                shadow_y_offset = 0 # Adjust to move the shadow within it's parent window
+                
+                cls._button['bg_image_item'].setPos(button_x_offset, button_y_offset)
+                cls._button['shadow_item'].setPos(shadow_x_offset, shadow_y_offset)
 
-                # Center the button within the scene
-                button_x = (scene_rect.width() - button_rect.width()) / 2
-                button_y = (scene_rect.height() - button_rect.height()) / 2
-                cls._button['bg_image_item'].setPos(button_x, button_y)
-
-                # Center the shadow within the scene
-                shadow_x = (scene_rect.width() - cls._button['shadow_item'].boundingRect().width()) / 2
-                shadow_y = (scene_rect.height() - cls._button['shadow_item'].boundingRect().height()) / 2
-                cls._button['shadow_item'].setPos(shadow_x, shadow_y)
 
                 # Debug prints
                 print("\nButton Positioning Debug:")
