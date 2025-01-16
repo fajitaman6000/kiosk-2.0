@@ -225,7 +225,7 @@ class Overlay:
         if not cls._hint_text['text_item']:
             cls._hint_text['text_item'] = QGraphicsTextItem()
             cls._hint_text['text_item'].setDefaultTextColor(Qt.black)
-            font = QFont('Arial', 20)
+            font = QFont('Arial', 22)
             cls._hint_text['text_item'].setFont(font)
             cls._hint_text['scene'].addItem(cls._hint_text['text_item'])
 
@@ -326,7 +326,7 @@ class Overlay:
             height = 951
             
             # Set hint window size and position
-            cls._hint_text['window'].setGeometry(911, 64, width, height)
+            cls._hint_text['window'].setGeometry(850, 80, width, height)
             cls._hint_text['view'].setGeometry(0, 0, width, height)
             cls._hint_text['scene'].setSceneRect(QRectF(0, 0, width, height))
 
@@ -541,7 +541,7 @@ class Overlay:
                 
             # Position the timer window
             cls._timer_window.setGeometry(
-                1300,
+                1400,
                 170,
                 width,
                 height

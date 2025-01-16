@@ -29,11 +29,13 @@ resets during intro videos cause crashing/audio bugs
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 
 set alarm on prop to make sound when gm-chosen prop finishes
-profile creation,
-profile deletion (admin only)
 automatic room restoration for all props upon full pause
 soundcheck/touchcheck behavior
-save hint to public (usable by all profiles, shown what profile made it, save to own private profile),
-save hint to private (local to profile),
-save hint to global/default (admin only),
-set hint color,
+
+profile creation,
+profile deletion (admin only)
+
+save hint to public (usable by all profiles, shown what profile made it, save to own private profile)
+save hint to private (local to profile)
+save hint to global/default (admin only)
+set hint color
