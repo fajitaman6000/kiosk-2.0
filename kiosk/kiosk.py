@@ -77,7 +77,13 @@ class KioskApp:
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
-        Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
+        print("\n[DEBUG] _actual_help_button_update - START")
+        try:
+            Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
+        except Exception as e:
+            print(f"[DEBUG] Exception in _actual_help_button_update: {e}")
+            traceback.print_exc()
+        print("[DEBUG] _actual_help_button_update - END")
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -103,14 +109,14 @@ class KioskApp:
         return stats
         
     def handle_message(self, msg):
-        print(f"\nReceived message: {msg}")
+        print(f"\n[DEBUG] Received message: {msg}")
         try:
             if msg['type'] == 'room_assignment' and msg['computer_name'] == self.computer_name:
-                print(f"Processing room assignment: {msg['room']}")            
+                print(f"[DEBUG] Processing room assignment: {msg['room']}")            
                 self.assigned_room = msg['room']
-                print("Saving room assignment...")
+                print("[DEBUG] Saving room assignment...")
                 save_result = self.room_persistence.save_room_assignment(msg['room'])
-                print(f"Save result: {save_result}")
+                print(f"[DEBUG] Save result: {save_result}")
                 self.start_time = time.time()
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
@@ -124,35 +130,35 @@ class KioskApp:
                 
             elif msg['type'] == 'hint' and self.assigned_room:
                 if msg.get('room') == self.assigned_room:
-                    print("\nProcessing hint message:")
-                    print(f"Has image flag: {msg.get('has_image')}")
-                    print(f"Message keys: {msg.keys()}")
+                    print("\n[DEBUG] Processing hint message:")
+                    print(f"[DEBUG] Has image flag: {msg.get('has_image')}")
+                    print(f"[DEBUG] Message keys: {msg.keys()}")
                     
                     # Prepare hint data
                     if msg.get('has_image') and 'image' in msg:
-                        print("Creating image+text hint data")
+                        print("[DEBUG] Creating image+text hint data")
                         hint_data = {
                             'text': msg.get('text', ''),
                             'image': msg['image']
                         }
                     else:
-                        print("Creating text-only hint")
+                        print("[DEBUG] Creating text-only hint")
                         hint_data = msg.get('text', '')
                     
-                    print(f"Scheduling hint display with data type: {type(hint_data)}")
+                    print(f"[DEBUG] Scheduling hint display with data type: {type(hint_data)}")
                     self.root.after(0, lambda d=hint_data: self.show_hint(d))
                     
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
-                print("\nProcessing timer command")
+                print("\n[DEBUG] Processing timer command")
                 minutes = msg.get('minutes')
                 command = msg['command']
                 
                 # Update time_exceeded_45 flag if timer is being set above 45
                 if minutes is not None:
                     minutes = float(minutes)
-                    print(f"Setting timer to {minutes} minutes")
+                    print(f"[DEBUG] Setting timer to {minutes} minutes")
                     if minutes > 45:
-                        print("New time exceeds 45 minutes - setting flag")
+                        print("[DEBUG] New time exceeds 45 minutes - setting flag")
                         self.time_exceeded_45 = True
                 
                 # Start background music when timer starts
@@ -170,43 +176,43 @@ class KioskApp:
                     if self.assigned_room and isinstance(self.assigned_room, int):
                         room_name = room_names.get(self.assigned_room)
                         if room_name:
-                            print(f"Timer starting - playing background music for room: {room_name}")
+                            print(f"[DEBUG] Timer starting - playing background music for room: {room_name}")
                             self.audio_manager.play_background_music(room_name)
                 
-                # Handle the timer command using root.after
-                self.root.after(0, lambda: self.timer.handle_command(command, minutes))
+                # Handle the timer command
+                self.timer.handle_command(command, minutes)
                 
-                # Update help button state
-                self.root.after(100, lambda: self._actual_help_button_update())
+                # Update help button state directly after command
+                self._actual_help_button_update()
                 
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.computer_name:
                 self.play_video(msg['video_type'], msg['minutes'])
 
             elif msg['type'] == 'clear_hints' and msg['computer_name'] == self.computer_name:
-                print("\nProcessing clear hints command")
+                print("\n[DEBUG] Processing clear hints command")
                 self.clear_hints()
 
             elif msg['type'] == 'play_sound' and msg['computer_name'] == self.computer_name:
-                print("\nReceived play sound command")
+                print("\n[DEBUG] Received play sound command")
                 sound_name = msg.get('sound_name')
                 if sound_name:
                     self.audio_manager.play_sound(sound_name)
                     
             elif msg['type'] == 'solution_video' and msg['computer_name'] == self.computer_name:
-                print("\nReceived solution video command")
+                print("\n[DEBUG] Received solution video command")
                 try:
                     room_folder = msg.get('room_folder')
                     video_filename = msg.get('video_filename')
                     
                     if not room_folder or not video_filename:
-                        print("Error: Missing room_folder or video_filename in message")
+                        print("[DEBUG] Error: Missing room_folder or video_filename in message")
                         return
                         
                     video_path = os.path.join("video_solutions", room_folder, f"{video_filename}.mp4")
-                    print(f"Looking for solution video at: {video_path}")
+                    print(f"[DEBUG] Looking for solution video at: {video_path}")
                     
                     if os.path.exists(video_path):
-                        print(f"Setting up solution video interface: {video_path}")
+                        print(f"[DEBUG] Setting up solution video interface: {video_path}")
                         
                         # Create hint-style message for video solution
                         hint_data = {
@@ -218,17 +224,17 @@ class KioskApp:
                         self.root.after(0, lambda: self.ui.show_video_solution(room_folder, video_filename)) # Call this after the hint
 
                     else:
-                        print(f"Error: Solution video not found at {video_path}")
+                        print(f"[DEBUG] Error: Solution video not found at {video_path}")
                         
                 except Exception as e:
-                    print(f"Error processing solution video command: {e}")
+                    print(f"[DEBUG] Error processing solution video command: {e}")
                     traceback.print_exc()
 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.computer_name:
-                print("\nProcessing kiosk reset")
+                print("\n[DEBUG] Processing kiosk reset")
                 
                 # First, stop all audio and video playback
-                print("Stopping all media playback...")
+                print("[DEBUG] Stopping all media playback...")
                 
                 # Stop background music
                 self.audio_manager.stop_background_music()
@@ -244,18 +250,18 @@ class KioskApp:
                 
                 # Kill any remaining video process
                 if self.current_video_process:
-                    print("Terminating external video process")
+                    print("[DEBUG] Terminating external video process")
                     self.current_video_process.terminate()
                     self.current_video_process = None
                     self.root.deiconify()
                 
                 # Reset application state
-                print("Resetting application state...")
+                print("[DEBUG] Resetting application state...")
                 self.time_exceeded_45 = False
                 self.hints_requested = 0
                 
                 # Reset UI hint-related state
-                print("Resetting UI hint state...")
+                print("[DEBUG] Resetting UI hint state...")
                 self.ui.hint_cooldown = False
                 self.ui.current_hint = None
                 self.ui.stored_image_data = None
@@ -265,7 +271,7 @@ class KioskApp:
                     self.ui.video_is_playing = False
                 
                 # Cancel any existing cooldown timer and hide overlay
-                print("Clearing cooldown state...")
+                print("[DEBUG] Clearing cooldown state...")
                 if self.ui.cooldown_after_id:
                     self.root.after_cancel(self.ui.cooldown_after_id)
                     self.ui.cooldown_after_id = None
@@ -275,7 +281,7 @@ class KioskApp:
 
 
                 # Clear UI elements safely
-                print("Clearing UI elements...")
+                print("[DEBUG] Clearing UI elements...")
                 if hasattr(self.ui, 'status_frame') and self.ui.status_frame:
                     self.ui.status_frame.delete('all')
                     self.ui.hide_status_frame()
@@ -298,19 +304,20 @@ class KioskApp:
                 # Restore UI after timer reinitialization
                 def restore_ui():
                     if self.assigned_room:
-                        print("Restoring room interface")
+                        print("[DEBUG] Restoring room interface")
                         self.ui.setup_room_interface(self.assigned_room)
-                    # Update help button state after reset
-                    self.root.after(100, lambda: self._actual_help_button_update())
-                    print("Kiosk reset complete")
+                        
+                        # Update help button state after reset
+                        self._actual_help_button_update()
+                        print("[DEBUG] Kiosk reset complete")
                 
                 # Schedule UI restoration after timer reset
                 self.root.after(100, restore_ui)
         
         except Exception as e:
-            print("\nCritical error in handle_message:")
-            print(f"Error type: {type(e)}")
-            print(f"Error message: {str(e)}")
+            print("\n[CRITICAL ERROR] Critical error in handle_message:")
+            print(f"[CRITICAL ERROR] Error type: {type(e)}")
+            print(f"[CRITICAL ERROR] Error message: {str(e)}")
             traceback.print_exc()
                 
     def request_help(self):
@@ -421,7 +428,7 @@ class KioskApp:
 
     def clear_hints(self):
         """Clear all visible hints without resetting other kiosk state"""
-        print("\nClearing visible hints...")
+        print("\n[DEBUG] Clearing visible hints...")
         
         # Reset UI hint-related state
         self.ui.hint_cooldown = False
@@ -453,9 +460,9 @@ class KioskApp:
             self.ui.hide_status_frame()
             
         # Update help button state
-        self.root.after(100, lambda: self._actual_help_button_update())
+        self._actual_help_button_update()
         
-        print("Hint clearing complete")
+        print("[DEBUG] Hint clearing complete")
 
     def run(self):
         self.root.mainloop()

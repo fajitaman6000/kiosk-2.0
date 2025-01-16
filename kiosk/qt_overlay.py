@@ -415,9 +415,62 @@ class Overlay:
     def _actual_hint_request_text_update(cls, text):
         """Update the hint request text in the main thread."""
         try:
-            if not cls._hint_request_text['window']:
+            if not hasattr(cls, '_hint_request_text') or not cls._hint_request_text:
                 print("Error: Hint request text window not initialized")
                 return
+
+            # Rebuild objects before updating
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
+               if cls._hint_request_text.get('window'):
+                   cls._hint_request_text['window'].hide()
+                   cls._hint_request_text['window'].deleteLater()
+                   cls._hint_request_text['window'] = None
+               if cls._hint_request_text.get('scene'):
+                   cls._hint_request_text['scene'].clear()
+                   cls._hint_request_text['scene'] = None
+               if cls._hint_request_text.get('view'):
+                   cls._hint_request_text['view'].deleteLater()
+                   cls._hint_request_text['view'] = None
+               cls._hint_request_text['text_item'] = None
+
+
+            cls._hint_request_text['window'] = QWidget(cls._window)
+            cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground)
+            cls._hint_request_text['window'].setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            cls._hint_request_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Create scene and view if needed
+            cls._hint_request_text['scene'] = QGraphicsScene()
+            cls._hint_request_text['view'] = QGraphicsView(cls._hint_request_text['scene'], cls._hint_request_text['window'])
+            cls._hint_request_text['view'].setStyleSheet("""
+                QGraphicsView {
+                    background: transparent;
+                    border: none;
+                }
+            """)
+            cls._hint_request_text['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_request_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_request_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+            # Create text item if needed
+            cls._hint_request_text['text_item'] = QGraphicsTextItem()
+            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.yellow)
+            font = QFont('Arial', 24)
+            cls._hint_request_text['text_item'].setFont(font)
+            cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
+
+            if cls._parent_hwnd:
+                style = win32gui.GetWindowLong(int(cls._hint_request_text['window'].winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(
+                    int(cls._hint_request_text['window'].winId()),
+                    win32con.GWL_EXSTYLE,
+                    style | win32con.WS_EX_NOACTIVATE
+                )
                 
             width = 120 # Reduced width
             height = 600 # Increased height
@@ -796,14 +849,74 @@ class Overlay:
 
         print(f"\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
-        if show_button:
-            if not cls._button_window.isVisible():
-                # Load images if needed
-                if not cls._button.get('bg_image_item', None) or cls._button['bg_image_item'].pixmap().isNull():
-                    if not cls.load_button_images(assigned_room):
-                        print("Failed to load button images.")
-                        return
-                
+        try:
+            if show_button:
+                # Rebuild the button window to make sure everything is clean
+                if hasattr(cls, '_button_window') and cls._button_window:
+                   cls._button_window.hide()
+                   cls._button_window.deleteLater()
+                   cls._button_window = None
+
+                # Create a separate window for the button
+                cls._button_window = QWidget(cls._window)
+                cls._button_window.setAttribute(Qt.WA_TranslucentBackground)
+                cls._button_window.setWindowFlags(
+                    Qt.FramelessWindowHint |
+                    Qt.WindowStaysOnTopHint |
+                    Qt.Tool |
+                    Qt.WindowDoesNotAcceptFocus
+                )
+                cls._button_window.setAttribute(Qt.WA_ShowWithoutActivating)
+            
+                # Set up button scene and view using ClickableView instead of QGraphicsView
+                cls._button['scene'] = QGraphicsScene()
+                cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
+
+                # Define view dimensions (increased to accommodate shadow)
+                width = 440  # Increased width
+                height = 780  # Increased height
+
+                # Configure view
+                cls._button_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+                cls._button_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+                cls._button_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+                cls._button_view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
+                cls._button_view.setFrameStyle(0)
+                cls._button_view.setStyleSheet("background: transparent;")
+
+                # Set view geometry
+                cls._button_view.setGeometry(0, 0, width, height)
+
+                # Set scene rect to match view
+                scene_rect = QRectF(0, 0, width, height)
+                cls._button['scene'].setSceneRect(scene_rect)
+
+                # Debug prints
+                print(f"\nView Setup Debug:")
+                print(f"View geometry: {cls._button_view.geometry()}")
+                print(f"Scene rect: {scene_rect}")
+                print(f"View matrix: {cls._button_view.transform()}")
+
+                # Set up placeholders for images
+                cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
+                cls._button['bg_image_item'] = cls._button['scene'].addPixmap(QPixmap())
+
+                # Position button window
+                cls._button_window.setGeometry(340, 290, width, height) # Adjusted button window size
+
+                if cls._parent_hwnd:
+                    style = win32gui.GetWindowLong(int(cls._button_window.winId()), win32con.GWL_EXSTYLE)
+                    win32gui.SetWindowLong(
+                        int(cls._button_window.winId()),
+                        win32con.GWL_EXSTYLE,
+                        style | win32con.WS_EX_NOACTIVATE
+                    )
+
+                # Load images
+                if not cls.load_button_images(assigned_room):
+                    print("Failed to load button images.")
+                    return
+
                 # Set the origin for rotation to the center of the pixmap
                 button_rect = cls._button['bg_image_item'].boundingRect()
                 cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
@@ -825,22 +938,17 @@ class Overlay:
                 cls._button['bg_image_item'].setPos(button_x_offset, button_y_offset)
                 cls._button['shadow_item'].setPos(shadow_x_offset, shadow_y_offset)
 
-
-                # Debug prints
-                print("\nButton Positioning Debug:")
-                print(f"Button pos: {cls._button['bg_image_item'].pos()}")
-                print(f"Button scene pos: {cls._button['bg_image_item'].scenePos()}")
-                print(f"Button bounding rect: {cls._button['bg_image_item'].boundingRect()}")
-                print(f"Button scene bounding rect: {cls._button['bg_image_item'].sceneBoundingRect()}")
-
-                # Force updates
+                # Show
                 cls._button_window.show()
                 cls._button_window.raise_()
                 cls._button_view.viewport().update()
-        else:
-            if cls._button_window.isVisible():
-                cls._button_window.hide()
-                print("Help button hidden")
+            else:
+                if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
+                    cls._button_window.hide()
+                    print("Help button hidden")
+        except Exception as e:
+           print(f"Exception during help button update: {e}")
+           traceback.print_exc()
 
     @classmethod
     def hide_help_button(cls):

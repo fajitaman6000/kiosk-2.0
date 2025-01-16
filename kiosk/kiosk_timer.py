@@ -3,6 +3,7 @@ import time
 from PIL import Image, ImageTk
 from qt_overlay import Overlay
 import os
+import traceback
 
 class KioskTimer:
     def __init__(self, root, kiosk_app):
@@ -21,11 +22,17 @@ class KioskTimer:
         self.update_timer()
     
     def _delayed_init(self):
-            """Initialize Qt timer after UI has had time to initialize"""
+        """Initialize Qt timer after UI has had time to initialize"""
+        print("[DEBUG] Timer._delayed_init - START")
+        try:
             # Initialize Qt timer display
             Overlay.init_timer()
             # Initial display update
             self.update_display()
+        except Exception as e:
+            print(f"[DEBUG] Exception in Timer._delayed_init: {e}")
+            traceback.print_exc()
+        print("[DEBUG] Timer._delayed_init - END")
 
     # Update these methods to use Qt display
     def load_room_background(self, room_number):
@@ -76,7 +83,9 @@ class KioskTimer:
                     print(f"New time: {new_minutes:.2f} minutes")
                     # Use the kiosk_app reference to access UI
                     if hasattr(self.kiosk_app, 'ui'):
-                        self.root.after(0, self.kiosk_app.ui.create_help_button)
+                        self.kiosk_app.ui.show_status_frame()
+                        self.kiosk_app.ui.status_frame.delete('pending_text')
+
                 
                 self.update_display()
 
