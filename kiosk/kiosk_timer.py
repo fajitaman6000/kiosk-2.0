@@ -23,16 +23,16 @@ class KioskTimer:
     
     def _delayed_init(self):
         """Initialize Qt timer after UI has had time to initialize"""
-        print("[DEBUG] Timer._delayed_init - START")
+        #print("[DEBUG] Timer._delayed_init - START")
         try:
             # Initialize Qt timer display
             Overlay.init_timer()
             # Initial display update
             self.update_display()
         except Exception as e:
-            print(f"[DEBUG] Exception in Timer._delayed_init: {e}")
+            #print(f"[DEBUG] Exception in Timer._delayed_init: {e}")
             traceback.print_exc()
-        print("[DEBUG] Timer._delayed_init - END")
+        #print("[DEBUG] Timer._delayed_init - END")
 
     # Update these methods to use Qt display
     def load_room_background(self, room_number):
