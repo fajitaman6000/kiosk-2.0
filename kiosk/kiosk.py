@@ -318,15 +318,8 @@ class KioskApp:
             self.hints_requested += 1
             Overlay.hide_help_button()
             
-            if self.ui.request_pending_label is None:
-                self.ui.request_pending_label = tk.Label(
-                    self.root,
-                    text="Hint Requested, please wait...",
-                    fg='yellow', bg='black',
-                    font=('Arial', 24)
-                )
-                # Position the pending request text on the left side
-                self.ui.request_pending_label.place(relx=0.2, rely=0.4, anchor='center')
+            # Use PyQt overlay for "Hint Requested" message
+            Overlay.show_hint_request_text()
             
             self.network.send_message({
                 'type': 'help_request',
@@ -335,10 +328,8 @@ class KioskApp:
             
     def show_hint(self, text, start_cooldown=True):
         # Clear any pending request status
-        if self.ui.request_pending_label:
-            self.ui.request_pending_label.destroy()
-            self.ui.request_pending_label = None
-            
+        Overlay.hide_hint_request_text()
+        
         # Play the hint received sound
         self.audio_manager.play_sound("hint_received.mp3")
         

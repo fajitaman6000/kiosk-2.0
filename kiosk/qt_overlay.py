@@ -93,6 +93,19 @@ class HintTextThread(QThread):
     def update_text(self, text_data):
         self.update_signal.emit(text_data)
 
+class HintRequestTextThread(QThread):
+    """Dedicated thread for hint request text updates"""
+    update_signal = pyqtSignal(str)
+
+    def __init__(self):
+        super().__init__()
+
+    def run(self):
+        # Thread just emits signals, actual updates happen in main thread
+        pass
+
+    def update_text(self, text):
+        self.update_signal.emit(text)
 
 class Overlay:
     _app = None
@@ -103,6 +116,8 @@ class Overlay:
     _button_thread = None
     _hint_text_thread = None  # Add thread for hint text
     _hint_text = None # Add a dedicated class variable for the hint text scene, view and related logic
+    _hint_request_text = None # Add a dedicated class variable for the hint request text
+    _hint_request_text_thread = None # Add a dedicated class variable for the hint request text thread
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -160,7 +175,8 @@ class Overlay:
 
             # Initialize hint text overlay
             cls._init_hint_text_overlay()
-            
+            cls._init_hint_request_text_overlay()
+
         cls._initialized = True
         cls.init_timer()
         cls.init_help_button()
@@ -222,6 +238,60 @@ class Overlay:
             style = win32gui.GetWindowLong(int(cls._hint_text['window'].winId()), win32con.GWL_EXSTYLE)
             win32gui.SetWindowLong(
                 int(cls._hint_text['window'].winId()),
+                win32con.GWL_EXSTYLE,
+                style | win32con.WS_EX_NOACTIVATE
+            )
+
+    @classmethod
+    def _init_hint_request_text_overlay(cls):
+        """Initialize hint request text overlay components."""
+        if not hasattr(cls, '_hint_request_text') or not cls._hint_request_text:
+            cls._hint_request_text = {
+                'window': None,
+                'scene': None,
+                'view': None,
+                'text_item': None
+            }
+
+        # Create hint window if needed
+        if not cls._hint_request_text['window']:
+            cls._hint_request_text['window'] = QWidget(cls._window)
+            cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground)
+            cls._hint_request_text['window'].setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            cls._hint_request_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+        # Create scene and view if needed
+        if not cls._hint_request_text['scene']:
+            cls._hint_request_text['scene'] = QGraphicsScene()
+        if not cls._hint_request_text['view']:
+            cls._hint_request_text['view'] = QGraphicsView(cls._hint_request_text['scene'], cls._hint_request_text['window'])
+            cls._hint_request_text['view'].setStyleSheet("""
+                QGraphicsView {
+                    background: transparent;
+                    border: none;
+                }
+            """)
+            cls._hint_request_text['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_request_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._hint_request_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+        # Create text item if needed
+        if not cls._hint_request_text['text_item']:
+            cls._hint_request_text['text_item'] = QGraphicsTextItem()
+            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.yellow)
+            font = QFont('Arial', 24)
+            cls._hint_request_text['text_item'].setFont(font)
+            cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
+
+        if cls._parent_hwnd:
+            style = win32gui.GetWindowLong(int(cls._hint_request_text['window'].winId()), win32con.GWL_EXSTYLE)
+            win32gui.SetWindowLong(
+                int(cls._hint_request_text['window'].winId()),
                 win32con.GWL_EXSTYLE,
                 style | win32con.WS_EX_NOACTIVATE
             )
@@ -326,6 +396,54 @@ class Overlay:
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             cls._hint_text['window'].hide()
     
+    @classmethod
+    def show_hint_request_text(cls):
+        """Show hint request text"""
+        if not cls._initialized or not cls._hint_request_text['window']:
+            return
+
+         # Initialize hint request text thread if needed
+        if cls._hint_request_text_thread is None:
+            cls._hint_request_text_thread = HintRequestTextThread()
+            cls._hint_request_text_thread.update_signal.connect(cls._actual_hint_request_text_update)
+            cls._hint_request_text_thread.start()
+
+        # Send update through thread
+        cls._hint_request_text_thread.update_text("Hint Requested, please wait...")
+
+    @classmethod
+    def _actual_hint_request_text_update(cls, text):
+        """Update the hint request text in the main thread."""
+        try:
+            if not cls._hint_request_text['window']:
+                print("Error: Hint request text window not initialized")
+                return
+                
+            width = 400
+            height = 100
+
+            cls._hint_request_text['window'].setGeometry(750, 450, width, height)
+            cls._hint_request_text['view'].setGeometry(0, 0, width, height)
+            cls._hint_request_text['scene'].setSceneRect(QRectF(0, 0, width, height))
+                
+            # Update text
+            cls._hint_request_text['text_item'].setHtml(
+                 f'<div style="background-color: transparent; padding: 20px;text-align:center;width:{width}px">{text}</div>'
+            )
+            cls._hint_request_text['text_item'].setPos(0,0)
+                
+            cls._hint_request_text['window'].show()
+            cls._hint_request_text['window'].raise_()
+        except Exception as e:
+            print(f"Error in _actual_hint_request_text_update: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def hide_hint_request_text(cls):
+        """Hide the hint request text overlay"""
+        if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
+            cls._hint_request_text['window'].hide()
+
     @classmethod
     def show_hint_cooldown(cls, seconds):
         """Show cooldown message with proper rotation"""
@@ -738,7 +856,13 @@ class Overlay:
             cls._button_window.hide()
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             cls._hint_text['window'].hide()
-
+        # Clear hint request overlay
+        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
+            if cls._hint_request_text['window']:
+                cls._hint_request_text['window'].hide()
+                
+            if cls._hint_request_text['scene']:
+                cls._hint_request_text['scene'].clear()
 
         # Clean up timer thread if it exists
         if cls._timer_thread is not None:
