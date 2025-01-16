@@ -419,18 +419,28 @@ class Overlay:
                 print("Error: Hint request text window not initialized")
                 return
                 
-            width = 400
-            height = 100
+            width = 120 # Reduced width
+            height = 600 # Increased height
 
-            cls._hint_request_text['window'].setGeometry(750, 450, width, height)
+            cls._hint_request_text['window'].setGeometry(340, 300, width, height) # positioned to match button
             cls._hint_request_text['view'].setGeometry(0, 0, width, height)
             cls._hint_request_text['scene'].setSceneRect(QRectF(0, 0, width, height))
                 
             # Update text
             cls._hint_request_text['text_item'].setHtml(
-                 f'<div style="background-color: transparent; padding: 20px;text-align:center;width:{width}px">{text}</div>'
+                 f'<div style="background-color: transparent; padding: 20px;text-align:center;width:{height-40}px">{text}</div>'
             )
-            cls._hint_request_text['text_item'].setPos(0,0)
+            
+            cls._hint_request_text['text_item'].setTransform(QTransform())
+            cls._hint_request_text['text_item'].setRotation(90)
+            
+            text_width = cls._hint_request_text['text_item'].boundingRect().width()
+            text_height = cls._hint_request_text['text_item'].boundingRect().height()
+            
+            cls._hint_request_text['text_item'].setPos(
+               (width + text_height) / 2,
+               (height - text_width) / 2
+            )
                 
             cls._hint_request_text['window'].show()
             cls._hint_request_text['window'].raise_()
