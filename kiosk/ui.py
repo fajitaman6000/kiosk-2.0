@@ -39,7 +39,7 @@ class KioskUI:
     def setup_root(self):
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='black')
-        self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
+        #self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
 
     def create_status_frame(self):
         """Creates a fixed canvas for status messages at coordinates (510,0) to (610,1079)"""

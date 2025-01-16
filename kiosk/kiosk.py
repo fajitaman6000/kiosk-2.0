@@ -31,7 +31,7 @@ class KioskApp:
         # Add fullscreen and cursor control
         self.root.attributes('-fullscreen', True)
         self.root.config(cursor="none")  # Hide cursor
-        self.root.bind('<Escape>', lambda e: self.toggle_fullscreen())
+        #self.root.bind('<Escape>', lambda e: self.toggle_fullscreen())
         
         self.assigned_room = None
         self.hints_requested = 0
