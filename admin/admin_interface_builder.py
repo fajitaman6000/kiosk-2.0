@@ -571,18 +571,14 @@ class AdminInterfaceBuilder:
         # Check if the hint requested flag was set
         if computer_name in self.app.kiosk_tracker.kiosk_stats:
             stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-            if stats.get('hint_requested', False):  # Use .get() for safe access
-                print(f"[AdminInterface] add_kiosk_to_ui: Setting help requested for {computer_name} from stored state")
-                self.mark_help_requested(computer_name)
-            else:
-                print(f"[AdminInterface] add_kiosk_to_ui: No hint request from {computer_name} from stored state")
-
+            # Use .get() for safe access
+            self.mark_help_requested(computer_name)
+        else:
+            print(f"[AdminInterface] add_kiosk_to_ui: No kiosk stats from {computer_name}")
         
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
     
-    
-
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
@@ -602,17 +598,29 @@ class AdminInterfaceBuilder:
                         self.stats_elements['send_btn'].config(state='normal')
 
     def mark_help_requested(self, computer_name):
-        #this function needs evaluation and perhaps removal by the next AI to encounter it. See if it's being used because the text "HINT REQUESTED" verbatim has not appeared anywhere in a long time
         """Mark a kiosk as requesting help and play notification sound"""
         if computer_name in self.connected_kiosks:
-            print(f"[AdminInterface] mark_help_requested: Showing HINT REQUESTED for {computer_name}")
-            self.connected_kiosks[computer_name]['help_label'].config(
-                text="HINT REQUESTED",
-                fg='red',
-                font=('Arial', 14, 'bold')
-            )
-            self.audio_manager = AdminAudioManager()
-            self.audio_manager.play_sound("hint_notification")
+            if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+                if stats.get('hint_requested', False):
+                    print(f"[AdminInterface] mark_help_requested: Showing HINT REQUESTED for {computer_name}")
+                    self.connected_kiosks[computer_name]['help_label'].config(
+                        text="HINT REQUESTED",
+                        fg='red',
+                        font=('Arial', 14, 'bold')
+                    )
+                    self.audio_manager = AdminAudioManager()
+                    self.audio_manager.play_sound("hint_notification")
+                else:
+                    print(f"[AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
+                    self.connected_kiosks[computer_name]['help_label'].config(
+                         text="",
+                         fg='red',
+                         font=('Arial', 14, 'bold')
+                    )
+            else:
+                print(f"[AdminInterface] mark_help_requested: Ignoring help request - no kiosk stats found for {computer_name}")
+
         else:
             print(f"[AdminInterface] mark_help_requested: Ignoring help request - kiosk {computer_name} not in connected kioskl list")
             
@@ -634,8 +642,6 @@ class AdminInterfaceBuilder:
                 del self.app.kiosk_tracker.kiosk_stats[computer_name]
             if computer_name in self.app.kiosk_tracker.assigned_rooms:
                 del self.app.kiosk_tracker.assigned_rooms[computer_name]
-            if computer_name in self.app.kiosk_tracker.help_requested:
-                self.app.kiosk_tracker.help_requested.remove(computer_name)
             
             if self.selected_kiosk == computer_name:
                 self.selected_kiosk = None
@@ -793,21 +799,21 @@ class AdminInterfaceBuilder:
         try:
             if computer_name not in self.app.kiosk_tracker.kiosk_stats:
                 return
-                
+
             stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-            
+
             # Only proceed if we have valid UI elements
             if not self.stats_elements:
                 print("Stats elements not initialized yet")
                 return
-                
+
             # Update hints label if it exists
             if self.stats_elements.get('hints_label'):
                 total_hints = stats.get('total_hints', 0)
                 self.stats_elements['hints_label'].config(
                     text=f"Hints requested: {total_hints}"
                 )
-            
+
             # Update timer display
             timer_time = stats.get('timer_time', 3600)
             timer_minutes = int(timer_time // 60)
@@ -816,12 +822,12 @@ class AdminInterfaceBuilder:
                 self.stats_elements['current_time'].config(
                     text=f"{timer_minutes:02d}:{timer_seconds:02d}"
                 )
-            
+
             # Update timer button state and icon
             timer_button = self.stats_elements.get('timer_button')
             if timer_button and timer_button.winfo_exists():
                 is_running = stats.get('timer_running', False)
-                
+
                 if hasattr(timer_button, 'stop_icon') and hasattr(timer_button, 'play_icon'):
                     try:
                         # Update icon based on current timer state
@@ -855,6 +861,18 @@ class AdminInterfaceBuilder:
             else:
                 if self.stats_elements.get('send_btn'):
                     self.stats_elements['send_btn'].config(state='disabled')
+            
+            # Check if hint_requested has changed before calling mark_help_requested
+            current_hint_request = stats.get('hint_requested', False)
+            if not hasattr(self, '_last_hint_request_states'):
+                self._last_hint_request_states = {}  # Initialize the dictionary if needed
+
+            last_hint_request = self._last_hint_request_states.get(computer_name)
+            
+            if last_hint_request != current_hint_request:
+                self.mark_help_requested(computer_name)
+                self._last_hint_request_states[computer_name] = current_hint_request
+                    
         except Exception as e:
             print(f"Error updating stats display: {e}")
 

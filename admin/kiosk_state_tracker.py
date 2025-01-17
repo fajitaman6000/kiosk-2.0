@@ -9,7 +9,7 @@ class KioskStateTracker:
         self.help_requested = set()  # set of computer_names
         
     def update_kiosk_stats(self, computer_name, msg):
-        print(f"[KioskStateTracker] update_kiosk_stats: Received stats from {computer_name}: {msg}")
+        #print(f"[KioskStateTracker] update_kiosk_stats: Received stats from {computer_name}: {msg}")
         self.kiosk_stats[computer_name] = {
             'total_hints': msg.get('total_hints', 0),
             'timer_time': msg.get('timer_time', 3600),
@@ -19,7 +19,7 @@ class KioskStateTracker:
         
         # Update UI if this kiosk is selected
         if computer_name == self.app.interface_builder.selected_kiosk:
-            print(f"[KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
+            #print(f"[KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
             self.app.interface_builder.update_stats_display(computer_name)
 
     def update_timer_state(self, computer_name, time_remaining, is_running):
