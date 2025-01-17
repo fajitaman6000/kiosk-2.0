@@ -11,6 +11,7 @@ class KioskNetwork:
         self.running = True
         self.socket = None
         self.setup_socket()
+        self.last_message = {}  # Initialize the last_message cache here
         
     def setup_socket(self):
         print("\n=== Setting up network socket ===")

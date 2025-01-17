@@ -35,6 +35,7 @@ class KioskApp:
         
         self.assigned_room = None
         self.hints_requested = 0
+        self.hint_requested_flag = False
         self.start_time = None
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
@@ -100,7 +101,8 @@ class KioskApp:
             'room': self.assigned_room,
             'total_hints': self.hints_requested,
             'timer_time': self.timer.time_remaining,
-            'timer_running': self.timer.is_running
+            'timer_running': self.timer.is_running,
+            'hint_requested': self.hint_requested_flag # Include the new hint flag in the stats
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
@@ -130,22 +132,18 @@ class KioskApp:
                 
             elif msg['type'] == 'hint' and self.assigned_room:
                 if msg.get('room') == self.assigned_room:
-                    #print("\n[DEBUG] Processing hint message:")
-                    #print(f"[DEBUG] Has image flag: {msg.get('has_image')}")
-                    #print(f"[DEBUG] Message keys: {msg.keys()}")
-                    
                     # Prepare hint data
                     if msg.get('has_image') and 'image' in msg:
-                        #print("[DEBUG] Creating image+text hint data")
                         hint_data = {
                             'text': msg.get('text', ''),
                             'image': msg['image']
                         }
                     else:
-                        #print("[DEBUG] Creating text-only hint")
                         hint_data = msg.get('text', '')
                     
-                    #print(f"[DEBUG] Scheduling hint display with data type: {type(hint_data)}")
+                    #Clear hint flag after hint is received
+                    self.hint_requested_flag = False
+                    print(f"[Kiosk] handle_message: Received hint, clearing hint_requested_flag for room {self.assigned_room}")
                     self.root.after(0, lambda d=hint_data: self.show_hint(d))
                     
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.computer_name:
@@ -324,6 +322,10 @@ class KioskApp:
         if not self.ui.hint_cooldown:
             self.hints_requested += 1
             Overlay.hide_help_button()
+
+            # Set help requested flag to TRUE
+            self.hint_requested_flag = True
+            print(f"[Kiosk] request_help: Setting hint_requested_flag to True")
             
             # Use PyQt overlay for "Hint Requested" message
             Overlay.show_hint_request_text()

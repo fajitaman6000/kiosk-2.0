@@ -524,11 +524,11 @@ class AdminInterfaceBuilder:
         reboot_btn.confirmation_pending = False
         reboot_btn.after_id = None
         
-        def reset_reboot_button():
+        def reset_reboot_button(btn=reboot_btn):
             """Reset the button to its original state"""
-            reboot_btn.confirmation_pending = False
-            reboot_btn.config(text="Reboot Kiosk")
-            reboot_btn.after_id = None
+            btn.confirmation_pending = False
+            btn.config(text="Reboot Kiosk")
+            btn.after_id = None
             
         def handle_reboot_click():
             """Handle reboot button clicks with confirmation"""
@@ -546,8 +546,8 @@ class AdminInterfaceBuilder:
                     reboot_btn.after_cancel(reboot_btn.after_id)
                     
                 # Set timer to reset button after 2 seconds
-                reboot_btn.after_id = reboot_btn.after(2000, reset_reboot_button)
-        
+                reboot_btn.after_id = reboot_btn.after(2000, lambda: reset_reboot_button()) # Changed to lambda
+
         reboot_btn.config(command=handle_reboot_click)
         reboot_btn.pack(side='left', padx=(20, 5))
 
@@ -568,8 +568,21 @@ class AdminInterfaceBuilder:
             'timer_label': timer_label  # Store timer label reference
         }
         
+        # Check if the hint requested flag was set
+        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+            stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+            if stats.get('hint_requested', False):  # Use .get() for safe access
+                print(f"[AdminInterface] add_kiosk_to_ui: Setting help requested for {computer_name} from stored state")
+                self.mark_help_requested(computer_name)
+            else:
+                print(f"[AdminInterface] add_kiosk_to_ui: No hint request from {computer_name} from stored state")
+
+        
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
+    
+    
+
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
@@ -592,6 +605,7 @@ class AdminInterfaceBuilder:
         #this function needs evaluation and perhaps removal by the next AI to encounter it. See if it's being used because the text "HINT REQUESTED" verbatim has not appeared anywhere in a long time
         """Mark a kiosk as requesting help and play notification sound"""
         if computer_name in self.connected_kiosks:
+            print(f"[AdminInterface] mark_help_requested: Showing HINT REQUESTED for {computer_name}")
             self.connected_kiosks[computer_name]['help_label'].config(
                 text="HINT REQUESTED",
                 fg='red',
@@ -599,9 +613,18 @@ class AdminInterfaceBuilder:
             )
             self.audio_manager = AdminAudioManager()
             self.audio_manager.play_sound("hint_notification")
-
+        else:
+            print(f"[AdminInterface] mark_help_requested: Ignoring help request - kiosk {computer_name} not in connected kioskl list")
+            
     def remove_kiosk(self, computer_name):
+        # Stop camera if it was active for this kiosk
+        if getattr(self, 'camera_active', False) and \
+           self.stats_elements.get('current_computer') == computer_name:
+            self.toggle_camera(computer_name)
+        
+        # Rest of your existing remove_kiosk code...
         if computer_name in self.connected_kiosks:
+            print(f"[AdminInterface] remove_kiosk: Removing kiosk {computer_name} from UI")
             self.connected_kiosks[computer_name]['frame'].destroy()
             del self.connected_kiosks[computer_name]
             
