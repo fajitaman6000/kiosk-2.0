@@ -1,5 +1,5 @@
 # important/immediate todo
-outro audio
+outro audio?
 
 
 # planned features: 
@@ -9,7 +9,6 @@ restarter moved to kiosk app
 last hint given (admin-side)
 room start upon video finish (optional?)
 edit hint image content within hint manager
-hint requested status needs to be tracked kiosk-side to manage multiple gamemasters
 ending audio is apparently admin app side?
 audio hints need a means of playing the audio on kiosk side
 kiosk needs to have as much info as possible in case of admin crash
@@ -32,6 +31,7 @@ walkie to lobby: room states for automatic standbys/room victory/out of time
 set alarm on prop to make sound when gm-chosen prop finishes
 automatic room restoration for all props upon full pause
 soundcheck/touchcheck behavior
+drink ordering
 
 profile creation,
 profile deletion (admin only)
