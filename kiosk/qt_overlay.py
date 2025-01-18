@@ -224,7 +224,7 @@ class Overlay:
         # Create text item if needed
         if not cls._hint_text['text_item']:
             cls._hint_text['text_item'] = QGraphicsTextItem()
-            cls._hint_text['text_item'].setDefaultTextColor(Qt.black)
+            cls._hint_text['text_item'].setDefaultTextColor(Qt.white)
             font = QFont('Arial', 22)
             cls._hint_text['text_item'].setFont(font)
             cls._hint_text['scene'].addItem(cls._hint_text['text_item'])
