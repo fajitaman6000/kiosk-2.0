@@ -280,12 +280,12 @@ def setup_stats_panel(interface_builder, computer_name):
 
         # Time to Completion (TTC) label
         interface_builder.stats_elements['ttc_label'] = tk.Label(
-            control_buttons_frame,
+            time_set_frame,
             text="TTC: 45:00",
             font=('Arial', 10, 'bold'),
             fg='black'
         )
-        interface_builder.stats_elements['ttc_label'].pack(side='right', padx=10)
+        interface_builder.stats_elements['ttc_label'].pack(side='right', padx=10) 
 
         # Hint controls
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
