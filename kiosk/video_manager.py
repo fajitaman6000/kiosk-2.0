@@ -226,19 +226,19 @@ class VideoManager:
         """Video playback thread with synchronized audio"""
         print("\nVideoManager: Video thread starting")
         start_time = None
-        
+
         try:
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
                 print(f"VideoManager: Failed to open video: {video_path}")
                 return
-                
+
             fps = cap.get(cv2.CAP_PROP_FPS)
-            frame_time = 1.0 / fps if fps > 0 else 1.0/30.0
+            frame_time = 1.0 / fps if fps > 0 else 1.0 / 30.0
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            
+
             print(f"VideoManager: Video opened successfully. FPS: {fps}")
-            
+
             # Start audio playback if available
             if audio_path:
                 try:
@@ -250,26 +250,26 @@ class VideoManager:
                 except Exception as e:
                     print(f"VideoManager: Error starting audio: {e}")
                     audio_path = None
-            
+
             # Rest of the method remains exactly the same...
             # Add click handler ONLY for solution videos (which contain 'video_solutions' in their path)
             if 'video_solutions' in video_path:
                 def on_canvas_click(event):
                     print("VideoManager: Video canvas clicked, stopping solution video playback")
                     self.stop_video()
-                    
+
                 self.root.after(0, lambda: self.video_canvas.bind('<Button-1>', on_canvas_click))
                 print("VideoManager: Added click-to-skip for solution video")
             else:
                 print("VideoManager: Intro video - skip functionality disabled")
-            
+
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
                 # Calculate desired frame position based on elapsed time
                 if start_time is not None:
                     elapsed_time = time.time() - start_time
                     target_frame = int(elapsed_time * fps)
-                    
+
                     # If we're behind, skip frames to catch up
                     if target_frame > frame_count + 1:
                         skip_frames = target_frame - frame_count - 1
@@ -277,14 +277,14 @@ class VideoManager:
                         for _ in range(skip_frames):
                             cap.read()
                             frame_count += 1
-                
+
                 ret, frame = cap.read()
                 if not ret:
                     print("VideoManager: End of video reached")
                     break
-                
+
                 frame_count += 1
-                
+
                 # Convert frame
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
@@ -292,37 +292,37 @@ class VideoManager:
                     self.root.winfo_screenwidth(),
                     self.root.winfo_screenheight()
                 ))
-                
+
                 # Create PhotoImage
                 image = Image.fromarray(frame)
                 photo = ImageTk.PhotoImage(image=image)
-                
+
                 # Update canvas in main thread
                 self.root.after(0, self._update_frame, photo)
-                
+
                 # Calculate time until next frame
                 if start_time is not None:
                     elapsed = time.time() - start_time
                     target_time = frame_count * frame_time
                     sleep_time = target_time - elapsed
-                    
+
                     if sleep_time > 0:
                         time.sleep(sleep_time)
                 else:
                     time.sleep(frame_time)
-                
+
         except Exception as e:
             print("\nVideoManager: Error in video thread:")
             traceback.print_exc()
         finally:
             print("VideoManager: Cleaning up video thread")
             cap.release()
-            
+
             # Stop video audio channel instead of music
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
                 time.sleep(0.1)  # Give a small delay for the audio to stop
-            
+
             # Schedule cleanup and callback on main thread
             self.root.after(0, lambda: self._thread_cleanup(on_complete))
     
@@ -333,16 +333,16 @@ class VideoManager:
         print(f"on_complete callback present: {on_complete is not None}")
         print(f"stored completion callback present: {self.completion_callback is not None}")
         print("Current background music volume:", pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else "No music playing")
-        
+
         try:
             # Stop video audio first (not the background music)
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
                 time.sleep(0.1)  # Give a small delay for audio to stop
-            
+
             # Store the should_stop state early
             was_stopped_manually = self.should_stop
-            
+
             # Ensure background music volume is restored first
             print("Restoring background music volume...")
             if pygame.mixer.music.get_busy():
@@ -356,7 +356,7 @@ class VideoManager:
                 print(f"Background music volume after restore: {pygame.mixer.music.get_volume()}")
             else:
                 print("No background music playing to restore")
-            
+
             # Perform UI cleanup
             print("Starting UI cleanup...")
             self._cleanup()
@@ -373,22 +373,17 @@ class VideoManager:
                     except Exception as e:
                         print(f"Attempt to remove temp file (attempt {attempt + 1}): {e}")
                 self.current_audio_path = None
-            
-            # Execute callbacks based on the stored manual stop state
-            if not was_stopped_manually and (on_complete or self.completion_callback):
-                print("Video completed normally, executing callbacks...")
-                if on_complete:
-                    print("Executing passed completion callback")
-                    self.root.after(100, on_complete)  # Schedule callback with slight delay
-                elif self.completion_callback:
-                    print("Executing stored completion callback")
-                    callback = self.completion_callback
-                    self.completion_callback = None  # Clear the callback
-                    self.root.after(100, callback)  # Schedule callback with slight delay
-            else:
-                print(f"Skipping callbacks - Video was stopped manually: {was_stopped_manually}")
+
+            # Always execute completion callbacks, even if stopped manually
+            if on_complete:
+                print("Executing passed on_complete")
+                self.root.after(0, on_complete)
+            elif self.completion_callback:
+                print("Executing stored completion_callback")
+                self.root.after(0, self.completion_callback)
+
             print("=== Thread Cleanup Complete ===\n")
-                    
+
         except Exception as e:
             print(f"Error in thread cleanup: {e}")
             traceback.print_exc()
@@ -413,26 +408,16 @@ class VideoManager:
         """Stop video and audio playback"""
         print("\nVideoManager: Stopping video and audio")
         self.should_stop = True
-        self.is_playing = False
-        
-        # Store callback before cleanup
-        callback = self.completion_callback
-        self.completion_callback = None  # Clear immediately to prevent double execution
-        
+        # Do not set self.is_playing to False here
+
         # Stop video audio channel instead of music
         if self.video_sound_channel.get_busy():
             self.video_sound_channel.stop()
-            
+
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
             self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
-            
-        # Clean up UI and resources
-        self._cleanup()
-        
-        # Execute completion callback if it exists
-        if callback:
-            self.root.after(0, callback)  # Schedule callback on main thread
+
         
     def _cleanup(self):
         """Clean up resources and restore UI state"""

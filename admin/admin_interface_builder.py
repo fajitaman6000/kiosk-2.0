@@ -404,24 +404,14 @@ class AdminInterfaceBuilder:
 
     def skip_video(self, computer_name):
         """Skip any currently playing videos on the specified kiosk"""
-        if computer_name in self.app.kiosk_tracker.kiosk_stats:
-            # Send reset command to stop any playing videos
-            self.app.network_handler.socket.sendto(
-                json.dumps({
-                    'type': 'reset_kiosk',
-                    'computer_name': computer_name
-                }).encode(),
-                ('255.255.255.255', 12346)
-            )
-            
-            # Get current timer state from kiosk stats
-            kiosk_stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-            timer_running = kiosk_stats.get('timer_running', False)
-            
-            if not timer_running:
-                # If timer isn't running, start it with current time
-                current_time = kiosk_stats.get('timer_time', 45 * 60) / 60
-                self.app.network_handler.send_timer_command(computer_name, "start", current_time)
+        # Send stop video command to kiosk
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'stop_video_command',
+                'computer_name': computer_name
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
 
     def remove_kiosk(self, computer_name):
         # Stop camera if it was active for this kiosk
