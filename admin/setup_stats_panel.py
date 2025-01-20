@@ -30,6 +30,19 @@ def setup_stats_panel(interface_builder, computer_name):
         hints_frame = tk.Frame(stats_frame)
         hints_frame.pack(fill='x')
         
+        # Add reset button next to hints label with confirmation behavior
+        reset_btn = tk.Button(
+            hints_frame,
+            text="Reset Kiosk",
+            bg='#7897bf',
+            fg='white',
+            padx=10,
+            justify='left'
+        )
+        # Track confirmation state
+        reset_btn.confirmation_pending = False
+        reset_btn.after_id = None
+
         # Get current hints count from tracker
         current_hints = 0
         if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
@@ -39,22 +52,9 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['hints_label'] = tk.Label(
             hints_frame, 
             text=f"Hints requested: {current_hints}",
-            justify='left'
+            font=('Arial', 8, 'bold'),
         )
-        interface_builder.stats_elements['hints_label'].pack(side='left')
-        
-        # Add reset button next to hints label with confirmation behavior
-        reset_btn = tk.Button(
-            hints_frame,
-            text="Reset Kiosk",
-            bg='#7897bf',
-            fg='white',
-            padx=10
-        )
-
-        # Track confirmation state
-        reset_btn.confirmation_pending = False
-        reset_btn.after_id = None
+        interface_builder.stats_elements['hints_label'].pack(side='right')
 
         def reset_reset_button():
             """Reset the button to its original state"""
