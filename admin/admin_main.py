@@ -10,7 +10,7 @@ from kiosk_state_tracker import KioskStateTracker
 from admin_interface_builder import AdminInterfaceBuilder
 
 def show_error_and_wait():
-    print("\nAn error occurred. Error details above.")
+    print("[main]\nAn error occurred. Error details above.")
     input("Press Enter to exit...")
 
 try:
@@ -18,7 +18,7 @@ try:
         def __init__(self):
             # Ensure we're in the correct directory
             os.chdir(os.path.dirname(os.path.abspath(__file__)))
-            print(f"Working directory set to: {os.getcwd()}")
+            print(f"[main]Working directory set to: {os.getcwd()}")
             
             self.root = tk.Tk()
             self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
@@ -100,11 +100,11 @@ try:
             self.prop_control.add_prop_select_callback(on_prop_select)
 
         def run(self):
-            print("Starting admin application...")
+            print("[main]Starting admin application...")
             self.root.mainloop()
 
         def on_closing(self):
-            print("Shutting down admin application...")
+            print("[main]Shutting down admin application...")
             if hasattr(self.interface_builder, 'cleanup'):
                 self.interface_builder.cleanup()
             self.root.destroy()
@@ -114,6 +114,6 @@ try:
         app.run()
 
 except Exception as e:
-    print("\nERROR:")
+    print("[main]\nERROR:")
     traceback.print_exc()
     show_error_and_wait()

@@ -92,7 +92,7 @@ class AdminInterfaceBuilder:
             settings_icon = settings_icon.resize((24, 24), Image.Resampling.LANCZOS)
             settings_icon = ImageTk.PhotoImage(settings_icon)
         except Exception as e:
-            print(f"Error loading icons: {e}")
+            print(f"[interface builder]Error loading icons: {e}")
             settings_icon = None
 
         # Create small frame for hints button on the right side of container
@@ -125,17 +125,17 @@ class AdminInterfaceBuilder:
 
     def setup_audio_hints(self):
         """Set up the Classic Audio Hints panel"""
-        #print("\n=== AUDIO HINTS SETUP START ===")
+        #print("[interface builder]\n=== AUDIO HINTS SETUP START ===")
         
         def on_room_change(room_name):
-            print(f"\n=== ROOM CHANGE CALLBACK ===")
-            print(f"Audio hints room change called for: {room_name}")
-            print(f"Selected kiosk: {self.selected_kiosk}")
-            print(f"Has assignments: {self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments}")
+            print(f"[interface builder]\n=== ROOM CHANGE CALLBACK ===")
+            print(f"[interface builder]Audio hints room change called for: {room_name}")
+            print(f"[interface builder]Selected kiosk: {self.selected_kiosk}")
+            print(f"[interface builder]Has assignments: {self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments}")
             
             if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
                 room_num = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
-                print(f"Room number: {room_num}")
+                print(f"[interface builder]Room number: {room_num}")
                 room_dirs = {
                     6: "atlantis",
                     1: "casino",
@@ -146,14 +146,14 @@ class AdminInterfaceBuilder:
                     4: "zombie"
                 }
                 if room_num in room_dirs:
-                    print(f"Mapped to directory: {room_dirs[room_num]}")
+                    print(f"[interface builder]Mapped to directory: {room_dirs[room_num]}")
                     self.audio_hints.update_room(room_dirs[room_num])
-            print("=== ROOM CHANGE CALLBACK END ===\n")
+            print("[interface builder]=== ROOM CHANGE CALLBACK END ===\n")
         
         # Create ClassicAudioHints instance
-        #print("Creating new ClassicAudioHints instance...")
+        #print("[interface builder]Creating new ClassicAudioHints instance...")
         self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change)
-        #print("=== AUDIO HINTS SETUP END ===\n")
+        #print("[interface builder]=== AUDIO HINTS SETUP END ===\n")
 
     def setup_stats_panel(self, computer_name):
         # use helper function setup_stats_panel.py
@@ -195,7 +195,7 @@ class AdminInterfaceBuilder:
                     self.stats_elements['send_btn'].config(state='normal')
                     
             except Exception as e:
-                print(f"Error loading image: {e}")
+                print(f"[interface builder]Error loading image: {e}")
                 self.current_hint_image = None
 
     def play_hint_sound(self, computer_name, sound_name='hint_received.mp3'):
@@ -397,7 +397,7 @@ class AdminInterfaceBuilder:
                     self.stats_elements['video_label'].imgtk = imgtk
                     self.stats_elements['video_label'].config(image=imgtk)
             except Exception as e:
-                print(f"Error updating video feed: {e}")
+                print(f"[interface builder]Error updating video feed: {e}")
                 
         if self.camera_active:
             self.app.root.after(30, self.update_video_feed)
@@ -564,7 +564,7 @@ class AdminInterfaceBuilder:
             # Use .get() for safe access
             self.mark_help_requested(computer_name)
         else:
-            print(f"[AdminInterface] add_kiosk_to_ui: No kiosk stats from {computer_name}")
+            print(f"[interface builder][AdminInterface] add_kiosk_to_ui: No kiosk stats from {computer_name}")
         
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
@@ -593,7 +593,7 @@ class AdminInterfaceBuilder:
             if computer_name in self.app.kiosk_tracker.kiosk_stats:
                 stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
                 if stats.get('hint_requested', False):
-                    print(f"[AdminInterface] mark_help_requested: Showing HINT REQUESTED for {computer_name}")
+                    print(f"[interface builder][AdminInterface] mark_help_requested: Showing HINT REQUESTED for {computer_name}")
                     self.connected_kiosks[computer_name]['help_label'].config(
                         text="HINT REQUESTED",
                         fg='red',
@@ -602,17 +602,17 @@ class AdminInterfaceBuilder:
                     self.audio_manager = AdminAudioManager()
                     self.audio_manager.play_sound("hint_notification")
                 else:
-                    print(f"[AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
+                    print(f"[interface builder][AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
                     self.connected_kiosks[computer_name]['help_label'].config(
                          text="",
                          fg='red',
                          font=('Arial', 14, 'bold')
                     )
             else:
-                print(f"[AdminInterface] mark_help_requested: Ignoring help request - no kiosk stats found for {computer_name}")
+                print(f"[interface builder][AdminInterface] mark_help_requested: Ignoring help request - no kiosk stats found for {computer_name}")
 
         else:
-            print(f"[AdminInterface] mark_help_requested: Ignoring help request - kiosk {computer_name} not in connected kioskl list")
+            print(f"[interface builder][AdminInterface] mark_help_requested: Ignoring help request - kiosk {computer_name} not in connected kioskl list")
             
     def remove_kiosk(self, computer_name):
         # Stop camera if it was active for this kiosk
@@ -622,7 +622,7 @@ class AdminInterfaceBuilder:
         
         # Rest of your existing remove_kiosk code...
         if computer_name in self.connected_kiosks:
-            print(f"[AdminInterface] remove_kiosk: Removing kiosk {computer_name} from UI")
+            print(f"[interface builder][AdminInterface] remove_kiosk: Removing kiosk {computer_name} from UI")
             self.connected_kiosks[computer_name]['frame'].destroy()
             del self.connected_kiosks[computer_name]
             
@@ -643,7 +643,7 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
         try:
-            #print(f"\n=== KIOSK SELECTION START: {computer_name} ===")
+            #print(f"[interface builder]\n=== KIOSK SELECTION START: {computer_name} ===")
             
             # Clean up existing audio/video streams before switching
             if hasattr(self, 'camera_active') and self.camera_active:
@@ -676,7 +676,7 @@ class AdminInterfaceBuilder:
                 room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
                 room_name = self.app.rooms[room_num]
                 title = f"{room_name} ({computer_name})"
-                print(f"Room assigned: {room_name} (#{room_num})")
+                print(f"[interface builder]Room assigned: {room_name} (#{room_num})")
                 
                 # Get room color from mapping, default to black if not found
                 room_color = self.ROOM_COLORS.get(room_num, "black")
@@ -689,7 +689,7 @@ class AdminInterfaceBuilder:
                 )
                 
                 # Map room number to directory name for audio hints
-                #print("\n=== AUDIO HINTS UPDATE START ===")
+                #print("[interface builder]\n=== AUDIO HINTS UPDATE START ===")
                 room_dirs = {
                     6: "atlantis",
                     1: "casino",
@@ -700,26 +700,26 @@ class AdminInterfaceBuilder:
                     4: "zombie"
                 }
                 
-                print(f"Current working directory: {os.getcwd()}")
+                print(f"[interface builder]Current working directory: {os.getcwd()}")
                 if room_num in room_dirs:
                     room_dir = room_dirs[room_num]
-                    print(f"Selected room directory: {room_dir}")
+                    print(f"[interface builder]Selected room directory: {room_dir}")
                     audio_path = os.path.join("audio_hints", room_dir)
-                    print(f"Audio path relative to working dir: {audio_path}")
-                    print(f"Full audio path: {os.path.abspath(audio_path)}")
-                    print(f"Path exists: {os.path.exists(audio_path)}")
+                    print(f"[interface builder]Audio path relative to working dir: {audio_path}")
+                    print(f"[interface builder]Full audio path: {os.path.abspath(audio_path)}")
+                    print(f"[interface builder]Path exists: {os.path.exists(audio_path)}")
                     #if os.path.exists(audio_path):
-                       # print(f"Directory contents: {os.listdir(audio_path)}")
+                       # print(f"[interface builder]Directory contents: {os.listdir(audio_path)}")
                     
                     if hasattr(self, 'audio_hints'):
-                        print("Audio hints object exists, updating room")
+                        print("[interface builder]Audio hints object exists, updating room")
                         self.audio_hints.update_room(room_dir)
                     else:
-                        print("WARNING: No audio_hints object found!")
-                #print("=== AUDIO HINTS UPDATE END ===\n")
+                        print("[interface builder]WARNING: No audio_hints object found!")
+                #print("[interface builder]=== AUDIO HINTS UPDATE END ===\n")
             else:
                 title = f"Unassigned ({computer_name})"
-                print("No room assigned")
+                print("[interface builder]No room assigned")
                 self.stats_frame.configure(
                     text=title,
                     font=('Arial', 10, 'bold'),
@@ -727,7 +727,7 @@ class AdminInterfaceBuilder:
                 )
             
             if hasattr(self, 'saved_hints'):
-                #print("Updating saved hints for room")
+                #print("[interface builder]Updating saved hints for room")
                 if room_num:
                     self.saved_hints.update_room(room_num)
                 else:
@@ -775,15 +775,15 @@ class AdminInterfaceBuilder:
             if hasattr(self.app, 'prop_control') and self.app.prop_control:
                 if computer_name in self.app.kiosk_tracker.kiosk_assignments:
                     room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-                    print(f"Notifying prop control about room change to {room_num}")
+                    print(f"[interface builder]Notifying prop control about room change to {room_num}")
                     self.app.root.after(100, lambda: self.app.prop_control.connect_to_room(room_num))
                 else:
-                    print("No room assignment, skipping prop control notification")
+                    print("[interface builder]No room assignment, skipping prop control notification")
                     
-            #print(f"=== KIOSK SELECTION END: {computer_name} ===\n")
+            #print(f"[interface builder]=== KIOSK SELECTION END: {computer_name} ===\n")
             
         except Exception as e:
-            print(f"Error in select_kiosk: {e}")
+            print(f"[interface builder]Error in select_kiosk: {e}")
             
     def update_stats_display(self, computer_name):
         try:
@@ -794,7 +794,7 @@ class AdminInterfaceBuilder:
 
             # Only proceed if we have valid UI elements
             if not self.stats_elements:
-                print("Stats elements not initialized yet")
+                print("[interface builder]Stats elements not initialized yet")
                 return
 
             # Update hints label if it exists
@@ -832,7 +832,7 @@ class AdminInterfaceBuilder:
                                 text="Start Room"
                             )
                     except tk.TclError:
-                        print("Timer button was destroyed")
+                        print("[interface builder]Timer button was destroyed")
                         return
                 else:
                     try:
@@ -842,7 +842,7 @@ class AdminInterfaceBuilder:
                         elif not is_running and timer_button.cget('text') != "Start Room":
                             timer_button.config(text="Start Room")
                     except tk.TclError:
-                        print("Timer button was destroyed")
+                        print("[interface builder]Timer button was destroyed")
                         return
             
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
@@ -864,7 +864,7 @@ class AdminInterfaceBuilder:
                 self._last_hint_request_states[computer_name] = current_hint_request
                     
         except Exception as e:
-            print(f"Error updating stats display: {e}")
+            print(f"[interface builder]Error updating stats display: {e}")
 
     def save_manual_hint(self):
         # Wrapper for the extracted save_manual_hint function
@@ -957,7 +957,7 @@ class AdminInterfaceBuilder:
                     self.stats_elements['listen_btn'].config(text="Start Listening")
                 self.stats_elements['speak_btn'].config(state='disabled')
             except Exception as e:
-                print(f"Error stopping audio: {e}")
+                print(f"[interface builder]Error stopping audio: {e}")
         else:
             # Start audio
             self.stats_elements['listen_btn'].config(text="Connecting...")
@@ -984,7 +984,7 @@ class AdminInterfaceBuilder:
                             self.stats_elements['listen_btn'].config(text="Start Listening")
                         self.stats_elements['speak_btn'].config(state='disabled')
                 except Exception as e:
-                    print(f"Error connecting audio: {e}")
+                    print(f"[interface builder]Error connecting audio: {e}")
                     if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
                         self.stats_elements['listen_btn'].config(
                             image=self.stats_elements['listen_btn'].listen_icon,
@@ -1025,7 +1025,7 @@ class AdminInterfaceBuilder:
                         activebackground='systemButtonFace'
                     )
             except Exception as e:
-                print(f"Error stopping microphone: {e}")
+                print(f"[interface builder]Error stopping microphone: {e}")
         else:
             # Start speaking
             try:
@@ -1058,4 +1058,4 @@ class AdminInterfaceBuilder:
                     else:
                         self.stats_elements['speak_btn'].config(text="Enable Microphone")
             except Exception as e:
-                print(f"Error enabling microphone: {e}")
+                print(f"[interface builder]Error enabling microphone: {e}")

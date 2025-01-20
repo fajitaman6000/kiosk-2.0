@@ -33,18 +33,18 @@ class AudioServer:
                 self.accept_connections()
                 return True
             except Exception as e:
-                print(f"Failed to start audio server: {e}")
+                print(f"[audio server]Failed to start audio server: {e}")
                 return False
         
         threading.Thread(target=startup, daemon=True).start()
         
     def accept_connections(self):
         """Accept and handle client connections"""
-        print("Audio server ready for connections")
+        print("[audio server]Audio server ready for connections")
         while self.running:
             try:
                 client, addr = self.server_socket.accept()
-                print(f"New audio connection from {addr}")
+                print(f"[audio server]New audio connection from {addr}")
                 if self.current_client:
                     self.current_client.close()
                 self.current_client = client
@@ -68,12 +68,12 @@ class AudioServer:
                                args=(client,), daemon=True).start()
             except Exception as e:
                 if self.running:
-                    print(f"Audio connection error: {e}")
+                    print(f"[audio server]Audio connection error: {e}")
                 break
                 
     def stream_audio(self, client):
         """Send audio from kiosk to admin"""
-        print("Starting audio streaming to admin")
+        print("[audio server]Starting audio streaming to admin")
         try:
             while self.running:  # Always stream while running
                 try:
@@ -84,21 +84,21 @@ class AudioServer:
                             client.sendall(struct.pack("Q", size))
                             client.sendall(data)
                         except Exception as e:
-                            print(f"Error sending audio packet: {e}")
+                            print(f"[audio server]Error sending audio packet: {e}")
                             break
                 except Exception as e:
-                    print(f"Error reading audio: {e}")
+                    print(f"[audio server]Error reading audio: {e}")
                     if not self.running:
                         break
                     continue
         except Exception as e:
-            print(f"Audio streaming error: {e}")
+            print(f"[audio server]Audio streaming error: {e}")
         finally:
-            print("Audio streaming ended")
+            print("[audio server]Audio streaming ended")
             
     def receive_audio(self, client):
         """Receive and play audio from admin"""
-        print("Starting audio reception from admin")
+        print("[audio server]Starting audio reception from admin")
         try:
             # Create playback stream
             self.output_stream = self.audio.open(
@@ -114,14 +114,14 @@ class AudioServer:
                     # Get chunk size
                     size_data = self._recv_exactly(client, struct.calcsize("Q"))
                     if not size_data:
-                        print("No size data received")
+                        print("[audio server]No size data received")
                         break
                     chunk_size = struct.unpack("Q", size_data)[0]
                     
                     # Get audio data
                     audio_data = self._recv_exactly(client, chunk_size)
                     if not audio_data:
-                        print("No audio data received")
+                        print("[audio server]No audio data received")
                         break
                     
                     # Play the audio
@@ -129,22 +129,22 @@ class AudioServer:
                         if self.output_stream.is_active():
                             self.output_stream.write(bytes(audio_data))
                     except Exception as e:
-                        print(f"Error playing audio: {e}")
+                        print(f"[audio server]Error playing audio: {e}")
                         continue
                         
                 except socket.error as e:
-                    print(f"Socket error in receive loop: {e}")
+                    print(f"[audio server]Socket error in receive loop: {e}")
                     break
                 except Exception as e:
-                    print(f"Error in receive loop: {e}")
+                    print(f"[audio server]Error in receive loop: {e}")
                     if not self.running:
                         break
                     continue
                         
         except Exception as e:
-            print(f"Audio receiving error: {e}")
+            print(f"[audio server]Audio receiving error: {e}")
         finally:
-            print("Audio reception ended")
+            print("[audio server]Audio reception ended")
             if self.output_stream:
                 try:
                     self.output_stream.stop_stream()
@@ -164,7 +164,7 @@ class AudioServer:
             
     def stop(self):
         """Stop the server and clean up"""
-        print("Stopping audio server")
+        print("[audio server]Stopping audio server")
         self.running = False
         
         if self.current_client:
@@ -205,7 +205,7 @@ class AudioServer:
 
     def handle_client(self, client):
         """Handle audio streaming for a client"""
-        print("Starting audio stream")
+        print("[audio server]Starting audio stream")
         try:
             # Initialize recording stream
             self.stream = self.audio.open(
@@ -237,9 +237,9 @@ class AudioServer:
             receive_thread.join()
             
         except Exception as e:
-            print(f"Audio streaming error: {e}")
+            print(f"[audio server]Audio streaming error: {e}")
         finally:
-            print("Closing audio stream")
+            print("[audio server]Closing audio stream")
             if self.stream:
                 self.stream.stop_stream()
                 self.stream.close()

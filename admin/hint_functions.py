@@ -61,7 +61,7 @@ def save_manual_hint(interface_builder):
         sorted_props = sorted(props_with_order, key=lambda x: (x[2], x[1]))
         available_props = [(display, internal) for internal, display, _ in sorted_props]
     except Exception as e:
-        print(f"Error loading prop mappings: {e}")
+        print(f"[hint functions]Error loading prop mappings: {e}")
         available_props = []
     
     if not available_props:
@@ -107,7 +107,7 @@ def save_manual_hint(interface_builder):
                 # If file doesn't exist or is empty, start fresh
                 data = {"rooms": {}}
         except Exception as e:
-            print(f"Error loading hints file: {e}")
+            print(f"[hint functions]Error loading hints file: {e}")
             data = {"rooms": {}}
         
         # Ensure room structure exists
@@ -154,7 +154,7 @@ def save_manual_hint(interface_builder):
             with open(hints_file, 'w') as f:
                 json.dump(data, f, indent=4)
         except Exception as e:
-            print(f"Error saving hints file: {e}")
+            print(f"[hint functions]Error saving hints file: {e}")
             tk.messagebox.showerror("Error", "Failed to save hint")
             return
             

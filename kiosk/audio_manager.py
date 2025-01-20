@@ -23,7 +23,7 @@ class AudioManager:
             # Only block if it's the same sound AND not enough time has passed
             if (sound_name == self._last_played and 
                 current_time - self._last_played_time < self.MIN_REPLAY_DELAY):
-                print(f"Skipping sound {sound_name} - too soon since last play")
+                print(f"[audio manager]Skipping sound {sound_name} - too soon since last play")
                 return
                 
             sound_path = os.path.join(self.sound_dir, sound_name)
@@ -35,9 +35,9 @@ class AudioManager:
                 sound_channel.play(sound)
                 self._last_played = sound_name
                 self._last_played_time = current_time
-                print(f"Playing sound {sound_name} on channel 1")
+                print(f"[audio manager]Playing sound {sound_name} on channel 1")
         except Exception as e:
-            print(f"Error playing sound {sound_name}: {e}")
+            print(f"[audio manager]Error playing sound {sound_name}: {e}")
 
     def play_background_music(self, room_name):
         """
@@ -49,7 +49,7 @@ class AudioManager:
             music_name = room_name.lower().replace(" ", "_") + ".mp3"
             music_path = os.path.join(self.music_dir, music_name)
             
-            print(f"Attempting to play background music: {music_path}")
+            print(f"[audio manager]Attempting to play background music: {music_path}")
             
             if os.path.exists(music_path):
                 # Stop any currently playing music
@@ -59,12 +59,12 @@ class AudioManager:
                 pygame.mixer.music.load(music_path)
                 pygame.mixer.music.play(-1)  # -1 means loop indefinitely
                 self.current_music = music_name
-                print(f"Started playing background music: {music_name}")
+                print(f"[audio manager]Started playing background music: {music_name}")
             else:
-                print(f"Background music file not found: {music_path}")
+                print(f"[audio manager]Background music file not found: {music_path}")
                 
         except Exception as e:
-            print(f"Error playing background music: {e}")
+            print(f"[audio manager]Error playing background music: {e}")
             
     def stop_background_music(self):
         """
@@ -75,9 +75,9 @@ class AudioManager:
                 pygame.mixer.music.stop()
                 pygame.mixer.music.unload()
                 self.current_music = None
-                print("Stopped background music")
+                print("[audio manager]Stopped background music")
         except Exception as e:
-            print(f"Error stopping background music: {e}")
+            print(f"[audio manager]Error stopping background music: {e}")
 
     def set_music_volume(self, volume):
         """
@@ -88,4 +88,4 @@ class AudioManager:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.set_volume(volume)
         except Exception as e:
-            print(f"Error setting music volume: {e}")
+            print(f"[audio manager]Error setting music volume: {e}")

@@ -14,7 +14,7 @@ from pygame import mixer
 
 class VideoManager:
     def __init__(self, root):
-        print("Initializing VideoManager")
+        print("[video manager]Initializing VideoManager")
         self.root = root
         self.video_canvas = None
         self.is_playing = False
@@ -28,7 +28,7 @@ class VideoManager:
         
         # Get ffmpeg path from imageio-ffmpeg
         self.ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
-        #print(f"Using ffmpeg from: {self.ffmpeg_path}")
+        #print(f"[video manager]Using ffmpeg from: {self.ffmpeg_path}")
             
         # Initialize Pygame mixer
         pygame.mixer.init(frequency=44100)
@@ -41,11 +41,11 @@ class VideoManager:
         """
         try:
             if not pygame.mixer.music.get_busy():
-                print("No background music playing, skipping fade")
+                print("[video manager]No background music playing, skipping fade")
                 return
                 
             current_volume = pygame.mixer.music.get_volume()
-            print(f"Starting volume fade from {current_volume} to {target_volume}")
+            print(f"[video manager]Starting volume fade from {current_volume} to {target_volume}")
             
             # Force volume to current value before starting fade
             pygame.mixer.music.set_volume(current_volume)
@@ -57,12 +57,12 @@ class VideoManager:
             
             for i in range(steps):
                 if self.should_stop:  # Check if video was stopped
-                    print("Video stopped during fade, breaking")
+                    print("[video manager]Video stopped during fade, breaking")
                     break
                 next_volume = current_volume + (step_size * (i + 1))
                 new_volume = max(0.0, min(1.0, next_volume))
                 pygame.mixer.music.set_volume(new_volume)
-                print(f"Fade step {i+1}/{steps}: Volume set to {new_volume}")
+                print(f"[video manager]Fade step {i+1}/{steps}: Volume set to {new_volume}")
                 time.sleep(step_duration)
                 
             # Force final volume
@@ -70,10 +70,10 @@ class VideoManager:
             time.sleep(0.05)  # Small delay to ensure final volume is set
             
             final_volume = pygame.mixer.music.get_volume()
-            print(f"Fade complete. Final volume: {final_volume}")
+            print(f"[video manager]Fade complete. Final volume: {final_volume}")
                 
         except Exception as e:
-            print(f"Error fading background music: {e}")
+            print(f"[video manager]Error fading background music: {e}")
             traceback.print_exc()
 
     def _check_ffmpeg_in_path(self):
@@ -88,7 +88,7 @@ class VideoManager:
         """Extract audio from video file to temporary WAV file"""
         try:
             if not self.ffmpeg_path:
-                print("Error: ffmpeg not available")
+                print("[video manager]Error: ffmpeg not available")
                 return None
                 
             # Create unique temp WAV file name using timestamp
@@ -96,7 +96,7 @@ class VideoManager:
             temp_audio = os.path.join(self.temp_dir, f"{base_name}_{int(time.time())}.wav")
             
             # Extract audio using ffmpeg
-            print(f"Extracting audio from video to: {temp_audio}")
+            print(f"[video manager]Extracting audio from video to: {temp_audio}")
             command = [
                 self.ffmpeg_path,
                 '-i', video_path,
@@ -112,7 +112,7 @@ class VideoManager:
             result = subprocess.run(command, capture_output=True, text=True)
             
             if result.returncode != 0:
-                print(f"ffmpeg error: {result.stderr}")
+                print(f"[video manager]ffmpeg error: {result.stderr}")
                 return None
                 
             if os.path.exists(temp_audio):
@@ -120,13 +120,13 @@ class VideoManager:
             return None
             
         except Exception as e:
-            print(f"Exception during audio extraction: {e}")
+            print(f"[video manager]Exception during audio extraction: {e}")
             traceback.print_exc()
             return None
 
     def play_video(self, video_path, on_complete=None):
         """Play a video file in fullscreen with synchronized audio."""
-        print(f"\nVideoManager: Starting video playback: {video_path}")
+        print(f"[video manager]\nVideoManager: Starting video playback: {video_path}")
         
         try:
             # Store completion callback
@@ -139,15 +139,15 @@ class VideoManager:
             
             # Now fade out background music
             self._fade_background_music(0.3)  # Reduce to 30% volume
-            print(f"Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
+            print(f"[video manager]Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
 
             # Stop any existing playback
             if self.is_playing:
-                print("VideoManager: Stopping existing playback")
+                print("[video manager]VideoManager: Stopping existing playback")
                 self.stop_video()
             
             # Store current widgets and their layout info
-            print("VideoManager: Storing current window state")
+            print("[video manager]VideoManager: Storing current window state")
             self.original_widgets = []
             self.original_widget_info = []
             
@@ -178,7 +178,7 @@ class VideoManager:
                 widget.place_forget()
                 
             # Create video canvas and ensure it covers the full window
-            print("VideoManager: Creating video canvas")
+            print("[video manager]VideoManager: Creating video canvas")
             self.video_canvas = tk.Canvas(
                 self.root,
                 width=self.root.winfo_screenwidth(),
@@ -203,11 +203,11 @@ class VideoManager:
             has_audio = audio_path is not None
             
             if has_audio:
-                print(f"VideoManager: Successfully extracted audio to: {audio_path}")
+                print(f"[video manager]VideoManager: Successfully extracted audio to: {audio_path}")
             else:
-                print("VideoManager: Failed to extract audio")
+                print("[video manager]VideoManager: Failed to extract audio")
             
-            print("VideoManager: Starting playback thread")
+            print("[video manager]VideoManager: Starting playback thread")
             self.video_thread = threading.Thread(
                 target=self._play_video_thread,
                 args=(video_path, audio_path, self.completion_callback),
@@ -216,7 +216,7 @@ class VideoManager:
             self.video_thread.start()
             
         except Exception as e:
-            print("\nVideoManager: Critical error in play_video:")
+            print("[video manager]\nVideoManager: Critical error in play_video:")
             traceback.print_exc()
             self._cleanup()
             if on_complete:
@@ -224,20 +224,20 @@ class VideoManager:
             
     def _play_video_thread(self, video_path, audio_path, on_complete):
         """Video playback thread with synchronized audio"""
-        print("\nVideoManager: Video thread starting")
+        print("[video manager]\nVideoManager: Video thread starting")
         start_time = None
 
         try:
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
-                print(f"VideoManager: Failed to open video: {video_path}")
+                print(f"[video manager]VideoManager: Failed to open video: {video_path}")
                 return
 
             fps = cap.get(cv2.CAP_PROP_FPS)
             frame_time = 1.0 / fps if fps > 0 else 1.0 / 30.0
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            print(f"VideoManager: Video opened successfully. FPS: {fps}")
+            print(f"[video manager]VideoManager: Video opened successfully. FPS: {fps}")
 
             # Start audio playback if available
             if audio_path:
@@ -246,22 +246,22 @@ class VideoManager:
                     video_sound = pygame.mixer.Sound(audio_path)
                     self.video_sound_channel.play(video_sound)
                     start_time = time.time()
-                    print("VideoManager: Started audio playback")
+                    print("[video manager]VideoManager: Started audio playback")
                 except Exception as e:
-                    print(f"VideoManager: Error starting audio: {e}")
+                    print(f"[video manager]VideoManager: Error starting audio: {e}")
                     audio_path = None
 
             # Rest of the method remains exactly the same...
             # Add click handler ONLY for solution videos (which contain 'video_solutions' in their path)
             if 'video_solutions' in video_path:
                 def on_canvas_click(event):
-                    print("VideoManager: Video canvas clicked, stopping solution video playback")
+                    print("[video manager]VideoManager: Video canvas clicked, stopping solution video playback")
                     self.stop_video()
 
                 self.root.after(0, lambda: self.video_canvas.bind('<Button-1>', on_canvas_click))
-                print("VideoManager: Added click-to-skip for solution video")
+                print("[video manager]VideoManager: Added click-to-skip for solution video")
             else:
-                print("VideoManager: Intro video - skip functionality disabled")
+                print("[video manager]VideoManager: Intro video - skip functionality disabled")
 
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
@@ -273,14 +273,14 @@ class VideoManager:
                     # If we're behind, skip frames to catch up
                     if target_frame > frame_count + 1:
                         skip_frames = target_frame - frame_count - 1
-                        print(f"Skipping {skip_frames} frames to catch up")
+                        print(f"[video manager]Skipping {skip_frames} frames to catch up")
                         for _ in range(skip_frames):
                             cap.read()
                             frame_count += 1
 
                 ret, frame = cap.read()
                 if not ret:
-                    print("VideoManager: End of video reached")
+                    print("[video manager]VideoManager: End of video reached")
                     break
 
                 frame_count += 1
@@ -312,10 +312,10 @@ class VideoManager:
                     time.sleep(frame_time)
 
         except Exception as e:
-            print("\nVideoManager: Error in video thread:")
+            print("[video manager]\nVideoManager: Error in video thread:")
             traceback.print_exc()
         finally:
-            print("VideoManager: Cleaning up video thread")
+            print("[video manager]VideoManager: Cleaning up video thread")
             cap.release()
 
             # Stop video audio channel instead of music
@@ -328,11 +328,11 @@ class VideoManager:
     
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
-        print("\n=== Video Manager Thread Cleanup ===")
-        print(f"should_stop flag: {self.should_stop}")
-        print(f"on_complete callback present: {on_complete is not None}")
-        print(f"stored completion callback present: {self.completion_callback is not None}")
-        print("Current background music volume:", pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else "No music playing")
+        print("[video manager]\n=== Video Manager Thread Cleanup ===")
+        print(f"[video manager]should_stop flag: {self.should_stop}")
+        print(f"[video manager]on_complete callback present: {on_complete is not None}")
+        print(f"[video manager]stored completion callback present: {self.completion_callback is not None}")
+        print("[video manager]Current background music volume:", pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else "No music playing")
 
         try:
             # Stop video audio first (not the background music)
@@ -344,23 +344,23 @@ class VideoManager:
             was_stopped_manually = self.should_stop
 
             # Ensure background music volume is restored first
-            print("Restoring background music volume...")
+            print("[video manager]Restoring background music volume...")
             if pygame.mixer.music.get_busy():
                 # Force immediate volume restoration by first ensuring volume is at reduced level
                 current_vol = pygame.mixer.music.get_volume()
-                print(f"Current music volume before restore: {current_vol}")
+                print(f"[video manager]Current music volume before restore: {current_vol}")
                 if current_vol > 0.3:  # If volume is somehow above our fade level
                     pygame.mixer.music.set_volume(0.3)  # Reset to faded state
                 # Now do the fade up
                 self._fade_background_music(1.0, duration=0.3)
-                print(f"Background music volume after restore: {pygame.mixer.music.get_volume()}")
+                print(f"[video manager]Background music volume after restore: {pygame.mixer.music.get_volume()}")
             else:
-                print("No background music playing to restore")
+                print("[video manager]No background music playing to restore")
 
             # Perform UI cleanup
-            print("Starting UI cleanup...")
+            print("[video manager]Starting UI cleanup...")
             self._cleanup()
-            print("UI cleanup complete")
+            print("[video manager]UI cleanup complete")
 
             # Clean up temporary audio file with retries
             if self.current_audio_path and os.path.exists(self.current_audio_path):
@@ -368,24 +368,24 @@ class VideoManager:
                     try:
                         time.sleep(0.1 * (attempt + 1))  # Increasing delay between attempts
                         os.remove(self.current_audio_path)
-                        print(f"Removed temporary audio file on attempt {attempt + 1}")
+                        print(f"[video manager]Removed temporary audio file on attempt {attempt + 1}")
                         break
                     except Exception as e:
-                        print(f"Attempt to remove temp file (attempt {attempt + 1}): {e}")
+                        print(f"[video manager]Attempt to remove temp file (attempt {attempt + 1}): {e}")
                 self.current_audio_path = None
 
             # Always execute completion callbacks, even if stopped manually
             if on_complete:
-                print("Executing passed on_complete")
+                print("[video manager]Executing passed on_complete")
                 self.root.after(0, on_complete)
             elif self.completion_callback:
-                print("Executing stored completion_callback")
+                print("[video manager]Executing stored completion_callback")
                 self.root.after(0, self.completion_callback)
 
-            print("=== Thread Cleanup Complete ===\n")
+            print("[video manager]=== Thread Cleanup Complete ===\n")
 
         except Exception as e:
-            print(f"Error in thread cleanup: {e}")
+            print(f"[video manager]Error in thread cleanup: {e}")
             traceback.print_exc()
 
     def _update_frame(self, photo):
@@ -401,12 +401,12 @@ class VideoManager:
                 )
                 self.video_canvas.photo = photo
         except Exception as e:
-            print(f"VideoManager: Error updating frame: {e}")
+            print(f"[video manager]VideoManager: Error updating frame: {e}")
             self.stop_video()
             
     def stop_video(self):
         """Stop video and audio playback"""
-        print("\nVideoManager: Stopping video and audio")
+        print("[video manager]\nVideoManager: Stopping video and audio")
         self.should_stop = True
         # Do not set self.is_playing to False here
 
@@ -421,7 +421,7 @@ class VideoManager:
         
     def _cleanup(self):
         """Clean up resources and restore UI state"""
-        print("\nVideoManager: Starting cleanup")
+        print("[video manager]\nVideoManager: Starting cleanup")
         try:
             self.is_playing = False
             self.should_stop = True
@@ -458,7 +458,7 @@ class VideoManager:
                     except tk.TclError:
                         pass
                 except Exception as e:
-                    print(f"VideoManager: Error cleaning up canvas: {e}")
+                    print(f"[video manager]VideoManager: Error cleaning up canvas: {e}")
                 finally:
                     self.video_canvas = None
             
@@ -489,9 +489,9 @@ class VideoManager:
                             widget.pack(**info['geometry_info'])
                             restored_widgets.append(widget)
                 except tk.TclError:
-                    print(f"Widget no longer exists, skipping restoration")
+                    print(f"[video manager]Widget no longer exists, skipping restoration")
                 except Exception as e:
-                    print(f"Error restoring widget: {e}")
+                    print(f"[video manager]Error restoring widget: {e}")
             
             # Only keep track of successfully restored widgets
             self.original_widgets = restored_widgets
@@ -512,17 +512,17 @@ class VideoManager:
                         if os.path.exists(self.current_audio_path):
                             time.sleep(0.1)
                             os.remove(self.current_audio_path)
-                            print(f"Removed temporary audio file: {self.current_audio_path}")
+                            print(f"[video manager]Removed temporary audio file: {self.current_audio_path}")
                             break
                     except Exception as e:
-                        print(f"Attempt to remove temp file failed: {e}")
+                        print(f"[video manager]Attempt to remove temp file failed: {e}")
                         time.sleep(0.1)
                 self.current_audio_path = None
                         
-            print("VideoManager: Cleanup complete")
+            print("[video manager]VideoManager: Cleanup complete")
             
         except Exception as e:
-            print("\nVideoManager: Error during cleanup:")
+            print("[video manager]\nVideoManager: Error during cleanup:")
             traceback.print_exc()
         finally:
             # Ensure these are always reset

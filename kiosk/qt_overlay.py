@@ -316,7 +316,7 @@ class Overlay:
         """Update the hint text in the main thread."""
         try:
             if not cls._hint_text['window']:
-                print("Error: Hint text window not initialized")
+                print("[qt overlay]Error: Hint text window not initialized")
                 return
 
             text = data.get('text', "")
@@ -378,16 +378,16 @@ class Overlay:
                 (width + text_height) / 2,
                 (height - text_width) / 2
             )
-            print(f"Text position set to: {cls._hint_text['text_item'].pos()}")
+            print(f"[qt overlay]Text position set to: {cls._hint_text['text_item'].pos()}")
             
-            print(f"Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
+            print(f"[qt overlay]Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
             
             
             
             cls._hint_text['window'].show()
             cls._hint_text['window'].raise_()
         except Exception as e:
-            print(f"Error in _actual_hint_text_update: {e}")
+            print(f"[qt overlay]Error in _actual_hint_text_update: {e}")
             traceback.print_exc()
     
     @classmethod
@@ -416,7 +416,7 @@ class Overlay:
         """Update the hint request text in the main thread."""
         try:
             if not hasattr(cls, '_hint_request_text') or not cls._hint_request_text:
-                print("Error: Hint request text window not initialized")
+                print("[qt overlay]Error: Hint request text window not initialized")
                 return
 
             # Rebuild objects before updating
@@ -498,7 +498,7 @@ class Overlay:
             cls._hint_request_text['window'].show()
             cls._hint_request_text['window'].raise_()
         except Exception as e:
-            print(f"Error in _actual_hint_request_text_update: {e}")
+            print(f"[qt overlay]Error in _actual_hint_request_text_update: {e}")
             traceback.print_exc()
 
     @classmethod
@@ -542,11 +542,11 @@ class Overlay:
     def init_timer(cls):
         """Initialize the timer display components"""
         if not cls._initialized:
-            print("Warning: Attempting to init_timer before base initialization")
+            print("[qt overlay]Warning: Attempting to init_timer before base initialization")
             return
                 
         if not hasattr(cls, '_timer'):
-            print("\nInitializing timer components...")
+            print("[qt overlay]\nInitializing timer components...")
             cls._timer = TimerDisplay()
                 
             # Create a separate window for the timer
@@ -574,11 +574,11 @@ class Overlay:
             cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
                 
             # Set up background image first
-            print("Setting up background placeholder...")
+            print("[qt overlay]Setting up background placeholder...")
             cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
             
             # Create timer text and add it after background
-            print("Setting up timer text...")
+            print("[qt overlay]Setting up timer text...")
             cls._timer.text_item = QGraphicsTextItem()
             cls._timer.text_item.setDefaultTextColor(Qt.white)
             font = QFont('Arial', 120)
@@ -612,7 +612,7 @@ class Overlay:
                     style | win32con.WS_EX_NOACTIVATE
                 )
                 
-            print("Timer initialization complete")
+            print("[qt overlay]Timer initialization complete")
 
     @classmethod
     def update_timer_display(cls, time_str):
@@ -642,32 +642,32 @@ class Overlay:
     @classmethod
     def load_timer_background(cls, room_number):
         """Load the timer background for the specified room"""
-        print(f"\nAttempting to load timer background for room {room_number}")
+        print(f"[qt overlay]\nAttempting to load timer background for room {room_number}")
 
         if not hasattr(cls, '_timer'):
-            print("Timer not initialized yet")
+            print("[qt overlay]Timer not initialized yet")
             return
 
         try:
             bg_filename = cls._timer.timer_backgrounds.get(room_number)
             if not bg_filename:
-                print(f"No timer background defined for room {room_number}")
+                print(f"[qt overlay]No timer background defined for room {room_number}")
                 return
 
             bg_path = os.path.join("timer_backgrounds", bg_filename)
-            print(f"Looking for background at: {bg_path}")
+            print(f"[qt overlay]Looking for background at: {bg_path}")
 
             if not os.path.exists(bg_path):
-                print(f"Timer background not found: {bg_path}")
+                print(f"[qt overlay]Timer background not found: {bg_path}")
                 return
 
             # Load and resize the background image
-            print("Loading background image...")
+            print("[qt overlay]Loading background image...")
             bg_img = Image.open(bg_path)
             bg_img = bg_img.resize((500,750))
 
             # Convert to QPixmap
-            print("Converting to QPixmap...")
+            print("[qt overlay]Converting to QPixmap...")
             buf = io.BytesIO()
             bg_img.save(buf, format='PNG')
             qimg = QImage()
@@ -679,24 +679,24 @@ class Overlay:
                 cls._timer.bg_image_item.setPixmap(QPixmap())
             
             # Update the background
-            print("Setting background pixmap...")
+            print("[qt overlay]Setting background pixmap...")
             cls._timer.bg_image_item.setPixmap(pixmap)
             cls._timer._current_image = pixmap  # Store reference
             cls._timer_window.update()  # Force refresh
-            print("Background loaded successfully")
+            print("[qt overlay]Background loaded successfully")
 
         except Exception as e:
-            print(f"Error loading timer background for room {room_number}:")
+            print(f"[qt overlay]Error loading timer background for room {room_number}:")
             traceback.print_exc()
 
     @classmethod
     def init_help_button(cls):
         if not cls._initialized:
-            print("Warning: Attempting to init_help_button before base initialization")
+            print("[qt overlay]Warning: Attempting to init_help_button before base initialization")
             return
 
         if not hasattr(cls, '_button'):
-            print("\nInitializing help button components...")
+            print("[qt overlay]\nInitializing help button components...")
             cls._button = {}
 
             # Create a separate window for the button
@@ -734,10 +734,10 @@ class Overlay:
             cls._button['scene'].setSceneRect(scene_rect)
 
             # Debug prints
-            print(f"\nView Setup Debug:")
-            print(f"View geometry: {cls._button_view.geometry()}")
-            print(f"Scene rect: {scene_rect}")
-            print(f"View matrix: {cls._button_view.transform()}")
+            print(f"[qt overlay]\nView Setup Debug:")
+            print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
+            print(f"[qt overlay]Scene rect: {scene_rect}")
+            print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
 
             # Set up placeholders for images
             cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -754,7 +754,7 @@ class Overlay:
                     style | win32con.WS_EX_NOACTIVATE
                 )
 
-            print("Help button initialization complete")
+            print("[qt overlay]Help button initialization complete")
 
     @classmethod
     def load_button_images(cls, room_number):
@@ -765,13 +765,13 @@ class Overlay:
             button_path = os.path.join("hint_button_backgrounds", button_filename)
 
             if not os.path.exists(button_path):
-                print(f"Error: Button image not found at: {button_path}")
+                print(f"[qt overlay]Error: Button image not found at: {button_path}")
                 return False
 
             # Use QImage to load directly
             qimage = QImage(button_path)
             if qimage.isNull():
-                print("Failed to load button image directly")
+                print("[qt overlay]Failed to load button image directly")
                 return False
 
             # Convert to pixmap and scale
@@ -784,7 +784,7 @@ class Overlay:
             shadow_path = os.path.join("hint_button_backgrounds", "shadow.png")
             shadow_qimage = QImage(shadow_path)
             if shadow_qimage.isNull():
-                print("Failed to load shadow image directly")
+                print("[qt overlay]Failed to load shadow image directly")
                 return False
 
             # Convert to pixmap and scale (larger scaling for shadow)
@@ -797,16 +797,16 @@ class Overlay:
             cls._button['bg_image_item'].setTransformOriginPoint(button_pixmap.width() / 2, button_pixmap.height() / 2)
 
             # Debug info
-            print(f"\nImage Debug:")
-            print(f"Button image format: {qimage.format()}")
-            print(f"Button image size: {qimage.size()}")
-            print(f"Button pixmap size: {button_pixmap.size()}")
-            print(f"Shadow pixmap size: {shadow_pixmap.size()}")
+            print(f"[qt overlay]\nImage Debug:")
+            print(f"[qt overlay]Button image format: {qimage.format()}")
+            print(f"[qt overlay]Button image size: {qimage.size()}")
+            print(f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
+            print(f"[qt overlay]Shadow pixmap size: {shadow_pixmap.size()}")
 
             return True
 
         except Exception as e:
-            print(f"Error loading images: {e}")
+            print(f"[qt overlay]Error loading images: {e}")
             traceback.print_exc()
             return False
 
@@ -847,7 +847,7 @@ class Overlay:
             not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45)
         )
 
-        print(f"\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
+        print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
             if show_button:
@@ -892,10 +892,10 @@ class Overlay:
                 cls._button['scene'].setSceneRect(scene_rect)
 
                 # Debug prints
-                print(f"\nView Setup Debug:")
-                print(f"View geometry: {cls._button_view.geometry()}")
-                print(f"Scene rect: {scene_rect}")
-                print(f"View matrix: {cls._button_view.transform()}")
+                print(f"[qt overlay]\nView Setup Debug:")
+                print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
+                print(f"[qt overlay]Scene rect: {scene_rect}")
+                print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
 
                 # Set up placeholders for images
                 cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -914,7 +914,7 @@ class Overlay:
 
                 # Load images
                 if not cls.load_button_images(assigned_room):
-                    print("Failed to load button images.")
+                    print("[qt overlay]Failed to load button images.")
                     return
 
                 # Set the origin for rotation to the center of the pixmap
@@ -945,9 +945,9 @@ class Overlay:
             else:
                 if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
                     cls._button_window.hide()
-                    print("Help button hidden")
+                    print("[qt overlay]Help button hidden")
         except Exception as e:
-           print(f"Exception during help button update: {e}")
+           print(f"[qt overlay]Exception during help button update: {e}")
            traceback.print_exc()
 
     @classmethod

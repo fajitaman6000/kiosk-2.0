@@ -17,10 +17,10 @@ class NetworkBroadcastHandler:
             # Create separate socket for reboot signals
             self.reboot_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         except Exception as e:
-            print(f"Network Error: {e}")
-            print("This might be because:")
-            print("1. Another program is using port 12345")
-            print("2. You need to run as administrator")
+            print(f"[network broadcast handler]Network Error: {e}")
+            print("[network broadcast handler]This might be because:")
+            print("[network broadcast handler]1. Another program is using port 12345")
+            print("[network broadcast handler]2. You need to run as administrator")
             raise
             
         self.listen_thread = None
@@ -42,7 +42,7 @@ class NetworkBroadcastHandler:
         self.listen_thread.start()
         
     def listen_for_messages(self):
-        print("Started listening for kiosks...")
+        print("[network broadcast handler]Started listening for kiosks...")
         while self.running:
             try:
                 data, addr = self.socket.recvfrom(1024)
@@ -53,8 +53,8 @@ class NetworkBroadcastHandler:
                 if computer_name:
                     last_msg = self.last_message.get(computer_name, {})
                     if msg != last_msg:
-                        #print(f"\nReceived updated message from {addr}:")
-                        #print(f"Message content: {msg}")
+                        #print(f"[network broadcast handler]\nReceived updated message from {addr}:")
+                        #print(f"[network broadcast handler]Message content: {msg}")
                         self.last_message[computer_name] = msg.copy()
                 
                 if msg['type'] == 'kiosk_announce':
@@ -64,9 +64,9 @@ class NetworkBroadcastHandler:
                     # Only print room assignment changes
                     current_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
                     if room != current_room:
-                        print(f"Processing room change for {computer_name}:")
-                        print(f"Previous room: {current_room}")
-                        print(f"New room: {room}")
+                        print(f"[network broadcast handler]Processing room change for {computer_name}:")
+                        print(f"[network broadcast handler]Previous room: {current_room}")
+                        print(f"[network broadcast handler]New room: {room}")
                     
                     if room is not None:
                         self.app.kiosk_tracker.kiosk_assignments[computer_name] = room
@@ -95,7 +95,7 @@ class NetworkBroadcastHandler:
                             
             except Exception as e:
                 if self.running:
-                    print(f"Error in listen_for_messages: {e}")
+                    print(f"[network broadcast handler]Error in listen_for_messages: {e}")
                 
     def send_hint(self, room_number, hint_data):
         """
@@ -105,7 +105,7 @@ class NetworkBroadcastHandler:
             room_number (int): The room number to send to
             hint_data (dict): Dictionary containing 'text' and optional 'image' keys
         """
-        print("\n=== Sending Hint ===")
+        print("[network broadcast handler]\n=== Sending Hint ===")
         
         # Construct the message
         message = {
@@ -118,27 +118,27 @@ class NetworkBroadcastHandler:
         # If we have image data, include it
         if hint_data.get('image'):
             message['image'] = hint_data['image']
-            print(f"Image data size: {len(hint_data['image']) / 1024:.2f}KB")
+            print(f"[network broadcast handler]Image data size: {len(hint_data['image']) / 1024:.2f}KB")
         
         # Convert to JSON and check size
         try:
             encoded_message = json.dumps(message).encode()
             msg_size = len(encoded_message) / 1024  # Size in KB
-            print(f"Total message size: {msg_size:.2f}KB")
+            print(f"[network broadcast handler]Total message size: {msg_size:.2f}KB")
             
             # Check if message is too large for UDP
             if msg_size > 60000:  # UDP practical limit ~64KB
-                print("ERROR: Hint message too large to send!")
-                print("Consider reducing image quality or size")
+                print("[network broadcast handler]ERROR: Hint message too large to send!")
+                print("[network broadcast handler]Consider reducing image quality or size")
                 return
                 
             # Send the message
-            print("Sending hint message...")
+            print("[network broadcast handler]Sending hint message...")
             self.socket.sendto(encoded_message, ('255.255.255.255', 12346))
-            print(f"Hint sent to room {room_number}")
+            print(f"[network broadcast handler]Hint sent to room {room_number}")
             
         except Exception as e:
-            print(f"Failed to send hint: {e}")
+            print(f"[network broadcast handler]Failed to send hint: {e}")
             import traceback
             traceback.print_exc()
         
@@ -171,17 +171,17 @@ class NetworkBroadcastHandler:
     
     def send_reboot_signal(self, computer_name):
         if computer_name not in self.app.kiosk_tracker.kiosk_assignments:
-            print(f"Cannot reboot {computer_name}: no room assigned")
+            print(f"[network broadcast handler]Cannot reboot {computer_name}: no room assigned")
             return
             
         room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
         if room_number not in self.room_ips:
-            print(f"No IP configured for room {room_number}")
+            print(f"[network broadcast handler]No IP configured for room {room_number}")
             return
             
         target_ip = self.room_ips[room_number]
         try:
             self.reboot_socket.sendto(b"reboot", (target_ip, self.REBOOT_PORT))
-            print(f"Reboot signal sent to {computer_name} (Room {room_number}, IP: {target_ip})")
+            print(f"[network broadcast handler]Reboot signal sent to {computer_name} (Room {room_number}, IP: {target_ip})")
         except Exception as e:
-            print(f"Failed to send reboot signal: {e}")
+            print(f"[network broadcast handler]Failed to send reboot signal: {e}")

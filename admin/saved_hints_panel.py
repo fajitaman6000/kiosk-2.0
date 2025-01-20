@@ -114,12 +114,12 @@ class SavedHintsPanel:
             if mapping_file.exists():
                 with open(mapping_file, 'r') as f:
                     self.prop_name_mappings = json.load(f)
-                #print("Loaded prop name mappings successfully")
+                #print("[saved hints panel]Loaded prop name mappings successfully")
             else:
                 self.prop_name_mappings = {}
-                print("No prop name mapping file found")
+                print("[saved hints panel]No prop name mapping file found")
         except Exception as e:
-            print(f"Error loading prop name mappings: {e}")
+            print(f"[saved hints panel]Error loading prop name mappings: {e}")
             self.prop_name_mappings = {}
 
     def get_display_name(self, prop_name):
@@ -154,21 +154,21 @@ class SavedHintsPanel:
     def load_hints(self):
         """Load all hints from the JSON file"""
         try:
-            #print("\n=== LOADING SAVED HINTS ===")
+            #print("[saved hints panel]\n=== LOADING SAVED HINTS ===")
             hints_path = os.path.join(os.getcwd(), 'saved_hints.json')
-            ##print(f"Looking for hints file at: {hints_path}")
-            #print(f"File exists: {os.path.exists(hints_path)}")
+            ##print(f"[saved hints panel]Looking for hints file at: {hints_path}")
+            #print(f"[saved hints panel]File exists: {os.path.exists(hints_path)}")
             
             if os.path.exists(hints_path):
                 with open(hints_path, 'r') as f:
                     data = json.load(f)
                     self.hints_data = data.get('rooms', {})
-                    print(f"Loaded hints for {len(self.hints_data)} rooms")
+                    print(f"[saved hints panel]Loaded hints for {len(self.hints_data)} rooms")
             else:
-                print("No hints file found!")
+                print("[saved hints panel]No hints file found!")
                 self.hints_data = {}
         except Exception as e:
-            print(f"Error loading hints: {str(e)}")
+            print(f"[saved hints panel]Error loading hints: {str(e)}")
             import traceback
             traceback.print_exc()
             self.hints_data = {}
@@ -218,7 +218,7 @@ class SavedHintsPanel:
 
     def update_room(self, room_number):
         """Update the prop dropdown for the selected room"""
-        print(f"\n=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
+        print(f"[saved hints panel]\n=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
         
         self.current_room = room_number
         self.clear_preview()
@@ -301,7 +301,7 @@ class SavedHintsPanel:
                     else:
                         self.image_label.configure(text="Image file not found", image='')
                 except Exception as e:
-                    print(f"Error loading hint image: {e}")
+                    print(f"[saved hints panel]Error loading hint image: {e}")
                     self.image_label.configure(text="Error loading image", image='')
             else:
                 self.image_label.configure(text="No image for this hint", image='')
@@ -339,7 +339,7 @@ class SavedHintsPanel:
                         selected_hint = hint_data
                         break
                 except (KeyError, AttributeError) as e:
-                    print(f"Error accessing hint data: {e}")
+                    print(f"[saved hints panel]Error accessing hint data: {e}")
                     continue
                 
         if selected_hint:
@@ -355,7 +355,7 @@ class SavedHintsPanel:
                             img_data = img_file.read()
                             hint_data['image'] = base64.b64encode(img_data).decode()
                 except Exception as e:
-                    print(f"Error loading hint image for sending: {e}")
+                    print(f"[saved hints panel]Error loading hint image for sending: {e}")
             
             # Send hint through callback
             self.send_hint_callback(hint_data)

@@ -189,7 +189,7 @@ class PropControl:
             time_diff = current_time - last_update
             
             if not hasattr(self, 'status_icons'):
-                print("Status icons not initialized")
+                print("[prop control]Status icons not initialized")
                 return
                 
             if time_diff > 2:
@@ -206,7 +206,7 @@ class PropControl:
                 elif status_text == "Finished":
                     icon = self.status_icons['finished']
                 else:
-                    print(f"Unknown status: '{status_text}', defaulting to not_activated")
+                    print(f"[prop control]Unknown status: '{status_text}', defaulting to not_activated")
                     icon = self.status_icons['not_activated']
             
             # Update the label with the appropriate icon
@@ -218,7 +218,7 @@ class PropControl:
             # Widget was destroyed, remove the reference
             del prop['status_label']
         except Exception as e:
-            print(f"Error updating prop status: {e}")
+            print(f"[prop control]Error updating prop status: {e}")
 
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
@@ -227,12 +227,12 @@ class PropControl:
             if mapping_file.exists():
                 with open(mapping_file, 'r') as f:
                     self.prop_name_mappings = json.load(f)
-                #print("Loaded prop name mappings successfully")
+                #print("[prop control]Loaded prop name mappings successfully")
             else:
                 self.prop_name_mappings = {}
-                print("No prop name mapping file found")
+                print("[prop control]No prop name mapping file found")
         except Exception as e:
-            print(f"Error loading prop name mappings: {e}")
+            print(f"[prop control]Error loading prop name mappings: {e}")
             self.prop_name_mappings = {}
 
     def get_mapped_prop_name(self, original_name, room_number):
@@ -283,7 +283,7 @@ class PropControl:
                 self.app.root.after(5000, lambda: self.check_connection_timeout(room_number))
                 
             except Exception as e:
-                print(f"Failed to connect to room {room_number}: {e}")
+                print(f"[prop control]Failed to connect to room {room_number}: {e}")
                 error_msg = f"Connection failed. Retrying in 10 seconds..."
                 self.connection_states[room_number] = error_msg
                 
@@ -301,7 +301,7 @@ class PropControl:
         if room_number in self.mqtt_clients:
             client = self.mqtt_clients[room_number]
             if not client.is_connected():
-                print(f"Connection to room {room_number} timed out")
+                print(f"[prop control]Connection to room {room_number} timed out")
                 room_name = self.app.rooms.get(room_number, f"Room {room_number}")
                 timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
                 self.connection_states[room_number] = timeout_msg
@@ -318,7 +318,7 @@ class PropControl:
                         if room_number in self.mqtt_clients:
                             del self.mqtt_clients[room_number]
                     except Exception as e:
-                        print(f"Error cleaning up client for room {room_number}: {e}")
+                        print(f"[prop control]Error cleaning up client for room {room_number}: {e}")
                 
                 threading.Thread(target=cleanup, daemon=True).start()
                 
@@ -334,12 +334,12 @@ class PropControl:
             self.handle_prop_update(prop_data['info'])
             return True
         except Exception as e:
-            print(f"Error restoring prop UI: {e}")
+            print(f"[prop control]Error restoring prop UI: {e}")
             return False
 
     def retry_connection(self, room_number):
         """Retry connecting to a room's MQTT server without blocking"""
-        print(f"Retrying connection to room {room_number}")
+        print(f"[prop control]Retrying connection to room {room_number}")
         
         # Start a new connection attempt in a separate thread
         def do_retry():
@@ -351,7 +351,7 @@ class PropControl:
                     old_client.disconnect()
                     del self.mqtt_clients[room_number]
                 except Exception as e:
-                    print(f"Error cleaning up old client for room {room_number}: {e}")
+                    print(f"[prop control]Error cleaning up old client for room {room_number}: {e}")
             
             # Initialize new connection
             self.initialize_mqtt_client(room_number)
@@ -360,7 +360,7 @@ class PropControl:
 
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup"""
-        print(f"\nSwitching to room {room_number}")
+        print(f"[prop control]\nSwitching to room {room_number}")
         
         if room_number == self.current_room:
             return
@@ -402,7 +402,7 @@ class PropControl:
                     fg='black' if "Connected" in self.connection_states[room_number] else 'red'
                 )
             except tk.TclError:
-                print("Status label was destroyed, skipping update")
+                print("[prop control]Status label was destroyed, skipping update")
         else:
             self.initialize_mqtt_client(room_number)
 
@@ -472,10 +472,10 @@ class PropControl:
                     # Widget is invalid, remove the reference
                     del prop_info['status_label']
                 except Exception as e:
-                    print(f"Error updating prop UI: {e}")
+                    print(f"[prop control]Error updating prop UI: {e}")
                         
         except Exception as e:
-            print(f"Error in check_prop_status: {e}")
+            print(f"[prop control]Error in check_prop_status: {e}")
 
     def update_all_props_status(self, room_number):
         """Update status for all props in a room"""
@@ -691,13 +691,13 @@ class PropControl:
                     ))
                     
         except json.JSONDecodeError:
-            print(f"Failed to decode message from room {room_number}: {msg.payload}")
+            print(f"[prop control]Failed to decode message from room {room_number}: {msg.payload}")
         except Exception as e:
-            print(f"Error handling message from room {room_number}: {e}")
+            print(f"[prop control]Error handling message from room {room_number}: {e}")
 
     def on_disconnect(self, client, userdata, rc, room_number):
         """Handle disconnection for a specific room's client"""
-        print(f"Room {room_number} disconnected with code: {rc}")
+        print(f"[prop control]Room {room_number} disconnected with code: {rc}")
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
         if rc != 0:  # Unexpected disconnect
             self.update_connection_state(room_number, 
@@ -730,7 +730,7 @@ class PropControl:
                     )
                 }
             except Exception as e:
-                print(f"Error loading status icons: {e}")
+                print(f"[prop control]Error loading status icons: {e}")
                 self.status_icons = None
                 
         # Get the order number for this prop
@@ -935,9 +935,9 @@ class PropControl:
                     widget.configure(bg=new_color)
                         
         except tk.TclError:
-            print(f"Widget for kiosk {assigned_kiosk} was destroyed")
+            print(f"[prop control]Widget for kiosk {assigned_kiosk} was destroyed")
         except Exception as e:
-            print(f"Error updating kiosk highlight: {e}")
+            print(f"[prop control]Error updating kiosk highlight: {e}")
 
     def schedule_status_update(self, prop_id):
         """Schedule periodic updates of prop status"""
@@ -949,21 +949,21 @@ class PropControl:
     def send_command(self, prop_id, command):
         """Send command to standard props"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("No active room selected")
+            print("[prop control]No active room selected")
             return
             
         client = self.mqtt_clients[self.current_room]
         topic = f"/er/{prop_id}/cmd"
         try:
             client.publish(topic, command)
-            print(f"Command sent successfully to room {self.current_room}")
+            print(f"[prop control]Command sent successfully to room {self.current_room}")
         except Exception as e:
-            print(f"Failed to send command: {e}")
+            print(f"[prop control]Failed to send command: {e}")
 
     def send_special_command(self, prop_name, command):
         """Send command to special pneumatic props"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print(f"\nNo active room selected")
+            print(f"[prop control]\nNo active room selected")
             return
             
         # Map the friendly names to their actual MQTT topics
@@ -976,24 +976,24 @@ class PropControl:
         
         # Get the actual topic name for this prop
         if prop_name not in prop_map:
-            print(f"\nUnknown prop: {prop_name}")
+            print(f"[prop control]\nUnknown prop: {prop_name}")
             return
             
         client = self.mqtt_clients[self.current_room]
         topic = f"/er/{prop_map[prop_name]}"
         
         try:
-            print(f"\nSending pneumatic prop command:")
-            print(f"Room: {self.current_room}")
-            print(f"Prop: {prop_name}")
-            print(f"Topic: {topic}")
+            print(f"[prop control]\nSending pneumatic prop command:")
+            print(f"[prop control]Room: {self.current_room}")
+            print(f"[prop control]Prop: {prop_name}")
+            print(f"[prop control]Topic: {topic}")
             
             # Send the exact command the props expect
             client.publish(topic, "trigger", qos=0, retain=False)
-            print(f"Command sent successfully to {prop_name}")
+            print(f"[prop control]Command sent successfully to {prop_name}")
             
         except Exception as e:
-            print(f"\nFailed to send command: {e}")
+            print(f"[prop control]\nFailed to send command: {e}")
 
     def on_frame_configure(self, event=None):
         """Reconfigure the canvas scrolling region"""
@@ -1033,48 +1033,48 @@ class PropControl:
     def start_game(self):
         """Send start game command to current room"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("No active room selected")
+            print("[prop control]No active room selected")
             return
             
         client = self.mqtt_clients[self.current_room]
         try:
             client.publish("/er/cmd", "start")
-            print(f"Start game command sent to room {self.current_room}")
+            print(f"[prop control]Start game command sent to room {self.current_room}")
             # Log the action
             if hasattr(self.app, 'kiosk_tracker'):
                 self.app.kiosk_tracker.log_action(f"Started game in room {self.current_room}")
         except Exception as e:
-            print(f"Failed to send start game command: {e}")
+            print(f"[prop control]Failed to send start game command: {e}")
 
     def reset_all(self):
         """Send reset all command to current room"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("No active room selected")
+            print("[prop control]No active room selected")
             return
             
         client = self.mqtt_clients[self.current_room]
         try:
             client.publish("/er/cmd", "reset")
-            print(f"Reset all command sent to room {self.current_room}")
+            print(f"[prop control]Reset all command sent to room {self.current_room}")
             # Log the action
             if hasattr(self.app, 'kiosk_tracker'):
                 self.app.kiosk_tracker.log_action(f"Reset all props in room {self.current_room}")
         except Exception as e:
-            print(f"Failed to send reset all command: {e}")
+            print(f"[prop control]Failed to send reset all command: {e}")
 
     
 
     def send_quest_command(self, quest_type):
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("No active room selected")
+            print("[prop control]No active room selected")
             return
             
         client = self.mqtt_clients[self.current_room]
         topic = "/er/quest"
         try:
             client.publish(topic, quest_type)
-            print(f"Quest command '{quest_type}' sent successfully to room {self.current_room}")
+            print(f"[prop control]Quest command '{quest_type}' sent successfully to room {self.current_room}")
             if hasattr(self.app, 'kiosk_tracker'):
                 self.app.kiosk_tracker.log_action(f"Sent quest command '{quest_type}' to room {self.current_room}")
         except Exception as e:
-            print(f"Failed to send quest command: {e}")
+            print(f"[prop control]Failed to send quest command: {e}")

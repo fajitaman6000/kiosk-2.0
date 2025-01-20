@@ -22,7 +22,7 @@ from qt_overlay import Overlay
 
 class KioskApp:
     def __init__(self):
-        print("\nStarting KioskApp initialization...")
+        print("[kiosk main]\nStarting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
         self.root = tk.Tk()
@@ -41,7 +41,7 @@ class KioskApp:
         self.room_started = False
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
-        #print("Initialized time_exceeded_45 flag to False")
+        #print("[kiosk main]Initialized time_exceeded_45 flag to False")
         self.audio_manager = AudioManager()  # Initialize audio manager
         self.video_manager = VideoManager(self.root) # Initialize video manager
         self.message_handler = MessageHandler(self, self.video_manager)
@@ -49,7 +49,7 @@ class KioskApp:
         # Initialize components as before
         self.network = KioskNetwork(self.computer_name, self)
         self.video_server = VideoServer()
-        print("Starting video server...")
+        print("[kiosk main]Starting video server...")
         self.video_server.start()
         
         from kiosk_timer import KioskTimer
@@ -62,15 +62,15 @@ class KioskApp:
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         self.audio_server = AudioServer()
-        print("Starting audio server...")
+        print("[kiosk main]Starting audio server...")
         self.audio_server.start()
 
-        print(f"Computer name: {self.computer_name}")
-        print("Creating RoomPersistence...")
+        print(f"[kiosk main]Computer name: {self.computer_name}")
+        print("[kiosk main]Creating RoomPersistence...")
         self.room_persistence = RoomPersistence()
-        #print("Loading saved room...")
+        #print("[kiosk main]Loading saved room...")
         self.assigned_room = self.room_persistence.load_room_assignment()
-        print(f"Loaded room assignment: {self.assigned_room}")
+        print(f"[kiosk main]Loaded room assignment: {self.assigned_room}")
 
         
         # Initialize UI with saved room if available
@@ -81,13 +81,13 @@ class KioskApp:
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
-        #print("\n[DEBUG] _actual_help_button_update - START")
+        #print("[kiosk main]\n[DEBUG] _actual_help_button_update - START")
         try:
             Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
         except Exception as e:
-            #print(f"[DEBUG] Exception in _actual_help_button_update: {e}")
+            #print(f"[kiosk main][DEBUG] Exception in _actual_help_button_update: {e}")
             traceback.print_exc()
-        #print("[DEBUG] _actual_help_button_update - END")
+        #print("[kiosk main][DEBUG] _actual_help_button_update - END")
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
@@ -109,7 +109,7 @@ class KioskApp:
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
-            #print(f"\nStats updated: {stats}")
+            #print(f"[kiosk main]\nStats updated: {stats}")
             self._last_stats = stats.copy()
         return stats
         
@@ -130,9 +130,9 @@ class KioskApp:
         self.ui.start_cooldown()
 
     def play_video(self, video_type, minutes):
-        print(f"\n=== Video Playback Sequence Start ===")
-        print(f"Starting play_video with type: {video_type}")
-        print(f"Current room assignment: {self.assigned_room}")
+        print(f"[kiosk main]\n=== Video Playback Sequence Start ===")
+        print(f"[kiosk main]Starting play_video with type: {video_type}")
+        print(f"[kiosk main]Current room assignment: {self.assigned_room}")
         
         # Define video paths upfront
         video_dir = Path("intro_videos")
@@ -143,64 +143,64 @@ class KioskApp:
         if self.assigned_room is not None and self.assigned_room in ROOM_CONFIG['backgrounds']:
             game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
             game_video = video_dir / game_video_name
-            print(f"Found room-specific game video path: {game_video}")
-            print(f"Game video exists? {game_video.exists() if game_video else False}")
+            print(f"[kiosk main]Found room-specific game video path: {game_video}")
+            print(f"[kiosk main]Game video exists? {game_video.exists() if game_video else False}")
 
         def finish_video_sequence():
             """Final callback after all videos are complete"""
-            print("\n=== Video Sequence Completion ===")
-            print("Executing finish_video_sequence callback")
-            print(f"Setting timer to {minutes} minutes")
+            print("[kiosk main]\n=== Video Sequence Completion ===")
+            print("[kiosk main]Executing finish_video_sequence callback")
+            print(f"[kiosk main]Setting timer to {minutes} minutes")
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
             
             # Start playing background music for the assigned room
             if self.assigned_room:
-                print(f"Starting background music for room: {self.assigned_room}")
+                print(f"[kiosk main]Starting background music for room: {self.assigned_room}")
                 self.audio_manager.play_background_music(self.assigned_room)
             
-            print("Resetting UI state...")
+            print("[kiosk main]Resetting UI state...")
             self.ui.hint_cooldown = False
             self.ui.clear_all_labels()
             if self.assigned_room:
-                print(f"Restoring room interface for: {self.assigned_room}")
+                print(f"[kiosk main]Restoring room interface for: {self.assigned_room}")
                 self.ui.setup_room_interface(self.assigned_room)
                 if not self.ui.hint_cooldown:
-                    print("Creating help button")
+                    print("[kiosk main]Creating help button")
                     Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
-            print("=== Video Sequence Complete ===\n")
+            print("[kiosk main]=== Video Sequence Complete ===\n")
 
         def play_game_video():
             """Helper to play game video if it exists"""
-            print("\n=== Starting Game Video Sequence ===")
-            print(f"Game video path: {game_video}")
+            print("[kiosk main]\n=== Starting Game Video Sequence ===")
+            print(f"[kiosk main]Game video path: {game_video}")
             if game_video and game_video.exists():
-                print(f"Starting playback of game video: {game_video}")
-                print("Setting up completion callback to finish_video_sequence")
+                print(f"[kiosk main]Starting playback of game video: {game_video}")
+                print("[kiosk main]Setting up completion callback to finish_video_sequence")
                 self.video_manager.play_video(str(game_video), on_complete=finish_video_sequence)
             else:
-                print("No valid game video found, proceeding to finish sequence")
-                print(f"Game video exists? {game_video.exists() if game_video else False}")
+                print("[kiosk main]No valid game video found, proceeding to finish sequence")
+                print(f"[kiosk main]Game video exists? {game_video.exists() if game_video else False}")
                 finish_video_sequence()
-            print("=== Game Video Sequence Initiated ===\n")
+            print("[kiosk main]=== Game Video Sequence Initiated ===\n")
 
         # Play video based on type
         if video_type != 'game':
-            print("\n=== Starting Intro Video Sequence ===")
+            print("[kiosk main]\n=== Starting Intro Video Sequence ===")
             if video_file.exists():
-                print(f"Found intro video at: {video_file}")
-                print("Setting up completion callback to play_game_video")
+                print(f"[kiosk main]Found intro video at: {video_file}")
+                print("[kiosk main]Setting up completion callback to play_game_video")
                 self.video_manager.play_video(str(video_file), on_complete=play_game_video)
             else:
-                print(f"Intro video not found at: {video_file}")
-                print("Skipping to game video")
+                print(f"[kiosk main]Intro video not found at: {video_file}")
+                print("[kiosk main]Skipping to game video")
                 play_game_video()  # Skip to game video if intro doesn't exist
         else:
-            print("\n=== Skipping Intro, Playing Game Video ===")
+            print("[kiosk main]\n=== Skipping Intro, Playing Game Video ===")
             play_game_video()
         
     def on_closing(self):
-        print("Shutting down kiosk...")
+        print("[kiosk main]Shutting down kiosk...")
         if self.current_video_process:
             self.current_video_process.terminate()
         self.network.shutdown()
@@ -211,7 +211,7 @@ class KioskApp:
 
     def clear_hints(self):
         """Clear all visible hints without resetting other kiosk state"""
-        #print("\n[DEBUG] Clearing visible hints...")
+        #print("[kiosk main]\n[DEBUG] Clearing visible hints...")
         
         # Reset UI hint-related state
         self.ui.hint_cooldown = False
@@ -245,7 +245,7 @@ class KioskApp:
         # Update help button state
         self._actual_help_button_update()
         
-        #print("[DEBUG] Hint clearing complete")
+        #print("[kiosk main][DEBUG] Hint clearing complete")
 
     def run(self):
         self.root.mainloop()

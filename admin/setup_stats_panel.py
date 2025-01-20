@@ -123,7 +123,7 @@ def setup_stats_panel(interface_builder, computer_name):
             clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
             clock_icon = ImageTk.PhotoImage(clock_icon)
         except Exception as e:
-            print(f"Error loading icons: {e}")
+            print(f"[stats panel]Error loading icons: {e}")
             play_icon = stop_icon = video_icon = clock_icon = None
         
         # Timer button frame
@@ -159,7 +159,7 @@ def setup_stats_panel(interface_builder, computer_name):
             skip_icon = skip_icon.resize((24, 24), Image.Resampling.LANCZOS)
             skip_icon = ImageTk.PhotoImage(skip_icon)
         except Exception as e:
-            print(f"Error loading skip icon: {e}")
+            print(f"[stats panel]Error loading skip icon: {e}")
             skip_icon = None
 
         # Video frame with icon button, dropdown and skip button
@@ -238,7 +238,7 @@ def setup_stats_panel(interface_builder, computer_name):
             plus_icon = plus_icon.resize((24, 24), Image.Resampling.LANCZOS)
             plus_icon = ImageTk.PhotoImage(plus_icon)
         except Exception as e:
-            print(f"Error loading plus icon: {e}")
+            print(f"[stats panel]Error loading plus icon: {e}")
             plus_icon = None
 
         add_time_btn = tk.Button(
@@ -402,7 +402,7 @@ def setup_stats_panel(interface_builder, computer_name):
             disable_mic_icon = disable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
             disable_mic_icon = ImageTk.PhotoImage(disable_mic_icon)
         except Exception as e:
-            print(f"Error loading video/audio control icons: {e}")
+            print(f"[stats panel]Error loading video/audio control icons: {e}")
             camera_icon = stop_camera_icon = listen_icon = stop_listening_icon = enable_mic_icon = disable_mic_icon = None
 
         # Camera controls with icon
@@ -480,7 +480,7 @@ def setup_stats_panel(interface_builder, computer_name):
             with open('prop_name_mapping.json', 'r') as f:
                 prop_mappings = json.load(f)
         except Exception as e:
-            print(f"Error loading prop mappings: {e}")
+            print(f"[stats panel]Error loading prop mappings: {e}")
             prop_mappings = {}
             
         # Get room-specific props if room is assigned
@@ -533,13 +533,13 @@ def setup_stats_panel(interface_builder, computer_name):
             # Safety check - ensure dropdown still exists
             dropdown = interface_builder.stats_elements.get('props_dropdown')
             if not dropdown:
-                print("Warning: Dropdown no longer exists")
+                print("[stats panel]Warning: Dropdown no longer exists")
                 return
                 
             # Get current values
             current_values = dropdown.cget('values')
             if not current_values:
-                print("Warning: No values in dropdown")
+                print("[stats panel]Warning: No values in dropdown")
                 return
                 
             # Find matching prop in dropdown
@@ -547,10 +547,10 @@ def setup_stats_panel(interface_builder, computer_name):
                 if f"({prop_name})" in prop_item:
                     try:
                         dropdown.set(prop_item)
-                        #print(f"Successfully set dropdown to: {prop_item}")
+                        #print(f"[stats panel]Successfully set dropdown to: {prop_item}")
                         break
                     except Exception as e:
-                        print(f"Error setting dropdown value: {e}")
+                        print(f"[stats panel]Error setting dropdown value: {e}")
 
         # Register for prop selection notifications
         if hasattr(interface_builder.app.prop_control, 'add_prop_select_callback'):

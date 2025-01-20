@@ -30,7 +30,7 @@ class VideoClient:
             threading.Thread(target=self.receive_video, daemon=True).start()
             return True
         except Exception as e:
-            print(f"Connection failed: {e}")
+            print(f"[video client]Connection failed: {e}")
             self.disconnect()
             return False
         

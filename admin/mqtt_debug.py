@@ -22,19 +22,19 @@ class MessageTracker:
 tracker = MessageTracker()
 
 def on_connect(client, userdata, flags, rc):
-    print("\nConnected to MQTT broker")
+    print("[mqtt debug]\nConnected to MQTT broker")
     client.subscribe("#")
-    print("Listening for MQTT traffic (showing only unique messages)...\n")
+    print("[mqtt debug]Listening for MQTT traffic (showing only unique messages)...\n")
 
 def on_message(client, userdata, msg):
     # Only show message if we haven't seen this topic:payload combination
     if tracker.is_new_message(msg.topic, msg.payload):
-        print("====== NEW UNIQUE MQTT MESSAGE ======")
-        print(f"Topic: {msg.topic}")
-        print(f"Payload: {msg.payload}")
-        print(f"QoS: {msg.qos}")
-        print(f"Retain: {msg.retain}")
-        print("===================================\n")
+        print("[mqtt debug]====== NEW UNIQUE MQTT MESSAGE ======")
+        print(f"[mqtt debug]Topic: {msg.topic}")
+        print(f"[mqtt debug]Payload: {msg.payload}")
+        print(f"[mqtt debug]QoS: {msg.qos}")
+        print(f"[mqtt debug]Retain: {msg.retain}")
+        print("[mqtt debug]===================================\n")
 
 # Create client
 client = mqtt.Client(
@@ -57,7 +57,7 @@ client.connect("192.168.0.12", 8080, 60)  # Use your Zombie room's IP
 try:
     client.loop_forever()
 except KeyboardInterrupt:
-    print("\nSniffer stopped")
+    print("[mqtt debug]\nSniffer stopped")
     client.disconnect()
 
 # =============================== END OF FILE ===============================

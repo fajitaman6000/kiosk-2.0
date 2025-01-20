@@ -20,15 +20,15 @@ class VideoServer:
         
     def check_camera(self):
         """Non-blocking camera check"""
-        print("Checking camera availability...")
+        print("[video server]Checking camera availability...")
         try:
             cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Try DirectShow first
             if not cap.isOpened():
                 cap.release()
-                print("DirectShow failed, trying default")
+                print("[video server]DirectShow failed, trying default")
                 cap = cv2.VideoCapture(0)  # Fallback to default
                 if not cap.isOpened():
-                    print("Failed to open camera")
+                    print("[video server]Failed to open camera")
                     return False
             
             # Set camera properties
@@ -42,15 +42,15 @@ class VideoServer:
                 ret, frame = cap.read()
                 if ret and frame is not None:
                     cap.release()
-                    print("Camera check successful")
+                    print("[video server]Camera check successful")
                     return True
             
             cap.release()
-            print("Camera frame capture timed out")
+            print("[video server]Camera frame capture timed out")
             return False
             
         except Exception as e:
-            print(f"Camera check error: {e}")
+            print(f"[video server]Camera check error: {e}")
             if cap:
                 cap.release()
             return False
@@ -59,7 +59,7 @@ class VideoServer:
         """Non-blocking server start"""
         def startup():
             if not self.check_camera():
-                print("Camera check failed")
+                print("[video server]Camera check failed")
                 return False
                 
             try:
@@ -70,18 +70,18 @@ class VideoServer:
                 self.accept_connections()  # Start accepting connections
                 return True
             except Exception as e:
-                print(f"Failed to start video server: {e}")
+                print(f"[video server]Failed to start video server: {e}")
                 return False
         
         # Run startup in separate thread
         threading.Thread(target=startup, daemon=True).start()
         
     def accept_connections(self):
-        print("Video server ready for connections")
+        print("[video server]Video server ready for connections")
         while self.running:
             try:
                 client, addr = self.server_socket.accept()
-                print(f"New video connection from {addr}")
+                print(f"[video server]New video connection from {addr}")
                 if self.current_client:
                     self.current_client.close()
                 self.current_client = client
@@ -89,17 +89,17 @@ class VideoServer:
                 threading.Thread(target=self.stream_video, args=(client,), daemon=True).start()
             except Exception as e:
                 if self.running:
-                    print(f"Connection error: {e}")
+                    print(f"[video server]Connection error: {e}")
                 break
                 
     def stream_video(self, client):
-        print("Starting video stream")
+        print("[video server]Starting video stream")
         try:
             cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Try DirectShow first
             if not cap.isOpened():
                 cap = cv2.VideoCapture(0)  # Fallback to default
                 if not cap.isOpened():
-                    print("Failed to open camera for streaming")
+                    print("[video server]Failed to open camera for streaming")
                     return
                     
             cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
@@ -118,18 +118,18 @@ class VideoServer:
                     except:
                         break
                 else:
-                    print("Failed to get frame")
+                    print("[video server]Failed to get frame")
                     break
                     
         except Exception as e:
-            print(f"Streaming error: {e}")
+            print(f"[video server]Streaming error: {e}")
         finally:
-            print("Closing video stream")
+            print("[video server]Closing video stream")
             cap.release()
             client.close()
             
     def stop(self):
-        print("Stopping video server")
+        print("[video server]Stopping video server")
         self.running = False
         if self.current_client:
             try:

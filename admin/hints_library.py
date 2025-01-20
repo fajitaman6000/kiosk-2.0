@@ -45,7 +45,7 @@ class HintManager:
             with open('prop_name_mapping.json', 'r') as f:
                 self.prop_mappings = json.load(f)
         except Exception as e:
-            print(f"Error loading prop mappings: {e}")
+            print(f"[hint library]Error loading prop mappings: {e}")
             self.prop_mappings = {}
             
     def get_display_name(self, room_id, prop_name):
@@ -170,7 +170,7 @@ class HintManager:
                 for hint_id, hint_info in room_data.get('hints', {}).items():
                     prop_name = hint_info['prop']
                     display_name = self.get_display_name(room_id, prop_name)
-                    print(f"Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
+                    print(f"[hint library]Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
                     if prop_name not in prop_hints:
                         prop_hints[prop_name] = []
                     prop_hints[prop_name].append((hint_id, hint_info))
@@ -195,7 +195,7 @@ class HintManager:
                         hint_display.pack(fill='x', padx=5, pady=2)
                         
         except Exception as e:
-            print(f"Error loading hints: {e}")
+            print(f"[hint library]Error loading hints: {e}")
             
     def create_hint_display(self, parent, room_id, hint_id, hint_info):
         """Create a display frame for a single hint"""
@@ -251,7 +251,7 @@ class HintManager:
                     image_label.image = photo
                     image_label.pack(pady=2)
             except Exception as e:
-                print(f"Error loading hint image: {e}")
+                print(f"[hint library]Error loading hint image: {e}")
                 
         return hint_frame
         
@@ -277,7 +277,7 @@ class HintManager:
             status_label.after(2000, lambda: status_label.config(text=""))
                 
         except Exception as e:
-            print(f"Error saving hint changes: {e}")
+            print(f"[hint library]Error saving hint changes: {e}")
             status_label.config(text="Error saving!", foreground='red')
             status_label.after(2000, lambda: status_label.config(text=""))
     
@@ -330,4 +330,4 @@ class HintManager:
             self.load_hints()
             
         except Exception as e:
-            print(f"Error deleting hint: {e}")
+            print(f"[hint library]Error deleting hint: {e}")

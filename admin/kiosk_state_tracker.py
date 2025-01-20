@@ -9,7 +9,7 @@ class KioskStateTracker:
         self.help_requested = set()  # set of computer_names
         
     def update_kiosk_stats(self, computer_name, msg):
-        #print(f"[KioskStateTracker] update_kiosk_stats: Received stats from {computer_name}: {msg}")
+        #print(f"[kiosk state tracker][KioskStateTracker] update_kiosk_stats: Received stats from {computer_name}: {msg}")
         self.kiosk_stats[computer_name] = {
             'total_hints': msg.get('total_hints', 0),
             'timer_time': msg.get('timer_time', 3600),
@@ -19,7 +19,7 @@ class KioskStateTracker:
         
         # Update UI if this kiosk is selected
         if computer_name == self.app.interface_builder.selected_kiosk:
-            #print(f"[KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
+            #print(f"[kiosk state tracker][KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
             self.app.interface_builder.update_stats_display(computer_name)
 
     def update_timer_state(self, computer_name, time_remaining, is_running):
@@ -32,16 +32,16 @@ class KioskStateTracker:
                 self.app.interface_builder.update_stats_display(computer_name)
         
     def add_help_request(self, computer_name):
-        print(f"[KioskStateTracker] add_help_request: Received help request from {computer_name}")
+        print(f"[kiosk state tracker][KioskStateTracker] add_help_request: Received help request from {computer_name}")
         self.help_requested.add(computer_name)
         
     def remove_help_request(self, computer_name):
-        print(f"[KioskStateTracker] remove_help_request: Removing help request from {computer_name}")
+        print(f"[kiosk state tracker][KioskStateTracker] remove_help_request: Removing help request from {computer_name}")
         if computer_name in self.help_requested:
             self.help_requested.remove(computer_name)
             
     def assign_kiosk_to_room(self, computer_name, room_number):
-        print(f"Assigning {computer_name} to room {room_number}")
+        print(f"[kiosk state tracker]Assigning {computer_name} to room {room_number}")
         self.kiosk_assignments[computer_name] = room_number
         self.assigned_rooms[computer_name] = self.app.rooms[room_number]
         

@@ -79,7 +79,7 @@ class KioskUI:
                 image = image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
                 return ImageTk.PhotoImage(image)
         except Exception as e:
-            print(f"Error loading background: {str(e)}")
+            print(f"[ui.py]Error loading background: {str(e)}")
         return None
         
     def setup_waiting_screen(self):
@@ -182,8 +182,8 @@ class KioskUI:
             text_or_data: Either a string containing hint text or a dict with 'text' and optional 'image' keys
             start_cooldown: Boolean indicating whether to start the cooldown timer (default: True)
         """
-        print("\n=== PROCESSING NEW HINT ===")
-        print(f"Received hint data: {type(text_or_data)}")
+        print("[ui.py]\n=== PROCESSING NEW HINT ===")
+        print(f"[ui.py]Received hint data: {type(text_or_data)}")
         
         try:
             # Remove existing UI elements
@@ -195,13 +195,13 @@ class KioskUI:
                 
             # Clear any existing video solution
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                print("Clearing existing video solution")
+                print("[ui.py]Clearing existing video solution")
                 self.video_solution_button.destroy()
                 self.video_solution_button = None
                 
             # Stop any playing video
             if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                print("Stopping playing video")
+                print("[ui.py]Stopping playing video")
                 self.message_handler.video_manager.stop_video()
                 self.video_is_playing = False
                 
@@ -276,7 +276,7 @@ class KioskUI:
                 self.image_button.bind('<Button-1>', lambda e: self.show_fullscreen_image())
 
         except Exception as e:
-            print("\nCritical error in show_hint:")
+            print("[ui.py]\nCritical error in show_hint:")
             traceback.print_exc()
             
     def show_fullscreen_image(self):
@@ -342,7 +342,7 @@ class KioskUI:
             self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
             
         except Exception as e:
-            print("\nError displaying fullscreen image:")
+            print("[ui.py]\nError displaying fullscreen image:")
             traceback.print_exc()
             if self.fullscreen_image:
                 self.fullscreen_image.create_text(
@@ -376,7 +376,7 @@ class KioskUI:
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
-        print("Starting cooldown timer")
+        print("[ui.py]Starting cooldown timer")
         if self.cooldown_after_id:
             self.root.after_cancel(self.cooldown_after_id)
             self.cooldown_after_id = None
@@ -401,7 +401,7 @@ class KioskUI:
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
         try:
-            print(f"\nShowing video solution for {room_folder}/{video_filename}")
+            print(f"[ui.py]\nShowing video solution for {room_folder}/{video_filename}")
             
             # Store video info first
             self.stored_video_info = {
@@ -448,10 +448,10 @@ class KioskUI:
             
             # Bind click event
             self.video_solution_button.bind('<Button-1>', lambda e: self.toggle_solution_video())
-            print("Successfully created video solution button")
+            print("[ui.py]Successfully created video solution button")
             
         except Exception as e:
-            print(f"\nError creating video solution button:")
+            print(f"[ui.py]\nError creating video solution button:")
             traceback.print_exc()
             self.stored_video_info = None
             self.video_solution_button = None
@@ -461,16 +461,16 @@ class KioskUI:
          # Wrap the logic in a thread-safe lock
          with self._lock:
             try:
-                print("\nToggling solution video")
+                print("[ui.py]\nToggling solution video")
                 # If video is already playing, stop it
                 if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                    print("Stopping current video")
+                    print("[ui.py]Stopping current video")
                     self.message_handler.video_manager.stop_video()
                     self.video_is_playing = False
                     
                     # Restore the button
                     if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                        print("Restoring solution button")
+                        print("[ui.py]Restoring solution button")
                         self.video_solution_button.place(
                             x=750,
                             y=(1015 - 64)/2 - 100 + 64
@@ -481,12 +481,12 @@ class KioskUI:
 
                     # Restore cooldown display if still in cooldown
                     if self.hint_cooldown:
-                        print("Restoring cooldown display")
+                        print("[ui.py]Restoring cooldown display")
                         self.show_status_frame()
                         
                 # If video is not playing, start it
                 else:
-                    print("Starting video playback")
+                    print("[ui.py]Starting video playback")
                     if hasattr(self, 'stored_video_info'):
                         # Store cooldown state before hiding UI
                         cooldown_items = self.status_frame.find_withtag('cooldown_text')
@@ -499,7 +499,7 @@ class KioskUI:
                         Overlay.hide_hint_text()
                         
                         if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                            print("Hiding solution button")
+                            print("[ui.py]Hiding solution button")
                             self.video_solution_button.place_forget()
                             
                         if self.hint_cooldown:
@@ -512,26 +512,26 @@ class KioskUI:
                             f"{self.stored_video_info['video_filename']}.mp4"
                         )
                         
-                        print(f"Video path: {video_path}")
+                        print(f"[ui.py]Video path: {video_path}")
                         if os.path.exists(video_path):
-                            print("Playing video")
+                            print("[ui.py]Playing video")
                             self.video_is_playing = True
                             self.message_handler.video_manager.play_video(
                                 video_path,
                                 on_complete=self.handle_video_completion
                             )
                         else:
-                            print(f"Error: Video file not found at {video_path}")
+                            print(f"[ui.py]Error: Video file not found at {video_path}")
                     else:
-                        print("Error: No video info stored")
+                        print("[ui.py]Error: No video info stored")
                         
             except Exception as e:
-                print(f"\nError in toggle_solution_video: {e}")
+                print(f"[ui.py]\nError in toggle_solution_video: {e}")
                 traceback.print_exc()
 
     def handle_video_completion(self):
         """Handle cleanup after video finishes playing while maintaining cooldown state"""
-        print("\nHandling video completion")
+        print("[ui.py]\nHandling video completion")
         self.video_is_playing = False
         
         try:
@@ -545,7 +545,7 @@ class KioskUI:
             cooldown_after_id = self.cooldown_after_id
             
             # Clear UI state without affecting cooldown
-            print("Clearing UI state...")
+            print("[ui.py]Clearing UI state...")
             # Don't call clear_all_labels() as it would reset cooldown
             Overlay.hide_hint_text()
             Overlay.hide_help_button() # Replaced help button removal with this
@@ -555,12 +555,12 @@ class KioskUI:
                 
             # Restore room interface - this will properly recreate the hint display area
             if self.message_handler.assigned_room:
-                print("Restoring room interface")
+                print("[ui.py]Restoring room interface")
                 self.setup_room_interface(self.message_handler.assigned_room)
                 
                 # If we had a video solution, create a fresh button
                 if stored_video_info:
-                    print("Creating fresh video solution button")
+                    print("[ui.py]Creating fresh video solution button")
                     self.show_video_solution(
                         stored_video_info['room_folder'],
                         stored_video_info['video_filename']
@@ -568,7 +568,7 @@ class KioskUI:
             
             # Restore cooldown state if it was active
             if was_in_cooldown:
-                print("Restoring cooldown state")
+                print("[ui.py]Restoring cooldown state")
                 self.hint_cooldown = True
                 self.cooldown_after_id = cooldown_after_id
                 self.show_status_frame()
@@ -589,5 +589,5 @@ class KioskUI:
                 self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
                 
         except Exception as e:
-            print(f"\nError in handle_video_completion: {e}")
+            print(f"[ui.py]\nError in handle_video_completion: {e}")
             traceback.print_exc()

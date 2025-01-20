@@ -26,9 +26,9 @@ class AdminAudioManager:
         # Initialize pygame mixer
         try:
             pygame.mixer.init()
-            #print("Audio manager initialized successfully")
+            #print("[audio manager]Audio manager initialized successfully")
         except Exception as e:
-            print(f"Failed to initialize audio manager: {e}")
+            print(f"[audio manager]Failed to initialize audio manager: {e}")
             return
             
         # Sound file paths
@@ -57,11 +57,11 @@ class AdminAudioManager:
             filepath = self.sound_dir / filename
             if filepath.exists():
                 self.sounds[sound_id] = pygame.mixer.Sound(str(filepath))
-                #print(f"Loaded sound: {sound_id} from {filename}")
+                #print(f"[audio manager]Loaded sound: {sound_id} from {filename}")
             else:
-                print(f"Sound file not found: {filepath}")
+                print(f"[audio manager]Sound file not found: {filepath}")
         except Exception as e:
-            print(f"Error loading sound {filename}: {e}")
+            print(f"[audio manager]Error loading sound {filename}: {e}")
     
     def play_sound(self, sound_id):
         """
@@ -71,16 +71,16 @@ class AdminAudioManager:
             sound_id (str): Identifier for the sound to play
         """
         if not self._initialized:
-            print("Audio manager not initialized")
+            print("[audio manager]Audio manager not initialized")
             return
             
         if sound_id in self.sounds:
             try:
                 self.sounds[sound_id].play()
             except Exception as e:
-                print(f"Error playing sound {sound_id}: {e}")
+                print(f"[audio manager]Error playing sound {sound_id}: {e}")
         else:
-            print(f"Sound not found: {sound_id}")
+            print(f"[audio manager]Sound not found: {sound_id}")
     
     def handle_game_finish(self, is_finished, room_number):  # Added room_number parameter
         # Initialize state for this room if needed

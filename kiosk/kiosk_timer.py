@@ -23,16 +23,16 @@ class KioskTimer:
     
     def _delayed_init(self):
         """Initialize Qt timer after UI has had time to initialize"""
-        #print("[DEBUG] Timer._delayed_init - START")
+        #print("[kiosk timer][DEBUG] Timer._delayed_init - START")
         try:
             # Initialize Qt timer display
             Overlay.init_timer()
             # Initial display update
             self.update_display()
         except Exception as e:
-            #print(f"[DEBUG] Exception in Timer._delayed_init: {e}")
+            #print(f"[kiosk timer][DEBUG] Exception in Timer._delayed_init: {e}")
             traceback.print_exc()
-        #print("[DEBUG] Timer._delayed_init - END")
+        #print("[kiosk timer][DEBUG] Timer._delayed_init - END")
 
     # Update these methods to use Qt display
     def load_room_background(self, room_number):
@@ -49,16 +49,16 @@ class KioskTimer:
         if command == "start":
             self.is_running = True
             self.last_update = time.time()
-            print("Timer started")
+            print("[kiosk timer]Timer started")
             
         elif command == "stop":
             self.is_running = False
             self.last_update = None
-            print("Timer stopped")
+            print("[kiosk timer]Timer stopped")
             
         elif command == "set" and minutes is not None:
             self.time_remaining = minutes * 60
-            print(f"Timer set to {minutes} minutes")
+            print(f"[kiosk timer]Timer set to {minutes} minutes")
             
         self.update_display()
         
@@ -78,9 +78,9 @@ class KioskTimer:
                 
                 # If we crossed the 42-minute threshold (going down)
                 if old_minutes > 42 and new_minutes <= 42:
-                    print(f"\nTimer crossed 42-minute threshold (down)")
-                    print(f"Old time: {old_minutes:.2f} minutes")
-                    print(f"New time: {new_minutes:.2f} minutes")
+                    print(f"[kiosk timer]\nTimer crossed 42-minute threshold (down)")
+                    print(f"[kiosk timer]Old time: {old_minutes:.2f} minutes")
+                    print(f"[kiosk timer]New time: {new_minutes:.2f} minutes")
                     # Use the kiosk_app reference to access UI
                     if hasattr(self.kiosk_app, 'ui'):
                         self.kiosk_app.ui.show_status_frame()
@@ -93,7 +93,7 @@ class KioskTimer:
             self.root.after(100, self.update_timer)
                 
         except Exception as e:
-            print(f"Error in update_timer: {e}")
+            print(f"[kiosk timer]Error in update_timer: {e}")
         
     def get_time_str(self):
         """Get the current time as a formatted string"""
@@ -108,4 +108,4 @@ class KioskTimer:
             # Use root.after to ensure we're on the main thread
             self.root.after(0, lambda: Overlay.update_timer_display(time_str))
         except Exception as e:
-            print(f"Error updating timer display: {e}")
+            print(f"[kiosk timer]Error updating timer display: {e}")
