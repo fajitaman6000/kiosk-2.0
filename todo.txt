@@ -1,17 +1,17 @@
 # important/immediate todo
 outro audio?
+audio hints need a means of playing the audio on kiosk side
+need a "start room" button distinct from play/stop
+
 
 
 # planned features: 
-admin mode (technician/managers),
-clear hints requested when starting timer
+admin mode (technician/upper managers),
 restarter moved to kiosk app
 last hint given (admin-side)
 room start upon video finish (optional?)
 edit hint image content within hint manager
 ending audio is apparently admin app side?
-audio hints need a means of playing the audio on kiosk side
-kiosk needs to have as much info as possible in case of admin crash
 
 
 
@@ -21,7 +21,6 @@ reset all makes a call for kiosk tracker log that doesn't exist
 two gamemasters requesting the same video stream crashes that kiosk
 skip button starts timer despite skipping only one video
 resets during intro videos cause crashing/audio bugs
-hint button doesn't update
 
 
 
@@ -32,6 +31,7 @@ set alarm on prop to make sound when gm-chosen prop finishes
 automatic room restoration for all props upon full pause
 soundcheck/touchcheck behavior
 drink ordering
+
 
 profile creation,
 profile deletion (admin only)

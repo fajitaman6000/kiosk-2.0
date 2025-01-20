@@ -180,6 +180,11 @@ class KioskApp:
                 # Handle the timer command
                 self.timer.handle_command(command, minutes)
                 
+                # Set hint_requested_flag to False when timer starts
+                if command == "start":
+                    self.hint_requested_flag = False
+                    print(f"[Kiosk] handle_message: Timer started, clearing hint_requested_flag for room {self.assigned_room}")
+                
                 # Update help button state directly after command
                 self._actual_help_button_update()
                 
@@ -276,7 +281,6 @@ class KioskApp:
 
                 # Hide and Clear Overlay
                 self.root.after(0, lambda: Overlay.hide())
-
 
                 # Clear UI elements safely
                 #print("[DEBUG] Clearing UI elements...")
