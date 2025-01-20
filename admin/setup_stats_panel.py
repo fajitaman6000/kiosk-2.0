@@ -255,6 +255,29 @@ def setup_stats_panel(interface_builder, computer_name):
             add_time_btn.image = plus_icon
         add_time_btn.pack(side='left', padx=5)
 
+        # Reduce time button (uses minus icon if available)
+        try:
+            minus_icon = Image.open(os.path.join(icon_dir, "minus.png"))
+            minus_icon = minus_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            minus_icon = ImageTk.PhotoImage(minus_icon)
+        except Exception as e:
+            print(f"[stats panel]Error loading minus icon: {e}")
+            minus_icon = None
+
+        reduce_time_btn = tk.Button(
+            time_set_frame,
+            image=minus_icon if minus_icon else None,
+            text="" if minus_icon else "Reduce Time",
+            command=lambda: interface_builder.reduce_timer_time(computer_name),  # Call reduce_timer_time
+            width=24,
+            height=24,
+            bd=0,
+            highlightthickness=0
+        )
+        if minus_icon:
+            reduce_time_btn.image = minus_icon
+        reduce_time_btn.pack(side='left', padx=5)  # Place to the right of add_time_btn
+
         # Hint controls
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
         hint_frame.pack(fill='x', pady=10)

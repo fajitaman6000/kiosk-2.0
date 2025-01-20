@@ -308,6 +308,30 @@ class AdminInterfaceBuilder:
         except ValueError:
             pass  # Invalid input handling
 
+    def reduce_timer_time(self, computer_name):
+        """Reduce specified minutes from current timer without affecting running state"""
+        try:
+            minutes_to_reduce = int(self.stats_elements['time_entry'].get())
+            if 0 <= minutes_to_reduce <= 99:  # Validate input range
+                # Get current time from stats
+                if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                    stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+                    current_seconds = stats.get('timer_time', 0)
+                    
+                    # Calculate new time in seconds (convert minutes to seconds)
+                    new_seconds = current_seconds - (minutes_to_reduce * 60)
+                    
+                    # Prevent negative time
+                    if new_seconds < 0:
+                        new_seconds = 0
+                    
+                    # Convert total seconds back to minutes for the command
+                    new_minutes = new_seconds / 60
+                    # Send set command with new total time, keeping decimal precision
+                    self.app.network_handler.send_timer_command(computer_name, "set", new_minutes)
+        except ValueError:
+            pass  # Invalid input handling
+
     def update_timer_display(self):
         """Update all timer displays including mini timers"""
         # Update selected kiosk's main timer display

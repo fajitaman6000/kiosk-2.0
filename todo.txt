@@ -13,6 +13,8 @@ room start upon video finish (optional?)
 edit hint image content within hint manager
 ending audio is apparently admin app side?
 
+kiosk passes "videos finished" event to admin side and admin side can decide whether or not to start the props
+
 
 
 # known bugs
