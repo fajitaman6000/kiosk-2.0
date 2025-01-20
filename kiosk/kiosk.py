@@ -37,6 +37,7 @@ class KioskApp:
         self.hints_requested = 0
         self.hint_requested_flag = False
         self.start_time = None
+        self.room_started = False
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
         #print("Initialized time_exceeded_45 flag to False")
@@ -170,11 +171,23 @@ class KioskApp:
                     3: "wizard_trials"
                 }
 
-                if command == "start":
+                # Start playing background music when timer starts, only if room has NOT started
+                if command == "start" and not self.room_started:  # Correctly check if room is NOT started
+                    self.room_started = True # Set the flag to true immediately when the room starts
+                    print(f"[Kiosk] handle_message: Timer started, setting room_started to True for room {self.assigned_room}")
+                    room_names = {
+                        2: "morning_after",
+                        1: "casino_heist",
+                        5: "haunted_manor",
+                        4: "zombie_outbreak",
+                        6: "time_machine",
+                        5: "atlantis_rising",
+                        3: "wizard_trials"
+                    }
                     if self.assigned_room and isinstance(self.assigned_room, int):
                         room_name = room_names.get(self.assigned_room)
                         if room_name:
-                            #print(f"[DEBUG] Timer starting - playing background music for room: {room_name}")
+                            print(f"[DEBUG] Timer starting - playing background music for room: {room_name}")
                             self.audio_manager.play_background_music(room_name)
                 
                 # Handle the timer command
@@ -302,6 +315,9 @@ class KioskApp:
                 
                 # Schedule timer reset on main thread
                 self.root.after(0, lambda: self.timer._delayed_init())
+
+                # Reset room started state
+                self.room_started = False
                 
                 # Restore UI after timer reinitialization
                 def restore_ui():
