@@ -922,7 +922,7 @@ class Overlay:
                 cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
 
                 # Set up click handling
-                cls._button_view.set_click_callback(ui.request_help)
+                cls._button_view.set_click_callback(ui.message_handler.request_help)
 
                 # Rotate the button image item 90 degrees clockwise
                 cls._button['bg_image_item'].setRotation(360)

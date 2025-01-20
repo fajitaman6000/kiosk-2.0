@@ -116,6 +116,23 @@ class KioskApp:
     def handle_message(self, msg):
         self.message_handler.handle_message(msg)
             
+    def request_help(self):
+        if not self.ui.hint_cooldown:
+            self.hints_requested += 1
+            Overlay.hide_help_button()
+
+            # Set help requested flag to TRUE
+            self.hint_requested_flag = True
+            print(f"[Kiosk] request_help: Setting hint_requested_flag to True")
+            
+            # Use PyQt overlay for "Hint Requested" message
+            Overlay.show_hint_request_text()
+            
+            self.network.send_message({
+                'type': 'help_request',
+                **self.get_stats()
+            })
+
     def show_hint(self, text, start_cooldown=True):
         # Clear any pending request status
         Overlay.hide_hint_request_text()

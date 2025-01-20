@@ -278,6 +278,15 @@ def setup_stats_panel(interface_builder, computer_name):
             reduce_time_btn.image = minus_icon
         reduce_time_btn.pack(side='left', padx=5)  # Place to the right of add_time_btn
 
+        # Time to Completion (TTC) label
+        interface_builder.stats_elements['ttc_label'] = tk.Label(
+            control_buttons_frame,
+            text="TTC: 45:00",
+            font=('Arial', 10, 'bold'),
+            fg='black'
+        )
+        interface_builder.stats_elements['ttc_label'].pack(side='right', padx=10)
+
         # Hint controls
         hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
         hint_frame.pack(fill='x', pady=10)

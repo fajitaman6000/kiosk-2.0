@@ -344,6 +344,22 @@ class AdminInterfaceBuilder:
                 self.stats_elements['current_time'].config(
                     text=f"{timer_minutes:02d}:{timer_seconds:02d}"
                 )
+
+            # Update TTC label for selected kiosk
+            if 'ttc_label' in self.stats_elements and self.stats_elements['ttc_label']:
+                minutes_remaining = int(45 - (timer_time / 60))
+                seconds_remaining = int(timer_time % 60)
+                
+                # Calculate correct TTC, adding a minute if there are remaining seconds
+                if seconds_remaining > 0:
+                    ttc_minutes = minutes_remaining
+                    ttc_seconds = 60- seconds_remaining
+                else:
+                    ttc_minutes = minutes_remaining
+                    ttc_seconds = 0
+
+                ttc_text = f"TTC: {ttc_minutes:02d}:{ttc_seconds:02d}"
+                self.stats_elements['ttc_label'].config(text=ttc_text)
         
         # Update mini timers for all kiosks
         for computer_name, kiosk_data in self.connected_kiosks.items():
