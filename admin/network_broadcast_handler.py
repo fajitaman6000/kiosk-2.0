@@ -54,7 +54,7 @@ class NetworkBroadcastHandler:
                     last_msg = self.last_message.get(computer_name, {})
                     if msg != last_msg:
                         #print(f"[network broadcast handler]\nReceived updated message from {addr}:")
-                        #print(f"[network broadcast handler]Message content: {msg}")
+                        print(f"[network broadcast handler]Message content: {msg}")
                         self.last_message[computer_name] = msg.copy()
                 
                 if msg['type'] == 'kiosk_announce':

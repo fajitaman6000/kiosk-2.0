@@ -42,6 +42,8 @@ class MessageHandler:
                     else:
                         hint_data = msg.get('text', '')
 
+                    self.kiosk_app.hints_received += 1
+
                     # Clear hint flag after hint is received
                     self.kiosk_app.hint_requested_flag = False
                     print(f"[message handler][Kiosk] handle_message: Received hint, clearing hint_requested_flag for room {self.kiosk_app.assigned_room}")
@@ -119,6 +121,7 @@ class MessageHandler:
                     print(f"[message handler][DEBUG] Looking for solution video at: {video_path}")
 
                     if os.path.exists(video_path):
+                        self.kiosk_app.hints_received += 1
                         print(f"[message handler][DEBUG] Setting up solution video interface: {video_path}")
 
                         # Create hint-style message for video solution
@@ -166,6 +169,8 @@ class MessageHandler:
                 print("[message handler][DEBUG] Resetting application state...")
                 self.kiosk_app.time_exceeded_45 = False
                 self.kiosk_app.hints_requested = 0
+                self.kiosk_app.hints_received = 0
+                self.kiosk_app.times_touched_screen = 0
 
                 # Reset UI hint-related state
                 print("[message handler][DEBUG] Resetting UI hint state...")

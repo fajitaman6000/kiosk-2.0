@@ -676,3 +676,31 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='systemButtonFace'
     )
     interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=2)
+    
+    # Hints received label
+    current_hints_received = 0
+    if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
+        current_hints_received = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('hints_received', 0)
+        
+    interface_builder.stats_elements['hints_received_label'] = tk.Label(
+        stats_vertical_frame,
+        text=f"Hints received: {current_hints_received}",
+        font=('Arial', 10, 'bold'),
+        fg='black',
+        bg='systemButtonFace'
+    )
+    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=2)
+
+    # Screen Touches label
+    current_touches = 0
+    if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
+        current_touches = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('times_touched_screen', 0)
+        
+    interface_builder.stats_elements['touches_label'] = tk.Label(
+        stats_vertical_frame,
+        text=f"Screen touches: {current_touches}",
+        font=('Arial', 10, 'bold'),
+        fg='black',
+        bg='systemButtonFace'
+    )
+    interface_builder.stats_elements['touches_label'].pack(side='top', pady=2)
