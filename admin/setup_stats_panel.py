@@ -640,17 +640,17 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['current_computer'] = computer_name
 
     # ===========================================
-    # Stats and TTC below the video
+    # Stats below the video
     # ===========================================
     stats_below_video = tk.Frame(
         right_panel,
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='top', pady=5, anchor='n')
+    stats_below_video.pack(side='left', pady=3, anchor='nw')
     
     # Create frame for vertical layout
     stats_vertical_frame = tk.Frame(stats_below_video, bg='systemButtonFace')
-    stats_vertical_frame.pack(side='top', padx=10, pady=5)
+    stats_vertical_frame.pack(side='left', padx=3, pady=3)
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
@@ -667,7 +667,7 @@ def setup_stats_panel(interface_builder, computer_name):
     if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
         current_hints = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('total_hints', 0)
 
-    # NEW Hints requested label
+    # Hints requested label
     interface_builder.stats_elements['hints_label_below'] = tk.Label(
         stats_vertical_frame,
         text=f"Hints requested: {current_hints}",
