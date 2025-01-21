@@ -84,25 +84,25 @@ def setup_stats_panel(interface_builder, computer_name):
         reset_btn.pack(side='left', padx=10)
 
         # Timer controls section
-        timer_frame = tk.LabelFrame(left_panel, text="Room Controls", fg='black')
+        timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black')
         timer_frame.pack(fill='x', pady=1)
+
+         # Timer and video controls combined
+        control_buttons_frame = tk.Frame(timer_frame)
+        control_buttons_frame.pack(fill='x', pady=1)
 
         # Current time display
         interface_builder.stats_elements['current_time'] = tk.Label(
-            timer_frame,
-            text="45:00",
+            control_buttons_frame,
+            text="--:--",
             font=('Arial', 20, 'bold'),
             fg='black',
             highlightbackground='black',
             highlightthickness=1,
-            padx=10,
-            pady=5
+            padx=7,
+            pady=3,
         )
-        interface_builder.stats_elements['current_time'].pack(pady=5)
-
-        # Timer and video controls combined
-        control_buttons_frame = tk.Frame(timer_frame)
-        control_buttons_frame.pack(fill='x', pady=1)
+        interface_builder.stats_elements['current_time'].pack(side='left', padx=5)
         
         # Load all required icons
         icon_dir = os.path.join("admin_icons")
@@ -147,12 +147,12 @@ def setup_stats_panel(interface_builder, computer_name):
         if play_icon and stop_icon:
             timer_button.play_icon = play_icon
             timer_button.stop_icon = stop_icon
-        timer_button.pack(side='left', padx=(25, 5))
+        timer_button.pack(side='left', padx=(1, 1))
         interface_builder.stats_elements['timer_button'] = timer_button
 
-        # Video frame with icon button and dropdown
+       # Video frame with icon button and dropdown
         video_frame = tk.Frame(control_buttons_frame)
-        video_frame.pack(side='left', padx=(0,25))
+        video_frame.pack(side='left', padx=(0,2))
         
         try:
             skip_icon = Image.open(os.path.join(icon_dir, "skip.png"))
@@ -164,7 +164,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
         # Video frame with icon button, dropdown and skip button
         video_frame = tk.Frame(control_buttons_frame)
-        video_frame.pack(side='left', padx=(0,25))
+        video_frame.pack(side='left', padx=(0,2))
 
         # Video button with icon
         video_btn = tk.Button(
@@ -206,7 +206,7 @@ def setup_stats_panel(interface_builder, computer_name):
         )
         if skip_icon:
             skip_btn.image = skip_icon
-        skip_btn.pack(side='left', padx=2)
+        skip_btn.pack(side='left', padx=(30,0))
 
 
         # Time setting controls
