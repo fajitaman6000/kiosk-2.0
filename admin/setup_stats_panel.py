@@ -43,19 +43,6 @@ def setup_stats_panel(interface_builder, computer_name):
     reset_btn.confirmation_pending = False
     reset_btn.after_id = None
 
-    # Get current hints count from tracker
-    current_hints = 0
-    if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
-        current_hints = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('total_hints', 0)
-    
-    # Create the hints label with current count
-    interface_builder.stats_elements['hints_label'] = tk.Label(
-        hints_frame, 
-        text=f"Hints requested: {current_hints}",
-        font=('Arial', 8, 'bold'),
-    )
-    interface_builder.stats_elements['hints_label'].pack(side='right')
-
     def reset_reset_button():
         """Reset the button to its original state"""
         reset_btn.confirmation_pending = False
@@ -674,13 +661,13 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='systemButtonFace'
     )
     interface_builder.stats_elements['ttc_label'].pack(side='top', pady=2) 
-
+    
     # Get current hints count from tracker
     current_hints = 0
     if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
         current_hints = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('total_hints', 0)
-    
-    # Hints requested label
+
+    # NEW Hints requested label
     interface_builder.stats_elements['hints_label_below'] = tk.Label(
         stats_vertical_frame,
         text=f"Hints requested: {current_hints}",

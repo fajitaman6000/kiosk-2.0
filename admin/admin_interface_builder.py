@@ -838,9 +838,9 @@ class AdminInterfaceBuilder:
                 return
 
             # Update hints label if it exists
-            if self.stats_elements.get('hints_label'):
+            if self.stats_elements.get('hints_label_below'):
                 total_hints = stats.get('total_hints', 0)
-                self.stats_elements['hints_label'].config(
+                self.stats_elements['hints_label_below'].config(
                     text=f"Hints requested: {total_hints}"
                 )
 
