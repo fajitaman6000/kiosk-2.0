@@ -659,3 +659,16 @@ def setup_stats_panel(interface_builder, computer_name):
         
         # Store the computer name for video/audio updates
         interface_builder.stats_elements['current_computer'] = computer_name
+
+        # ===========================================
+        # Text below the video
+        # ===========================================
+        text_below_video = tk.Label(
+           right_panel,
+            text="This is some text below the video feed. \n This is the next row \n This is the next row \n This is the next row \n This is the next row \n This is the next row ",
+            font=('Arial', 10),
+            bg='systemButtonFace',
+            wraplength=580,
+            justify='center'
+        )
+        text_below_video.pack(side='top', pady=5, anchor='n')
