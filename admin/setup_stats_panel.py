@@ -81,7 +81,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # Current time display
     interface_builder.stats_elements['current_time'] = tk.Label(
         control_buttons_frame,
-        text="--:--",
+        text="45:00",
         font=('Arial', 20, 'bold'),
         fg='black',
         highlightbackground='black',
@@ -648,8 +648,15 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     stats_below_video.pack(side='left', pady=3, anchor='nw')
     
-    # Create frame for vertical layout
-    stats_vertical_frame = tk.Frame(stats_below_video, bg='systemButtonFace')
+    # Create frame for vertical layout with a darker grey background
+    stats_vertical_frame = tk.Frame(
+        stats_below_video,
+        bg='#E0E0E0',  # Slightly darker grey
+        padx=5,
+        pady=5,
+        borderwidth=1,
+        relief='solid' # For border
+    )
     stats_vertical_frame.pack(side='left', padx=3, pady=3)
 
     # Time to Completion (TTC) label
@@ -658,10 +665,11 @@ def setup_stats_panel(interface_builder, computer_name):
         text="TTC: 45:00",
         font=('Arial', 10, 'bold'),
         fg='black',
-        bg='systemButtonFace'
+        bg='#E0E0E0',
+        anchor='w' # Anchor text to left
     )
-    interface_builder.stats_elements['ttc_label'].pack(side='top', pady=2) 
-    
+    interface_builder.stats_elements['ttc_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
+
     # Get current hints count from tracker
     current_hints = 0
     if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
@@ -673,9 +681,10 @@ def setup_stats_panel(interface_builder, computer_name):
         text=f"Hints requested: {current_hints}",
         font=('Arial', 10, 'bold'),
         fg='black',
-        bg='systemButtonFace'
+        bg='#E0E0E0',
+        anchor='w' # Anchor text to left
     )
-    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=2)
+    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=2, fill='x') # Fill 'x'
     
     # Hints received label
     current_hints_received = 0
@@ -687,21 +696,23 @@ def setup_stats_panel(interface_builder, computer_name):
         text=f"Hints received: {current_hints_received}",
         font=('Arial', 10, 'bold'),
         fg='black',
-        bg='systemButtonFace'
+        bg='#E0E0E0',
+        anchor='w' # Anchor text to left
     )
-    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=2)
+    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
 
     # Screen Touches label
-    current_touches = 0
-    if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
-        current_touches = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('times_touched_screen', 0)
+    #current_touches = 0
+    #if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
+        #current_touches = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('times_touched_screen', 0)
         
-    interface_builder.stats_elements['touches_label'] = tk.Label(
-        stats_vertical_frame,
-        text=f"Screen touches: {current_touches}",
-        font=('Arial', 10, 'bold'),
-        fg='black',
-        bg='systemButtonFace'
-    )
+    #interface_builder.stats_elements['touches_label'] = tk.Label(
+        #stats_vertical_frame,
+        #text=f"Screen touches: {current_touches}",
+        #font=('Arial', 10, 'bold'),
+        #fg='black',
+        #bg='#E0E0E0',
+        #anchor='w' # Anchor text to left
+    #c)
 
-    interface_builder.stats_elements['touches_label'].pack(side='top', pady=2)
+    interface_builder.stats_elements['touches_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
