@@ -657,7 +657,7 @@ def setup_stats_panel(interface_builder, computer_name):
         borderwidth=1,
         relief='solid' # For border
     )
-    stats_vertical_frame.pack(side='left', padx=3, pady=3)
+    stats_vertical_frame.pack(side='left', padx=0, pady=1)
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
