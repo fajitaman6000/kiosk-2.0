@@ -192,7 +192,7 @@ class PropControl:
                 print("[prop control]Status icons not initialized")
                 return
                 
-            if time_diff > 2:
+            if time_diff > 3:
                 # Offline status
                 icon = self.status_icons['offline']
             else:

@@ -715,4 +715,4 @@ def setup_stats_panel(interface_builder, computer_name):
         #anchor='w' # Anchor text to left
     #c)
 
-    interface_builder.stats_elements['touches_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
+    #interface_builder.stats_elements['touches_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
