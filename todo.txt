@@ -16,6 +16,10 @@ ending audio is apparently admin app side?
 kiosk passes "videos finished" event to admin side and admin side can decide whether or not to start the props
 move all stats (hints requested, hints received, watching video, last prop finished, times touched screen, time without progress, etc, to new panel beneath video feed)
 
+finishing prop designator icon (green flag)
+"you won" screen
+technician app (e.g "finish all" button)
+
 
 
 # known bugs

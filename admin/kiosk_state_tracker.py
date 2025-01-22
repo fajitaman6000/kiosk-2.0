@@ -14,7 +14,9 @@ class KioskStateTracker:
             'total_hints': msg.get('total_hints', 0),
             'timer_time': msg.get('timer_time', 3600),
             'timer_running': msg.get('timer_running', False),
-            'hint_requested': msg.get('hint_requested', False)  # Add this line for hint_requested flag
+            'hint_requested': msg.get('hint_requested', False),
+            'hints_received': msg.get('hints_received', 0),
+            'times_touched_screen': msg.get('times_touched_screen', 0)
         }
         
         # Update UI if this kiosk is selected

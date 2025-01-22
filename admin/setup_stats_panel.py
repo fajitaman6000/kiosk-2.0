@@ -703,4 +703,5 @@ def setup_stats_panel(interface_builder, computer_name):
         fg='black',
         bg='systemButtonFace'
     )
+
     interface_builder.stats_elements['touches_label'].pack(side='top', pady=2)

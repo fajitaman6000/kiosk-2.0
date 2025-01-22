@@ -843,6 +843,13 @@ class AdminInterfaceBuilder:
                 self.stats_elements['hints_label_below'].config(
                     text=f"Hints requested: {total_hints}"
                 )
+                
+            # Update received hints label if it exists
+            if self.stats_elements.get('hints_received_label'):
+                hints_received = stats.get('hints_received', 0)
+                self.stats_elements['hints_received_label'].config(
+                    text=f"Hints received: {hints_received}"
+                )
 
             # Update timer display
             timer_time = stats.get('timer_time', 3600)

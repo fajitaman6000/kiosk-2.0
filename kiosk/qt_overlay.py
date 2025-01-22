@@ -378,9 +378,9 @@ class Overlay:
                 (width + text_height) / 2,
                 (height - text_width) / 2
             )
-            print(f"[qt overlay]Text position set to: {cls._hint_text['text_item'].pos()}")
+            #print(f"[qt overlay]Text position set to: {cls._hint_text['text_item'].pos()}")
             
-            print(f"[qt overlay]Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
+            #print(f"[qt overlay]Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
             
             
             
@@ -734,10 +734,10 @@ class Overlay:
             cls._button['scene'].setSceneRect(scene_rect)
 
             # Debug prints
-            print(f"[qt overlay]\nView Setup Debug:")
-            print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
-            print(f"[qt overlay]Scene rect: {scene_rect}")
-            print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
+            #print(f"[qt overlay]\nView Setup Debug:")
+            #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
+            #print(f"[qt overlay]Scene rect: {scene_rect}")
+            #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
 
             # Set up placeholders for images
             cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -797,11 +797,11 @@ class Overlay:
             cls._button['bg_image_item'].setTransformOriginPoint(button_pixmap.width() / 2, button_pixmap.height() / 2)
 
             # Debug info
-            print(f"[qt overlay]\nImage Debug:")
-            print(f"[qt overlay]Button image format: {qimage.format()}")
-            print(f"[qt overlay]Button image size: {qimage.size()}")
-            print(f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
-            print(f"[qt overlay]Shadow pixmap size: {shadow_pixmap.size()}")
+            #print(f"[qt overlay]\nImage Debug:")
+            #print(f"[qt overlay]Button image format: {qimage.format()}")
+            #print(f"[qt overlay]Button image size: {qimage.size()}")
+            #print(f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
+            #print(f"[qt overlay]Shadow pixmap size: {shadow_pixmap.size()}")
 
             return True
 
@@ -847,7 +847,7 @@ class Overlay:
             not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45)
         )
 
-        print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
+        #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
             if show_button:
