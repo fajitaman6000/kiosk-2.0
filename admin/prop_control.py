@@ -21,6 +21,49 @@ class PropControl:
         6: "atlantis",
         7: "time"  # Note: This maps to "time_machine" in some contexts
     }
+    # Room-specific MQTT configurations
+    ROOM_CONFIGS = {
+        4: {  # Zombie Outbreak
+            'ip': '192.168.0.12',
+            'special_buttons': [
+                ('KITCHEN', 'kitchen'),  # Will map to pnevmo1
+                ('BARREL', 'barrel'),    # Will map to pnevmo2
+                ('CAGE', 'cage'),        # Will map to pnevmo3
+                ('DOOR', 'door')         # Will map to pnevmo4
+            ]
+        },
+        1: {  # Casino Heist
+            'ip': '192.168.0.49',
+            'special_buttons': [
+                ('CASINO', 'quest/robbery'),
+                ('MA', 'quest/stag')
+            ]
+        },
+        2: {  # Morning After
+            'ip': '192.168.0.49',
+            'special_buttons': [
+                ('MA', 'quest/stag'),
+                ('CASINO', 'quest/robbery')
+            ]
+        },
+        6: {  # Atlantis Rising
+            'ip': '192.168.0.14',
+            'special_buttons': []
+        },
+        5: {  # Haunted Manor
+            'ip': '192.168.0.13',
+            'special_buttons': []
+        },
+        3: {  # Wizard Trials
+            'ip': '192.168.0.11',
+            'special_buttons': []
+        },
+        7: {  # Time Machine
+            'ip': '192.168.0.15',
+            'special_buttons': []
+        }
+    }
+
     def __init__(self, app):
         self.app = app
         self.props = {}  # strId -> prop info
@@ -31,49 +74,10 @@ class PropControl:
         self.prop_update_intervals = {}  # room_number -> last_update_time
         self.UPDATE_INTERVAL = 1000  # Base update interval in ms
         self.INACTIVE_UPDATE_INTERVAL = 2000  # Update interval for non-selected rooms
-        
-        # Room-specific MQTT configurations
-        self.room_configs = {
-            4: {  # Zombie Outbreak
-                'ip': '192.168.0.12',
-                'special_buttons': [
-                    ('KITCHEN', 'kitchen'),  # Will map to pnevmo1
-                    ('BARREL', 'barrel'),    # Will map to pnevmo2
-                    ('CAGE', 'cage'),        # Will map to pnevmo3
-                    ('DOOR', 'door')         # Will map to pnevmo4
-                ]
-            },
-            1: {  # Casino Heist
-                'ip': '192.168.0.49',
-                'special_buttons': [
-                    ('CASINO', 'quest/robbery'),
-                    ('MA', 'quest/stag')
-                ]
-            },
-            2: {  # Morning After
-                'ip': '192.168.0.49',
-                'special_buttons': [
-                    ('MA', 'quest/stag'),
-                    ('CASINO', 'quest/robbery')
-                ]
-            },
-            6: {  # Atlantis Rising
-                'ip': '192.168.0.14',
-                'special_buttons': []
-            },
-            5: {  # Haunted Manor
-                'ip': '192.168.0.13',
-                'special_buttons': []
-            },
-            3: {  # Wizard Trials
-                'ip': '192.168.0.11',
-                'special_buttons': []
-            },
-            7: {  # Time Machine
-                'ip': '192.168.0.15',
-                'special_buttons': []
-            }
-        }
+        self.last_progress_times = {} # last progress events for rooms
+        for room_number in self.ROOM_CONFIGS: # Initialize timestamps for all rooms upon starting, or when switching
+            self.last_progress_times[room_number] = time.time() # initialize to now
+
         
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -166,7 +170,7 @@ class PropControl:
         self.load_prop_name_mappings()
 
         # Initialize MQTT clients for all rooms
-        for room_number in self.room_configs:
+        for room_number in self.ROOM_CONFIGS:
             self.initialize_mqtt_client(room_number)
 
     def update_prop_status(self, prop_id):
@@ -255,10 +259,10 @@ class PropControl:
 
     def initialize_mqtt_client(self, room_number):
         """Create and connect MQTT client for a room"""
-        if room_number not in self.room_configs:
+        if room_number not in self.ROOM_CONFIGS:
             return
 
-        config = self.room_configs[room_number]
+        config = self.ROOM_CONFIGS[room_number]
         client_id = f"id_{random.randint(0, 999)}_{room_number}"
         client = mqtt.Client(
             client_id=client_id,
@@ -385,7 +389,11 @@ class PropControl:
             saved_props = self.all_props[room_number]
             for prop_id, prop_data in saved_props.items():
                 self.handle_prop_update(prop_data['info'])
-        
+                
+        # Initialize progress time on first load
+        if room_number not in self.last_progress_times:
+            self.last_progress_times[room_number] = time.time()
+
         # Set up special buttons for this room
         self.setup_special_buttons(room_number)
         
@@ -613,7 +621,7 @@ class PropControl:
         for widget in self.special_frame.winfo_children():
             widget.destroy()
             
-        if room_number not in self.room_configs:
+        if room_number not in self.ROOM_CONFIGS:
             return
             
         # Create container for button grid
@@ -636,7 +644,7 @@ class PropControl:
         }
         
         # Place buttons in a 2-column grid
-        buttons = self.room_configs[room_number]['special_buttons']
+        buttons = self.ROOM_CONFIGS[room_number]['special_buttons']
         for i, (button_text, command_name) in enumerate(buttons):
             row = i // 2    # Integer division for row number
             col = i % 2     # Remainder for column number
@@ -740,6 +748,12 @@ class PropControl:
             if room_key in self.prop_name_mappings:
                 prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_data["strName"], {})
                 order = prop_info.get('order', 999)
+
+        if self.current_room is not None:
+            status = prop_data.get("strStatus", "")
+            if status in ["Activated", "Finished"]:
+                self.last_progress_times[self.current_room] = time.time()
+                #print(f"[prop control]Updated last progress time for room {self.current_room}")
 
         if prop_id not in self.props:
             # Create new prop display

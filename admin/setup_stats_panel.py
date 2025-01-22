@@ -701,6 +701,17 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
 
+    # Add "Time Since Last Progress" label:
+    interface_builder.stats_elements['last_progress_label'] = tk.Label(
+        stats_vertical_frame,
+        text="Last Progress: N/A", # Start with "N/A" until progress is made.
+        font=('Arial', 10, 'bold'),
+        fg='black',
+        bg='#E0E0E0',
+        anchor='w'
+    )
+    interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=2, fill='x')
+
     # Screen Touches label
     #current_touches = 0
     #if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:

@@ -333,8 +333,6 @@ class AdminInterfaceBuilder:
             pass  # Invalid input handling
 
     def update_timer_display(self):
-        """Update all timer displays including mini timers"""
-        # Update selected kiosk's main timer display
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
             stats = self.app.kiosk_tracker.kiosk_stats[self.selected_kiosk]
             timer_time = stats.get('timer_time', 2700)
@@ -344,13 +342,10 @@ class AdminInterfaceBuilder:
                 self.stats_elements['current_time'].config(
                     text=f"{timer_minutes:02d}:{timer_seconds:02d}"
                 )
-
-            # Update TTC label for selected kiosk
             if 'ttc_label' in self.stats_elements and self.stats_elements['ttc_label']:
                 minutes_remaining = int(45 - (timer_time / 60))
                 seconds_remaining = int(timer_time % 60)
                 
-                # Calculate correct TTC, adding a minute if there are remaining seconds
                 if seconds_remaining > 0:
                     ttc_minutes = minutes_remaining
                     ttc_seconds = 60- seconds_remaining
@@ -361,7 +356,6 @@ class AdminInterfaceBuilder:
                 ttc_text = f"TTC: {ttc_minutes:02d}:{ttc_seconds:02d}"
                 self.stats_elements['ttc_label'].config(text=ttc_text)
         
-        # Update mini timers for all kiosks
         for computer_name, kiosk_data in self.connected_kiosks.items():
             if computer_name in self.app.kiosk_tracker.kiosk_stats:
                 stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
@@ -376,6 +370,12 @@ class AdminInterfaceBuilder:
                     display_text = "- - : - -"
                     
                 kiosk_data['timer_label'].config(text=display_text)
+                
+        if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
+            room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
+            if hasattr(self.app, 'prop_control') and self.app.prop_control:
+                if room_number in self.app.prop_control.last_progress_times:
+                    self.update_last_progress_time_display(room_number)
         
         self.app.root.after(1000, self.update_timer_display)
 
@@ -826,92 +826,106 @@ class AdminInterfaceBuilder:
             print(f"[interface builder]Error in select_kiosk: {e}")
             
     def update_stats_display(self, computer_name):
-        try:
-            if computer_name not in self.app.kiosk_tracker.kiosk_stats:
-                return
+        if computer_name not in self.app.kiosk_tracker.kiosk_stats:
+            return
 
-            stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
+        stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
 
-            # Only proceed if we have valid UI elements
-            if not self.stats_elements:
-                print("[interface builder]Stats elements not initialized yet")
-                return
+        if not self.stats_elements:
+            return
 
-            # Update hints label if it exists
-            if self.stats_elements.get('hints_label_below'):
-                total_hints = stats.get('total_hints', 0)
-                self.stats_elements['hints_label_below'].config(
-                    text=f"Hints requested: {total_hints}"
-                )
-                
-            # Update received hints label if it exists
-            if self.stats_elements.get('hints_received_label'):
-                hints_received = stats.get('hints_received', 0)
-                self.stats_elements['hints_received_label'].config(
-                    text=f"Hints received: {hints_received}"
-                )
-
-            # Update timer display
-            timer_time = stats.get('timer_time', 3600)
-            timer_minutes = int(timer_time // 60)
-            timer_seconds = int(timer_time % 60)
-            if self.stats_elements.get('current_time'):
-                self.stats_elements['current_time'].config(
-                    text=f"{timer_minutes:02d}:{timer_seconds:02d}"
-                )
-
-            # Update timer button state and icon
-            timer_button = self.stats_elements.get('timer_button')
-            if timer_button and timer_button.winfo_exists():
-                is_running = stats.get('timer_running', False)
-
-                if hasattr(timer_button, 'stop_icon') and hasattr(timer_button, 'play_icon'):
-                    try:
-                        # Update icon based on current timer state
-                        if is_running and timer_button.cget('text') != "Stop Room":
-                            timer_button.config(
-                                image=timer_button.stop_icon,
-                                text="Stop Room"
-                            )
-                        elif not is_running and timer_button.cget('text') != "Start Room":
-                            timer_button.config(
-                                image=timer_button.play_icon,
-                                text="Start Room"
-                            )
-                    except tk.TclError:
-                        print("[interface builder]Timer button was destroyed")
-                        return
-                else:
-                    try:
-                        # Fallback to text-only if icons aren't available
-                        if is_running and timer_button.cget('text') != "Stop Room":
-                            timer_button.config(text="Stop Room")
-                        elif not is_running and timer_button.cget('text') != "Start Room":
-                            timer_button.config(text="Start Room")
-                    except tk.TclError:
-                        print("[interface builder]Timer button was destroyed")
-                        return
+        if self.stats_elements.get('hints_label_below'):
+            total_hints = stats.get('total_hints', 0)
+            self.stats_elements['hints_label_below'].config(
+                text=f"Hints requested: {total_hints}"
+            )
             
-            if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-                if self.stats_elements.get('send_btn'):
-                    self.stats_elements['send_btn'].config(state='normal')
+        if self.stats_elements.get('hints_received_label'):
+            hints_received = stats.get('hints_received', 0)
+            self.stats_elements['hints_received_label'].config(
+                text=f"Hints received: {hints_received}"
+            )
+
+        timer_time = stats.get('timer_time', 3600)
+        timer_minutes = int(timer_time // 60)
+        timer_seconds = int(timer_time % 60)
+        if self.stats_elements.get('current_time'):
+            self.stats_elements['current_time'].config(
+                text=f"{timer_minutes:02d}:{timer_seconds:02d}"
+            )
+
+        timer_button = self.stats_elements.get('timer_button')
+        if timer_button and timer_button.winfo_exists():
+            is_running = stats.get('timer_running', False)
+
+            if hasattr(timer_button, 'stop_icon') and hasattr(timer_button, 'play_icon'):
+                try:
+                    if is_running and timer_button.cget('text') != "Stop Room":
+                        timer_button.config(
+                            image=timer_button.stop_icon,
+                            text="Stop Room"
+                        )
+                    elif not is_running and timer_button.cget('text') != "Start Room":
+                        timer_button.config(
+                            image=timer_button.play_icon,
+                            text="Start Room"
+                        )
+                except tk.TclError:
+                    print("[interface builder]Timer button was destroyed")
+                    return
             else:
-                if self.stats_elements.get('send_btn'):
-                    self.stats_elements['send_btn'].config(state='disabled')
-            
-            # Check if hint_requested has changed before calling mark_help_requested
-            current_hint_request = stats.get('hint_requested', False)
-            if not hasattr(self, '_last_hint_request_states'):
-                self._last_hint_request_states = {}  # Initialize the dictionary if needed
+                try:
+                    if is_running and timer_button.cget('text') != "Stop Room":
+                        timer_button.config(text="Stop Room")
+                    elif not is_running and timer_button.cget('text') != "Start Room":
+                        timer_button.config(text="Start Room")
+                except tk.TclError:
+                    print("[interface builder]Timer button was destroyed")
+                    return
+        
+        if computer_name in self.app.kiosk_tracker.kiosk_assignments:
+            if self.stats_elements.get('send_btn'):
+                self.stats_elements['send_btn'].config(state='normal')
+        else:
+            if self.stats_elements.get('send_btn'):
+                self.stats_elements['send_btn'].config(state='disabled')
+        
+        current_hint_request = stats.get('hint_requested', False)
+        if not hasattr(self, '_last_hint_request_states'):
+            self._last_hint_request_states = {}
 
-            last_hint_request = self._last_hint_request_states.get(computer_name)
+        last_hint_request = self._last_hint_request_states.get(computer_name)
+        
+        if last_hint_request != current_hint_request:
+            self.mark_help_requested(computer_name)
+            self._last_hint_request_states[computer_name] = current_hint_request
+        
+        if self.app.prop_control and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
+            room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
             
-            if last_hint_request != current_hint_request:
-                self.mark_help_requested(computer_name)
-                self._last_hint_request_states[computer_name] = current_hint_request
-                    
-        except Exception as e:
-            print(f"[interface builder]Error updating stats display: {e}")
+            if room_number in self.app.prop_control.last_progress_times:
+                self.update_last_progress_time_display(room_number)
+        else:
+            self.stats_elements['last_progress_label'].config(text="Last Progress: N/A")
+
+    def update_last_progress_time_display(self, room_number):
+        if room_number in self.app.prop_control.last_progress_times:
+            last_progress_time = self.app.prop_control.last_progress_times[room_number]
+            time_diff = time.time() - last_progress_time
+            
+            minutes = int(time_diff // 60)
+            seconds = int(time_diff % 60)
+            
+            if minutes == 0 and seconds == 0:
+                time_string = "Just now"
+            elif minutes == 0:
+                time_string = f"{seconds} seconds ago"
+            elif seconds == 0:
+                time_string = f"{minutes} minutes ago"
+            else:
+                time_string = f"{minutes} minutes {seconds} seconds ago"
+            
+            self.stats_elements['last_progress_label'].config(text=f"Last Progress: {time_string}")
 
     def save_manual_hint(self):
         # Wrapper for the extracted save_manual_hint function
