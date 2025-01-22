@@ -370,49 +370,39 @@ class PropControl:
         if room_number == self.current_room:
             return
 
-        # Clean up old room's widgets before switching
         if self.current_room is not None:
-            # Save current room's props state before switching
             self.all_props[self.current_room] = self.props.copy()
             self.clean_up_room_props(self.current_room)
 
         old_room = self.current_room
         self.current_room = room_number
 
-        # Clear all widgets from props frame
         for widget in self.props_frame.winfo_children():
             widget.destroy()
 
-        # Initialize or restore props for this room
-        self.props = {}  # Clear current props
+        self.props = {}
         if room_number in self.all_props:
-            # Restore saved props data and recreate UI
             saved_props = self.all_props[room_number]
             for prop_id, prop_data in saved_props.items():
-                # Initialize the last_status when restoring props.
                 if 'last_status' not in prop_data:
                     prop_data['last_status'] = None
                 self.handle_prop_update(prop_data['info'])
-        else:
-            # Initialize last_status for all props in this room
-            self.all_props[room_number] = {} # Make sure room exists
-            for prop_id, prop_data in self.all_props[room_number].items():
-                if 'last_status' not in prop_data:
-                    prop_data['last_status'] = None
 
-        # Initialize progress time on first load
+        else:
+            self.all_props[room_number] = {} # Make sure the dict exists
+            for prop_id, prop_data in self.all_props[room_number].items():
+                    if 'last_status' not in prop_data:
+                        prop_data['last_status'] = None
+
         if room_number not in self.last_progress_times:
             self.last_progress_times[room_number] = time.time()
 
-        # Set up special buttons for this room
         self.setup_special_buttons(room_number)
 
-        # Update tracking intervals
         if old_room:
             self.update_prop_tracking_interval(old_room, is_selected=False)
         self.update_prop_tracking_interval(room_number, is_selected=True)
 
-        # Display current connection state or initialize new connection
         if room_number in self.connection_states and hasattr(self, 'status_label'):
             try:
                 self.status_label.config(
@@ -502,12 +492,10 @@ class PropControl:
             
         current_time = time.time()
             
-        # First check overall room state
         is_activated = False
         is_finished = False
         timer_expired = False
             
-        # Check activation and finishing states
         for prop_id, prop_info in self.all_props[room_number].items():
             if 'info' not in prop_info:
                 continue
@@ -520,7 +508,6 @@ class PropControl:
                 if status == "Finished":
                     is_finished = True
             
-        # Check timer state
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
                 if computer_name in self.app.kiosk_tracker.kiosk_stats:
@@ -528,15 +515,12 @@ class PropControl:
                     timer_expired = timer_time <= 0
                 break
         
-        # Update highlighting regardless of room selection
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
-            
-        # Update individual props if this is the current room
+
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():
                 self.check_prop_status(room_number, prop_id, prop_info)
-            
-        # Schedule next update based on room's interval
+                
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
             self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
@@ -684,28 +668,23 @@ class PropControl:
             if msg.topic == "/er/riddles/info":
                 payload = json.loads(msg.payload.decode())
                 
-                # Store prop data for this room
                 if room_number not in self.all_props:
                     self.all_props[room_number] = {}
                     
                 prop_id = payload.get("strId")
                 if prop_id:
-                    # Create or update prop data in all_props
                     if prop_id not in self.all_props[room_number]:
                         self.all_props[room_number][prop_id] = {
-                            'info': payload.copy(),  # Make a copy to prevent reference issues
+                            'info': payload.copy(),
                             'last_update': time.time(),
-                            'last_status': None # Initialize with no known previous status
+                            'last_status': None
                         }
                     else:
-                        # Copy the payload and ensure previous status exists
                         self.all_props[room_number][prop_id]['info'] = payload.copy()
-                        
-                    # If this is the current room, update UI and local props
+
                     if room_number == self.current_room:
                         self.app.root.after(0, lambda: self.handle_prop_update(payload))
                         
-                    # Check finishing prop status regardless of current room
                     self.app.root.after(0, lambda: self.check_prop_status(
                         room_number, prop_id, self.all_props[room_number][prop_id]
                     ))
@@ -731,7 +710,6 @@ class PropControl:
         if not prop_id:
             return
             
-        # Load status icons if not already loaded
         if not hasattr(self, 'status_icons'):
             try:
                 icon_dir = os.path.join("admin_icons")
@@ -753,8 +731,7 @@ class PropControl:
                 print(f"[prop control]Error loading status icons: {e}")
                 self.status_icons = None
 
-        # Get the order number for this prop
-        order = 999  # Default high number for props not in mapping
+        order = 999  
         if self.current_room in self.ROOM_MAP:
             room_key = self.ROOM_MAP[self.current_room]
             if room_key in self.prop_name_mappings:
@@ -764,21 +741,17 @@ class PropControl:
         current_status = prop_data.get("strStatus", "")
         
         if prop_id not in self.props:
-            # Create new prop display
             prop_frame = ttk.Frame(self.props_frame)
-                
-            # Button frame for control buttons
             button_frame = ttk.Frame(prop_frame)
             button_frame.pack(side='left', padx=(0, 5))
-                
-            # Control buttons as small squares
-            button_size = 20  # Size in pixels
+            
+            button_size = 20
             reset_btn = tk.Button(
                 button_frame,
                 text="R",
                 font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "reset"),
-                bg='#cc362b',  # Red
+                bg='#cc362b',
                 width=2,
                 height=4
             )
@@ -789,7 +762,7 @@ class PropControl:
                 text="A",
                 font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "activate"),
-                bg='#ff8c00',  # Orange
+                bg='#ff8c00',
                 width=2,
                 height=4
             )
@@ -800,27 +773,22 @@ class PropControl:
                 text="F",
                 font=('Arial', 5, 'bold'),
                 command=lambda: self.send_command(prop_id, "finish"),
-                bg='#28a745',  # Green
+                bg='#28a745',
                 width=2,
                 height=4
             )
             finish_btn.pack(side='left', padx=1)
-                
-            # Prop name
-            # Modify the name label creation to be clickable
+            
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
             name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
             name_label.pack(side='left', padx=5)
-                
-            # Add click handler to the name label
+            
             name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
-            name_label.config(cursor="hand2")  # Change cursor to hand when hovering
-                
-            # Status indicator with icon
+            name_label.config(cursor="hand2")
+            
             status_label = tk.Label(prop_frame)
             status_label.pack(side='right', padx=5)
-                
-            # Store references with order number
+            
             self.props[prop_id] = {
                 'frame': prop_frame,
                 'status_label': status_label,
@@ -829,28 +797,41 @@ class PropControl:
                 'order': order
             }
             
-            # Sort and repack all frames based on order
+            # Set initial last status from newly loaded data
+            if self.current_room not in self.all_props:
+                self.all_props[self.current_room] = {}
+
+            if prop_id not in self.all_props[self.current_room]:
+                self.all_props[self.current_room][prop_id] = {}
+            self.all_props[self.current_room][prop_id]['last_status'] = current_status
+            
             sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
             for _, prop_info in sorted_props:
                 prop_info['frame'].pack_forget()
                 prop_info['frame'].pack(fill='x', pady=1)
             
         else:
-            # Update existing prop info and timestamp
-            previous_status = self.all_props[self.current_room][prop_id]['last_status']
+            # Update existing prop info
+            previous_status = self.all_props[self.current_room][prop_id].get('last_status')
+            
+            # Update values, including order
             self.props[prop_id]['info'] = prop_data
             self.props[prop_id]['last_update'] = time.time()
-            self.props[prop_id]['order'] = order  # Update order in case it changed
+            self.props[prop_id]['order'] = order
 
             # Log change as progress event if status has changed and is not offline
             if previous_status != current_status and current_status != "offline":
                 if self.current_room is not None:
                     self.last_progress_times[self.current_room] = time.time()
                     print(f"[prop control]Updated last progress time for room {self.current_room} because of prop {prop_id} with status: {current_status}")
-
-            # Store previous status for future change detection
-            self.all_props[self.current_room][prop_id]['last_status'] = current_status
             
+            # Update the last status with the current status
+            if self.current_room not in self.all_props:
+                self.all_props[self.current_room] = {}
+            if prop_id not in self.all_props[self.current_room]:
+                self.all_props[self.current_room][prop_id] = {}
+            self.all_props[self.current_room][prop_id]['last_status'] = current_status
+        
         self.update_prop_status(prop_id)
         self.check_finishing_prop_status(prop_id, prop_data)
 
