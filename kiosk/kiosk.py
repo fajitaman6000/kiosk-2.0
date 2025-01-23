@@ -108,8 +108,9 @@ class KioskApp:
             'timer_time': self.timer.time_remaining,
             'timer_running': self.timer.is_running,
             'hint_requested': self.hint_requested_flag, # Include the new hint flag in the stats
-            'hints_received': self.hints_received, # ADDED
-            'times_touched_screen': self.times_touched_screen # ADDED
+            'hints_received': self.hints_received,
+            'times_touched_screen': self.times_touched_screen,
+            'music_playing': self.audio_manager.is_playing if hasattr(self.audio_manager, 'is_playing') else False
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:

@@ -109,14 +109,48 @@ def setup_stats_panel(interface_builder, computer_name):
         clock_icon = Image.open(os.path.join(icon_dir, "clock.png"))
         clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
         clock_icon = ImageTk.PhotoImage(clock_icon)
+
+        music_on_icon = Image.open(os.path.join(icon_dir, "music_on.png"))
+        music_on_icon = music_on_icon.resize((24, 24), Image.Resampling.LANCZOS)
+        music_on_icon = ImageTk.PhotoImage(music_on_icon)
+
+        music_off_icon = Image.open(os.path.join(icon_dir, "music_off.png"))
+        music_off_icon = music_off_icon.resize((24, 24), Image.Resampling.LANCZOS)
+        music_off_icon = ImageTk.PhotoImage(music_off_icon)
     except Exception as e:
         print(f"[stats panel]Error loading icons: {e}")
-        play_icon = stop_icon = video_icon = clock_icon = None
+        play_icon = stop_icon = video_icon = clock_icon = music_on_icon = music_off_icon = None
     
     # Timer button frame
     button_frame = tk.Frame(control_buttons_frame)
     button_frame.pack(side='left', padx=5)
     
+    # Music button frame
+    music_button_frame = tk.Frame(control_buttons_frame)
+    music_button_frame.pack(side='left', padx=5)
+
+    # Create music toggle button with icon
+    music_btn = tk.Button(
+        music_button_frame,
+        image=music_off_icon if music_off_icon else None,
+        text="" if music_off_icon else "Toggle Music",
+        command=lambda: interface_builder.toggle_music(computer_name),
+        width=24,
+        height=24,
+        bd=0,
+        highlightthickness=0,
+        #bg='black',
+        #activebackground='black'
+    )
+
+    # Store both icons with the button for later use
+    if music_on_icon and music_off_icon:
+        music_btn.music_on_icon = music_on_icon
+        music_btn.music_off_icon = music_off_icon
+
+    music_btn.pack(side='left', padx=(1, 1))
+    interface_builder.stats_elements['music_button'] = music_btn
+
     # Create start/stop room button with icon
     timer_button = tk.Button(
         button_frame,

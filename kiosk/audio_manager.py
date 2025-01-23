@@ -11,6 +11,7 @@ class AudioManager:
         self._last_played_time = 0
         self.MIN_REPLAY_DELAY = .05
         self.current_music = None
+        self.is_playing = False
 
     def play_sound(self, sound_name):
         """
@@ -59,6 +60,7 @@ class AudioManager:
                 pygame.mixer.music.load(music_path)
                 pygame.mixer.music.play(-1)  # -1 means loop indefinitely
                 self.current_music = music_name
+                self.is_playing = True
                 print(f"[audio manager]Started playing background music: {music_name}")
             else:
                 print(f"[audio manager]Background music file not found: {music_path}")
@@ -75,9 +77,30 @@ class AudioManager:
                 pygame.mixer.music.stop()
                 pygame.mixer.music.unload()
                 self.current_music = None
+                self.is_playing = False
                 print("[audio manager]Stopped background music")
         except Exception as e:
             print(f"[audio manager]Error stopping background music: {e}")
+
+    def toggle_music(self):
+        """Toggles the music on or off"""
+        try:
+            if self.current_music:  # Check if a music track is loaded
+                if pygame.mixer.music.get_busy():
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+                    self.is_playing = False
+                    print("[audio manager]Stopped background music")
+                else:
+                    music_path = os.path.join(self.music_dir, self.current_music)
+                    pygame.mixer.music.load(music_path)
+                    pygame.mixer.music.play(-1)
+                    self.is_playing = True
+                    print(f"[audio manager]Started playing background music: {self.current_music}")
+            else:
+                print("[audio manager]No music track loaded to toggle.")
+        except Exception as e:
+            print(f"[audio manager]Error toggling music: {e}")
 
     def set_music_volume(self, volume):
         """

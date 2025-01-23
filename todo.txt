@@ -1,8 +1,5 @@
 # important/immediate todo
-outro audio?
 audio hints need a means of playing the audio on kiosk side
-
-ignore_changes flag for props like spinning globe
 
 
 # planned features: 
@@ -17,7 +14,6 @@ kiosk passes "videos finished" event to admin side and admin side can decide whe
 
 finishing prop designator icon (green flag)
 "you won" screen
-technician app (e.g "finish all" button)
 
 
 
@@ -39,6 +35,7 @@ soundcheck/touchcheck behavior
 *drink ordering*
 mqtt LEDs for GMs to point out items
 kiosk responds to prop finishes with vfx
+technician app (e.g "finish all" button)
 
 
 profile creation,

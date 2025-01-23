@@ -256,6 +256,34 @@ class AdminInterfaceBuilder:
             
         self.app.network_handler.send_video_command(computer_name, video_type, minutes)
 
+    def toggle_music(self, computer_name):
+        """Sends a command to toggle music playback on the specified kiosk."""
+        # Send toggle music command through network handler
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'toggle_music_command',
+                'computer_name': computer_name
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+
+        # Assume music will be toggled on the kiosk - update icon immediately
+        # (The actual state will be confirmed and corrected by the next broadcast message)
+        if 'music_button' in self.stats_elements and self.stats_elements['music_button']:
+            music_button = self.stats_elements['music_button']
+            if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
+                try:
+                    if music_button.cget('image') == str(music_button.music_off_icon):
+                        music_button.config(
+                            image=music_button.music_on_icon
+                        )
+                    else:
+                        music_button.config(
+                            image=music_button.music_off_icon
+                        )
+                except tk.TclError:
+                    print("[interface builder]Music button was destroyed")
+
     def toggle_timer(self, computer_name):
         if 'timer_button' not in self.stats_elements:
             return
@@ -608,7 +636,6 @@ class AdminInterfaceBuilder:
         
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
-    
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
@@ -845,6 +872,25 @@ class AdminInterfaceBuilder:
             self.stats_elements['hints_received_label'].config(
                 text=f"Hints received: {hints_received}"
             )
+
+        # Music button state update
+        music_button = self.stats_elements.get('music_button')
+        if music_button and music_button.winfo_exists():
+            music_playing = stats.get('music_playing', False)
+
+            if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
+                try:
+                    if music_playing and music_button.cget('image') != str(music_button.music_on_icon):
+                        music_button.config(
+                            image=music_button.music_on_icon
+                        )
+                    elif not music_playing and music_button.cget('image') != str(music_button.music_off_icon):
+                        music_button.config(
+                            image=music_button.music_off_icon
+                        )
+                except tk.TclError:
+                    print("[interface builder]Music button was destroyed")
+                    return
 
         timer_time = stats.get('timer_time', 3600)
         timer_minutes = int(timer_time // 60)

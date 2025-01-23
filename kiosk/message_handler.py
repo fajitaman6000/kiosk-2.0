@@ -228,6 +228,10 @@ class MessageHandler:
                 # Schedule UI restoration after timer reset
                 self.kiosk_app.root.after(100, restore_ui)
 
+            elif msg['type'] == 'toggle_music_command' and msg['computer_name'] == self.kiosk_app.computer_name:
+                print("[message handler][DEBUG] Received toggle music command")
+                self.kiosk_app.audio_manager.toggle_music()
+
             elif msg['type'] == 'stop_video_command' and msg['computer_name'] == self.kiosk_app.computer_name:
                 self.handle_stop_video_command()
 
