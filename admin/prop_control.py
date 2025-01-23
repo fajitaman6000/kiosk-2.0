@@ -620,8 +620,7 @@ class PropControl:
                 )
                 # Clear props display on connection issues
                 for widget in self.props_frame.winfo_children():
-                    if widget != self.status_frame:  # Keep the status frame
-                        widget.destroy()
+                    widget.destroy()
                 self.props = {}
             else:
                 # Always hide the status label for non-error states
