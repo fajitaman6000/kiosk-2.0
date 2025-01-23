@@ -365,34 +365,39 @@ class PropControl:
 
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
-        print(f"[prop control]\nSwitching to room {room_number}")
-
         if room_number == self.current_room:
             return
 
         if self.current_room is not None:
-            self.all_props[self.current_room] = self.props.copy()
+            # Store current props but preserve their last_status values
+            self.all_props[self.current_room] = {
+                prop_id: {
+                    'info': prop_data['info'].copy(),
+                    'last_status': prop_data.get('last_status'),
+                    'last_update': prop_data.get('last_update')
+                }
+                for prop_id, prop_data in self.props.items()
+            }
             self.clean_up_room_props(self.current_room)
 
         old_room = self.current_room
         self.current_room = room_number
 
+        # Clear UI
         for widget in self.props_frame.winfo_children():
             widget.destroy()
 
+        # Reset props dict
         self.props = {}
+        
+        # Restore props for new room
         if room_number in self.all_props:
-            saved_props = self.all_props[room_number]
-            for prop_id, prop_data in saved_props.items():
+            for prop_id, prop_data in self.all_props[room_number].items():
                 if 'last_status' not in prop_data:
                     prop_data['last_status'] = None
                 self.handle_prop_update(prop_data['info'])
-
         else:
-            self.all_props[room_number] = {} # Make sure the dict exists
-            for prop_id, prop_data in self.all_props[room_number].items():
-                    if 'last_status' not in prop_data:
-                        prop_data['last_status'] = None
+            self.all_props[room_number] = {}
 
         if room_number not in self.last_progress_times:
             self.last_progress_times[room_number] = time.time()
@@ -445,14 +450,15 @@ class PropControl:
         try:
             # Get current status
             status = prop_info['info'].get('strStatus')
-            previous_status = prop_info.get('last_status')
+            last_status = self.all_props[room_number][prop_id].get('last_status')
             
-            # Update last progress time if status changed meaningfully
-            if previous_status != status and status != "offline":
+            # Only update progress time if we have a real status change
+            if last_status is not None and status != last_status and status != "offline":
                 self.last_progress_times[room_number] = time.time()
+                print(f"[prop control]Updated progress time for room {room_number} - status changed from {last_status} to {status}")
                 
-            # Store current status as previous for next check
-            prop_info['last_status'] = status
+            # Update the last status in all_props, not the local prop_info
+            self.all_props[room_number][prop_id]['last_status'] = status
             
             # Check if this is a finishing prop
             is_finishing = self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
