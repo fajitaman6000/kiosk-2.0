@@ -455,7 +455,7 @@ class PropControl:
             # Only update progress time if we have a real status change
             if last_status is not None and status != last_status and status != "offline":
                 self.last_progress_times[room_number] = time.time()
-                print(f"[prop control]Updated progress time for room {room_number} - status changed from {last_status} to {status}")
+                print(f"[prop control]Updated progress time for NOT CURRENTLY SELECTED room {room_number} - prop '{prop_info['info'].get('strName', 'unknown')}' changed from {last_status} to {status}")
                 
             # Update the last status in all_props, not the local prop_info
             self.all_props[room_number][prop_id]['last_status'] = status
@@ -760,7 +760,7 @@ class PropControl:
             previous_status = self.all_props[self.current_room][prop_id].get('last_status') if prop_id in self.all_props[self.current_room] else None
             if previous_status is not None and current_status != previous_status and current_status != "offline":
                 self.last_progress_times[self.current_room] = time.time()
-                print(f"[prop control]Updated progress time for room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
+                print(f"[prop control]Updated progress time for CURRENTLY SELECTED room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
 
         if prop_id not in self.props:
             prop_frame = ttk.Frame(self.props_frame)
