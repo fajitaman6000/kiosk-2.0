@@ -445,6 +445,14 @@ class PropControl:
         try:
             # Get current status
             status = prop_info['info'].get('strStatus')
+            previous_status = prop_info.get('last_status')
+            
+            # Update last progress time if status changed meaningfully
+            if previous_status != status and status != "offline":
+                self.last_progress_times[room_number] = time.time()
+                
+            # Store current status as previous for next check
+            prop_info['last_status'] = status
             
             # Check if this is a finishing prop
             is_finishing = self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
@@ -818,12 +826,6 @@ class PropControl:
             self.props[prop_id]['info'] = prop_data
             self.props[prop_id]['last_update'] = time.time()
             self.props[prop_id]['order'] = order
-
-            # Log change as progress event if status has changed and is not offline
-            if previous_status != current_status and current_status != "offline":
-                if self.current_room is not None:
-                    self.last_progress_times[self.current_room] = time.time()
-                    print(f"[prop control]Updated last progress time for room {self.current_room} because of prop {prop_id} with status: {current_status}")
             
             # Update the last status with the current status
             if self.current_room not in self.all_props:
