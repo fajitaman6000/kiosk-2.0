@@ -877,14 +877,18 @@ class AdminInterfaceBuilder:
         music_button = self.stats_elements.get('music_button')
         if music_button and music_button.winfo_exists():
             music_playing = stats.get('music_playing', False)
+            #print(f"[DEBUG] Raw stats music_playing value: {music_playing}")  # Add this debug line
 
             if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
                 try:
-                    if music_playing and music_button.cget('image') != str(music_button.music_on_icon):
+                    current_image = music_button.cget('image')
+                    #print(f"[DEBUG] music_playing: {music_playing}, current_image: {current_image}, on_icon: {music_button.music_on_icon}, off_icon: {music_button.music_off_icon}")
+                    
+                    if music_playing and str(current_image) != str(music_button.music_on_icon):
                         music_button.config(
                             image=music_button.music_on_icon
                         )
-                    elif not music_playing and music_button.cget('image') != str(music_button.music_off_icon):
+                    elif not music_playing and str(current_image) != str(music_button.music_off_icon):
                         music_button.config(
                             image=music_button.music_off_icon
                         )

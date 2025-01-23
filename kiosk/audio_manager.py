@@ -3,7 +3,7 @@ import os
 import time  # Add this import
 
 class AudioManager:
-    def __init__(self):
+    def __init__(self, kiosk_app):
         pygame.mixer.init()
         self.sound_dir = "kiosk_sounds"
         self.music_dir = "music"
@@ -12,6 +12,7 @@ class AudioManager:
         self.MIN_REPLAY_DELAY = .05
         self.current_music = None
         self.is_playing = False
+        self.kiosk_app = kiosk_app
 
     def play_sound(self, sound_name):
         """
@@ -68,6 +69,19 @@ class AudioManager:
         except Exception as e:
             print(f"[audio manager]Error playing background music: {e}")
             
+    def get_room_music_name(self, room_number):
+        """Helper to map room number to music file name."""
+        room_names = {
+            2: "morning_after",
+            1: "casino_heist",
+            5: "haunted_manor",
+            4: "zombie_outbreak",
+            6: "time_machine",
+            5: "atlantis_rising",
+            3: "wizard_trials"
+        }
+        return room_names.get(room_number)
+
     def stop_background_music(self):
         """
         Stops any currently playing background music.
@@ -83,9 +97,9 @@ class AudioManager:
             print(f"[audio manager]Error stopping background music: {e}")
 
     def toggle_music(self):
-        """Toggles the music on or off"""
+        """Toggles the music on or off. Loads the room's track if not already loaded."""
         try:
-            if self.current_music:  # Check if a music track is loaded
+            if self.current_music:
                 if pygame.mixer.music.get_busy():
                     pygame.mixer.music.stop()
                     pygame.mixer.music.unload()
@@ -98,7 +112,16 @@ class AudioManager:
                     self.is_playing = True
                     print(f"[audio manager]Started playing background music: {self.current_music}")
             else:
-                print("[audio manager]No music track loaded to toggle.")
+                # No track loaded, so try to load it based on the assigned room
+                print("[audio manager]No music track loaded. Trying to load based on assigned room.")
+                if self.kiosk_app.assigned_room:
+                    room_name = self.get_room_music_name(self.kiosk_app.assigned_room)
+                    if room_name:
+                        self.play_background_music(room_name)  # Use existing method to load and play
+                    else:
+                        print(f"[audio manager]Could not determine music for room: {self.kiosk_app.assigned_room}")
+                else:
+                    print("[audio manager]No room assigned, cannot load music.")
         except Exception as e:
             print(f"[audio manager]Error toggling music: {e}")
 
