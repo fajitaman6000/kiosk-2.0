@@ -719,11 +719,11 @@ class PropControl:
             self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def handle_prop_update(self, prop_data):
-        """Handle updates to prop status and create/update the UI elements."""
         prop_id = prop_data.get("strId")
         if not prop_id:
             return
-            
+                
+        # Load status icons if needed
         if not hasattr(self, 'status_icons'):
             try:
                 icon_dir = os.path.join("admin_icons")
@@ -745,6 +745,7 @@ class PropControl:
                 print(f"[prop control]Error loading status icons: {e}")
                 self.status_icons = None
 
+        # Get order for prop
         order = 999  
         if self.current_room in self.ROOM_MAP:
             room_key = self.ROOM_MAP[self.current_room]
@@ -754,6 +755,13 @@ class PropControl:
         
         current_status = prop_data.get("strStatus", "")
         
+        # For the current room, we need to check status changes here as well
+        if self.current_room is not None:
+            previous_status = self.all_props[self.current_room][prop_id].get('last_status') if prop_id in self.all_props[self.current_room] else None
+            if previous_status is not None and current_status != previous_status and current_status != "offline":
+                self.last_progress_times[self.current_room] = time.time()
+                print(f"[prop control]Updated progress time for room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
+
         if prop_id not in self.props:
             prop_frame = ttk.Frame(self.props_frame)
             button_frame = ttk.Frame(prop_frame)
