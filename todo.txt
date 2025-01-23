@@ -1,8 +1,8 @@
 # important/immediate todo
 outro audio?
 audio hints need a means of playing the audio on kiosk side
-need a "start room" button distinct from play/stop
 
+ignore_changes flag for props like spinning globe
 
 
 # planned features: 
@@ -39,6 +39,7 @@ automatic room restoration for all props upon full pause
 soundcheck/touchcheck behavior
 *drink ordering*
 mqtt LEDs for GMs to point out items
+kiosk responds to prop finishes with vfx
 
 
 profile creation,
