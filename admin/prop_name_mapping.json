@@ -35,7 +35,8 @@
             "Spining globe": {
                 "display": "Spin Globe",
                 "order": 9,
-                "finishing_prop": false
+                "finishing_prop": false,
+				"ignore_progress": true
             },
             "Magic ball": {
                 "display": "Veiny Orb",
@@ -170,7 +171,8 @@
             "Clocks": {
                 "display": "Clocks",
                 "order": 4,
-                "finishing_prop": false
+                "finishing_prop": false,
+				"ignore_progress": true
             }
         }
     },
@@ -255,7 +257,8 @@
             "Clocks": {
                 "display": "Clocks",
                 "order": 4,
-                "finishing_prop": false
+                "finishing_prop": false,
+				"ignore_progress": true
             }
         }
     },

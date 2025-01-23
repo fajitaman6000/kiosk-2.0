@@ -446,14 +446,17 @@ class PropControl:
         """Check status of a single prop and update UI if needed"""
         if not prop_info or 'info' not in prop_info:
             return
-            
+                
         try:
             # Get current status
             status = prop_info['info'].get('strStatus')
             last_status = self.all_props[room_number][prop_id].get('last_status')
             
-            # Only update progress time if we have a real status change
-            if last_status is not None and status != last_status and status != "offline":
+            # Only update progress time if we have a real status change and prop shouldn't be ignored
+            if (last_status is not None and 
+                status != last_status and 
+                status != "offline" and
+                not self.should_ignore_progress(room_number, prop_info['info'].get('strName', ''))):
                 self.last_progress_times[room_number] = time.time()
                 print(f"[prop control]Updated progress time for NOT CURRENTLY SELECTED room {room_number} - prop '{prop_info['info'].get('strName', 'unknown')}' changed from {last_status} to {status}")
                 
@@ -676,6 +679,21 @@ class PropControl:
             # Pack button into grid with minimal padding
             btn.grid(row=row, column=col, padx=1, pady=1, sticky='nsew')
 
+    def should_ignore_progress(self, room_number, prop_name):
+        """Check if a prop should be ignored for progress tracking"""
+        if room_number not in self.ROOM_MAP:
+            return False
+            
+        room_key = self.ROOM_MAP[room_number]
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+            
+        if room_key not in self.prop_name_mappings:
+            return False
+            
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        return prop_info.get('ignore_progress', False)  # Returns False if flag doesn't exist
+
     def on_message(self, client, userdata, msg, room_number):
         """Modified to handle messages for all rooms, including tracking prop status changes."""
         try:
@@ -758,7 +776,10 @@ class PropControl:
         # For the current room, we need to check status changes here as well
         if self.current_room is not None:
             previous_status = self.all_props[self.current_room][prop_id].get('last_status') if prop_id in self.all_props[self.current_room] else None
-            if previous_status is not None and current_status != previous_status and current_status != "offline":
+            if (previous_status is not None and 
+                current_status != previous_status and 
+                current_status != "offline" and
+                not self.should_ignore_progress(self.current_room, prop_data["strName"])):
                 self.last_progress_times[self.current_room] = time.time()
                 print(f"[prop control]Updated progress time for CURRENTLY SELECTED room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
 
