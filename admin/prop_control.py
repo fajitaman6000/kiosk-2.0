@@ -1163,9 +1163,6 @@ class PropControl:
         try:
             client.publish("/er/cmd", "start")
             print(f"[prop control]Start game command sent to room {self.current_room}")
-            # Log the action
-            if hasattr(self.app, 'kiosk_tracker'):
-                self.app.kiosk_tracker.log_action(f"Started game in room {self.current_room}")
         except Exception as e:
             print(f"[prop control]Failed to send start game command: {e}")
 
@@ -1179,9 +1176,6 @@ class PropControl:
         try:
             client.publish("/er/cmd", "reset")
             print(f"[prop control]Reset all command sent to room {self.current_room}")
-            # Log the action
-            if hasattr(self.app, 'kiosk_tracker'):
-                self.app.kiosk_tracker.log_action(f"Reset all props in room {self.current_room}")
         except Exception as e:
             print(f"[prop control]Failed to send reset all command: {e}")
 
@@ -1197,7 +1191,5 @@ class PropControl:
         try:
             client.publish(topic, quest_type)
             print(f"[prop control]Quest command '{quest_type}' sent successfully to room {self.current_room}")
-            if hasattr(self.app, 'kiosk_tracker'):
-                self.app.kiosk_tracker.log_action(f"Sent quest command '{quest_type}' to room {self.current_room}")
         except Exception as e:
             print(f"[prop control]Failed to send quest command: {e}")
