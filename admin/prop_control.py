@@ -822,7 +822,11 @@ class PropControl:
             finish_btn.pack(side='left', padx=1)
             
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+            
+            # Create name label with conditional formatting
             name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
+            if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))  # Italicized and underlined
             name_label.pack(side='left', padx=5)
             
             name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
@@ -836,7 +840,8 @@ class PropControl:
                 'status_label': status_label,
                 'info': prop_data,
                 'last_update': time.time(),
-                'order': order
+                'order': order,
+                'name_label': name_label,
             }
             
             # Set initial last status from newly loaded data
@@ -860,13 +865,20 @@ class PropControl:
             self.props[prop_id]['info'] = prop_data
             self.props[prop_id]['last_update'] = time.time()
             self.props[prop_id]['order'] = order
-            
+
             # Update the last status with the current status
             if self.current_room not in self.all_props:
                 self.all_props[self.current_room] = {}
             if prop_id not in self.all_props[self.current_room]:
                 self.all_props[self.current_room][prop_id] = {}
             self.all_props[self.current_room][prop_id]['last_status'] = current_status
+
+            # Update name label formatting
+            if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                self.props[prop_id]['name_label'].config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+            else:
+                self.props[prop_id]['name_label'].config(font=('Arial', 8, 'bold'))
+
         
         self.update_prop_status(prop_id)
         self.check_finishing_prop_status(prop_id, prop_data)
