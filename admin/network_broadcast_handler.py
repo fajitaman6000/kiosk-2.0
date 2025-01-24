@@ -86,6 +86,11 @@ class NetworkBroadcastHandler:
                                 self.app.interface_builder.mark_help_requested(computer_name)
                         self.app.root.after(0, mark_help)
                 
+                elif msg['type'] == 'intro_video_completed':
+                    computer_name = msg['computer_name']
+                    print(f"[network broadcast handler]Received intro video complete signal from: {computer_name}")
+                    self.app.root.after(0, lambda: self.app.interface_builder.handle_intro_video_complete(computer_name))
+
                 elif msg['type'] == 'kiosk_disconnect':
                     computer_name = msg['computer_name']
                     if computer_name in self.last_message:

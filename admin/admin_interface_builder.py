@@ -256,6 +256,15 @@ class AdminInterfaceBuilder:
             
         self.app.network_handler.send_video_command(computer_name, video_type, minutes)
 
+    def handle_intro_video_complete(self, computer_name):
+        """Handle the 'intro_video_completed' message"""
+        print(f"[AdminInterfaceBuilder] Intro video completed by {computer_name}")
+        
+        # Add logic here to update UI (e.g., show a log entry or toggle a button)
+        # Example:
+        if self.selected_kiosk == computer_name:
+             self.update_stats_display(self.selected_kiosk)
+
     def toggle_music(self, computer_name):
         """Sends a command to toggle music playback on the specified kiosk."""
         # Send toggle music command through network handler

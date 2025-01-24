@@ -173,6 +173,13 @@ class KioskApp:
             print("[kiosk main]\n=== Video Sequence Completion ===")
             print("[kiosk main]Executing finish_video_sequence callback")
             print(f"[kiosk main]Setting timer to {minutes} minutes")
+            
+            # Send admin notification - before timer starts
+            self.network.send_message({
+                'type': 'intro_video_completed',
+                'computer_name': self.computer_name
+            })
+            
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")
             
