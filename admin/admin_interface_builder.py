@@ -967,6 +967,16 @@ class AdminInterfaceBuilder:
         else:
             self.stats_elements['last_progress_label'].config(text="Last Progress: N/A")
 
+        # Auto-start state update
+        auto_start_check = self.stats_elements.get('auto_start_check')
+        if auto_start_check and auto_start_check.winfo_exists():
+            auto_start = stats.get('auto_start', False)
+            try:
+                auto_start_check.config(text="Auto-Start [✓]" if auto_start else "Auto-Start [ ]")
+            except tk.TclError:
+                print("[interface builder]Auto-start checkbox was destroyed")
+                return
+
     def update_last_progress_time_display(self, room_number):
         if room_number in self.app.prop_control.last_progress_times:
             last_progress_time = self.app.prop_control.last_progress_times[room_number]
@@ -1115,6 +1125,25 @@ class AdminInterfaceBuilder:
                     self.stats_elements['speak_btn'].config(state='disabled')
             
             threading.Thread(target=connect, daemon=True).start()
+
+    def toggle_auto_start(self, computer_name):
+        """Sends a command to toggle auto-start on the specified kiosk."""
+        # Send toggle music command through network handler
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'toggle_auto_start',
+                'computer_name': computer_name
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+
+        # Assume auto_start will be toggled on the kiosk - update state immediately
+        if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
+            current_status = self.app.kiosk_tracker.kiosk_stats[computer_name]['auto_start']
+            self.app.kiosk_tracker.kiosk_stats[computer_name]['auto_start'] = not current_status
+
+            if 'auto_start_check' in self.stats_elements and self.stats_elements['auto_start_check']:
+                self.stats_elements['auto_start_check'].config(text="Auto-Start [✓]" if not current_status else "Auto-Start [ ]")
 
     def toggle_speaking(self, computer_name):
         """Toggle microphone for speaking to kiosk"""

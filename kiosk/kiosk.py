@@ -25,22 +25,25 @@ class KioskApp:
         print("[kiosk main]\nStarting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
-        self.root = tk.Tk()
+        #get_stats items to pass with info payload
         self.computer_name = socket.gethostname()
+        self.hint_requested_flag = False
+        self.auto_start = False
+        self.hints_requested = 0
+        self.hints_received = 0
+        self.assigned_room = None
+        self.times_touched_screen = 0
+
+        self.root = tk.Tk()
         self.root.title(f"Kiosk: {self.computer_name}")
         
         # Add fullscreen and cursor control
         self.root.attributes('-fullscreen', True)
         self.root.config(cursor="none")  # Hide cursor
         #self.root.bind('<Escape>', lambda e: self.toggle_fullscreen())
-        
-        self.assigned_room = None
-        self.hints_requested = 0
-        self.hints_received = 0
-        self.times_touched_screen = 0
-        self.hint_requested_flag = False
+
         self.start_time = None
-        self.room_started = False
+        #self.room_started = False
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
         #print("[kiosk main]Initialized time_exceeded_45 flag to False")
@@ -110,7 +113,9 @@ class KioskApp:
             'hint_requested': self.hint_requested_flag, # Include the new hint flag in the stats
             'hints_received': self.hints_received,
             'times_touched_screen': self.times_touched_screen,
-            'music_playing': self.audio_manager.is_playing if hasattr(self.audio_manager, 'is_playing') else False
+            'music_playing': self.audio_manager.is_playing if hasattr(self.audio_manager, 'is_playing') else False,
+            'auto_start': self.auto_start,
+            
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
@@ -179,6 +184,11 @@ class KioskApp:
                 'type': 'intro_video_completed',
                 'computer_name': self.computer_name
             })
+
+            if (self.auto_start == True):
+                print("[kiosk main]Autostart was on, game will typically be started by this.")
+                self.auto_start = False
+                print(f"and autostart = {self.auto_start}")
             
             self.timer.handle_command("set", minutes)
             self.timer.handle_command("start")

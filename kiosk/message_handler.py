@@ -215,6 +215,9 @@ class MessageHandler:
                 # Reset room started state
                 self.kiosk_app.room_started = False
 
+                # Disable Auto Start
+                self.kiosk_app.auto_start = False
+
                 # Restore UI after timer reinitialization
                 def restore_ui():
                     if self.kiosk_app.assigned_room:
@@ -235,6 +238,10 @@ class MessageHandler:
             elif msg['type'] == 'stop_video_command' and msg['computer_name'] == self.kiosk_app.computer_name:
                 self.handle_stop_video_command()
 
+            elif msg['type'] == 'toggle_auto_start' and msg['computer_name'] == self.kiosk_app.computer_name:
+                print("toggling auto start")
+                self.toggle_auto_start()
+
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
@@ -246,3 +253,12 @@ class MessageHandler:
         print("[message handler][DEBUG] Received stop video command")
         if self.video_manager:
             self.video_manager.stop_video()
+
+    def toggle_auto_start(self):
+        """Toggles the auto-start flag on the kiosk. Does not broadcast."""
+        if (self.kiosk_app.auto_start == False):
+            self.kiosk_app.auto_start = True
+            print(f"[message handler] Auto-start enabled")
+        else:
+            self.kiosk_app.auto_start = False
+            print(f"[message handler] Auto-start disabled")
