@@ -692,9 +692,6 @@ def setup_stats_panel(interface_builder, computer_name):
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name
 
-    # ===========================================
-    # Stats below the video
-    # ===========================================
     stats_below_video = tk.Frame(
         right_panel,
         bg='systemButtonFace'
@@ -764,6 +761,17 @@ def setup_stats_panel(interface_builder, computer_name):
         anchor='w'
     )
     interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=2, fill='x')
+
+    # Last prop finished label
+    interface_builder.stats_elements['last_prop_label'] = tk.Label(
+        stats_vertical_frame,
+        text="Last Prop: N/A", # Start with "N/A" until a prop finishes.
+        font=('Arial', 10, 'bold'),
+        fg='black',
+        bg='#E0E0E0',
+        anchor='w'
+    )
+    interface_builder.stats_elements['last_prop_label'].pack(side='top', pady=2, fill='x')
 
     # Screen Touches label
     #current_touches = 0
