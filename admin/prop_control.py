@@ -367,19 +367,49 @@ class PropControl:
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
         if room_number == self.current_room:
             return
+        
+        # Special handling for 1<->2 switch (CASINO<->MA)
+        if (self.current_room in [1, 2] and room_number in [1, 2]):
+            print(f"[prop control]Switching between rooms 1 and 2; skipping connection refresh.")
+            # View change only
+            self.current_room = room_number
+            
+            # Clear UI (except prop section)
+            for widget in self.special_frame.winfo_children():
+                widget.destroy()
+
+            self.setup_special_buttons(room_number)
+            
+            # Update the prop names/view based on room number
+            if room_number in self.all_props:
+              for prop_id, prop_data in self.all_props[room_number].items():
+                  self.update_prop_ui_elements(prop_id, prop_data['info']) # Update only the UI elements
+
+            if room_number in self.connection_states and hasattr(self, 'status_label'):
+                try:
+                    self.status_label.config(
+                        text=self.connection_states[room_number],
+                        fg='black' if "Connected" in self.connection_states[room_number] else 'red'
+                    )
+                except tk.TclError:
+                    print("[prop control]Status label was destroyed, skipping update")
+            else:
+                self.status_label.config(text="")  # Clear error messages, if any
+            
+            return # Early return
 
         if self.current_room is not None:
-            # Store current props but preserve their last_status values
-            self.all_props[self.current_room] = {
-                prop_id: {
-                    'info': prop_data['info'].copy(),
-                    'last_status': prop_data.get('last_status'),
-                    'last_update': prop_data.get('last_update')
-                }
-                for prop_id, prop_data in self.props.items()
-            }
-            self.clean_up_room_props(self.current_room)
-
+          # Store current props but preserve their last_status values
+          self.all_props[self.current_room] = {
+              prop_id: {
+                  'info': prop_data['info'].copy(),
+                  'last_status': prop_data.get('last_status'),
+                  'last_update': prop_data.get('last_update')
+              }
+              for prop_id, prop_data in self.props.items()
+          }
+          self.clean_up_room_props(self.current_room)
+          
         old_room = self.current_room
         self.current_room = room_number
 
@@ -389,23 +419,23 @@ class PropControl:
 
         # Reset props dict
         self.props = {}
-        
+
         # Restore props for new room
         if room_number in self.all_props:
-            for prop_id, prop_data in self.all_props[room_number].items():
-                if 'last_status' not in prop_data:
-                    prop_data['last_status'] = None
-                self.handle_prop_update(prop_data['info'])
+          for prop_id, prop_data in self.all_props[room_number].items():
+              if 'last_status' not in prop_data:
+                  prop_data['last_status'] = None
+              self.handle_prop_update(prop_data['info'])
         else:
-            self.all_props[room_number] = {}
-
+          self.all_props[room_number] = {}
+        
         if room_number not in self.last_progress_times:
-            self.last_progress_times[room_number] = time.time()
+          self.last_progress_times[room_number] = time.time()
 
         self.setup_special_buttons(room_number)
 
         if old_room:
-            self.update_prop_tracking_interval(old_room, is_selected=False)
+          self.update_prop_tracking_interval(old_room, is_selected=False)
         self.update_prop_tracking_interval(room_number, is_selected=True)
 
         if room_number in self.connection_states and hasattr(self, 'status_label'):
@@ -417,7 +447,24 @@ class PropControl:
             except tk.TclError:
                 print("[prop control]Status label was destroyed, skipping update")
         else:
-            self.initialize_mqtt_client(room_number)
+          self.initialize_mqtt_client(room_number)
+
+    def update_prop_ui_elements(self, prop_id, prop_data):
+        """Updates prop name label based on the selected room without creating a new prop UI element"""
+        if prop_id not in self.props:
+            return
+        
+        mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+        
+        # Update the name label
+        name_label = self.props[prop_id]['name_label']
+        name_label.config(text = mapped_name)
+        
+        # Update name label formatting
+        if self.is_finishing_prop(self.current_room, prop_data['strName']):
+            name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+        else:
+            name_label.config(font=('Arial', 8, 'bold'))
 
     def clean_up_room_props(self, room_number):
         """
