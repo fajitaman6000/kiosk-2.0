@@ -507,12 +507,13 @@ class PropControl:
                 self.last_progress_times[room_number] = time.time()
                 #print(f"[prop control]Updated progress time for NOT CURRENTLY SELECTED room {room_number} - prop '{prop_info['info'].get('strName', 'unknown')}' changed from {last_status} to {status}")
 
-            #Update Last Finished Prop Data (NOT CURRENTLY SELECTED)
-            if room_number not in self.last_prop_finished:
-                self.last_prop_finished[room_number] = "N/A"
-            if last_status is not None and status != last_status:
-                prop_name = prop_info['info'].get('strName', 'unknown')
-                self.last_prop_finished[room_number] = prop_name
+            if (status == "finished" or status == "finish" or status == "Finished" or status == "Finish"):
+                #Update Last Finished Prop Data (NOT CURRENTLY SELECTED)
+                if room_number not in self.last_prop_finished:
+                    self.last_prop_finished[room_number] = "N/A"
+                if last_status is not None and status != last_status:
+                    prop_name = prop_info['info'].get('strName', 'unknown')
+                    self.last_prop_finished[room_number] = prop_name
                 
             # Update the last status in all_props, not the local prop_info
             self.all_props[room_number][prop_id]['last_status'] = status
@@ -836,12 +837,13 @@ class PropControl:
                 self.last_progress_times[self.current_room] = time.time()
                 #print(f"[prop control]Updated progress time for CURRENTLY SELECTED room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
             
-            #Update Last Finished Prop Data (CURRENTLY SELECTED)
-            if self.current_room not in self.last_prop_finished:
-                self.last_prop_finished[self.current_room] = ""
-            if previous_status is not None and current_status != previous_status:
-              prop_name = prop_data.get("strName", "unknown")
-              self.last_prop_finished[self.current_room] = prop_name
+            if (current_status == "finished" or current_status == "finish" or current_status == "Finished" or current_status == "Finish"):
+                #Update Last Finished Prop Data (CURRENTLY SELECTED)
+                if self.current_room not in self.last_prop_finished:
+                    self.last_prop_finished[self.current_room] = ""
+                if previous_status is not None and current_status != previous_status:
+                    prop_name = prop_data.get("strName", "unknown")
+                    self.last_prop_finished[self.current_room] = prop_name
 
         if prop_id not in self.props:
             prop_frame = ttk.Frame(self.props_frame)
