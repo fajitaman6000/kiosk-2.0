@@ -17,6 +17,7 @@ finishing prop designator icon (green flag)
 
 
 # known bugs
+prop string names are outdated for last prop finished item
 props no longer being seen as offline
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
 reset all makes a call for kiosk tracker log that doesn't exist
