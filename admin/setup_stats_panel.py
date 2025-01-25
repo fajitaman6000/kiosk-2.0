@@ -765,7 +765,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # Last prop finished label
     interface_builder.stats_elements['last_prop_label'] = tk.Label(
         stats_vertical_frame,
-        text="Last Prop: N/A", # Start with "N/A" until a prop finishes.
+        text="Last Prop Finished: N/A", # Start with "N/A" until a prop finishes.
         font=('Arial', 10, 'bold'),
         fg='black',
         bg='#E0E0E0',

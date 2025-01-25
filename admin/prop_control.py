@@ -78,7 +78,7 @@ class PropControl:
         for room_number in self.ROOM_CONFIGS: # Initialize timestamps for all rooms upon starting, or when switching
             self.last_progress_times[room_number] = time.time() # initialize to now
             self.all_props[room_number] = {} # Initialize the dictionary for each room
-
+        self.last_prop_finished = {} # prop status strings
         
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -506,13 +506,13 @@ class PropControl:
                 not self.should_ignore_progress(room_number, prop_info['info'].get('strName', ''))):
                 self.last_progress_times[room_number] = time.time()
                 #print(f"[prop control]Updated progress time for NOT CURRENTLY SELECTED room {room_number} - prop '{prop_info['info'].get('strName', 'unknown')}' changed from {last_status} to {status}")
-                
-                # NEW FEATURE: Update last prop if it changed to 'Finished'
-                if status == "Finished" and room_number == self.current_room and hasattr(self.app.interface_builder, 'stats_elements'):
-                    last_prop_name = prop_info['info'].get('strName', 'N/A')
-                    if 'last_prop_label' in self.app.interface_builder.stats_elements:
-                        print (f"[prop control]setting last prop label value for {self.current_room}")
-                        self.app.interface_builder.stats_elements['last_prop_label'].config(text=f"Last Prop: {self.get_mapped_prop_name(last_prop_name, self.current_room)}")
+
+            #Update Last Finished Prop Data (NOT CURRENTLY SELECTED)
+            if room_number not in self.last_prop_finished:
+                self.last_prop_finished[room_number] = "N/A"
+            if last_status is not None and status != last_status:
+                prop_name = prop_info['info'].get('strName', 'unknown')
+                self.last_prop_finished[room_number] = prop_name
                 
             # Update the last status in all_props, not the local prop_info
             self.all_props[room_number][prop_id]['last_status'] = status
@@ -836,13 +836,12 @@ class PropControl:
                 self.last_progress_times[self.current_room] = time.time()
                 #print(f"[prop control]Updated progress time for CURRENTLY SELECTED room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
             
-                # NEW FEATURE: Update last prop if it changed to 'Finished'
-                if current_status == "Finished" and hasattr(self.app.interface_builder, 'stats_elements'):
-                    last_prop_name = prop_data.get('strName', 'N/A')
-                    if 'last_prop_label' in self.app.interface_builder.stats_elements:
-                        print (f"[prop control]setting last prop label value for {self.current_room}")
-                        self.app.interface_builder.stats_elements['last_prop_label'].config(text=f"Last Prop: {self.get_mapped_prop_name(last_prop_name, self.current_room)}")
-
+            #Update Last Finished Prop Data (CURRENTLY SELECTED)
+            if self.current_room not in self.last_prop_finished:
+                self.last_prop_finished[self.current_room] = ""
+            if previous_status is not None and current_status != previous_status:
+              prop_name = prop_data.get("strName", "unknown")
+              self.last_prop_finished[self.current_room] = prop_name
 
         if prop_id not in self.props:
             prop_frame = ttk.Frame(self.props_frame)

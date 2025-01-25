@@ -967,6 +967,14 @@ class AdminInterfaceBuilder:
         else:
             self.stats_elements['last_progress_label'].config(text="Last Progress: N/A")
 
+        # Update last prop finished name
+        last_prop_finished = self.app.prop_control.last_prop_finished.get(room_number, 'N/A')
+        if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
+          self.stats_elements['last_prop_label'].config(text=f"Last Prop Finished: {last_prop_finished}")
+        else:
+            if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
+                self.stats_elements['last_prop_label'].config(text="Last Prop Finished: N/A")
+
         # Auto-start state update
         auto_start_check = self.stats_elements.get('auto_start_check')
         if auto_start_check and auto_start_check.winfo_exists():
