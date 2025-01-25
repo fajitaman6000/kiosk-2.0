@@ -980,7 +980,7 @@ class AdminInterfaceBuilder:
         if auto_start_check and auto_start_check.winfo_exists():
             auto_start = stats.get('auto_start', False)
             try:
-                auto_start_check.config(text="Auto-Start [✓]" if auto_start else "Auto-Start [ ]")
+                auto_start_check.config(text="[✓] Auto-Start" if auto_start else "[  ] Auto-Start")
             except tk.TclError:
                 print("[interface builder]Auto-start checkbox was destroyed")
                 return
@@ -1151,7 +1151,7 @@ class AdminInterfaceBuilder:
             self.app.kiosk_tracker.kiosk_stats[computer_name]['auto_start'] = not current_status
 
             if 'auto_start_check' in self.stats_elements and self.stats_elements['auto_start_check']:
-                self.stats_elements['auto_start_check'].config(text="Auto-Start [✓]" if not current_status else "Auto-Start [ ]")
+                self.stats_elements['auto_start_check'].config(text="[✓] Auto-Start" if not current_status else "[  ] Auto-Start")
 
     def toggle_speaking(self, computer_name):
         """Toggle microphone for speaking to kiosk"""

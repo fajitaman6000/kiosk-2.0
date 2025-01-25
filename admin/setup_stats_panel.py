@@ -241,7 +241,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # Make the label a button so its clickable
     interface_builder.stats_elements['auto_start_check'] = tk.Button(
         auto_start_frame,
-        text="Auto-Start [ ]",
+        text="[  ] Auto-Start",
         font=('Arial', 10),
         bd=0,
         highlightthickness=0,
@@ -734,7 +734,7 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='#E0E0E0',
         anchor='w' # Anchor text to left
     )
-    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=2, fill='x') # Fill 'x'
+    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=1, fill='x') # Fill 'x'
     
     # Hints received label
     current_hints_received = 0
@@ -749,7 +749,7 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='#E0E0E0',
         anchor='w' # Anchor text to left
     )
-    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
+    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=1, fill='x') # Fill 'x'
 
     # Add "Time Since Last Progress" label:
     interface_builder.stats_elements['last_progress_label'] = tk.Label(
@@ -760,7 +760,7 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='#E0E0E0',
         anchor='w'
     )
-    interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=2, fill='x')
+    interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=1, fill='x')
 
     # Last prop finished label
     interface_builder.stats_elements['last_prop_label'] = tk.Label(
