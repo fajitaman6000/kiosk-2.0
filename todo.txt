@@ -29,7 +29,7 @@ set alarm on prop to make sound when gm-chosen prop finishes
 automatic room restoration for all props upon full pause
 soundcheck/touchcheck behavior
 *drink ordering*
-mqtt LEDs for GMs to point out items
+mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
 technician app (e.g "finish all" button)
 
