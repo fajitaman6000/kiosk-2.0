@@ -89,33 +89,46 @@ class HintManager:
         return prop_name
 
     def check_credentials(self):
-        """Prompt for credentials and validate them"""
-        
-        login_window = tk.Toplevel(self.app.root)
-        login_window.title("Enter Credentials")
-        login_window.geometry("300x150")  # Set a fixed size
+            """Prompt for credentials and validate them, prevent creation if canceled."""
+            
+            login_window = tk.Toplevel(self.app.root)
+            login_window.title("Enter Credentials")
+            login_window.geometry("300x150")  # Set a fixed size
+            
+            validated = False  # Flag to indicate validation outcome
 
-        tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
-        password_entry = tk.Entry(login_window, show="*", width=20)
-        password_entry.pack(pady=5)
+            tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
+            password_entry = tk.Entry(login_window, show="*", width=20)
+            password_entry.pack(pady=5)
+            
+            def validate():
+                nonlocal validated
+                entered_password = password_entry.get()
+                hashed_entered = hashlib.sha256(entered_password.encode()).hexdigest()
+                if hashed_entered == self.hashed_password:
+                    validated = True
+                    login_window.destroy()
+                else:
+                    messagebox.showerror("Error", "Incorrect password.")
+                    login_window.destroy()
+            
+            def on_close():
+               login_window.destroy() # Close window on close
+           
+            login_window.protocol("WM_DELETE_WINDOW", on_close) # close window handler
+           
+            login_button = tk.Button(login_window, text="Login", command=validate)
+            login_button.pack(pady=10)
 
-        def validate():
-            entered_password = password_entry.get()
-            hashed_entered = hashlib.sha256(entered_password.encode()).hexdigest()
-            if hashed_entered == self.hashed_password:
-                 login_window.destroy()
-                 self.create_hint_management_view()  # Proceed to Hint Manager if creds valid
+            login_window.transient(self.admin_interface.app.root)
+            login_window.grab_set()
+            self.admin_interface.app.root.wait_window(login_window)  # Wait for modal to be closed
+           
+            if validated:
+                self.create_hint_management_view() # Only create if credentials were valid
             else:
-                messagebox.showerror("Error", "Incorrect password.")
-                login_window.destroy()  # Close if password was incorrect
-                self.admin_interface.app.root.focus_set()
-
-        login_button = tk.Button(login_window, text="Login", command=validate)
-        login_button.pack(pady=10)
-
-        login_window.transient(self.admin_interface.app.root)  # Associate with main window
-        login_window.grab_set()  # Make modal
-        self.admin_interface.app.root.wait_window(login_window)  # Keep control in this modal, prevent interaction in main
+               # Restore original view if canceled or wrong password
+               self.restore_original_view()
 
     def show_hint_manager(self):
         """Store current widgets and show hint management interface"""
