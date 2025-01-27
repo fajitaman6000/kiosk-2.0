@@ -1,6 +1,5 @@
 # important/immediate todo
 audio hints need a means of playing the audio on kiosk side
-use existing video-finish detection print to optionally start props
 
 
 # planned features: 
@@ -11,7 +10,6 @@ room start upon video finish (optional?)
 edit hint image content within hint manager
 ending audio is apparently admin app side?
 
-finishing prop designator icon (green flag)
 "you won" screen
 
 

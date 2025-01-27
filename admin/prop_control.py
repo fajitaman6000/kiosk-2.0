@@ -513,7 +513,11 @@ class PropControl:
                     self.last_prop_finished[room_number] = "N/A"
                 if last_status is not None and status != last_status:
                     prop_name = prop_info['info'].get('strName', 'unknown')
-                    self.last_prop_finished[room_number] = prop_name
+                    
+                    # Get the mapped prop name here
+                    mapped_name = self.get_mapped_prop_name(prop_name, room_number)
+                    
+                    self.last_prop_finished[room_number] = mapped_name # Set mapped name instead
                 
             # Update the last status in all_props, not the local prop_info
             self.all_props[room_number][prop_id]['last_status'] = status
@@ -843,7 +847,8 @@ class PropControl:
                     self.last_prop_finished[self.current_room] = ""
                 if previous_status is not None and current_status != previous_status:
                     prop_name = prop_data.get("strName", "unknown")
-                    self.last_prop_finished[self.current_room] = prop_name
+                    mapped_name = self.get_mapped_prop_name(prop_name, self.current_room) # Get mapped name here
+                    self.last_prop_finished[self.current_room] = mapped_name
 
         try:
             if prop_id not in self.props:
@@ -933,6 +938,10 @@ class PropControl:
                         self.props[prop_id]['info'] = prop_data
                         self.props[prop_id]['last_update'] = time.time()
                         self.props[prop_id]['order'] = order
+                        
+                        # Get mapped name and set it here on update
+                        mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+                        name_label.config(text = mapped_name)
 
                         # Update the last status with the current status
                         if self.current_room not in self.all_props:
