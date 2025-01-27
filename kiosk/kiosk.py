@@ -43,7 +43,7 @@ class KioskApp:
         #self.root.bind('<Escape>', lambda e: self.toggle_fullscreen())
 
         self.start_time = None
-        #self.room_started = False
+        self.room_started = False
         self.current_video_process = None  # Add this line
         self.time_exceeded_45 = False
         #print("[kiosk main]Initialized time_exceeded_45 flag to False")
@@ -186,7 +186,7 @@ class KioskApp:
             })
 
             if (self.auto_start == True):
-                print("[kiosk main]Autostart was on, game will typically be started by this.")
+                print("[kiosk main]Autostart was on, game will typically be started by this. \n Setting auto_start to false.")
                 self.auto_start = False
                 print(f"and autostart = {self.auto_start}")
             

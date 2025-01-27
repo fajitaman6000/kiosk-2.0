@@ -260,10 +260,13 @@ class AdminInterfaceBuilder:
         """Handle the 'intro_video_completed' message"""
         print(f"[AdminInterfaceBuilder] Intro video completed by {computer_name}")
         
-        # Add logic here to update UI (e.g., show a log entry or toggle a button)
-        # Example:
-        if self.selected_kiosk == computer_name:
-             self.update_stats_display(self.selected_kiosk)
+        do_autostart = self.app.kiosk_tracker.kiosk_stats[computer_name].get("auto_start")
+
+        if(do_autostart == True):
+            print("auto start was true, would start props")
+            self.app.prop_control.start_game()
+        else:
+            print(f"auto start was read as {do_autostart}, not starting props")
 
     def toggle_music(self, computer_name):
         """Sends a command to toggle music playback on the specified kiosk."""

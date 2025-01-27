@@ -88,7 +88,7 @@ class NetworkBroadcastHandler:
                 
                 elif msg['type'] == 'intro_video_completed':
                     computer_name = msg['computer_name']
-                    print(f"[network broadcast handler]Received intro video complete signal from: {computer_name}")
+                    print(f"[network broadcast handler]Received intro video complete signal from: {computer_name} and passing signal to interface builder")
                     self.app.root.after(0, lambda: self.app.interface_builder.handle_intro_video_complete(computer_name))
 
                 elif msg['type'] == 'kiosk_disconnect':
