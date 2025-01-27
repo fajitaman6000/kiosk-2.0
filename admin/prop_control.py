@@ -791,10 +791,11 @@ class PropControl:
             self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
     def handle_prop_update(self, prop_data):
+        """Handle updates to prop data with widget safety checks"""
         prop_id = prop_data.get("strId")
         if not prop_id:
             return
-                
+                    
         # Load status icons if needed
         if not hasattr(self, 'status_icons'):
             try:
@@ -829,28 +830,156 @@ class PropControl:
         
         # For the current room, we need to check status changes here as well
         if self.current_room is not None:
-            previous_status = self.all_props[self.current_room][prop_id].get('last_status') if prop_id in self.all_props[self.current_room] else None
+            previous_status = (self.all_props[self.current_room][prop_id].get('last_status') 
+                            if prop_id in self.all_props[self.current_room] else None)
             if (previous_status is not None and 
                 current_status != previous_status and 
                 current_status != "offline" and
                 not self.should_ignore_progress(self.current_room, prop_data["strName"])):
                 self.last_progress_times[self.current_room] = time.time()
-                #print(f"[prop control]Updated progress time for CURRENTLY SELECTED room {self.current_room} from handle_prop_update - status changed from {previous_status} to {current_status}")
             
-            if (current_status == "finished" or current_status == "finish" or current_status == "Finished" or current_status == "Finish"):
-                #Update Last Finished Prop Data (CURRENTLY SELECTED)
+            if current_status in ("finished", "finish", "Finished", "Finish"):
                 if self.current_room not in self.last_prop_finished:
                     self.last_prop_finished[self.current_room] = ""
                 if previous_status is not None and current_status != previous_status:
                     prop_name = prop_data.get("strName", "unknown")
                     self.last_prop_finished[self.current_room] = prop_name
 
-        if prop_id not in self.props:
+        try:
+            if prop_id not in self.props:
+                # Create new prop widgets
+                prop_frame = ttk.Frame(self.props_frame)
+                button_frame = ttk.Frame(prop_frame)
+                button_frame.pack(side='left', padx=(0, 5))
+                
+                button_size = 20
+                reset_btn = tk.Button(
+                    button_frame,
+                    text="R",
+                    font=('Arial', 5, 'bold'),
+                    command=lambda: self.send_command(prop_id, "reset"),
+                    bg='#cc362b',
+                    width=2,
+                    height=4
+                )
+                reset_btn.pack(side='left', padx=1)
+                        
+                activate_btn = tk.Button(
+                    button_frame,
+                    text="A",
+                    font=('Arial', 5, 'bold'),
+                    command=lambda: self.send_command(prop_id, "activate"),
+                    bg='#ff8c00',
+                    width=2,
+                    height=4
+                )
+                activate_btn.pack(side='left', padx=1)
+                        
+                finish_btn = tk.Button(
+                    button_frame,
+                    text="F",
+                    font=('Arial', 5, 'bold'),
+                    command=lambda: self.send_command(prop_id, "finish"),
+                    bg='#28a745',
+                    width=2,
+                    height=4
+                )
+                finish_btn.pack(side='left', padx=1)
+                
+                mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+                
+                # Create name label with conditional formatting
+                name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
+                if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                    name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+                name_label.pack(side='left', padx=5)
+                
+                name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
+                name_label.config(cursor="hand2")
+                
+                status_label = tk.Label(prop_frame)
+                status_label.pack(side='right', padx=5)
+                
+                self.props[prop_id] = {
+                    'frame': prop_frame,
+                    'status_label': status_label,
+                    'info': prop_data,
+                    'last_update': time.time(),
+                    'order': order,
+                    'name_label': name_label,
+                }
+                
+                # Set initial last status from newly loaded data
+                if self.current_room not in self.all_props:
+                    self.all_props[self.current_room] = {}
+
+                if prop_id not in self.all_props[self.current_room]:
+                    self.all_props[self.current_room][prop_id] = {}
+                self.all_props[self.current_room][prop_id]['last_status'] = current_status
+                
+                # Sort and repack widgets
+                sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
+                for _, prop_info in sorted_props:
+                    if 'frame' in prop_info and prop_info['frame'].winfo_exists():
+                        prop_info['frame'].pack_forget()
+                        prop_info['frame'].pack(fill='x', pady=1)
+                
+            else:
+                # Update existing prop info with widget safety checks
+                name_label = self.props[prop_id].get('name_label')
+                if name_label and name_label.winfo_exists():
+                    try:
+                        # Update values, including order
+                        self.props[prop_id]['info'] = prop_data
+                        self.props[prop_id]['last_update'] = time.time()
+                        self.props[prop_id]['order'] = order
+
+                        # Update the last status with the current status
+                        if self.current_room not in self.all_props:
+                            self.all_props[self.current_room] = {}
+                        if prop_id not in self.all_props[self.current_room]:
+                            self.all_props[self.current_room][prop_id] = {}
+                        self.all_props[self.current_room][prop_id]['last_status'] = current_status
+
+                        # Update name label formatting
+                        if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                            name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+                        else:
+                            name_label.config(font=('Arial', 8, 'bold'))
+                    except tk.TclError:
+                        # If widget was destroyed during update, remove reference
+                        del self.props[prop_id]['name_label']
+                else:
+                    # Remove invalid widget reference
+                    if 'name_label' in self.props[prop_id]:
+                        del self.props[prop_id]['name_label']
+            
+            # Update status displays if widgets still exist
+            if prop_id in self.props:
+                status_label = self.props[prop_id].get('status_label')
+                if status_label and status_label.winfo_exists():
+                    self.update_prop_status(prop_id)
+                    
+            self.check_finishing_prop_status(prop_id, prop_data)
+                
+        except tk.TclError as e:
+            print(f"[prop control]Widget error in handle_prop_update: {e}")
+            # Clean up invalid widget references
+            if prop_id in self.props:
+                for key in ['name_label', 'status_label', 'frame']:
+                    if key in self.props[prop_id]:
+                        del self.props[prop_id][key]
+        except Exception as e:
+            print(f"[prop control]Error in handle_prop_update: {e}")
+
+    def create_prop_widgets(self, prop_id, prop_data, order):
+        """Create new widgets for a prop"""
+        try:
             prop_frame = ttk.Frame(self.props_frame)
             button_frame = ttk.Frame(prop_frame)
             button_frame.pack(side='left', padx=(0, 5))
             
-            button_size = 20
+            # Create control buttons
             reset_btn = tk.Button(
                 button_frame,
                 text="R",
@@ -861,7 +990,7 @@ class PropControl:
                 height=4
             )
             reset_btn.pack(side='left', padx=1)
-                
+            
             activate_btn = tk.Button(
                 button_frame,
                 text="A",
@@ -872,7 +1001,7 @@ class PropControl:
                 height=4
             )
             activate_btn.pack(side='left', padx=1)
-                
+            
             finish_btn = tk.Button(
                 button_frame,
                 text="F",
@@ -886,10 +1015,10 @@ class PropControl:
             
             mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
             
-            # Create name label with conditional formatting
+            # Create name label
             name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
             if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))  # Italicized and underlined
+                name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
             name_label.pack(side='left', padx=5)
             
             name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
@@ -898,6 +1027,7 @@ class PropControl:
             status_label = tk.Label(prop_frame)
             status_label.pack(side='right', padx=5)
             
+            # Store widget references
             self.props[prop_id] = {
                 'frame': prop_frame,
                 'status_label': status_label,
@@ -907,44 +1037,20 @@ class PropControl:
                 'name_label': name_label,
             }
             
-            # Set initial last status from newly loaded data
-            if self.current_room not in self.all_props:
-                self.all_props[self.current_room] = {}
-
-            if prop_id not in self.all_props[self.current_room]:
-                self.all_props[self.current_room][prop_id] = {}
-            self.all_props[self.current_room][prop_id]['last_status'] = current_status
-            
+            # Sort and repack widgets
             sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
             for _, prop_info in sorted_props:
-                prop_info['frame'].pack_forget()
-                prop_info['frame'].pack(fill='x', pady=1)
-            
-        else:
-            # Update existing prop info
-            previous_status = self.all_props[self.current_room][prop_id].get('last_status')
-            
-            # Update values, including order
-            self.props[prop_id]['info'] = prop_data
-            self.props[prop_id]['last_update'] = time.time()
-            self.props[prop_id]['order'] = order
-
-            # Update the last status with the current status
-            if self.current_room not in self.all_props:
-                self.all_props[self.current_room] = {}
-            if prop_id not in self.all_props[self.current_room]:
-                self.all_props[self.current_room][prop_id] = {}
-            self.all_props[self.current_room][prop_id]['last_status'] = current_status
-
-            # Update name label formatting
-            if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                self.props[prop_id]['name_label'].config(font=('Arial', 8, 'bold', 'italic', 'underline'))
-            else:
-                self.props[prop_id]['name_label'].config(font=('Arial', 8, 'bold'))
-
-        
-        self.update_prop_status(prop_id)
-        self.check_finishing_prop_status(prop_id, prop_data)
+                if 'frame' in prop_info and prop_info['frame'].winfo_exists():
+                    prop_info['frame'].pack_forget()
+                    prop_info['frame'].pack(fill='x', pady=1)
+                    
+        except tk.TclError as e:
+            print(f"[prop control]Error creating prop widgets: {e}")
+            # Clean up any partially created widgets
+            if prop_id in self.props:
+                for key in ['name_label', 'status_label', 'frame']:
+                    if key in self.props[prop_id]:
+                        del self.props[prop_id][key]
 
     def is_finishing_prop(self, room_number, prop_name):
         """Check if a prop is marked as a finishing prop"""
