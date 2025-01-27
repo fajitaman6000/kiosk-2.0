@@ -75,7 +75,7 @@ class AdminInterfaceBuilder:
         
         # Create frames within main container
         left_frame = tk.Frame(self.main_container)
-        left_frame.pack(side='left', fill='both', expand=True, padx=5)
+        left_frame.pack(side='left', fill='both', expand=True, padx=0)
         
         # Create a horizontal container for kiosk frame and hints button
         kiosk_container = tk.Frame(left_frame)
@@ -89,7 +89,7 @@ class AdminInterfaceBuilder:
         icon_dir = os.path.join("admin_icons")
         try:
             settings_icon = Image.open(os.path.join(icon_dir, "settings.png"))
-            settings_icon = settings_icon.resize((24, 24), Image.Resampling.LANCZOS)
+            #settings_icon = settings_icon.resize((32, 32), Image.Resampling.LANCZOS)
             settings_icon = ImageTk.PhotoImage(settings_icon)
         except Exception as e:
             print(f"[interface builder]Error loading icons: {e}")
@@ -97,20 +97,27 @@ class AdminInterfaceBuilder:
 
         # Create small frame for hints button on the right side of container
         hints_button_frame = tk.Frame(kiosk_container)
-        hints_button_frame.pack(side='left', anchor='n', padx=5)  # Anchor to top
+        hints_button_frame.pack(side='left', anchor='n', padx=(10,0), pady=8)  # Anchor to top
         
         # Add Hints Library button in its own frame - small and square
         hints_library_btn = tk.Button(
             hints_button_frame,
-            text="Hint\nManager",
+            image=settings_icon if settings_icon else None,
             command=lambda: self.show_hints_library(),
-            bg='#C6AE66',
+            #bg='#C6AE66',
             fg='white',
             font=('Arial', 9),
-            width=6,         # Set fixed width in text units
-            height=2         # Set fixed height in text units
+            width=24,       # Set fixed width for the icon
+            height=24,     # Set fixed height for the icon
+            bd=0,
+            highlightthickness=0,
+            compound=tk.LEFT
         )
         hints_library_btn.pack(anchor='n')  # Anchor to top of its frame
+        
+        # Keep a reference to settings icon so that it does not get gc'ed
+        if settings_icon:
+           hints_library_btn.image = settings_icon
         
         # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
