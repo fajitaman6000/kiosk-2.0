@@ -119,7 +119,7 @@ class AdminInterfaceBuilder:
     def show_hints_library(self):
         """Show the Hints Library interface"""
         if not hasattr(self, 'hint_manager'):
-             from hints_library import HintManager
+             from manager_settings import HintManager
              self.hint_manager = HintManager(self.app, self)  # Create instance once
         self.hint_manager.show_hint_manager() # call the show method
 
