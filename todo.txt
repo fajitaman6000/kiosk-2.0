@@ -1,8 +1,11 @@
+##############################################################################################################################
 # important/immediate todo
+
 audio hints need a means of playing the audio on kiosk side
 
-
+##############################################################################################################################
 # planned features: 
+
 admin mode (technician/upper managers),
 restarter moved to kiosk app
 edit hint image content within hint manager
@@ -10,25 +13,29 @@ ending audio is apparently admin app side?
 
 "you won" screen
 
+save prop status for blackbox, delete save upon load
+"enable drink menu" by default on
+run soundcheck button
+set alarm on prop to make sound when gm-chosen prop finishes
+admin can display button for them to yes/no on having staff member finish prop
 
+##############################################################################################################################
+# priority bugs
 
+two gamemasters requesting the same video stream crashes that kiosk
+
+##############################################################################################################################
 # known bugs
+
 props no longer being seen as offline
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
-reset all makes a call for kiosk tracker log that doesn't exist
-two gamemasters requesting the same video stream crashes that kiosk
-skip button starts timer despite skipping only one video
-resets during intro videos cause crashing/audio bugs
+resets during intro videos cause crashing/audio bugs(?)
 
-
-
+##############################################################################################################################
 # ambitious extra ideas:
+
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 
-set alarm on prop to make sound when gm-chosen prop finishes
-automatic room restoration for all props upon full pause
-soundcheck/touchcheck behavior
-*drink ordering*
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
 technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
@@ -36,8 +43,9 @@ technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, 
 
 profile creation,
 profile deletion (admin only)
-
 save hint to public (usable by all profiles, shown what profile made it, save to own private profile)
 save hint to private (local to profile)
 save hint to global/default (admin only)
 set hint color
+
+##############################################################################################################################
