@@ -31,7 +31,7 @@ soundcheck/touchcheck behavior
 *drink ordering*
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
-technician app (e.g "finish all" button)
+technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
 
 
 profile creation,

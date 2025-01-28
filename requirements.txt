@@ -1,0 +1,8 @@
+pyaudio
+numpy
+opencv-python
+Pillow
+pygame
+pyqt5
+paho-mqtt
+imageio-ffmpeg
