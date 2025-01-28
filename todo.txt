@@ -3,6 +3,10 @@
 
 audio hints need a means of playing the audio on kiosk side
 
+audio hint structure:
+audio files should all be local
+http file sync to all kiosks; need to be able to verify sync and data integrity
+
 ##############################################################################################################################
 # planned features: 
 

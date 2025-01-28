@@ -1,9 +1,6 @@
 # kiosk.py
 import tkinter as tk
-import socket
-import time
-import sys
-import os
+import socket, time, sys, os, subprocess, traceback, pygame, ctypes
 from networking import KioskNetwork
 from ui import KioskUI
 from config import ROOM_CONFIG
@@ -15,14 +12,12 @@ from pathlib import Path
 from room_persistence import RoomPersistence
 from kiosk_timer import KioskTimer
 from audio_manager import AudioManager
-import subprocess
-import traceback
-import pygame
 from qt_overlay import Overlay
+from ctypes import windll
 
 class KioskApp:
     def __init__(self):
-        print("[kiosk main]\nStarting KioskApp initialization...")
+        print("[kiosk main]Starting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
         #get_stats items to pass with info payload
