@@ -89,7 +89,7 @@ class AdminInterfaceBuilder:
         icon_dir = os.path.join("admin_icons")
         try:
             settings_icon = Image.open(os.path.join(icon_dir, "settings.png"))
-            #settings_icon = settings_icon.resize((32, 32), Image.Resampling.LANCZOS)
+            settings_icon = settings_icon.resize((32, 32), Image.Resampling.LANCZOS)
             settings_icon = ImageTk.PhotoImage(settings_icon)
         except Exception as e:
             print(f"[interface builder]Error loading icons: {e}")
@@ -107,8 +107,8 @@ class AdminInterfaceBuilder:
             #bg='#C6AE66',
             fg='white',
             font=('Arial', 9),
-            width=24,       # Set fixed width for the icon
-            height=24,     # Set fixed height for the icon
+            width=32,       # Set fixed width for the icon
+            height=32,     # Set fixed height for the icon
             bd=0,
             highlightthickness=0,
             compound=tk.LEFT
@@ -119,6 +119,62 @@ class AdminInterfaceBuilder:
         if settings_icon:
            hints_library_btn.image = settings_icon
         
+        # Load Sync Icon
+        try:
+           sync_icon = Image.open(os.path.join(icon_dir, "sync.png"))
+           sync_icon = sync_icon.resize((28,28), Image.Resampling.LANCZOS)
+           sync_icon = ImageTk.PhotoImage(sync_icon)
+        except Exception as e:
+            print(f"[interface builder] Error loading sync icon: {e}")
+            sync_icon = None
+        
+        # Add Sync button, directly below the hints button
+        sync_button = tk.Button(
+            hints_button_frame,
+            image=sync_icon if sync_icon else None,
+            #command=lambda: self.app.methodDoesn'tExistYet(),
+            #bg='#C6AE66',
+            fg='white',
+            font=('Arial', 9),
+            width=32,  # set to same width as hints button
+            height=32, # set to same height as hints button
+            bd=0,
+            highlightthickness=0,
+            compound=tk.LEFT
+        )
+        sync_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
+
+        if sync_icon:
+            sync_button.image = sync_icon
+
+        # Load placeholder icon button                                                    --BUTTON PLACEHOLDER
+        try:
+           soundcheck_icon = Image.open(os.path.join(icon_dir, "soundcheck.png"))
+           soundcheck_icon = soundcheck_icon.resize((32,32), Image.Resampling.LANCZOS)
+           soundcheck_icon = ImageTk.PhotoImage(soundcheck_icon)
+        except Exception as e:
+            print(f"[interface builder] Error loading sync icon: {e}")
+            soundcheck_icon = None
+        
+        # Add placeholder button, directly below the sync button
+        soundcheck_button = tk.Button(
+            hints_button_frame,
+            image=soundcheck_icon if soundcheck_icon else None,
+            #command=lambda: self.app.methodDoesn'tExistYet(),
+            #bg='#C6AE66',
+            fg='white',
+            font=('Arial', 9),
+            width=32,  # set to same width as hints button
+            height=32, # set to same height as hints button
+            bd=0,
+            highlightthickness=0,
+            compound=tk.LEFT
+        )
+        soundcheck_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
+
+        if soundcheck_icon:
+            soundcheck_button.image = soundcheck_icon
+
         # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=10)
