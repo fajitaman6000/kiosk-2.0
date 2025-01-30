@@ -6,6 +6,7 @@ import socket
 import time
 from threading import Thread
 from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT, BROADCAST_MESSAGE_TYPE, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
+
 class AdminSyncManager:
     def __init__(self, app):
         self.app = app
@@ -131,27 +132,27 @@ class AdminSyncManager:
         while self.running:
             try:
                time.sleep(10)
-               if not self.app.interface_builder.sync_button.get():
+               if self.app.interface_builder.sync_button.cget('text') != "Sync": #Check for button pressed state
                     continue
                if not self._discover_kiosks():
                   print("[admin_sync_manager] No kiosks found")
-                  self.app.interface_builder.sync_button.set(0)
+                  self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
                   continue
                files_to_sync = self._compare_files()
                if not files_to_sync:
-                   self.app.interface_builder.sync_button.set(0)
+                   self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
                    continue
                if not self._send_sync_request(files_to_sync):
                   print("[admin_sync_manager] Sync failed to server")
-                  self.app.interface_builder.sync_button.set(0)
+                  self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
                   continue
                self._send_message_to_kiosks()
-               self.app.interface_builder.sync_button.set(0)
+               self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
             except Exception as e:
                 print(f"[admin_sync_manager] An error occured: {e}")
                 import traceback
                 traceback.print_exc()
-                self.app.interface_builder.sync_button.set(0)
+                self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
         if not self.sync_thread or not self.sync_thread.is_alive():

@@ -285,7 +285,7 @@ class PropControl:
                 self.mqtt_clients[room_number] = client
                 
                 # Schedule timeout check
-                self.app.root.after(5000, lambda: self.check_connection_timeout(room_number))
+                self.app.root.after(5000, lambda: self._check_connection_timeout_callback(room_number)) # changed to use the helper
                 
             except Exception as e:
                 print(f"[prop control]Failed to connect to room {room_number}: {e}")
@@ -293,13 +293,13 @@ class PropControl:
                 self.connection_states[room_number] = error_msg
                 
                 if room_number == self.current_room and hasattr(self, 'status_label'):
-                    self.status_label.config(text=error_msg, fg='red')
+                    self.app.root.after(0, lambda: self.status_label.config(text=error_msg, fg='red'))
                 
                 # Schedule retry using after()
                 self.app.root.after(10000, lambda: self.retry_connection(room_number))
         
         # Start connection attempt in separate thread
-        threading.Thread(target=connect_async, daemon=True).start()
+        self.app.root.after(0, lambda: threading.Thread(target=connect_async, daemon=True).start()) # wrap the thread creation in after
 
     def check_connection_timeout(self, room_number):
         """Check if connection attempt has timed out"""
@@ -330,6 +330,9 @@ class PropControl:
                 # Schedule retry using after()
                 self.app.root.after(10000, lambda: self.retry_connection(room_number))
 
+    def _check_connection_timeout_callback(self, room_number): # new helper method
+         self.check_connection_timeout(room_number)
+
     def restore_prop_ui(self, prop_id, prop_data):
         """Recreate UI elements for a saved prop"""
         if not prop_data or 'info' not in prop_data:
@@ -359,9 +362,9 @@ class PropControl:
                     print(f"[prop control]Error cleaning up old client for room {room_number}: {e}")
             
             # Initialize new connection
-            self.initialize_mqtt_client(room_number)
+            self.app.root.after(0, lambda: self.initialize_mqtt_client(room_number)) # wrap the initial connection call
         
-        threading.Thread(target=do_retry, daemon=True).start()
+        self.app.root.after(0, lambda: threading.Thread(target=do_retry, daemon=True).start()) # wrap the retry in after
 
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
@@ -669,7 +672,13 @@ class PropControl:
     def update_connection_state(self, room_number, state):
         """Update the connection state display - only shows error states"""
         self.connection_states[room_number] = state
-        
+
+        if room_number == self.current_room and hasattr(self, 'status_label'):
+            self.app.root.after(0, lambda:
+                self._update_connection_state_ui(room_number, state)
+            )
+
+    def _update_connection_state_ui(self, room_number, state):
         if room_number == self.current_room and hasattr(self, 'status_label'):
             if any(error in state.lower() for error in ["failed", "timed out", "connecting", "lost"]):
                 # Show error states in red
@@ -798,8 +807,11 @@ class PropControl:
         """Handle updates to prop data with widget safety checks"""
         prop_id = prop_data.get("strId")
         if not prop_id:
-            return
-                    
+                return
+        self.app.root.after(0, lambda: self._handle_prop_update_ui(prop_id, prop_data))
+
+    def _handle_prop_update_ui(self, prop_id, prop_data):
+        """Actual implementation of handle_prop_update using after"""
         # Load status icons if needed
         if not hasattr(self, 'status_icons'):
             try:

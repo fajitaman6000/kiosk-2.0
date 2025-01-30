@@ -129,7 +129,7 @@ class AdminInterfaceBuilder:
             sync_icon = None
         
         # Add Sync button, directly below the hints button
-        sync_button = tk.Button(
+        self.sync_button = tk.Button( # Assign to self so that we can access it
             hints_button_frame,
             image=sync_icon if sync_icon else None,
             #command=lambda: self.app.methodDoesn'tExistYet(),
@@ -142,10 +142,10 @@ class AdminInterfaceBuilder:
             highlightthickness=0,
             compound=tk.LEFT
         )
-        sync_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
+        self.sync_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
 
         if sync_icon:
-            sync_button.image = sync_icon
+            self.sync_button.image = sync_icon
 
         # Load placeholder icon button                                                    --BUTTON PLACEHOLDER
         try:

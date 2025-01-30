@@ -93,10 +93,11 @@ class KioskFileDownloader:
         """Send a message to trigger the kiosk to reset the UI."""
         print("[kiosk_file_downloader] Sending reset message to kiosk")
         message = {
-           'type': RESET_MESSAGE_TYPE,
-           'computer_name': self.kiosk_app.computer_name
+        'type': RESET_MESSAGE_TYPE,
+        'computer_name': self.kiosk_app.computer_name
         }
         self.kiosk_app.network.send_message(message)
+        self.kiosk_app.root.after(0, self.kiosk_app.reset_ui) # wrap the reset
     def _background_download_handler(self):
         while self.running:
            try:
