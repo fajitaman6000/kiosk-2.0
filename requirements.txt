@@ -6,3 +6,6 @@ pygame
 pyqt5
 paho-mqtt
 imageio-ffmpeg
+pywin32
+flask
+requests

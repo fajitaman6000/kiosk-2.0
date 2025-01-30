@@ -155,5 +155,7 @@ class AdminSyncManager:
                 self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync"))
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
-        if not self.sync_thread or not self.sync_thread.is_alive():
-            self.start()
+        if self.app.interface_builder.sync_button.cget('text') == "Sync":
+            self.app.interface_builder.sync_button.config(text="Syncing...") # set button text to "Syncing..." to indicate the sync is underway
+            if not self.sync_thread or not self.sync_thread.is_alive(): # only create a new thread if one is not already active
+               self.start()

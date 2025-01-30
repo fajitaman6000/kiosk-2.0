@@ -6,6 +6,7 @@ import os
 from threading import Thread
 from file_sync_config import ADMIN_SERVER_PORT, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 class KioskFileDownloader:
+    ADMIN_IP = "192.168.0.110"
     def __init__(self, kiosk_app):
         self.kiosk_app = kiosk_app
         self.running = True
@@ -23,14 +24,14 @@ class KioskFileDownloader:
         """Check for updates from admin server."""
         try:
             print("[kiosk_file_downloader] Checking for updates...")
-            sync_url = f"http://0.0.0.0:{ADMIN_SERVER_PORT}" # Gets the root directory, which is the list of files
+            sync_url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}" # Gets the root directory, which is the list of files
             response = requests.get(sync_url, timeout=10)
             response.raise_for_status()
             
             server_file_list = {}
             for file in response.text.split("\n"):
                 if file and not file.endswith(".py"):
-                     server_file_list[file] = 'exists'
+                    server_file_list[file] = 'exists'
             
             print(f"[kiosk_file_downloader] Files found: {server_file_list}")
 
@@ -76,7 +77,7 @@ class KioskFileDownloader:
     def _download_file(self, file_path):
         """Download a single file from the admin server."""
         try:
-            url = f"http://0.0.0.0:{ADMIN_SERVER_PORT}/{file_path}" # Get the specific file
+            url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{file_path}" # Get the specific file
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             target_path = os.path.join(".", file_path)
