@@ -68,15 +68,18 @@ class AdminSyncManager:
             print("[admin_sync_manager] No files found for comparison")
             return {}
         
-        #Get the current list of files from server for comparison with local
-        response = requests.get(f"http://0.0.0.0:{ADMIN_SERVER_PORT}", timeout=20)
+        response = requests.get(f"http://127.0.0.1:{ADMIN_SERVER_PORT}", timeout=20)
         if response.status_code != 200:
             print(f"[admin_sync_manager] Could not get local server file list! Status code: {response.status_code}")
             return {}
+
+        # ADD THESE TWO LINES FOR DEBUGGING
+        print(f"[admin_sync_manager] Server Response: {response.text}") 
         server_file_list = {}
+
         for file in response.text.split("\n"):
             if file and not file.endswith(".py"):
-                 server_file_list[file] = 'exists'
+                server_file_list[file] = 'exists'
 
         files_to_send = {}
 
