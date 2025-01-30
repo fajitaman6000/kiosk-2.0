@@ -1,4 +1,5 @@
 from video_manager import VideoManager
+from file_sync_config import SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 import traceback
 import time
 import os
@@ -241,6 +242,13 @@ class MessageHandler:
             elif msg['type'] == 'toggle_auto_start' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("toggling auto start")
                 self.toggle_auto_start()
+
+            elif msg['type'] == SYNC_MESSAGE_TYPE and msg['computer_name'] == self.kiosk_app.computer_name:
+                print("[message_handler] Received sync message")
+                # No action needs to be taken on sync, the file_downloader will do everything.
+            elif msg['type'] == RESET_MESSAGE_TYPE and msg['computer_name'] == self.kiosk_app.computer_name:
+                print(f"[message_handler] Received reset message")
+                self.kiosk_app.root.after(0, lambda: self.kiosk_app.handle_message({'type': 'reset_kiosk', 'computer_name': self.kiosk_app.computer_name}))
 
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")

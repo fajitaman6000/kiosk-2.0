@@ -12,6 +12,7 @@ from pathlib import Path
 from room_persistence import RoomPersistence
 from kiosk_timer import KioskTimer
 from audio_manager import AudioManager
+from kiosk_file_downloader import KioskFileDownloader
 from qt_overlay import Overlay
 from ctypes import windll
 
@@ -53,7 +54,7 @@ class KioskApp:
         self.video_server.start()
         
         from kiosk_timer import KioskTimer
-        self.timer = KioskTimer(self.root, self)  # Pass self instead of self.network
+        self.timer = KioskTimer(self.root, self)  # Pass self
         
         self.ui = KioskUI(self.root, self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()
@@ -72,6 +73,9 @@ class KioskApp:
         self.assigned_room = self.room_persistence.load_room_assignment()
         print(f"[kiosk main]Loaded room assignment: {self.assigned_room}")
 
+        #Initialize the file downloader
+        self.file_downloader = KioskFileDownloader(self)
+        self.file_downloader.start() # Start it immediately
         
         # Initialize UI with saved room if available
         if self.assigned_room:
@@ -240,6 +244,9 @@ class KioskApp:
         self.network.shutdown()
         self.video_server.stop()
         self.audio_server.stop()
+        
+        # Stop the file downloader.
+        self.file_downloader.stop() # Add this line
         self.root.destroy()
         sys.exit(0)
 

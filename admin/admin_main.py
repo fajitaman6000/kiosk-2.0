@@ -8,6 +8,7 @@ import os  # Add this import
 from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
 from admin_interface_builder import AdminInterfaceBuilder
+from admin_sync_manager import AdminSyncManager
 
 def show_error_and_wait():
     print("[main]\nAn error occurred. Error details above.")
@@ -52,6 +53,9 @@ try:
             self.network_handler = NetworkBroadcastHandler(self)
             self.interface_builder = AdminInterfaceBuilder(self)
             self.prop_control = PropControl(self)
+
+            # Initialize the sync manager.
+            self.sync_manager = AdminSyncManager(self) # Add this line
             
             # Set up prop panel synchronization
             self.setup_prop_panel_sync()
@@ -62,6 +66,12 @@ try:
             # Set up update timers
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
+
+            # Start the sync manager
+            self.sync_manager.start()
+
+            # Assign button callback
+            self.interface_builder.sync_button.config(command = self.sync_manager.handle_sync_button)
 
         def setup_prop_panel_sync(self):
             """Set up synchronization between prop controls and hint panels"""
@@ -107,6 +117,7 @@ try:
             print("[main]Shutting down admin application...")
             if hasattr(self.interface_builder, 'cleanup'):
                 self.interface_builder.cleanup()
+            self.sync_manager.stop() # Add this line
             self.root.destroy()
 
     if __name__ == '__main__':
