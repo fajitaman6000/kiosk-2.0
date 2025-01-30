@@ -244,11 +244,11 @@ class MessageHandler:
                 self.toggle_auto_start()
 
             elif msg['type'] == SYNC_MESSAGE_TYPE and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message_handler] Received sync message")
-                # No action needs to be taken on sync, the file_downloader will do everything.
-            elif msg['type'] == RESET_MESSAGE_TYPE and msg['computer_name'] == self.kiosk_app.computer_name:
-                print(f"[message_handler] Received reset message")
-                self.kiosk_app.root.after(0, lambda: self.kiosk_app.handle_message({'type': 'reset_kiosk', 'computer_name': self.kiosk_app.computer_name}))
+                print("[kiosk main] Sync message received, checking for updates")
+                self.file_downloader.start()
+                if self.file_downloader._check_for_updates():
+                    self.file_downloader._send_reset_message()
+                    self.file_downloader.stop()
 
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")
