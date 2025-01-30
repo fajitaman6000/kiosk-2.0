@@ -245,7 +245,7 @@ class MessageHandler:
 
             elif msg['type'] == SYNC_MESSAGE_TYPE and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[kiosk main] Sync message received, checking for updates")
-                self.file_downloader.start()
+                #self.file_downloader.start()
                 if self.file_downloader._check_for_updates():
                     self.file_downloader._send_reset_message()
                     self.file_downloader.stop()

@@ -129,30 +129,22 @@ class AdminSyncManager:
              self.app.network_handler.socket.sendto(json.dumps(message).encode(), (ip, 12346)) # Send to all IPs using the socket
              print(f"[admin_sync_manager] Message sent to {computer_name} at {ip}")
     def _background_sync_handler(self):
+        """This is now an empty thread. It does nothing"""
         while self.running:
-            try:
-               time.sleep(10)
-               if not self._discover_kiosks():
-                  print("[admin_sync_manager] No kiosks found")
-                  self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync")) # set back to Sync
-                  continue
-               files_to_sync = self._compare_files()
-               if not files_to_sync:
-                   self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync")) # set back to Sync
-                   continue
-               if not self._send_sync_request(files_to_sync):
-                  print("[admin_sync_manager] Sync failed to server")
-                  self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync")) # set back to Sync
-                  continue
-               self._send_message_to_kiosks()
-               self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync")) # set back to Sync
-            except Exception as e:
-                print(f"[admin_sync_manager] An error occured: {e}")
-                import traceback
-                traceback.print_exc()
-                self.app.root.after(0, lambda: self.app.interface_builder.sync_button.config(text="Sync")) # set back to Sync
+           time.sleep(1)
+
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
-        self.app.interface_builder.sync_button.config(text="Syncing...") # set button text to "Syncing..." to indicate the sync is underway
-        if not self.sync_thread or not self.sync_thread.is_alive(): # only create a new thread if one is not already active
+        if not self.sync_thread or not self.sync_thread.is_alive():
                self.start()
+        
+        if not self._discover_kiosks():
+           print("[admin_sync_manager] No kiosks found")
+           return
+        files_to_sync = self._compare_files()
+        if not files_to_sync:
+             return
+        if not self._send_sync_request(files_to_sync):
+             print("[admin_sync_manager] Sync failed to server")
+             return
+        self._send_message_to_kiosks()
