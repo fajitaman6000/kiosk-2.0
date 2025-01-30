@@ -3,14 +3,22 @@ import os
 from flask import Flask, send_from_directory, request, jsonify
 from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT
 import json
+import glob
 
 app = Flask(__name__)
+
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_files(path):
     """Serve static files from the sync directory."""
     try:
+        if not path:
+            files = []
+            for file in glob.iglob(ADMIN_SYNC_DIR + '/**', recursive=True):
+                if os.path.isfile(file):
+                    files.append(os.path.relpath(file, ADMIN_SYNC_DIR))
+            return "\n".join(files)
         return send_from_directory(ADMIN_SYNC_DIR, path)
     except Exception as e:
         print(f"[admin_file_server] Error serving file: {e}")
@@ -21,18 +29,18 @@ def sync_handler():
     """Handle synchronization requests."""
     try:
         print("[admin_file_server] Received synchronization request")
-
+        
         data = request.get_json()
         if not data:
             print("[admin_file_server] Error: No JSON data received.")
             return jsonify({'error': 'No JSON data received'}), 400
-
+        
         if 'files' not in data or not isinstance(data['files'], dict):
-             print(f"[admin_file_server] Error: Incorrect data format received, keys: {data.keys()}")
-             return jsonify({'error': 'Incorrect data format received'}), 400
-
+            print(f"[admin_file_server] Error: Incorrect data format received, keys: {data.keys()}")
+            return jsonify({'error': 'Incorrect data format received'}), 400
+        
         files_to_sync = data['files']
-
+        
         # Handle file management
         for file_path, details in files_to_sync.items():
           if not details.get('type'):
