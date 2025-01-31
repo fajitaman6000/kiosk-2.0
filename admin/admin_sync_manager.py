@@ -4,8 +4,9 @@ import json
 import requests
 import socket
 import time
+import hashlib
 from threading import Thread
-from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT, BROADCAST_MESSAGE_TYPE, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
+from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 
 class AdminSyncManager:
     def __init__(self, app):
@@ -13,15 +14,18 @@ class AdminSyncManager:
         self.kiosk_ips = {}  # Store kiosk computer_name -> IP
         self.running = True
         self.sync_thread = None
+
     def start(self):
         """Start the sync manager thread."""
         self.sync_thread = Thread(target=self._background_sync_handler, daemon=True)
         self.sync_thread.start()
+
     def stop(self):
         """Stop the sync manager thread."""
         self.running = False
         if self.sync_thread and self.sync_thread.is_alive():
-           self.sync_thread.join()
+            self.sync_thread.join()
+
     def _discover_kiosks(self):
         """Discover kiosks on the network using the existing broadcast."""
         print("[admin_sync_manager] Discovering Kiosks...")
@@ -41,19 +45,33 @@ class AdminSyncManager:
         
         print(f"[admin_sync_manager] Kiosks Discovered: {self.kiosk_ips}")
         return True
+
+    def _calculate_file_hash(self, file_path):
+        """Calculate the SHA256 hash of a file."""
+        hasher = hashlib.sha256()
+        try:
+            with open(file_path, 'rb') as file:
+                while True:
+                    chunk = file.read(4096)
+                    if not chunk:
+                        break
+                    hasher.update(chunk)
+            return hasher.hexdigest()
+        except Exception as e:
+            print(f"[admin_sync_manager] Error calculating hash for {file_path}: {e}")
+            return None
+
     def _scan_sync_directory(self):
-       """Scan the admin's sync directory."""
-       print("[admin_sync_manager] Scanning sync directory...")
-       files = {}
-       for root, _, filenames in os.walk(ADMIN_SYNC_DIR):
+        """Scan the admin's sync directory and calculate file hashes."""
+        print("[admin_sync_manager] Scanning sync directory...")
+        files = {}
+        for root, _, filenames in os.walk(ADMIN_SYNC_DIR):
             for filename in filenames:
                 file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
-                files[file_path] = {
-                    'type': 'upload',
-                    'data': self._encode_file(os.path.join(ADMIN_SYNC_DIR, file_path))
-                }
-       print(f"[admin_sync_manager] Files found: {files}")
-       return files
+                files[file_path] = self._calculate_file_hash(os.path.join(ADMIN_SYNC_DIR, file_path))
+        print(f"[admin_sync_manager] File hashes: {files}")
+        return files
+        
     def _encode_file(self, path):
         """Encode a file's content to a string using latin1 to avoid encoding errors."""
         try:
@@ -72,7 +90,11 @@ class AdminSyncManager:
         try:
             print(f"[admin_sync_manager] Sending sync request with {len(files)} files")
             sync_url = f"http://127.0.0.1:{ADMIN_SERVER_PORT}/sync" # Changed this line
-            response = requests.post(sync_url, json={'files': files}, timeout=60)
+            files_to_send = {}
+            for path, hash in files.items():
+                 files_to_send[path] = {'type': 'upload',
+                                        'data': self._encode_file(os.path.join(ADMIN_SYNC_DIR, path)) }
+            response = requests.post(sync_url, json={'files': files_to_send}, timeout=60)
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             print(f"[admin_sync_manager] Sync request successful: {response.text}")
             return True
@@ -84,17 +106,14 @@ class AdminSyncManager:
             import traceback
             traceback.print_exc()
             return False
-    def _compare_files(self):
-        """Compares the files to be sent against the local file list of the kiosk."""
-        # NO LONGER USED
-        return {}
+
     def _send_message_to_kiosks(self):
         """Send a message to kiosks to initiate update."""
         print("[admin_sync_manager] Sending update messages to kiosks...")
         message = {
             'type': SYNC_MESSAGE_TYPE,
             'computer_name': "all" # Changed this line
-            }
+        }
         self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346)) # Changed this line
         print(f"[admin_sync_manager] Message sent to all devices.")
     def _background_sync_handler(self):
@@ -110,8 +129,9 @@ class AdminSyncManager:
         if not self._discover_kiosks():
             print("[admin_sync_manager] No kiosks found")
             return
-            
+        
         files_to_sync = self._scan_sync_directory()
+        
         if not files_to_sync:
             print("[admin_sync_manager] No local files to sync")
             return
@@ -119,5 +139,5 @@ class AdminSyncManager:
         if not self._send_sync_request(files_to_sync):
             print("[admin_sync_manager] Sync failed to server")
             return
-        
+
         self._send_message_to_kiosks()

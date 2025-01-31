@@ -4,6 +4,7 @@ from flask import Flask, send_from_directory, request, jsonify
 from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT
 import json
 import glob
+import hashlib
 
 app = Flask(__name__)
 
@@ -24,6 +25,39 @@ def serve_files(path):
         print(f"[admin_file_server] Error serving file: {e}")
         return jsonify({'error': 'File not found'}), 404
 
+def calculate_file_hash(file_path):
+    """Calculate the SHA256 hash of a file."""
+    hasher = hashlib.sha256()
+    try:
+        with open(file_path, 'rb') as file:
+            while True:
+                chunk = file.read(4096)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except Exception as e:
+        print(f"[admin_file_server] Error calculating hash for {file_path}: {e}")
+        return None
+
+
+@app.route('/sync_info', methods=['GET'])
+def get_sync_info():
+    """Get the file list and their hashes for syncing."""
+    try:
+        files = {}
+        for root, _, filenames in os.walk(ADMIN_SYNC_DIR):
+            for filename in filenames:
+                file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
+                full_path = os.path.join(ADMIN_SYNC_DIR, file_path)
+                files[file_path] = calculate_file_hash(full_path)
+        
+        return jsonify(files)
+
+    except Exception as e:
+        print(f"[admin_file_server] Error providing sync info: {e}")
+        return jsonify({'error': str(e)}), 500
+        
 @app.route('/sync', methods=['POST'])
 def sync_handler():
     """Handle synchronization requests."""
