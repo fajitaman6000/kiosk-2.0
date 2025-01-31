@@ -68,7 +68,8 @@ class AdminSyncManager:
         for root, _, filenames in os.walk(ADMIN_SYNC_DIR):
             for filename in filenames:
                 file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
-                files[file_path] = self._calculate_file_hash(os.path.join(ADMIN_SYNC_DIR, file_path))
+                if not file_path.endswith(".py") and not "__pycache__" in file_path:
+                    files[file_path] = self._calculate_file_hash(os.path.join(ADMIN_SYNC_DIR, file_path))
         print(f"[admin_sync_manager] File hashes: {files}")
         return files
         

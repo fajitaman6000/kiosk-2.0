@@ -57,8 +57,8 @@ class KioskFileDownloader:
             for root, _, filenames in os.walk("."):
                 for filename in filenames:
                     file_path = os.path.relpath(os.path.join(root, filename), ".")
-                    if not file_path.startswith("sync_directory"):
-                        local_files[file_path] = self._calculate_file_hash(file_path)
+                    if not file_path.startswith("sync_directory") and not file_path.endswith(".py") and not "__pycache__" in file_path:
+                       local_files[file_path] = self._calculate_file_hash(file_path)
 
             print(f"[kiosk_file_downloader] Local file hashes: {local_files}")
 

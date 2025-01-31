@@ -50,7 +50,8 @@ def get_sync_info():
             for filename in filenames:
                 file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
                 full_path = os.path.join(ADMIN_SYNC_DIR, file_path)
-                files[file_path] = calculate_file_hash(full_path)
+                if not file_path.endswith(".py") and not "__pycache__" in file_path:
+                    files[file_path] = calculate_file_hash(full_path)
         
         return jsonify(files)
 
