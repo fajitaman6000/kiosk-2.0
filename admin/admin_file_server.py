@@ -5,6 +5,7 @@ from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT
 import json
 import glob
 import hashlib
+import urllib.parse
 
 app = Flask(__name__)
 
@@ -14,13 +15,17 @@ app = Flask(__name__)
 def serve_files(path):
     """Serve static files from the sync directory."""
     try:
-        if not path:
+        # Unquote and normalize the path
+        path = urllib.parse.unquote(path)
+        normalized_path = path.replace("\\", "/")
+        print(f"[admin_file_server][DEBUG] Serving path: {normalized_path}")
+        if not normalized_path:
             files = []
             for file in glob.iglob(ADMIN_SYNC_DIR + '/**', recursive=True):
                 if os.path.isfile(file):
-                    files.append(os.path.relpath(file, ADMIN_SYNC_DIR))
+                    files.append(os.path.relpath(file, ADMIN_SYNC_DIR).replace("\\","/"))
             return "\n".join(files)
-        return send_from_directory(ADMIN_SYNC_DIR, path)
+        return send_from_directory(ADMIN_SYNC_DIR, normalized_path) # Serve using normalized path
     except Exception as e:
         print(f"[admin_file_server] Error serving file: {e}")
         return jsonify({'error': 'File not found'}), 404
@@ -49,9 +54,10 @@ def get_sync_info():
         for root, _, filenames in os.walk(ADMIN_SYNC_DIR):
             for filename in filenames:
                 file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
-                full_path = os.path.join(ADMIN_SYNC_DIR, file_path)
-                if not file_path.endswith(".py") and not "__pycache__" in file_path:
-                    files[file_path] = calculate_file_hash(full_path)
+                normalized_path = file_path.replace("\\", "/")
+                full_path = os.path.join(ADMIN_SYNC_DIR, normalized_path)
+                if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                    files[normalized_path] = calculate_file_hash(full_path)
         
         return jsonify(files)
 

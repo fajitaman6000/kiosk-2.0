@@ -4,6 +4,7 @@ import requests
 import os
 from threading import Thread
 import hashlib
+import urllib.parse
 from file_sync_config import ADMIN_SERVER_PORT, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 
 class KioskFileDownloader:
@@ -57,8 +58,9 @@ class KioskFileDownloader:
             for root, _, filenames in os.walk("."):
                 for filename in filenames:
                     file_path = os.path.relpath(os.path.join(root, filename), ".")
-                    if not file_path.startswith("sync_directory") and not file_path.endswith(".py") and not "__pycache__" in file_path:
-                       local_files[file_path] = self._calculate_file_hash(file_path)
+                    normalized_path = file_path.replace("\\", "/")  # Normalize slashes
+                    if not normalized_path.startswith("sync_directory") and not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                       local_files[normalized_path] = self._calculate_file_hash(file_path)
 
             print(f"[kiosk_file_downloader] Local file hashes: {local_files}")
 
@@ -98,10 +100,13 @@ class KioskFileDownloader:
     def _download_file(self, file_path):
         """Download a single file from the admin server."""
         try:
-            url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{file_path}"
+            normalized_path = file_path.replace("\\", "/") # Normalise the path
+            encoded_path = urllib.parse.quote(normalized_path) # Encode the whole normalized path
+            print(f"[kiosk_file_downloader][DEBUG] Requesting URL: http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{encoded_path}")
+            url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{encoded_path}"
             response = requests.get(url, timeout=10)
             response.raise_for_status()
-            target_path = os.path.join(".", file_path)
+            target_path = os.path.join(".", file_path) # use original path here!
             os.makedirs(os.path.dirname(target_path), exist_ok=True)
 
             with open(target_path, "wb") as file:
