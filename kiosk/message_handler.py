@@ -5,11 +5,13 @@ import time
 import os
 import pygame
 from qt_overlay import Overlay
+from kiosk_file_downloader import KioskFileDownloader
 
 class MessageHandler:
     def __init__(self, kiosk_app, video_manager):
         self.kiosk_app = kiosk_app
         self.video_manager = video_manager
+        self.file_downloader = KioskFileDownloader()
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""

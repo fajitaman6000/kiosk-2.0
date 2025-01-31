@@ -91,16 +91,12 @@ class AdminSyncManager:
     def _send_message_to_kiosks(self):
         """Send a message to kiosks to initiate update."""
         print("[admin_sync_manager] Sending update messages to kiosks...")
-        for computer_name, ip in self.kiosk_ips.items():
-            if ip: # Changed this line
-                message = {
-                'type': SYNC_MESSAGE_TYPE,
-                'computer_name': computer_name
-                }
-                self.app.network_handler.socket.sendto(json.dumps(message).encode(), (ip, 12346)) # Send to all IPs using the socket
-                print(f"[admin_sync_manager] Message sent to {computer_name} at {ip}")
-            else:
-                print(f"[admin_sync_manager] No IP address for {computer_name}")
+        message = {
+            'type': SYNC_MESSAGE_TYPE,
+            'computer_name': "all" # Changed this line
+            }
+        self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346)) # Changed this line
+        print(f"[admin_sync_manager] Message sent to all devices.")
     def _background_sync_handler(self):
         """This is now an empty thread. It does nothing"""
         while self.running:
