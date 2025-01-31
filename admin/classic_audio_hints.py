@@ -16,13 +16,14 @@ class ClassicAudioHints:
         "time": "time"
     }
 
-    def __init__(self, parent, room_change_callback):
+    def __init__(self, parent, room_change_callback, app):
         #print("[classic audio hints]\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
+        self.app = app
         self.parent = parent
         self.room_change_callback = room_change_callback
         self.current_room = None
         self.current_audio_file = None
-        self.audio_root = "audio_hints"
+        self.audio_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_audio_files")
         
         # Initialize pygame mixer for audio playback
         pygame.mixer.init()
@@ -159,10 +160,13 @@ class ClassicAudioHints:
         if not selected_prop:
             return
             
+        # Extract original prop name from the combined format
+        original_name = selected_prop.split('(')[-1].rstrip(')')
+            
         self.current_audio_file = os.path.join(
             self.audio_root,
             self.current_room,
-            selected_prop,
+            original_name,  # Use the extracted original name here
             audio_name
         )
         
@@ -180,6 +184,7 @@ class ClassicAudioHints:
 
     def show_lists(self):
         """Show dropdown and audio list, hide control buttons"""
+        print("[audio hints] showing audio list")
         self.control_frame.pack_forget()
         self.prop_frame.pack(pady=(0, 5))
         self.audio_frame.pack(pady=5)
@@ -193,14 +198,32 @@ class ClassicAudioHints:
     def preview_audio(self):
         """Play the selected audio file"""
         if self.current_audio_file and os.path.exists(self.current_audio_file):
+            print(f"[audio_hints] loading audio file for admin preview: {self.current_audio_file}")
             pygame.mixer.music.load(self.current_audio_file)
             pygame.mixer.music.play()
+        else:
+            print(f"[audio hints] preview audio check failed because path exists:{os.path.exists(self.current_audio_file)} and self.current_audio_file = {self.current_audio_file}")
 
     def send_audio(self):
         """Send the selected audio hint and return to list view"""
         if self.current_audio_file and os.path.exists(self.current_audio_file):
-            print(f"[classic audio hints]Would send audio hint: {self.current_audio_file}")
-            # Here you would implement the actual sending logic
+            print(f"[classic audio hints]Sending audio hint: {self.current_audio_file}")
+            
+            # Construct relative audio path
+            relative_path = os.path.relpath(self.current_audio_file, start=self.audio_root)
+            
+            # Construct audio_hint message
+            message = {
+                'type': 'audio_hint',
+                'computer_name': self.app.selected_kiosk, ## problem is here                                 ##PROBLEM
+                'audio_path': relative_path  # Relative path from the hint_audio_files folder
+            }
+            
+            # Send audio hint using the app's network handler
+            self.app.network_handler.socket.sendto(
+               json.dumps(message).encode(),
+               ('255.255.255.255', 12346)
+            )
             self.show_lists()
 
     def select_prop_by_name(self, prop_name):

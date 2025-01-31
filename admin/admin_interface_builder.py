@@ -215,7 +215,7 @@ class AdminInterfaceBuilder:
         
         # Create ClassicAudioHints instance
         #print("[interface builder]Creating new ClassicAudioHints instance...")
-        self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change)
+        self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change, self.app)
         #print("[interface builder]=== AUDIO HINTS SETUP END ===\n")
 
     def setup_stats_panel(self, computer_name):

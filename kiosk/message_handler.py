@@ -112,9 +112,9 @@ class MessageHandler:
 
             elif msg['type'] == 'audio_hint' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[message handler]\n[DEBUG] Received audio hint command")
-                audio_name = msg.get('audio_name')
-                if audio_name:
-                    self.kiosk_app.audio_manager.play_hint_audio(audio_name)
+                audio_path = msg.get('audio_path')
+                if audio_path:
+                    self.kiosk_app.audio_manager.play_hint_audio(audio_path)
 
             elif msg['type'] == 'solution_video' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[message handler]\n[DEBUG] Received solution video command")
