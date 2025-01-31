@@ -11,7 +11,7 @@ class MessageHandler:
     def __init__(self, kiosk_app, video_manager):
         self.kiosk_app = kiosk_app
         self.video_manager = video_manager
-        self.file_downloader = KioskFileDownloader()
+        self.file_downloader = KioskFileDownloader(kiosk_app)
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
