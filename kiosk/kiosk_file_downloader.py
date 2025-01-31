@@ -5,7 +5,7 @@ import os
 from threading import Thread
 import hashlib
 import urllib.parse
-from file_sync_config import ADMIN_SERVER_PORT, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
+from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 
 class KioskFileDownloader:
     ADMIN_IP = "192.168.0.110"
@@ -118,12 +118,12 @@ class KioskFileDownloader:
             traceback.print_exc()
     def _send_reset_message(self):
         """Send a message to trigger the kiosk to reset the UI."""
-        print("[kiosk_file_downloader] Sending reset message to kiosk")
-        message = {
-           'type': RESET_MESSAGE_TYPE,
-           'computer_name': self.kiosk_app.computer_name
-        }
-        self.kiosk_app.network.send_message(message)
+        print("[kiosk_file_downloader] [defunct] Sending reset message to kiosk")
+        #message = {
+           #'type': RESET_MESSAGE_TYPE,
+           #'computer_name': self.kiosk_app.computer_name
+        #}
+        #self.kiosk_app.network.send_message(message)
 
     def _background_download_handler(self):
         """ This method no longer executes automatically, and is only called when it is specifically asked to sync. """

@@ -3,9 +3,7 @@
 
 audio hints need a means of playing the audio on kiosk side
 
-audio hint structure:
-audio files should all be local
-http file sync to all kiosks; need to be able to verify sync and data integrity
+copy over casino sd card files
 
 ##############################################################################################################################
 # planned features: 
@@ -23,7 +21,7 @@ run soundcheck button
 set alarm on prop to make sound when gm-chosen prop finishes
 admin can display button for them to yes/no on having staff member finish prop
 
-copy over casino sd card files
+
 
 ##############################################################################################################################
 # priority bugs
@@ -33,6 +31,8 @@ two gamemasters requesting the same video stream crashes that kiosk
 ##############################################################################################################################
 # known bugs
 
+admin server is hardcoded to right-side admin
+mqtt connections get crippled while running file sync
 props no longer being seen as offline
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
 resets during intro videos cause crashing/audio bugs(?)

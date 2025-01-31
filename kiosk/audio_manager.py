@@ -13,6 +13,7 @@ class AudioManager:
         self.current_music = None
         self.is_playing = False
         self.kiosk_app = kiosk_app
+        self.hint_audio_dir = "hint_audio_files"
 
     def play_sound(self, sound_name):
         """
@@ -40,6 +41,22 @@ class AudioManager:
                 print(f"[audio manager]Playing sound {sound_name} on channel 1")
         except Exception as e:
             print(f"[audio manager]Error playing sound {sound_name}: {e}")
+
+    def play_hint_audio(self, audio_name):
+        """Plays a sound file from the hint_audio_files directory."""
+        try:
+            audio_path = os.path.join(self.hint_audio_dir, audio_name)
+            if os.path.exists(audio_path):
+                sound = pygame.mixer.Sound(audio_path)
+                #Use channel 2 for audio hints (channel 0 is reserved for video and 1 for sfx)
+                sound_channel = pygame.mixer.Channel(2)
+                sound_channel.play(sound)
+                print(f"[audio manager]Playing audio hint {audio_name} on channel 2")
+
+            else:
+                    print(f"[audio manager]Audio hint file not found: {audio_path}")
+        except Exception as e:
+            print(f"[audio manager]Error playing audio hint {audio_name}: {e}")
 
     def play_background_music(self, room_name):
         """
