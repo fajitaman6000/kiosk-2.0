@@ -60,47 +60,6 @@ class AdminSyncManager:
              import traceback
              traceback.print_exc()
              return None
-    def _compare_files(self):
-        """Compares the files to be sent against the local file list of the kiosk."""
-        print("[admin_sync_manager] Comparing files...")
-        files = self._scan_sync_directory()
-        if not files:
-            print("[admin_sync_manager] No files found for comparison")
-            return {}
-        
-        response = requests.get(f"http://127.0.0.1:{ADMIN_SERVER_PORT}", timeout=20)
-        if response.status_code != 200:
-            print(f"[admin_sync_manager] Could not get local server file list! Status code: {response.status_code}")
-            return {}
-
-        # ADD THESE TWO LINES FOR DEBUGGING
-        print(f"[admin_sync_manager] Server Response: {response.text}") 
-        server_file_list = {}
-
-        for file in response.text.split("\n"):
-            if file and not file.endswith(".py"):
-                server_file_list[file] = 'exists'
-
-        files_to_send = {}
-
-        # Scan the directory files to update the remote server
-        for file, value in files.items():
-            if file not in server_file_list:
-                files_to_send[file] = value
-                print(f"[admin_sync_manager] New or modified file: {file}")
-
-        # Scan the server files to delete missing local files
-        for file, value in server_file_list.items():
-             if file not in files:
-                  files_to_send[file] = {
-                        'type': 'delete'
-                   }
-                  print(f"[admin_sync_manager] File removed: {file}")
-        
-        if not files_to_send:
-            print(f"[admin_sync_manager] No file changes found")
-        
-        return files_to_send
     def _send_sync_request(self, files):
         """Send a sync request to the server."""
         if not files:
@@ -121,6 +80,10 @@ class AdminSyncManager:
             import traceback
             traceback.print_exc()
             return False
+    def _compare_files(self):
+        """Compares the files to be sent against the local file list of the kiosk."""
+        # NO LONGER USED
+        return {}
     def _send_message_to_kiosks(self):
         """Send a message to kiosks to initiate update."""
         print("[admin_sync_manager] Sending update messages to kiosks...")
@@ -139,15 +102,19 @@ class AdminSyncManager:
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
         if not self.sync_thread or not self.sync_thread.is_alive():
-               self.start()
+            self.start()
         
         if not self._discover_kiosks():
-           print("[admin_sync_manager] No kiosks found")
-           return
-        files_to_sync = self._compare_files()
+            print("[admin_sync_manager] No kiosks found")
+            return
+            
+        files_to_sync = self._scan_sync_directory()
         if not files_to_sync:
-             return
+            print("[admin_sync_manager] No local files to sync")
+            return
+            
         if not self._send_sync_request(files_to_sync):
-             print("[admin_sync_manager] Sync failed to server")
-             return
+            print("[admin_sync_manager] Sync failed to server")
+            return
+        
         self._send_message_to_kiosks()

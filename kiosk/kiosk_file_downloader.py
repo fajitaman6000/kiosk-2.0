@@ -99,11 +99,11 @@ class KioskFileDownloader:
         }
         self.kiosk_app.network.send_message(message)
     def _background_download_handler(self):
-       """ This method no longer executes automatically, and is only called when it is specifically asked to sync. """
-       while self.running:
-           try:
-            time.sleep(1) # check every 1 second
-           except Exception as e:
+        """ This method no longer executes automatically, and is only called when it is specifically asked to sync. """
+        while self.running:
+            try:
+                time.sleep(1) # check every 1 second
+            except Exception as e:
                 print(f"[kiosk_file_downloader] An error occured: {e}")
                 import traceback
                 traceback.print_exc()
