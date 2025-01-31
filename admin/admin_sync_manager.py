@@ -27,14 +27,18 @@ class AdminSyncManager:
         print("[admin_sync_manager] Discovering Kiosks...")
         self.kiosk_ips = {}  # Clear existing IPs
         start_time = time.time()
-        while time.time() - start_time < 5:
+        max_retries = 3 # Try 3 times
+        while time.time() - start_time < 5 and max_retries > 0:
             if not self.running:
                 return False
             for computer_name, data in self.app.interface_builder.connected_kiosks.items():
-                self.kiosk_ips[computer_name] = data.get('ip')
+                if data.get('ip'):
+                    self.kiosk_ips[computer_name] = data.get('ip')
             if self.kiosk_ips:
                 break # Found at least 1 device
-            time.sleep(0.1)
+            time.sleep(0.5) # Sleep for a 0.5 seconds
+            max_retries -=1
+        
         print(f"[admin_sync_manager] Kiosks Discovered: {self.kiosk_ips}")
         return True
     def _scan_sync_directory(self):
@@ -67,7 +71,7 @@ class AdminSyncManager:
           return False
         try:
             print(f"[admin_sync_manager] Sending sync request with {len(files)} files")
-            sync_url = f"http://0.0.0.0:{ADMIN_SERVER_PORT}/sync"
+            sync_url = f"http://127.0.0.1:{ADMIN_SERVER_PORT}/sync" # Changed this line
             response = requests.post(sync_url, json={'files': files}, timeout=60)
             response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
             print(f"[admin_sync_manager] Sync request successful: {response.text}")
@@ -88,12 +92,15 @@ class AdminSyncManager:
         """Send a message to kiosks to initiate update."""
         print("[admin_sync_manager] Sending update messages to kiosks...")
         for computer_name, ip in self.kiosk_ips.items():
-             message = {
+            if ip: # Changed this line
+                message = {
                 'type': SYNC_MESSAGE_TYPE,
                 'computer_name': computer_name
                 }
-             self.app.network_handler.socket.sendto(json.dumps(message).encode(), (ip, 12346)) # Send to all IPs using the socket
-             print(f"[admin_sync_manager] Message sent to {computer_name} at {ip}")
+                self.app.network_handler.socket.sendto(json.dumps(message).encode(), (ip, 12346)) # Send to all IPs using the socket
+                print(f"[admin_sync_manager] Message sent to {computer_name} at {ip}")
+            else:
+                print(f"[admin_sync_manager] No IP address for {computer_name}")
     def _background_sync_handler(self):
         """This is now an empty thread. It does nothing"""
         while self.running:
