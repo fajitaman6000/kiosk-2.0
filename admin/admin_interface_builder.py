@@ -264,13 +264,20 @@ class AdminInterfaceBuilder:
         if not selected_item:
             return
         
-        # Hide manual hint text box but keep buttons visible
+        # Hide manual hint text box and buttons
         if 'msg_entry' in self.stats_elements:
             self.stats_elements['msg_entry'].pack_forget()
+        if 'hint_buttons_frame' in self.stats_elements:
+            self.stats_elements['hint_buttons_frame'].pack_forget()
         
-        # Clear the listbox and show it with back button
+        # Show back button and listbox
+        if 'prop_control_buttons' in self.stats_elements:
+            self.stats_elements['prop_control_buttons'].pack(fill='x', pady=5)
+            self.stats_elements['prop_back_btn'].pack(side='left', padx=5)
+            self.stats_elements['prop_attach_btn'].pack_forget()
+        
+        # Clear the listbox and show it
         self.stats_elements['image_listbox'].delete(0, tk.END)
-        self.stats_elements['prop_back_btn'].pack(side='left', padx=5)
         self.stats_elements['image_listbox'].pack(pady=5)
         
         # Extract original prop name from the dropdown text
@@ -365,14 +372,14 @@ class AdminInterfaceBuilder:
             self.stats_elements['img_control_frame'].pack_forget()
         if 'attached_image_label' in self.stats_elements:
             self.stats_elements['attached_image_label'].pack_forget()
-        if 'prop_back_btn' in self.stats_elements:
-            self.stats_elements['prop_back_btn'].pack_forget()
-        if 'prop_attach_btn' in self.stats_elements:
-            self.stats_elements['prop_attach_btn'].pack_forget()
+        if 'prop_control_buttons' in self.stats_elements:
+            self.stats_elements['prop_control_buttons'].pack_forget()
             
-        # Show text box
+        # Show text box and buttons
         if 'msg_entry' in self.stats_elements:
             self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
+        if 'hint_buttons_frame' in self.stats_elements:
+            self.stats_elements['hint_buttons_frame'].pack(pady=5)
         
         # Reset image selection state
         self.current_hint_image = None
@@ -387,13 +394,14 @@ class AdminInterfaceBuilder:
             self.stats_elements['attached_image_label'].config(text=f"Attached: {filename}")
             self.stats_elements['img_control_frame'].pack_forget()
             self.stats_elements['image_listbox'].pack_forget()
-            self.stats_elements['prop_back_btn'].pack_forget()
-            self.stats_elements['prop_attach_btn'].pack_forget()
+            self.stats_elements['prop_control_buttons'].pack_forget()
             self.stats_elements['attached_image_label'].pack(pady=5)
             
-            # Show manual hint text box
+            # Show manual hint text box and buttons
             if 'msg_entry' in self.stats_elements:
                 self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
+            if 'hint_buttons_frame' in self.stats_elements:
+                self.stats_elements['hint_buttons_frame'].pack(pady=5)
             
             # Store image data for sending
             try:
@@ -424,16 +432,16 @@ class AdminInterfaceBuilder:
             self.stats_elements['image_listbox'].pack_forget()
         if 'img_control_frame' in self.stats_elements:
             self.stats_elements['img_control_frame'].pack_forget()
-        if 'prop_back_btn' in self.stats_elements:
-            self.stats_elements['prop_back_btn'].pack_forget()
-        if 'prop_attach_btn' in self.stats_elements:
-            self.stats_elements['prop_attach_btn'].pack_forget()
+        if 'prop_control_buttons' in self.stats_elements:
+            self.stats_elements['prop_control_buttons'].pack_forget()
             
         # Reset the image dropdown selection
         if 'image_btn' in self.stats_elements:
             self.stats_elements['image_btn'].set('')
             
-        # Disable send button until new content is added
+        # Show hint buttons and disable send button
+        if 'hint_buttons_frame' in self.stats_elements:
+            self.stats_elements['hint_buttons_frame'].pack(pady=5)
         if 'send_btn' in self.stats_elements:
             self.stats_elements['send_btn'].config(state='disabled')
 

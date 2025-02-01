@@ -386,21 +386,19 @@ def setup_stats_panel(interface_builder, computer_name):
     
     # Add back button to prop selection frame (initially hidden)
     prop_control_buttons = ttk.Frame(interface_builder.stats_elements['img_prop_frame'])
-    prop_control_buttons.pack(fill='x', pady=5)  # Pack the frame itself
+    interface_builder.stats_elements['prop_control_buttons'] = prop_control_buttons  # Store reference
     
     interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
         prop_control_buttons,
         text="Back",
         command=interface_builder.show_manual_hint
     )
-    interface_builder.stats_elements['prop_back_btn'].pack(side='left', padx=5)
     
     interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
         prop_control_buttons,
         text="Attach",
         command=interface_builder.attach_image
     )
-    interface_builder.stats_elements['prop_attach_btn'].pack(side='left', padx=5)  # Pack the attach button
 
     # Add listbox for image files (initially hidden)
     interface_builder.stats_elements['image_listbox'] = tk.Listbox(
