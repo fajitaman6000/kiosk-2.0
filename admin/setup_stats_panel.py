@@ -332,32 +332,32 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     interface_builder.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
     
-     # Create button frame for all hint controls
-    hint_buttons_frame = tk.Frame(hint_frame)
-    hint_buttons_frame.pack(pady=5)
+    # Create button frame for all hint controls
+    interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(hint_frame)
+    interface_builder.stats_elements['hint_buttons_frame'].pack(pady=5)
     
     interface_builder.stats_elements['send_btn'] = tk.Button(
-        hint_buttons_frame, 
+        interface_builder.stats_elements['hint_buttons_frame'], 
         text="Send",
         command=lambda: interface_builder.send_hint(computer_name)
     )
     interface_builder.stats_elements['send_btn'].pack(side='left', padx=5)
     
     # Add save button
-    save_btn = tk.Button(
-        hint_buttons_frame,
+    interface_builder.stats_elements['save_btn'] = tk.Button(
+        interface_builder.stats_elements['hint_buttons_frame'],
         text="Save",
         command=interface_builder.save_manual_hint
     )
-    save_btn.pack(side='left', padx=5)
+    interface_builder.stats_elements['save_btn'].pack(side='left', padx=5)
     
     # Add clear button
-    clear_btn = tk.Button(
-        hint_buttons_frame,
+    interface_builder.stats_elements['clear_btn'] = tk.Button(
+        interface_builder.stats_elements['hint_buttons_frame'],
         text="Clear",
         command=interface_builder.clear_manual_hint
     )
-    clear_btn.pack(side='left', padx=5)
+    interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5)
 
     # Create a frame for image selection and preview
     image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
@@ -381,7 +381,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['image_btn'].pack(pady=5)
     interface_builder.stats_elements['image_btn'].bind("<<ComboboxSelected>>", interface_builder.on_image_prop_select)
     
-    # Add listbox for image files
+    # Add listbox for image files (initially hidden)
     interface_builder.stats_elements['image_listbox'] = tk.Listbox(
         interface_builder.stats_elements['img_prop_frame'],
         height=4,
@@ -391,7 +391,6 @@ def setup_stats_panel(interface_builder, computer_name):
         bg="white",
         fg="black"
     )
-    interface_builder.stats_elements['image_listbox'].pack(pady=5)
     interface_builder.stats_elements['image_listbox'].bind('<<ListboxSelect>>', interface_builder.on_image_file_select)
 
     # Create control frame (initially hidden)
@@ -414,7 +413,7 @@ def setup_stats_panel(interface_builder, computer_name):
     ttk.Button(
         control_buttons,
         text="Back",
-        command=interface_builder.show_image_lists
+        command=interface_builder.show_manual_hint
     ).pack(side='left', padx=5)
 
     # Add attached image label (initially hidden)

@@ -259,14 +259,20 @@ class AdminInterfaceBuilder:
         self.img_prop_var.set("")
 
     def on_image_prop_select(self, event):
-        """When a prop is selected, populate the listbox with available images"""
+        """When a prop is selected, hide manual hint and show image selection"""
         selected_item = self.img_prop_var.get()
         if not selected_item:
             return
         
-        # Clear the listbox and ensure lists are shown
+        # Hide manual hint text box and buttons
+        if 'msg_entry' in self.stats_elements:
+            self.stats_elements['msg_entry'].pack_forget()
+        if 'hint_buttons_frame' in self.stats_elements:
+            self.stats_elements['hint_buttons_frame'].pack_forget()
+        
+        # Clear the listbox and show it
         self.stats_elements['image_listbox'].delete(0, tk.END)
-        self.show_image_lists()
+        self.stats_elements['image_listbox'].pack(pady=5)
         
         # Extract original prop name from the dropdown text
         original_name = selected_item.split("(")[-1].rstrip(")")
@@ -347,21 +353,30 @@ class AdminInterfaceBuilder:
             self.current_image_file = image_path
             
             # Show the control frame
-            self.show_image_controls()
+            self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
+            self.stats_elements['image_listbox'].pack_forget()
         except Exception as e:
             print(f"[image hints] Error previewing image: {e}")
 
-    def show_image_lists(self):
-        """Show the prop dropdown and file listbox, hide controls"""
-        self.stats_elements['img_control_frame'].pack_forget()
-        self.stats_elements['attached_image_label'].pack_forget()
-        self.stats_elements['img_prop_frame'].pack(fill='x')
-
-    def show_image_controls(self):
-        """Show the image preview and control buttons, hide lists"""
-        self.stats_elements['img_prop_frame'].pack_forget()
-        self.stats_elements['attached_image_label'].pack_forget()
-        self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
+    def show_manual_hint(self):
+        """Show the manual hint text box and hide image selection"""
+        if 'image_listbox' in self.stats_elements:
+            self.stats_elements['image_listbox'].pack_forget()
+        if 'img_control_frame' in self.stats_elements:
+            self.stats_elements['img_control_frame'].pack_forget()
+        if 'attached_image_label' in self.stats_elements:
+            self.stats_elements['attached_image_label'].pack_forget()
+            
+        # Show text box and buttons in correct order
+        if 'msg_entry' in self.stats_elements:
+            self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
+        if 'hint_buttons_frame' in self.stats_elements:
+            self.stats_elements['hint_buttons_frame'].pack(pady=5)
+        
+        # Reset image selection state
+        self.current_hint_image = None
+        if 'image_btn' in self.stats_elements:
+            self.stats_elements['image_btn'].set('')
 
     def attach_image(self):
         """Attach the selected image to the hint"""
@@ -370,8 +385,12 @@ class AdminInterfaceBuilder:
             filename = os.path.basename(self.current_image_file)
             self.stats_elements['attached_image_label'].config(text=f"Attached: {filename}")
             self.stats_elements['img_control_frame'].pack_forget()
-            self.stats_elements['img_prop_frame'].pack_forget()
+            self.stats_elements['image_listbox'].pack_forget()
             self.stats_elements['attached_image_label'].pack(pady=5)
+            
+            # Show manual hint text box
+            if 'msg_entry' in self.stats_elements:
+                self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
             
             # Store image data for sending
             try:
@@ -384,6 +403,32 @@ class AdminInterfaceBuilder:
                     self.stats_elements['send_btn'].config(state='normal')
             except Exception as e:
                 print(f"[image hints] Error reading image file: {e}")
+
+    def clear_manual_hint(self):
+        """Clear the manual hint text and reset image attachment state"""
+        # Clear text input
+        if 'msg_entry' in self.stats_elements:
+            self.stats_elements['msg_entry'].delete('1.0', tk.END)
+            self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
+        
+        # Reset image attachment state
+        self.current_hint_image = None
+        if 'attached_image_label' in self.stats_elements:
+            self.stats_elements['attached_image_label'].pack_forget()
+        
+        # Hide image selection components
+        if 'image_listbox' in self.stats_elements:
+            self.stats_elements['image_listbox'].pack_forget()
+        if 'img_control_frame' in self.stats_elements:
+            self.stats_elements['img_control_frame'].pack_forget()
+            
+        # Reset the image dropdown selection
+        if 'image_btn' in self.stats_elements:
+            self.stats_elements['image_btn'].set('')
+            
+        # Disable send button until new content is added
+        if 'send_btn' in self.stats_elements:
+            self.stats_elements['send_btn'].config(state='disabled')
 
     def play_hint_sound(self, computer_name, sound_name='hint_received.mp3'):
         """
@@ -1184,34 +1229,6 @@ class AdminInterfaceBuilder:
         # Wrapper for the extracted save_manual_hint function
         save_manual_hint(self)
 
-    def clear_manual_hint(self):
-        """Clear the manual hint text and reset image attachment state"""
-        # Clear text input
-        if 'msg_entry' in self.stats_elements:
-            self.stats_elements['msg_entry'].delete('1.0', tk.END)
-        
-        # Reset image attachment state
-        self.current_hint_image = None
-        if 'attached_image_label' in self.stats_elements:
-            self.stats_elements['attached_image_label'].pack_forget()
-        
-        # Show the image selection UI
-        if 'img_prop_frame' in self.stats_elements:
-            self.stats_elements['img_control_frame'].pack_forget()
-            self.stats_elements['img_prop_frame'].pack(fill='x')
-            
-        # Reset the image dropdown selection
-        if 'image_btn' in self.stats_elements:
-            self.stats_elements['image_btn'].set('')
-            
-        # Clear the listbox
-        if 'image_listbox' in self.stats_elements:
-            self.stats_elements['image_listbox'].delete(0, tk.END)
-            
-        # Disable send button until new content is added
-        if 'send_btn' in self.stats_elements:
-            self.stats_elements['send_btn'].config(state='disabled')
-
     def clear_kiosk_hints(self, computer_name):
         """Send command to clear hints on specified kiosk"""
         if computer_name in self.app.kiosk_tracker.kiosk_stats:
@@ -1224,8 +1241,43 @@ class AdminInterfaceBuilder:
             )
 
     def send_hint(self, computer_name, hint_data=None):
-        # Wrapper for the extracted send_hint function
-        send_hint(self, computer_name, hint_data)
+        """Send a hint to the specified kiosk"""
+        if not hint_data:
+            if 'msg_entry' not in self.stats_elements:
+                return
+                
+            hint_text = self.stats_elements['msg_entry'].get('1.0', tk.END).strip()
+            if not hint_text and not self.current_hint_image:
+                return
+                
+            hint_data = {
+                'text': hint_text,
+                'image': self.current_hint_image
+            }
+        
+        # Send the hint
+        self.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'hint',
+                'computer_name': computer_name,
+                'hint_data': hint_data
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+        
+        # Clear the interface
+        if 'msg_entry' in self.stats_elements:
+            self.stats_elements['msg_entry'].delete('1.0', tk.END)
+        
+        self.current_hint_image = None
+        if 'attached_image_label' in self.stats_elements:
+            self.stats_elements['attached_image_label'].pack_forget()
+            
+        if 'image_btn' in self.stats_elements:
+            self.stats_elements['image_btn'].set('')
+            
+        if 'send_btn' in self.stats_elements:
+            self.stats_elements['send_btn'].config(state='disabled')
 
     def play_solution_video(self, computer_name):
         """Play a solution video for the selected prop"""
