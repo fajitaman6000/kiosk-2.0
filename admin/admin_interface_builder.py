@@ -1185,8 +1185,32 @@ class AdminInterfaceBuilder:
         save_manual_hint(self)
 
     def clear_manual_hint(self):
-        # Wrapper for the extracted clear_manual_hint function
-        clear_manual_hint(self)
+        """Clear the manual hint text and reset image attachment state"""
+        # Clear text input
+        if 'msg_entry' in self.stats_elements:
+            self.stats_elements['msg_entry'].delete('1.0', tk.END)
+        
+        # Reset image attachment state
+        self.current_hint_image = None
+        if 'attached_image_label' in self.stats_elements:
+            self.stats_elements['attached_image_label'].pack_forget()
+        
+        # Show the image selection UI
+        if 'img_prop_frame' in self.stats_elements:
+            self.stats_elements['img_control_frame'].pack_forget()
+            self.stats_elements['img_prop_frame'].pack(fill='x')
+            
+        # Reset the image dropdown selection
+        if 'image_btn' in self.stats_elements:
+            self.stats_elements['image_btn'].set('')
+            
+        # Clear the listbox
+        if 'image_listbox' in self.stats_elements:
+            self.stats_elements['image_listbox'].delete(0, tk.END)
+            
+        # Disable send button until new content is added
+        if 'send_btn' in self.stats_elements:
+            self.stats_elements['send_btn'].config(state='disabled')
 
     def clear_kiosk_hints(self, computer_name):
         """Send command to clear hints on specified kiosk"""
