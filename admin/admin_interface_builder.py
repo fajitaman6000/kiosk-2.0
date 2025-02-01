@@ -264,14 +264,13 @@ class AdminInterfaceBuilder:
         if not selected_item:
             return
         
-        # Hide manual hint text box and buttons
+        # Hide manual hint text box but keep buttons visible
         if 'msg_entry' in self.stats_elements:
             self.stats_elements['msg_entry'].pack_forget()
-        if 'hint_buttons_frame' in self.stats_elements:
-            self.stats_elements['hint_buttons_frame'].pack_forget()
         
-        # Clear the listbox and show it
+        # Clear the listbox and show it with back button
         self.stats_elements['image_listbox'].delete(0, tk.END)
+        self.stats_elements['prop_back_btn'].pack(side='left', padx=5)
         self.stats_elements['image_listbox'].pack(pady=5)
         
         # Extract original prop name from the dropdown text
@@ -305,7 +304,7 @@ class AdminInterfaceBuilder:
                 self.stats_elements['image_listbox'].insert(tk.END, img)
 
     def on_image_file_select(self, event):
-        """When an image is selected from the listbox, show preview with controls"""
+        """When an image is selected from the listbox, show preview and enable attach button"""
         selection = self.stats_elements['image_listbox'].curselection()
         if not selection:
             return
@@ -352,9 +351,9 @@ class AdminInterfaceBuilder:
             # Store the image path for attaching
             self.current_image_file = image_path
             
-            # Show the control frame
+            # Show the preview and attach button
             self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
-            self.stats_elements['image_listbox'].pack_forget()
+            self.stats_elements['prop_attach_btn'].pack(side='left', padx=5)
         except Exception as e:
             print(f"[image hints] Error previewing image: {e}")
 
@@ -366,12 +365,14 @@ class AdminInterfaceBuilder:
             self.stats_elements['img_control_frame'].pack_forget()
         if 'attached_image_label' in self.stats_elements:
             self.stats_elements['attached_image_label'].pack_forget()
+        if 'prop_back_btn' in self.stats_elements:
+            self.stats_elements['prop_back_btn'].pack_forget()
+        if 'prop_attach_btn' in self.stats_elements:
+            self.stats_elements['prop_attach_btn'].pack_forget()
             
-        # Show text box and buttons in correct order
+        # Show text box
         if 'msg_entry' in self.stats_elements:
             self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
-        if 'hint_buttons_frame' in self.stats_elements:
-            self.stats_elements['hint_buttons_frame'].pack(pady=5)
         
         # Reset image selection state
         self.current_hint_image = None
@@ -386,6 +387,8 @@ class AdminInterfaceBuilder:
             self.stats_elements['attached_image_label'].config(text=f"Attached: {filename}")
             self.stats_elements['img_control_frame'].pack_forget()
             self.stats_elements['image_listbox'].pack_forget()
+            self.stats_elements['prop_back_btn'].pack_forget()
+            self.stats_elements['prop_attach_btn'].pack_forget()
             self.stats_elements['attached_image_label'].pack(pady=5)
             
             # Show manual hint text box
@@ -421,6 +424,10 @@ class AdminInterfaceBuilder:
             self.stats_elements['image_listbox'].pack_forget()
         if 'img_control_frame' in self.stats_elements:
             self.stats_elements['img_control_frame'].pack_forget()
+        if 'prop_back_btn' in self.stats_elements:
+            self.stats_elements['prop_back_btn'].pack_forget()
+        if 'prop_attach_btn' in self.stats_elements:
+            self.stats_elements['prop_attach_btn'].pack_forget()
             
         # Reset the image dropdown selection
         if 'image_btn' in self.stats_elements:

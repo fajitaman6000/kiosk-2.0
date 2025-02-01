@@ -324,8 +324,11 @@ def setup_stats_panel(interface_builder, computer_name):
     hint_frame.pack(fill='x', pady=10)
     
     # Create Text widget instead of Entry
+    manual_hint_frame = tk.Frame(hint_frame)
+    manual_hint_frame.pack(fill='x')
+    
     interface_builder.stats_elements['msg_entry'] = tk.Text(
-        hint_frame, 
+        manual_hint_frame, 
         width=30,  # Width in characters
         height=4,  # Height in lines
         wrap=tk.WORD  # Word wrapping
@@ -333,7 +336,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
     
     # Create button frame for all hint controls
-    interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(hint_frame)
+    interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(manual_hint_frame)
     interface_builder.stats_elements['hint_buttons_frame'].pack(pady=5)
     
     interface_builder.stats_elements['send_btn'] = tk.Button(
@@ -381,6 +384,24 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['image_btn'].pack(pady=5)
     interface_builder.stats_elements['image_btn'].bind("<<ComboboxSelected>>", interface_builder.on_image_prop_select)
     
+    # Add back button to prop selection frame (initially hidden)
+    prop_control_buttons = ttk.Frame(interface_builder.stats_elements['img_prop_frame'])
+    prop_control_buttons.pack(fill='x', pady=5)  # Pack the frame itself
+    
+    interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
+        prop_control_buttons,
+        text="Back",
+        command=interface_builder.show_manual_hint
+    )
+    interface_builder.stats_elements['prop_back_btn'].pack(side='left', padx=5)
+    
+    interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
+        prop_control_buttons,
+        text="Attach",
+        command=interface_builder.attach_image
+    )
+    interface_builder.stats_elements['prop_attach_btn'].pack(side='left', padx=5)  # Pack the attach button
+
     # Add listbox for image files (initially hidden)
     interface_builder.stats_elements['image_listbox'] = tk.Listbox(
         interface_builder.stats_elements['img_prop_frame'],
@@ -399,22 +420,6 @@ def setup_stats_panel(interface_builder, computer_name):
     # Add image preview label in control frame
     interface_builder.stats_elements['image_preview'] = ttk.Label(interface_builder.stats_elements['img_control_frame'])
     interface_builder.stats_elements['image_preview'].pack(pady=5)
-
-    # Add control buttons
-    control_buttons = ttk.Frame(interface_builder.stats_elements['img_control_frame'])
-    control_buttons.pack(pady=5)
-    
-    ttk.Button(
-        control_buttons,
-        text="Attach",
-        command=interface_builder.attach_image
-    ).pack(side='left', padx=5)
-    
-    ttk.Button(
-        control_buttons,
-        text="Back",
-        command=interface_builder.show_manual_hint
-    ).pack(side='left', padx=5)
 
     # Add attached image label (initially hidden)
     interface_builder.stats_elements['attached_image_label'] = ttk.Label(
