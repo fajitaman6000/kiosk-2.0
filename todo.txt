@@ -1,7 +1,20 @@
 ##############################################################################################################################
 # important/immediate todo
 
-audio hints need a means of playing the audio on kiosk side
+rework image hint sending system according to new file sync
+    managers can add images
+    "choose image" leads not to file explorer but rather a directory crawl just like audio hints
+    images will be stored on both sides with synced folder used
+    never send images the current way again unless it can be improved to always show correct resolution
+
+to fix hardcoded admin IP:
+    pass admin server IP to message_handler when it should sync; use this IP in kiosk_file_downloader
+
+test upload of huge file numbers to a kiosk, like 700 mp3s and 300 pngs, and if it doesn't work out:
+    consider using concurrent file downloads on the kiosk side using asyncio or the threading library in order to increase the speed it takes to download files
+    json on admin side to store metadata about each file and folder. track changes, only pull from admin when needed
+
+sync failure handling
 
 copy over casino sd card files
 
