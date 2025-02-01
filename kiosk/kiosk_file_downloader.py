@@ -8,7 +8,7 @@ import urllib.parse
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 
 class KioskFileDownloader:
-    ADMIN_IP = "192.168.0.110"
+    ADMIN_IP = "192.168.0.223"
 
     def __init__(self, kiosk_app):
         self.kiosk_app = kiosk_app

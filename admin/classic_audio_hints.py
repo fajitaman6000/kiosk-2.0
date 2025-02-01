@@ -215,7 +215,7 @@ class ClassicAudioHints:
             # Construct audio_hint message
             message = {
                 'type': 'audio_hint',
-                'computer_name': self.app.selected_kiosk, ## problem is here                                 ##PROBLEM
+                'computer_name': self.app.interface_builder.selected_kiosk,
                 'audio_path': relative_path  # Relative path from the hint_audio_files folder
             }
             
