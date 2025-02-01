@@ -223,43 +223,167 @@ class AdminInterfaceBuilder:
         setup_stats_panel(self, computer_name)
 
     def select_image(self):
-        """Handle image selection for hints"""
-        file_path = filedialog.askopenfilename(
-            filetypes=[
-                ("Image files", "*.png *.jpg *.jpeg *.gif *.bmp"),
-                ("All files", "*.*")
-            ]
-        )
+        """Update the image prop dropdown with available props."""
+        self.update_image_props()
+
+    def update_image_props(self):
+        """Update the image prop dropdown with props for the current room"""
+        if 'image_btn' not in self.stats_elements:
+            return
+            
+        # Load prop mappings from JSON
+        try:
+            with open("prop_name_mapping.json", "r") as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"[image hints] Error loading prop mappings: {e}")
+            prop_mappings = {}
+
+        # Use current room from audio hints if available
+        room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
+        room_name = room_name.lower() if room_name else None
         
-        if file_path:
+        room_key = None
+        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
+            room_key = self.audio_hints.ROOM_MAP.get(room_name)
+            print(f"[image hints] Updating props for room: {room_name} (key: {room_key})")
+        
+        props_list = []
+        if room_key and room_key in prop_mappings:
+            props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
+            props.sort(key=lambda x: x[1]["order"])
+            props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
+            print(f"[image hints] Found {len(props_list)} props for room")
+        
+        self.stats_elements['image_btn']['values'] = props_list
+        self.img_prop_var.set("")
+
+    def on_image_prop_select(self, event):
+        """When a prop is selected, populate the listbox with available images"""
+        selected_item = self.img_prop_var.get()
+        if not selected_item:
+            return
+        
+        # Clear the listbox and ensure lists are shown
+        self.stats_elements['image_listbox'].delete(0, tk.END)
+        self.show_image_lists()
+        
+        # Extract original prop name from the dropdown text
+        original_name = selected_item.split("(")[-1].rstrip(")")
+        
+        room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
+        room_name = room_name.lower() if room_name else None
+        
+        try:
+            with open("prop_name_mapping.json", "r") as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"[image hints] Error loading prop mappings: {e}")
+            prop_mappings = {}
+        
+        room_key = None
+        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
+            room_key = self.audio_hints.ROOM_MAP.get(room_name)
+        
+        display_name = ""
+        if room_key and room_key in prop_mappings:
+            mappings = prop_mappings[room_key]["mappings"]
+            if original_name in mappings:
+                display_name = mappings[original_name]["display"]
+        
+        folder_path = os.path.join(self.image_root, room_name, display_name)
+        if os.path.exists(folder_path):
+            allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
+            image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
+            for img in sorted(image_files):
+                self.stats_elements['image_listbox'].insert(tk.END, img)
+
+    def on_image_file_select(self, event):
+        """When an image is selected from the listbox, show preview with controls"""
+        selection = self.stats_elements['image_listbox'].curselection()
+        if not selection:
+            return
+            
+        image_name = self.stats_elements['image_listbox'].get(selection[0])
+        selected_item = self.img_prop_var.get()
+        if not selected_item:
+            return
+            
+        # Extract original prop name from the dropdown text
+        original_name = selected_item.split("(")[-1].rstrip(")")
+        
+        room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
+        room_name = room_name.lower() if room_name else None
+        
+        try:
+            with open("prop_name_mapping.json", "r") as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"[image hints] Error loading prop mappings: {e}")
+            prop_mappings = {}
+        
+        room_key = None
+        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
+            room_key = self.audio_hints.ROOM_MAP.get(room_name)
+        
+        display_name = ""
+        if room_key and room_key in prop_mappings:
+            mappings = prop_mappings[room_key]["mappings"]
+            if original_name in mappings:
+                display_name = mappings[original_name]["display"]
+        
+        image_path = os.path.join(self.image_root, room_name, display_name, image_name)
+        try:
+            from PIL import Image, ImageTk
+            image = Image.open(image_path)
+            ratio = min(200 / image.width, 200 / image.height)
+            new_size = (int(image.width * ratio), int(image.height * ratio))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+            self.stats_elements['image_preview'].configure(image=photo)
+            self.stats_elements['image_preview'].image = photo
+            
+            # Store the image path for attaching
+            self.current_image_file = image_path
+            
+            # Show the control frame
+            self.show_image_controls()
+        except Exception as e:
+            print(f"[image hints] Error previewing image: {e}")
+
+    def show_image_lists(self):
+        """Show the prop dropdown and file listbox, hide controls"""
+        self.stats_elements['img_control_frame'].pack_forget()
+        self.stats_elements['attached_image_label'].pack_forget()
+        self.stats_elements['img_prop_frame'].pack(fill='x')
+
+    def show_image_controls(self):
+        """Show the image preview and control buttons, hide lists"""
+        self.stats_elements['img_prop_frame'].pack_forget()
+        self.stats_elements['attached_image_label'].pack_forget()
+        self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
+
+    def attach_image(self):
+        """Attach the selected image to the hint"""
+        if hasattr(self, "current_image_file") and self.current_image_file:
+            # Show the attached filename
+            filename = os.path.basename(self.current_image_file)
+            self.stats_elements['attached_image_label'].config(text=f"Attached: {filename}")
+            self.stats_elements['img_control_frame'].pack_forget()
+            self.stats_elements['img_prop_frame'].pack_forget()
+            self.stats_elements['attached_image_label'].pack(pady=5)
+            
+            # Store image data for sending
             try:
-                # Open and resize image for preview
-                image = Image.open(file_path)
-                
-                # Calculate resize dimensions (max 200px width/height)
-                ratio = min(200/image.width, 200/image.height)
-                new_size = (int(image.width * ratio), int(image.height * ratio))
-                
-                # Resize image and convert to PhotoImage
-                image = image.resize(new_size, Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(image)
-                
-                # Update preview
-                self.stats_elements['image_preview'].configure(image=photo)
-                self.stats_elements['image_preview'].image = photo
-                
-                # Store original image data
-                buffer = io.BytesIO()
-                image.save(buffer, format="PNG")
-                self.current_hint_image = base64.b64encode(buffer.getvalue()).decode()
-                
-                # Enable send button even if no text
+                with open(self.current_image_file, 'rb') as f:
+                    image_data = f.read()
+                    self.current_hint_image = base64.b64encode(image_data).decode()
+                    
+                # Enable send button
                 if self.stats_elements['send_btn']:
                     self.stats_elements['send_btn'].config(state='normal')
-                    
             except Exception as e:
-                print(f"[interface builder]Error loading image: {e}")
-                self.current_hint_image = None
+                print(f"[image hints] Error reading image file: {e}")
 
     def play_hint_sound(self, computer_name, sound_name='hint_received.mp3'):
         """
@@ -831,7 +955,6 @@ class AdminInterfaceBuilder:
                 )
                 
                 # Map room number to directory name for audio hints
-                #print("[interface builder]\n=== AUDIO HINTS UPDATE START ===")
                 room_dirs = {
                     6: "atlantis",
                     1: "casino",
@@ -842,34 +965,21 @@ class AdminInterfaceBuilder:
                     4: "zombie"
                 }
                 
-                print(f"[interface builder]Current working directory: {os.getcwd()}")
                 if room_num in room_dirs:
                     room_dir = room_dirs[room_num]
-                    print(f"[interface builder]Selected room directory: {room_dir}")
-                    audio_path = os.path.join("audio_hints", room_dir)
-                    print(f"[interface builder]Audio path relative to working dir: {audio_path}")
-                    print(f"[interface builder]Full audio path: {os.path.abspath(audio_path)}")
-                    print(f"[interface builder]Path exists: {os.path.exists(audio_path)}")
-                    #if os.path.exists(audio_path):
-                       # print(f"[interface builder]Directory contents: {os.listdir(audio_path)}")
-                    
                     if hasattr(self, 'audio_hints'):
-                        print("[interface builder]Audio hints object exists, updating room")
                         self.audio_hints.update_room(room_dir)
-                    else:
-                        print("[interface builder]WARNING: No audio_hints object found!")
-                #print("[interface builder]=== AUDIO HINTS UPDATE END ===\n")
+                        # Update image props when room changes
+                        self.update_image_props()
             else:
                 title = f"Unassigned ({computer_name})"
-                print("[interface builder]No room assigned")
                 self.stats_frame.configure(
                     text=title,
                     font=('Arial', 10, 'bold'),
-                    fg='black'  # Default color for unassigned
+                    fg='black'
                 )
             
             if hasattr(self, 'saved_hints'):
-                #print("[interface builder]Updating saved hints for room")
                 if room_num:
                     self.saved_hints.update_room(room_num)
                 else:

@@ -6,6 +6,7 @@ rework image hint sending system according to new file sync
     "choose image" leads not to file explorer but rather a directory crawl just like audio hints
     images will be stored on both sides with synced folder used
     never send images the current way again unless it can be improved to always show correct resolution
+    hint saving will choose images from the same space, not from the "saved_hint_images" directory anymore
 
 to fix hardcoded admin IP:
     pass admin server IP to message_handler when it should sync; use this IP in kiosk_file_downloader
