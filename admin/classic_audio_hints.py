@@ -136,11 +136,15 @@ class ClassicAudioHints:
         if not selected_item:
             return
             
-        # Extract original prop name from the combined format
-        # Format is "Display Name (original_name)"
+        # Extract ORIGINAL prop name from the combined format
         original_name = selected_item.split('(')[-1].rstrip(')')
         
-        prop_path = os.path.join(self.audio_root, self.current_room, original_name)
+        # Get the DISPLAY NAME for the selected prop 
+        room_key = self.ROOM_MAP.get(self.current_room)
+        display_name = self.get_display_name(room_key, original_name)
+
+        
+        prop_path = os.path.join(self.audio_root, self.current_room, display_name)
         
         if os.path.exists(prop_path):
             audio_files = [f for f in os.listdir(prop_path) 
@@ -162,11 +166,15 @@ class ClassicAudioHints:
             
         # Extract original prop name from the combined format
         original_name = selected_prop.split('(')[-1].rstrip(')')
+        
+        # Get the DISPLAY NAME for the selected prop 
+        room_key = self.ROOM_MAP.get(self.current_room)
+        display_name = self.get_display_name(room_key, original_name)
             
         self.current_audio_file = os.path.join(
             self.audio_root,
             self.current_room,
-            original_name,  # Use the extracted original name here
+            display_name,  # Use the DISPLAY NAME here
             audio_name
         )
         
