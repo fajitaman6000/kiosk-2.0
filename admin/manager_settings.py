@@ -148,6 +148,10 @@ class HintManager:
 
         change_window.transient(self.app.root)
         change_window.grab_set()
+        
+        # Focus the old password entry
+        old_password_entry.focus_set()
+        
         self.app.root.wait_window(change_window)
 
     def restore_original_view(self):
@@ -530,6 +534,10 @@ class AdminPasswordManager:
 
         login_window.transient(self.app.root)
         login_window.grab_set()
+        
+        # Focus the password entry
+        password_entry.focus_set()
+        
         self.app.root.wait_window(login_window)
         
         return validated
