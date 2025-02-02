@@ -2,8 +2,6 @@
 # important/immediate todo
 
 rework image hint sending system according to new file sync
-    managers can add images
-    "choose image" leads not to file explorer but rather a directory crawl just like audio hints
     images will be stored on both sides with synced folder used
     never send images the current way again unless it can be improved to always show correct resolution
     hint saving will choose images from the same space, not from the "saved_hint_images" directory anymore
@@ -22,7 +20,6 @@ copy over casino sd card files
 ##############################################################################################################################
 # priority bugs
 
-attached image doesn't clear when hint has been sent
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################

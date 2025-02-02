@@ -167,6 +167,10 @@ def clear_manual_hint(interface_builder):
         interface_builder.stats_elements['image_preview'].image = None
     interface_builder.current_hint_image = None
     
+    # Hide the attached image label
+    if 'attached_image_label' in interface_builder.stats_elements:
+        interface_builder.stats_elements['attached_image_label'].pack_forget()
+    
     if interface_builder.stats_elements['send_btn']:
         interface_builder.stats_elements['send_btn'].config(state='disabled')
 
@@ -215,8 +219,16 @@ def send_hint(interface_builder, computer_name, hint_data=None):
         interface_builder.stats_elements['image_preview'].image = None
     interface_builder.current_hint_image = None
     
+    # Hide the attached image label
+    if 'attached_image_label' in interface_builder.stats_elements:
+        interface_builder.stats_elements['attached_image_label'].pack_forget()
+    
     if interface_builder.stats_elements['send_btn']:
         interface_builder.stats_elements['send_btn'].config(state='disabled')
+        
+    # Reset the image prop dropdown
+    if hasattr(interface_builder, 'img_prop_var'):
+        interface_builder.img_prop_var.set('')
         
     # Also clear saved hints preview if it exists
     if hasattr(interface_builder, 'saved_hints'):
