@@ -323,6 +323,69 @@ def setup_stats_panel(interface_builder, computer_name):
     hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
     hint_frame.pack(fill='x', pady=10)
 
+    # Create a frame for image selection and preview (Attach Image) at the top
+    image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
+    image_frame.pack(fill='x', pady=5, padx=5, expand=True)
+
+    # Create prop selection frame
+    interface_builder.stats_elements['img_prop_frame'] = ttk.Frame(image_frame)
+    interface_builder.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
+
+    # Setup audio hints first to ensure we have room context
+    interface_builder.setup_audio_hints()
+
+    # Create image prop dropdown instead of button
+    interface_builder.img_prop_var = tk.StringVar()
+    interface_builder.stats_elements['image_btn'] = ttk.Combobox(
+        interface_builder.stats_elements['img_prop_frame'],
+        textvariable=interface_builder.img_prop_var,
+        state="readonly",
+        width=30
+    )
+    interface_builder.stats_elements['image_btn'].pack(pady=5)
+    interface_builder.stats_elements['image_btn'].bind("<<ComboboxSelected>>", interface_builder.on_image_prop_select)
+
+    # Add back button to prop selection frame (initially hidden)
+    prop_control_buttons = ttk.Frame(interface_builder.stats_elements['img_prop_frame'])
+    interface_builder.stats_elements['prop_control_buttons'] = prop_control_buttons  # Store reference
+
+    interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
+        prop_control_buttons,
+        text="Back",
+        command=interface_builder.show_manual_hint
+    )
+
+    interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
+        prop_control_buttons,
+        text="Attach",
+        command=interface_builder.attach_image
+    )
+
+    # Add listbox for image files (initially hidden)
+    interface_builder.stats_elements['image_listbox'] = tk.Listbox(
+        interface_builder.stats_elements['img_prop_frame'],
+        height=4,
+        width=40,
+        selectmode=tk.SINGLE,
+        exportselection=False,
+        bg="white",
+        fg="black"
+    )
+    interface_builder.stats_elements['image_listbox'].bind('<<ListboxSelect>>', interface_builder.on_image_file_select)
+
+    # Create control frame (initially hidden)
+    interface_builder.stats_elements['img_control_frame'] = ttk.Frame(image_frame)
+    # Add image preview label in control frame
+    interface_builder.stats_elements['image_preview'] = ttk.Label(interface_builder.stats_elements['img_control_frame'])
+    interface_builder.stats_elements['image_preview'].pack(pady=5)
+
+    # Add attached image label (initially hidden)
+    interface_builder.stats_elements['attached_image_label'] = ttk.Label(
+        image_frame,
+        font=("Arial", 10)
+    )
+
+    # Now add the manual hint text box and buttons below the Attach Image section
     interface_builder.stats_elements['msg_entry'] = tk.Text(
         hint_frame, 
         width=30,  # Width in characters
@@ -355,69 +418,6 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5)
 
-    # Create a frame for image selection and preview
-    image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
-    image_frame.pack(fill='x', pady=5, padx=5, expand=True)
-
-    # Create prop selection frame
-    interface_builder.stats_elements['img_prop_frame'] = ttk.Frame(image_frame)
-    interface_builder.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
-
-    # Setup audio hints first to ensure we have room context
-    interface_builder.setup_audio_hints()
-
-    # Create image prop dropdown instead of button
-    interface_builder.img_prop_var = tk.StringVar()
-    interface_builder.stats_elements['image_btn'] = ttk.Combobox(
-        interface_builder.stats_elements['img_prop_frame'],
-        textvariable=interface_builder.img_prop_var,
-        state="readonly",
-        width=30
-    )
-    interface_builder.stats_elements['image_btn'].pack(pady=5)
-    interface_builder.stats_elements['image_btn'].bind("<<ComboboxSelected>>", interface_builder.on_image_prop_select)
-    
-    # Add back button to prop selection frame (initially hidden)
-    prop_control_buttons = ttk.Frame(interface_builder.stats_elements['img_prop_frame'])
-    interface_builder.stats_elements['prop_control_buttons'] = prop_control_buttons  # Store reference
-    
-    interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
-        prop_control_buttons,
-        text="Back",
-        command=interface_builder.show_manual_hint
-    )
-    
-    interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
-        prop_control_buttons,
-        text="Attach",
-        command=interface_builder.attach_image
-    )
-
-    # Add listbox for image files (initially hidden)
-    interface_builder.stats_elements['image_listbox'] = tk.Listbox(
-        interface_builder.stats_elements['img_prop_frame'],
-        height=4,
-        width=40,
-        selectmode=tk.SINGLE,
-        exportselection=False,
-        bg="white",
-        fg="black"
-    )
-    interface_builder.stats_elements['image_listbox'].bind('<<ListboxSelect>>', interface_builder.on_image_file_select)
-
-    # Create control frame (initially hidden)
-    interface_builder.stats_elements['img_control_frame'] = ttk.Frame(image_frame)
-    
-    # Add image preview label in control frame
-    interface_builder.stats_elements['image_preview'] = ttk.Label(interface_builder.stats_elements['img_control_frame'])
-    interface_builder.stats_elements['image_preview'].pack(pady=5)
-
-    # Add attached image label (initially hidden)
-    interface_builder.stats_elements['attached_image_label'] = ttk.Label(
-        image_frame,
-        font=("Arial", 10)
-    )
-    
     # Set the base directory for image hints
     interface_builder.image_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files")
 
