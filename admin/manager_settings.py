@@ -170,18 +170,37 @@ class HintManager:
         back_btn.pack(side='left')
         
         change_pass_btn = ttk.Button(
-                header_frame,
-                text="Change Password",
-                command=self.change_password
-            )
+            header_frame,
+            text="Change Password",
+            command=self.change_password
+        )
         change_pass_btn.pack(side='left', padx=5)
-
 
         ttk.Label(
             header_frame,
             text="Hint Manager",
             font=('Arial', 14, 'bold')
         ).pack(side='left', padx=20)
+
+        # Create scrollable frame for hints
+        canvas = tk.Canvas(self.main_container)
+        scrollbar = ttk.Scrollbar(self.main_container, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Pack scrolling components
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Load and display hints
+        self.load_hints()
 
     def load_hints(self):
         """Load and display all hints from saved_hints.json"""
@@ -323,15 +342,51 @@ class HintManager:
             try:
                 # Get path using room, prop display name, and image filename
                 image_path = self.get_image_path(room_id, prop_display_name, hint_info['image'])
+                
+                # Create image info frame
+                image_info_frame = ttk.Frame(hint_frame)
+                image_info_frame.pack(fill='x', pady=2)
+                
+                # Show image filename
+                ttk.Label(
+                    image_info_frame,
+                    text=f"Image: {hint_info['image']}",
+                    font=('Arial', 9)
+                ).pack(side='left')
+                
                 if image_path and os.path.exists(image_path):
+                    # Show relative path from sync_directory
+                    rel_path = os.path.relpath(
+                        image_path, 
+                        os.path.join(os.path.dirname(__file__), "sync_directory")
+                    )
+                    ttk.Label(
+                        image_info_frame,
+                        text=f"Path: {rel_path}",
+                        foreground='green'
+                    ).pack(side='left', padx=5)
+                    
+                    # Show image preview
                     image = Image.open(image_path)
                     image.thumbnail((200, 200))
                     photo = ImageTk.PhotoImage(image)
                     image_label = ttk.Label(hint_frame, image=photo)
                     image_label.image = photo
                     image_label.pack(pady=2)
+                else:
+                    ttk.Label(
+                        image_info_frame,
+                        text="(Image file not found)",
+                        foreground='red'
+                    ).pack(side='left', padx=5)
+                    
             except Exception as e:
                 print(f"[hint library]Error loading hint image: {e}")
+                ttk.Label(
+                    hint_frame,
+                    text=f"Error loading image: {str(e)}",
+                    foreground='red'
+                ).pack(pady=2)
 
         return hint_frame
 
