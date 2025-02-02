@@ -234,25 +234,6 @@ def setup_stats_panel(interface_builder, computer_name):
     time_set_frame = tk.Frame(timer_frame)
     time_set_frame.pack(fill='x', pady=5)
 
-    # Add auto-start toggle
-    auto_start_frame = tk.Frame(timer_frame)
-    auto_start_frame.pack(fill='x', pady=2, anchor='e')
-
-    # Make the label a button so its clickable
-    interface_builder.stats_elements['auto_start_check'] = tk.Button(
-        auto_start_frame,
-        text="[  ] Auto-Start",
-        font=('Arial', 10),
-        bd=0,
-        highlightthickness=0,
-        command=lambda: interface_builder.toggle_auto_start(computer_name),
-        anchor='e',
-        fg='black',
-        bg='systemButtonFace',
-        activebackground='systemButtonFace'
-    )
-    interface_builder.stats_elements['auto_start_check'].pack(side='right', padx=10, anchor='e')
-
     interface_builder.stats_elements['time_entry'] = tk.Entry(time_set_frame, width=3)
     interface_builder.stats_elements['time_entry'].pack(side='left', padx=5)
     tk.Label(time_set_frame, text="min", fg='black').pack(side='left')
@@ -317,6 +298,21 @@ def setup_stats_panel(interface_builder, computer_name):
     if minus_icon:
         reduce_time_btn.image = minus_icon
     reduce_time_btn.pack(side='left', padx=5)  # Place to the right of add_time_btn
+
+    # Add auto-start toggle on the same row, aligned to the right
+    interface_builder.stats_elements['auto_start_check'] = tk.Button(
+        time_set_frame,
+        text="[  ] Auto-Start",
+        font=('Arial', 10),
+        bd=0,
+        highlightthickness=0,
+        command=lambda: interface_builder.toggle_auto_start(computer_name),
+        anchor='e',
+        fg='black',
+        bg='systemButtonFace',
+        activebackground='systemButtonFace'
+    )
+    interface_builder.stats_elements['auto_start_check'].pack(side='right', padx=10)
 
 
     # Hint controls
