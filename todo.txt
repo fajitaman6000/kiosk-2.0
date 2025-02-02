@@ -20,6 +20,7 @@ copy over casino sd card files
 ##############################################################################################################################
 # priority bugs
 
+clear hints button broken but reset kiosk still works
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################

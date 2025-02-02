@@ -6,6 +6,7 @@ import os
 import pygame
 from qt_overlay import Overlay
 from kiosk_file_downloader import KioskFileDownloader
+import base64
 
 class MessageHandler:
     def __init__(self, kiosk_app, video_manager):
@@ -37,11 +38,19 @@ class MessageHandler:
             elif msg['type'] == 'hint' and self.kiosk_app.assigned_room:
                 if msg.get('room') == self.kiosk_app.assigned_room:
                     # Prepare hint data
-                    if msg.get('has_image') and 'image' in msg:
-                        hint_data = {
-                            'text': msg.get('text', ''),
-                            'image': msg['image']
-                        }
+                    if msg.get('has_image') and 'image_path' in msg:
+                        # Construct full path from kiosk directory
+                        image_path = os.path.join(os.path.dirname(__file__), msg['image_path'])
+                        if os.path.exists(image_path):
+                            with open(image_path, 'rb') as f:
+                                image_data = f.read()
+                                hint_data = {
+                                    'text': msg.get('text', ''),
+                                    'image': base64.b64encode(image_data).decode()
+                                }
+                        else:
+                            print(f"[message handler]Error: Image file not found at {image_path}")
+                            hint_data = msg.get('text', '')
                     else:
                         hint_data = msg.get('text', '')
 

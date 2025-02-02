@@ -407,17 +407,17 @@ class AdminInterfaceBuilder:
             if 'hint_buttons_frame' in self.stats_elements:
                 self.stats_elements['hint_buttons_frame'].pack(pady=5)
             
-            # Store image data for sending
+            # Store image path for sending
             try:
-                with open(self.current_image_file, 'rb') as f:
-                    image_data = f.read()
-                    self.current_hint_image = base64.b64encode(image_data).decode()
+                # Get relative path from sync_directory
+                rel_path = os.path.relpath(self.current_image_file, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                self.current_hint_image = rel_path
                     
                 # Enable send button
                 if self.stats_elements['send_btn']:
                     self.stats_elements['send_btn'].config(state='normal')
             except Exception as e:
-                print(f"[image hints] Error reading image file: {e}")
+                print(f"[image hints] Error getting image path: {e}")
 
     def clear_manual_hint(self):
         """Clear the manual hint text and reset image attachment state"""

@@ -195,7 +195,7 @@ def send_hint(interface_builder, computer_name, hint_data=None):
             
         hint_data = {
             'text': message_text,
-            'image': interface_builder.current_hint_image
+            'image_path': interface_builder.current_hint_image if interface_builder.current_hint_image else None
         }
     
     # Get room number
@@ -209,7 +209,7 @@ def send_hint(interface_builder, computer_name, hint_data=None):
         interface_builder.app.kiosk_tracker.help_requested.remove(computer_name)
         if computer_name in interface_builder.connected_kiosks:
             interface_builder.connected_kiosks[computer_name]['help_label'].config(text="")
-    
+            
     # Clear ALL hint entry fields regardless of which method was used
     if interface_builder.stats_elements['msg_entry']:
         interface_builder.stats_elements['msg_entry'].delete('1.0', 'end')

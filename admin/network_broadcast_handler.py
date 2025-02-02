@@ -108,7 +108,7 @@ class NetworkBroadcastHandler:
         
         Args:
             room_number (int): The room number to send to
-            hint_data (dict): Dictionary containing 'text' and optional 'image' keys
+            hint_data (dict): Dictionary containing 'text' and optional 'image_path' keys
         """
         print("[network broadcast handler]\n=== Sending Hint ===")
         
@@ -117,27 +117,17 @@ class NetworkBroadcastHandler:
             'type': 'hint',
             'room': room_number,
             'text': hint_data.get('text', ''),
-            'has_image': bool(hint_data.get('image'))
+            'has_image': bool(hint_data.get('image_path')),
+            'image_path': hint_data.get('image_path')
         }
         
-        # If we have image data, include it
-        if hint_data.get('image'):
-            message['image'] = hint_data['image']
-            print(f"[network broadcast handler]Image data size: {len(hint_data['image']) / 1024:.2f}KB")
+        print(f"[network broadcast handler]Sending hint message with text: {message['text']}")
+        if message['has_image']:
+            print(f"[network broadcast handler]Including image path: {message['image_path']}")
         
-        # Convert to JSON and check size
+        # Convert to JSON and send
         try:
             encoded_message = json.dumps(message).encode()
-            msg_size = len(encoded_message) / 1024  # Size in KB
-            print(f"[network broadcast handler]Total message size: {msg_size:.2f}KB")
-            
-            # Check if message is too large for UDP
-            if msg_size > 60000:  # UDP practical limit ~64KB
-                print("[network broadcast handler]ERROR: Hint message too large to send!")
-                print("[network broadcast handler]Consider reducing image quality or size")
-                return
-                
-            # Send the message
             print("[network broadcast handler]Sending hint message...")
             self.socket.sendto(encoded_message, ('255.255.255.255', 12346))
             print(f"[network broadcast handler]Hint sent to room {room_number}")

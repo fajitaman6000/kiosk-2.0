@@ -363,7 +363,7 @@ class SavedHintsPanel:
             # Prepare hint data
             hint_data = {'text': selected_hint.get('text', '')}
             
-            # Add image if present
+            # Add image path if present
             if selected_hint.get('image'):
                 try:
                     # Get path using room, prop display name, and image filename
@@ -373,11 +373,11 @@ class SavedHintsPanel:
                         selected_hint['image']
                     )
                     if image_path and os.path.exists(image_path):
-                        with open(image_path, 'rb') as img_file:
-                            img_data = img_file.read()
-                            hint_data['image'] = base64.b64encode(img_data).decode()
+                        # Get relative path from sync_directory
+                        rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                        hint_data['image_path'] = rel_path
                 except Exception as e:
-                    print(f"[saved hints panel]Error loading hint image for sending: {e}")
+                    print(f"[saved hints panel]Error getting hint image path for sending: {e}")
             
             # Send hint through callback
             self.send_hint_callback(hint_data)
