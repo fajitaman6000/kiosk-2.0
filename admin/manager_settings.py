@@ -39,23 +39,8 @@ class HintManager:
         self.main_container = None
         self.original_widgets = []
         self.load_prop_mappings()
-        self.hashed_password = self.load_hashed_password()  # Load hashed password
+        self.password_manager = AdminPasswordManager(app)  # Use the new password manager
 
-    def load_hashed_password(self):
-        """Load or create and save hashed password"""
-        password_file = Path("hint_manager_password.txt")
-        if password_file.exists():
-            with open(password_file, 'r') as f:
-                return f.read().strip()
-        else:
-            # No password, set up a temporary default
-            default_pass = "admin" # set a default
-            hashed_default = hashlib.sha256(default_pass.encode()).hexdigest()
-            with open(password_file, 'w') as f:
-                f.write(hashed_default)
-            print(f"[hint library]Password file created with default password for 'admin'")
-            return hashed_default
-    
     def load_prop_mappings(self):
         """Load prop name mappings from JSON"""
         try:
@@ -89,46 +74,12 @@ class HintManager:
         return prop_name
 
     def check_credentials(self):
-            """Prompt for credentials and validate them, prevent creation if canceled."""
-            
-            login_window = tk.Toplevel(self.app.root)
-            login_window.title("Enter Credentials")
-            login_window.geometry("300x150")  # Set a fixed size
-            
-            validated = False  # Flag to indicate validation outcome
-
-            tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
-            password_entry = tk.Entry(login_window, show="*", width=20)
-            password_entry.pack(pady=5)
-            
-            def validate():
-                nonlocal validated
-                entered_password = password_entry.get()
-                hashed_entered = hashlib.sha256(entered_password.encode()).hexdigest()
-                if hashed_entered == self.hashed_password:
-                    validated = True
-                    login_window.destroy()
-                else:
-                    messagebox.showerror("Error", "Incorrect password.")
-                    login_window.destroy()
-            
-            def on_close():
-               login_window.destroy() # Close window on close
-           
-            login_window.protocol("WM_DELETE_WINDOW", on_close) # close window handler
-           
-            login_button = tk.Button(login_window, text="Login", command=validate)
-            login_button.pack(pady=10)
-
-            login_window.transient(self.admin_interface.app.root)
-            login_window.grab_set()
-            self.admin_interface.app.root.wait_window(login_window)  # Wait for modal to be closed
-           
-            if validated:
-                self.create_hint_management_view() # Only create if credentials were valid
-            else:
-               # Restore original view if canceled or wrong password
-               self.restore_original_view()
+        """Prompt for credentials and validate them, prevent creation if canceled."""
+        def on_success():
+            self.create_hint_management_view()
+        
+        if not self.password_manager.verify_password(callback=on_success):
+            self.restore_original_view()
 
     def show_hint_manager(self):
         """Store current widgets and show hint management interface"""
@@ -140,58 +91,58 @@ class HintManager:
         self.check_credentials() # Prompt for login before continuing
 
     def change_password(self):
-           """Prompt for old password, new password, and save the new hash"""
-           change_window = tk.Toplevel(self.app.root)
-           change_window.title("Change Password")
-           change_window.geometry("300x250")
+        """Prompt for old password, new password, and save the new hash"""
+        change_window = tk.Toplevel(self.app.root)
+        change_window.title("Change Password")
+        change_window.geometry("300x250")
 
-           # Old password entry
-           tk.Label(change_window, text="Old Password:", font=('Arial', 12)).pack(pady=5)
-           old_password_entry = tk.Entry(change_window, show="*", width=20)
-           old_password_entry.pack(pady=5)
+        # Old password entry
+        tk.Label(change_window, text="Old Password:", font=('Arial', 12)).pack(pady=5)
+        old_password_entry = tk.Entry(change_window, show="*", width=20)
+        old_password_entry.pack(pady=5)
 
-           # New password entry
-           tk.Label(change_window, text="New Password:", font=('Arial', 12)).pack(pady=5)
-           new_password_entry = tk.Entry(change_window, show="*", width=20)
-           new_password_entry.pack(pady=5)
+        # New password entry
+        tk.Label(change_window, text="New Password:", font=('Arial', 12)).pack(pady=5)
+        new_password_entry = tk.Entry(change_window, show="*", width=20)
+        new_password_entry.pack(pady=5)
 
-           # Confirm new password entry
-           tk.Label(change_window, text="Confirm New Password:", font=('Arial', 12)).pack(pady=5)
-           confirm_password_entry = tk.Entry(change_window, show="*", width=20)
-           confirm_password_entry.pack(pady=5)
+        # Confirm new password entry
+        tk.Label(change_window, text="Confirm New Password:", font=('Arial', 12)).pack(pady=5)
+        confirm_password_entry = tk.Entry(change_window, show="*", width=20)
+        confirm_password_entry.pack(pady=5)
 
-           def save_new_password():
-               old_password = old_password_entry.get()
-               new_password = new_password_entry.get()
-               confirm_password = confirm_password_entry.get()
+        def save_new_password():
+            old_password = old_password_entry.get()
+            new_password = new_password_entry.get()
+            confirm_password = confirm_password_entry.get()
 
-               hashed_old = hashlib.sha256(old_password.encode()).hexdigest()
-               if hashed_old != self.hashed_password:
-                   messagebox.showerror("Error", "Incorrect old password.")
-                   return
+            hashed_old = hashlib.sha256(old_password.encode()).hexdigest()
+            if hashed_old != self.password_manager.hashed_password:
+                messagebox.showerror("Error", "Incorrect old password.")
+                return
 
-               if new_password != confirm_password:
-                  messagebox.showerror("Error", "New passwords do not match.")
-                  return
-               
-               if not new_password:
-                   messagebox.showerror("Error", "New password cannot be blank.")
-                   return
+            if new_password != confirm_password:
+                messagebox.showerror("Error", "New passwords do not match.")
+                return
+            
+            if not new_password:
+                messagebox.showerror("Error", "New password cannot be blank.")
+                return
 
-               # Hash and save new password
-               self.hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
-               with open("hint_manager_password.txt", 'w') as f:
-                  f.write(self.hashed_password)
+            # Hash and save new password
+            self.password_manager.hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+            with open("hint_manager_password.txt", 'w') as f:
+                f.write(self.password_manager.hashed_password)
 
-               messagebox.showinfo("Success", "Password changed successfully.")
-               change_window.destroy()
+            messagebox.showinfo("Success", "Password changed successfully.")
+            change_window.destroy()
 
-           change_button = tk.Button(change_window, text="Save Changes", command=save_new_password)
-           change_button.pack(pady=10)
+        change_button = tk.Button(change_window, text="Save Changes", command=save_new_password)
+        change_button.pack(pady=10)
 
-           change_window.transient(self.admin_interface.app.root)
-           change_window.grab_set()
-           self.admin_interface.app.root.wait_window(change_window)
+        change_window.transient(self.app.root)
+        change_window.grab_set()
+        self.app.root.wait_window(change_window)
 
     def restore_original_view(self):
         """Restore the original interface"""
@@ -202,34 +153,34 @@ class HintManager:
             widget.pack(side='left', fill='both', expand=True, padx=5)
 
     def create_hint_management_view(self):
-            """Create the hint management interface"""
-            self.main_container = ttk.Frame(self.admin_interface.main_container)
-            self.main_container.pack(fill='both', expand=True, padx=10, pady=5)
+        """Create the hint management interface"""
+        self.main_container = ttk.Frame(self.admin_interface.main_container)
+        self.main_container.pack(fill='both', expand=True, padx=10, pady=5)
 
-            # Create header with back button
-            header_frame = ttk.Frame(self.main_container)
-            header_frame.pack(fill='x', pady=(0, 10))
+        # Create header with back button
+        header_frame = ttk.Frame(self.main_container)
+        header_frame.pack(fill='x', pady=(0, 10))
 
-            back_btn = ttk.Button(
+        back_btn = ttk.Button(
+            header_frame,
+            text="← Back to Control Panel",
+            command=self.restore_original_view
+        )
+        back_btn.pack(side='left')
+        
+        change_pass_btn = ttk.Button(
                 header_frame,
-                text="← Back to Control Panel",
-                command=self.restore_original_view
+                text="Change Password",
+                command=self.change_password
             )
-            back_btn.pack(side='left')
-            
-            change_pass_btn = ttk.Button(
-                    header_frame,
-                    text="Change Password",
-                    command=self.change_password
-                )
-            change_pass_btn.pack(side='left', padx=5)
+        change_pass_btn.pack(side='left', padx=5)
 
 
-            ttk.Label(
-                header_frame,
-                text="Hint Manager",
-                font=('Arial', 14, 'bold')
-            ).pack(side='left', padx=20)
+        ttk.Label(
+            header_frame,
+            text="Hint Manager",
+            font=('Arial', 14, 'bold')
+        ).pack(side='left', padx=20)
 
     def load_hints(self):
         """Load and display all hints from saved_hints.json"""
@@ -459,3 +410,62 @@ class HintManager:
 
         except Exception as e:
             print(f"[hint library]Error deleting hint: {e}")
+
+class AdminPasswordManager:
+    def __init__(self, app):
+        self.app = app
+        self.hashed_password = self.load_hashed_password()
+
+    def load_hashed_password(self):
+        """Load or create and save hashed password"""
+        password_file = Path("hint_manager_password.txt")
+        if password_file.exists():
+            with open(password_file, 'r') as f:
+                return f.read().strip()
+        else:
+            # No password, set up a temporary default
+            default_pass = "admin" # set a default
+            hashed_default = hashlib.sha256(default_pass.encode()).hexdigest()
+            with open(password_file, 'w') as f:
+                f.write(hashed_default)
+            print(f"[password manager]Password file created with default password for 'admin'")
+            return hashed_default
+
+    def verify_password(self, callback=None):
+        """Prompt for password and verify it"""
+        login_window = tk.Toplevel(self.app.root)
+        login_window.title("Enter Password")
+        login_window.geometry("300x150")
+        
+        validated = False
+
+        tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
+        password_entry = tk.Entry(login_window, show="*", width=20)
+        password_entry.pack(pady=5)
+        
+        def validate():
+            nonlocal validated
+            entered_password = password_entry.get()
+            hashed_entered = hashlib.sha256(entered_password.encode()).hexdigest()
+            if hashed_entered == self.hashed_password:
+                validated = True
+                login_window.destroy()
+                if callback:
+                    callback()
+            else:
+                messagebox.showerror("Error", "Incorrect password.")
+                login_window.destroy()
+        
+        def on_close():
+            login_window.destroy()
+        
+        login_window.protocol("WM_DELETE_WINDOW", on_close)
+        
+        login_button = tk.Button(login_window, text="Login", command=validate)
+        login_button.pack(pady=10)
+
+        login_window.transient(self.app.root)
+        login_window.grab_set()
+        self.app.root.wait_window(login_window)
+        
+        return validated

@@ -7,6 +7,7 @@ from classic_audio_hints import ClassicAudioHints
 from setup_stats_panel import setup_stats_panel
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 from admin_audio_manager import AdminAudioManager
+from manager_settings import HintManager
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
@@ -19,6 +20,7 @@ import base64
 class AdminInterfaceBuilder:
     def __init__(self, app):
         self.app = app
+        self.main_container = None
         self.connected_kiosks = {}
         self.selected_kiosk = None
         self.stats_elements = {
@@ -30,6 +32,11 @@ class AdminInterfaceBuilder:
         }
         self.video_client = VideoClient()
         self.audio_client = AudioClient()  # Initialize audio client
+        self.camera_active = False
+        self.audio_active = False
+        self.speaking = False
+        self.current_hint_image = None
+        self.hint_manager = HintManager(app, self)  # Initialize hint manager
         self.setup_ui()
         
         # Start timer update loop using app's root
@@ -100,7 +107,7 @@ class AdminInterfaceBuilder:
         hints_button_frame.pack(side='left', anchor='n', padx=(10,0), pady=8)  # Anchor to top
         
         # Add Hints Library button in its own frame - small and square
-        hints_library_btn = tk.Button(
+        self.hints_library_btn = tk.Button(
             hints_button_frame,
             image=settings_icon if settings_icon else None,
             command=lambda: self.show_hints_library(),
@@ -113,11 +120,11 @@ class AdminInterfaceBuilder:
             highlightthickness=0,
             compound=tk.LEFT
         )
-        hints_library_btn.pack(anchor='n')  # Anchor to top of its frame
+        self.hints_library_btn.pack(anchor='n')  # Anchor to top of its frame
         
         # Keep a reference to settings icon so that it does not get gc'ed
         if settings_icon:
-           hints_library_btn.image = settings_icon
+           self.hints_library_btn.image = settings_icon
         
         # Load Sync Icon
         try:
@@ -181,9 +188,6 @@ class AdminInterfaceBuilder:
 
     def show_hints_library(self):
         """Show the Hints Library interface"""
-        if not hasattr(self, 'hint_manager'):
-             from manager_settings import HintManager
-             self.hint_manager = HintManager(self.app, self)  # Create instance once
         self.hint_manager.show_hint_manager() # call the show method
 
     def setup_audio_hints(self):

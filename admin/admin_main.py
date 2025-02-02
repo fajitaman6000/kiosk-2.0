@@ -9,6 +9,7 @@ from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
 from admin_interface_builder import AdminInterfaceBuilder
 from admin_sync_manager import AdminSyncManager
+from manager_settings import AdminPasswordManager
 
 def show_error_and_wait():
     print("[main]\nAn error occurred. Error details above.")
@@ -53,9 +54,12 @@ try:
             self.network_handler = NetworkBroadcastHandler(self)
             self.interface_builder = AdminInterfaceBuilder(self)
             self.prop_control = PropControl(self)
-
-            # Initialize the sync manager.
-            self.sync_manager = AdminSyncManager(self) # Add this line
+            
+            # Initialize password manager
+            self.password_manager = AdminPasswordManager(self)
+            
+            # Initialize the sync manager
+            self.sync_manager = AdminSyncManager(self)
             
             # Set up prop panel synchronization
             self.setup_prop_panel_sync()
@@ -70,12 +74,28 @@ try:
             # Start the sync manager
             self.sync_manager.start()
 
-            # Assign button callback
-            self.interface_builder.sync_button.config(command = self.sync_manager.handle_sync_button)
+            # Configure button callbacks with password protection
+            self.interface_builder.sync_button.config(command=self.handle_sync_button_click)
+            self.interface_builder.hints_library_btn.config(command=self.handle_settings_button_click)
+
+            # Set up window close handler
+            self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        def handle_sync_button_click(self):
+            """Handle sync button click with password protection"""
+            def on_success():
+                self.sync_manager.handle_sync_button()
+            self.password_manager.verify_password(callback=on_success)
+
+        def handle_settings_button_click(self):
+            """Handle settings button click with password protection"""
+            def on_success():
+                self.interface_builder.hint_manager.show_hint_manager()
+            self.password_manager.verify_password(callback=on_success)
 
         def setup_prop_panel_sync(self):
             """Set up synchronization between prop controls and hint panels"""
-            # Create SavedHintsPanel if it doesn't exist (you'll need to import this)
+            # Create SavedHintsPanel if it doesn't exist
             from saved_hints_panel import SavedHintsPanel
             if not hasattr(self.interface_builder, 'saved_hints'):
                 self.interface_builder.saved_hints = SavedHintsPanel(
@@ -117,7 +137,7 @@ try:
             print("[main]Shutting down admin application...")
             if hasattr(self.interface_builder, 'cleanup'):
                 self.interface_builder.cleanup()
-            self.sync_manager.stop() # Add this line
+            self.sync_manager.stop()
             self.root.destroy()
 
     if __name__ == '__main__':
