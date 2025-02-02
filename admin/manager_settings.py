@@ -277,7 +277,7 @@ class HintManager:
                         hint_display = self.create_hint_display(
                             prop_frame.sub_frame,
                             room_id,
-                            prop_name,
+                            display_name,
                             hint_name,
                             hint_info
                         )
@@ -286,7 +286,39 @@ class HintManager:
         except Exception as e:
             print(f"[hint library]Error loading hints: {e}")
 
-    def create_hint_display(self, parent, room_id, prop_name, hint_name, hint_info):
+    def get_image_path(self, room_id, prop_display_name, image_filename):
+        """Construct the full path to a hint image based on room and prop"""
+        if not image_filename:
+            return None
+            
+        # Map room IDs to their folder names
+        room_map = {
+            '1': "casino",
+            '2': "ma",
+            '3': "wizard",
+            '4': "zombie",
+            '5': "haunted",
+            '6': "atlantis",
+            '7': "time"
+        }
+        
+        room_folder = room_map.get(str(room_id), "").lower()
+        if not room_folder:
+            return None
+            
+        # Construct path: sync_directory/hint_image_files/room/prop/image
+        image_path = os.path.join(
+            os.path.dirname(__file__),
+            "sync_directory",
+            "hint_image_files",
+            room_folder,
+            prop_display_name,
+            image_filename
+        )
+        
+        return image_path if os.path.exists(image_path) else None
+
+    def create_hint_display(self, parent, room_id, prop_display_name, hint_name, hint_info):
         """Create a display frame for a single hint"""
         hint_frame = ttk.Frame(parent)
         
@@ -322,7 +354,7 @@ class HintManager:
         save_button = ttk.Button(
             text_frame,
             text="Save",
-            command=lambda: self.save_hint_changes(room_id, prop_name, hint_name, text_widget, status_label)
+            command=lambda: self.save_hint_changes(room_id, prop_display_name, hint_name, text_widget, status_label)
         )
         save_button.pack(side='right')
         
@@ -330,16 +362,16 @@ class HintManager:
         delete_button = ttk.Button(
             header_frame,
             text="Delete",
-            command=lambda: self.delete_hint(room_id, prop_name, hint_name)
+            command=lambda: self.delete_hint(room_id, prop_display_name, hint_name)
         )
         delete_button.pack(side='right')
         
         # Hint image if present
         if hint_info.get('image'):
             try:
-                # Get absolute path by joining with admin directory path
-                image_path = os.path.join(os.path.dirname(__file__), hint_info['image'])
-                if os.path.exists(image_path):
+                # Get path using room, prop display name, and image filename
+                image_path = self.get_image_path(room_id, prop_display_name, hint_info['image'])
+                if image_path and os.path.exists(image_path):
                     image = Image.open(image_path)
                     image.thumbnail((200, 200))
                     photo = ImageTk.PhotoImage(image)
@@ -351,7 +383,7 @@ class HintManager:
 
         return hint_frame
 
-    def save_hint_changes(self, room_id, prop_name, hint_name, text_widget, status_label):
+    def save_hint_changes(self, room_id, prop_display_name, hint_name, text_widget, status_label):
         """Save changes made to a hint's text"""
         try:
             # Get the current text from the widget
@@ -362,7 +394,7 @@ class HintManager:
                 hint_data = json.load(f)
 
             # Update the hint text
-            hint_data['rooms'][room_id][prop_name][hint_name]['text'] = new_text
+            hint_data['rooms'][room_id][prop_display_name][hint_name]['text'] = new_text
 
             # Save the updated data
             with open('saved_hints.json', 'w') as f:
@@ -402,21 +434,18 @@ class HintManager:
         # Auto-close after 2 seconds
         status_window.after(2000, status_window.destroy)
 
-    def delete_hint(self, room_id, prop_name, hint_name):
+    def delete_hint(self, room_id, prop_display_name, hint_name):
         """Delete a hint and its associated image"""
         try:
             with open('saved_hints.json', 'r') as f:
                 hint_data = json.load(f)
 
-            # Get image path before deleting hint data
-            image_path = hint_data['rooms'][room_id][prop_name][hint_name].get('image')
-
             # Delete the hint
-            del hint_data['rooms'][room_id][prop_name][hint_name]
+            del hint_data['rooms'][room_id][prop_display_name][hint_name]
 
             # Clean up empty structures
-            if not hint_data['rooms'][room_id][prop_name]:
-                del hint_data['rooms'][room_id][prop_name]
+            if not hint_data['rooms'][room_id][prop_display_name]:
+                del hint_data['rooms'][room_id][prop_display_name]
             if not hint_data['rooms'][room_id]:
                 del hint_data['rooms'][room_id]
 

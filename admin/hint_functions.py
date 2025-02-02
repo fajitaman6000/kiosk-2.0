@@ -116,24 +116,25 @@ def save_manual_hint(interface_builder):
             data['rooms'] = {}
         if room_str not in data['rooms']:
             data['rooms'][room_str] = {}
-        if prop_name not in data['rooms'][room_str]:
-            data['rooms'][room_str][prop_name] = {}
             
-        # Get image path if present
-        image_path = None
+        # Get the display name for the prop from mappings
+        prop_info = room_props.get(prop_name, {})
+        prop_display_name = prop_info.get('display', prop_name)
+        
+        # Store hints under the display name of the prop
+        if prop_display_name not in data['rooms'][room_str]:
+            data['rooms'][room_str][prop_display_name] = {}
+            
+        # Get image filename if present
+        image_filename = None
         if hasattr(interface_builder, 'current_image_file') and interface_builder.current_image_file:
-            # Convert absolute path to relative path from workspace root
-            abs_path = Path(interface_builder.current_image_file)
-            try:
-                rel_path = abs_path.relative_to(os.path.dirname(__file__))
-                image_path = str(rel_path).replace('\\', '/')
-            except ValueError as e:
-                print(f"[hint functions]Error getting relative path: {e}")
+            # Just store the filename since we know the path structure
+            image_filename = os.path.basename(interface_builder.current_image_file)
                 
-        # Add hint to data under the prop
-        data['rooms'][room_str][prop_name][hint_name] = {
+        # Add hint to data under the prop's display name
+        data['rooms'][room_str][prop_display_name][hint_name] = {
             "text": message_text,
-            "image": image_path
+            "image": image_filename  # Just store the filename
         }
         
         # Save updated hints file

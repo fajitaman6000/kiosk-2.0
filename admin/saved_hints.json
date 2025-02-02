@@ -1,10 +1,18 @@
 {
     "rooms": {
         "3": {
-            "Owl": {
-                "hint 1 test": {
-                    "text": "hdfghdfgh",
-                    "image": "sync_directory/hint_image_files/wizard/Fart Owl/lol.png"
+            "Fart Owl": {
+                "farty": {
+                    "text": "gsdhdfgh",
+                    "image": "lol.png"
+                }
+            }
+        },
+        "2": {
+            "Cameras": {
+                "cam test": {
+                    "text": "",
+                    "image": "lol.png"
                 }
             }
         }
