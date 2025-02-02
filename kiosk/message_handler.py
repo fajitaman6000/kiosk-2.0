@@ -12,12 +12,28 @@ class MessageHandler:
     def __init__(self, kiosk_app, video_manager):
         self.kiosk_app = kiosk_app
         self.video_manager = video_manager
-        self.file_downloader = KioskFileDownloader(kiosk_app)
+        self.file_downloader = None  # Initialize later when we have the admin IP
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
         print(f"[message handler]\n[DEBUG] Received message: {msg}")
         try:
+            if msg['type'] == SYNC_MESSAGE_TYPE:
+                admin_ip = msg.get('admin_ip')
+                if admin_ip:
+                    if self.file_downloader is None:
+                        self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
+                        self.file_downloader.start()
+                    elif self.file_downloader.admin_ip != admin_ip:
+                        self.file_downloader.stop()
+                        self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
+                        self.file_downloader.start()
+                    
+                    # Trigger the sync check after setting up the downloader
+                    print(f"[message handler] Initiating sync check with admin at {admin_ip}")
+                    if self.file_downloader._check_for_updates():
+                        print("[message handler] Updates found and downloaded")
+
             if msg['type'] == 'room_assignment' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print(f"[message handler][DEBUG] Processing room assignment: {msg['room']}")
                 self.kiosk_app.assigned_room = msg['room']
@@ -259,11 +275,6 @@ class MessageHandler:
             elif msg['type'] == 'toggle_auto_start' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("toggling auto start")
                 self.toggle_auto_start()
-
-            elif msg['type'] == SYNC_MESSAGE_TYPE:
-                print(f"[kiosk main] SYNC_MESSAGE_TYPE message received.")
-                self.file_downloader._check_for_updates()
-                self.file_downloader._send_reset_message() # send a reset message when the file sync is complete.
 
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")

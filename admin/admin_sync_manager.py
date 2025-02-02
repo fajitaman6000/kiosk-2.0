@@ -111,12 +111,29 @@ class AdminSyncManager:
     def _send_message_to_kiosks(self):
         """Send a message to kiosks to initiate update."""
         print("[admin_sync_manager] Sending update messages to kiosks...")
+        # Get the local IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            # Doesn't need to be reachable, just used to get local IP
+            s.connect(('10.255.255.255', 1))
+            local_ip = s.getsockname()[0]
+        except Exception:
+            local_ip = '127.0.0.1'
+        finally:
+            s.close()
+
+        if local_ip == '127.0.0.1':
+            print("[admin_sync_manager] Warning: Could not determine non-localhost IP address")
+            return
+
         message = {
             'type': SYNC_MESSAGE_TYPE,
-            'computer_name': "all" # Changed this line
+            'computer_name': "all",
+            'admin_ip': local_ip
         }
-        self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346)) # Changed this line
-        print(f"[admin_sync_manager] Message sent to all devices.")
+        self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        print(f"[admin_sync_manager] Message sent to all devices with admin IP: {local_ip}")
+
     def _background_sync_handler(self):
         """This is now an empty thread. It does nothing"""
         while self.running:

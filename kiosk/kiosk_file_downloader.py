@@ -8,12 +8,11 @@ import urllib.parse
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 
 class KioskFileDownloader:
-    ADMIN_IP = "192.168.0.223"
-
-    def __init__(self, kiosk_app):
+    def __init__(self, kiosk_app, admin_ip=None):
         self.kiosk_app = kiosk_app
         self.running = True
         self.download_thread = None
+        self.admin_ip = admin_ip or "192.168.0.110"  # Fallback only if no IP provided
 
     def start(self):
         """Start the file downloader thread."""
@@ -46,7 +45,7 @@ class KioskFileDownloader:
         """Check for updates from admin server based on content hash."""
         try:
             print("[kiosk_file_downloader] Checking for updates...")
-            sync_url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/sync_info"  # Changed URL
+            sync_url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/sync_info"  # Use instance variable
             response = requests.get(sync_url, timeout=10)
             response.raise_for_status()
             
@@ -102,8 +101,8 @@ class KioskFileDownloader:
         try:
             normalized_path = file_path.replace("\\", "/") # Normalise the path
             encoded_path = urllib.parse.quote(normalized_path) # Encode the whole normalized path
-            print(f"[kiosk_file_downloader][DEBUG] Requesting URL: http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{encoded_path}")
-            url = f"http://{self.ADMIN_IP}:{ADMIN_SERVER_PORT}/{encoded_path}"
+            print(f"[kiosk_file_downloader][DEBUG] Requesting URL: http://{self.admin_ip}:{ADMIN_SERVER_PORT}/{encoded_path}")
+            url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/{encoded_path}"
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             target_path = os.path.join(".", file_path) # use original path here!
