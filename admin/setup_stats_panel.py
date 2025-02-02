@@ -322,39 +322,32 @@ def setup_stats_panel(interface_builder, computer_name):
     # Hint controls
     hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
     hint_frame.pack(fill='x', pady=10)
-    
-    # Create Text widget instead of Entry
-    manual_hint_frame = tk.Frame(hint_frame)
-    manual_hint_frame.pack(fill='x')
-    
+
     interface_builder.stats_elements['msg_entry'] = tk.Text(
-        manual_hint_frame, 
+        hint_frame, 
         width=30,  # Width in characters
         height=4,  # Height in lines
         wrap=tk.WORD  # Word wrapping
     )
     interface_builder.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
-    
-    # Create button frame for all hint controls
-    interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(manual_hint_frame)
+
+    interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(hint_frame)
     interface_builder.stats_elements['hint_buttons_frame'].pack(pady=5)
-    
+
     interface_builder.stats_elements['send_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'], 
         text="Send",
         command=lambda: interface_builder.send_hint(computer_name)
     )
     interface_builder.stats_elements['send_btn'].pack(side='left', padx=5)
-    
-    # Add save button
+
     interface_builder.stats_elements['save_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Save",
         command=interface_builder.save_manual_hint
     )
     interface_builder.stats_elements['save_btn'].pack(side='left', padx=5)
-    
-    # Add clear button
+
     interface_builder.stats_elements['clear_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Clear",
@@ -364,11 +357,11 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Create a frame for image selection and preview
     image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
-    image_frame.pack(fill='x', pady=5, padx=5)
+    image_frame.pack(fill='x', pady=5, padx=5, expand=True)
 
     # Create prop selection frame
     interface_builder.stats_elements['img_prop_frame'] = ttk.Frame(image_frame)
-    interface_builder.stats_elements['img_prop_frame'].pack(fill='x')
+    interface_builder.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
 
     # Setup audio hints first to ensure we have room context
     interface_builder.setup_audio_hints()

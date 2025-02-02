@@ -278,7 +278,7 @@ class AdminInterfaceBuilder:
         
         # Clear the listbox and show it
         self.stats_elements['image_listbox'].delete(0, tk.END)
-        self.stats_elements['image_listbox'].pack(pady=5)
+        self.stats_elements['image_listbox'].pack(pady=5, fill='x')
         
         # Extract original prop name from the dropdown text
         original_name = selected_item.split("(")[-1].rstrip(")")
@@ -309,6 +309,10 @@ class AdminInterfaceBuilder:
             image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
             for img in sorted(image_files):
                 self.stats_elements['image_listbox'].insert(tk.END, img)
+                
+        # Update the layout to ensure proper spacing
+        if 'img_prop_frame' in self.stats_elements:
+            self.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
 
     def on_image_file_select(self, event):
         """When an image is selected from the listbox, show preview and enable attach button"""
