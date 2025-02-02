@@ -1,17 +1,16 @@
 ##############################################################################################################################
 # important/immediate todo
 
-rework image hint sending system according to new file sync
-    images will be stored on both sides with synced folder used
-    never send images the current way again unless it can be improved to always show correct resolution
-    hint saving will choose images from the same space, not from the "saved_hint_images" directory anymore
-
-to fix hardcoded admin IP:
-    pass admin server IP to message_handler when it should sync; use this IP in kiosk_file_downloader
+pass admin server IP to message_handler when it should sync; use this IP in kiosk_file_downloader
 
 test upload of huge file numbers to a kiosk, like 700 mp3s and 300 pngs, and if it doesn't work out:
     consider using concurrent file downloads on the kiosk side using asyncio or the threading library in order to increase the speed it takes to download files
     json on admin side to store metadata about each file and folder. track changes, only pull from admin when needed
+
+hint manager needs updating
+    prop control is visible within the hint manager area
+    current saved hints in saved_hints.json are not being displayed
+    hint manager could easily be renamed to just manager settings and adjusted accordingly
 
 sync failure handling
 

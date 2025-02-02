@@ -88,7 +88,8 @@ class HintManager:
             widget.pack_forget()
             self.original_widgets.append(widget)
         
-        self.check_credentials() # Prompt for login before continuing
+        # Directly create the hint management view without password check
+        self.create_hint_management_view()
 
     def change_password(self):
         """Prompt for old password, new password, and save the new hash"""
