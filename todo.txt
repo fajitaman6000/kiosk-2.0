@@ -22,6 +22,7 @@ copy over casino sd card files
 ##############################################################################################################################
 # priority bugs
 
+attached image doesn't clear when hint has been sent
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################

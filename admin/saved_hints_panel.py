@@ -191,13 +191,12 @@ class SavedHintsPanel:
         room_str = str(room_number)  # Convert room number to string for dict key
         
         if room_str in self.hints_data:
-            room_hints = self.hints_data[room_str].get('hints', {})
-            for hint in room_hints.values():
-                original_name = hint['prop']
-                display_name = self.get_display_name(original_name)
+            # Props are now direct children of the room
+            for prop_name in self.hints_data[room_str].keys():
+                display_name = self.get_display_name(prop_name)
                 # Format as "[Display Name] ([Original Name])"
-                formatted_name = f"{display_name} ({original_name})"
-                props[formatted_name] = original_name
+                formatted_name = f"{display_name} ({prop_name})"
+                props[formatted_name] = prop_name
         
         # Sort by formatted names but maintain mapping
         sorted_display_names = sorted(props.keys())
@@ -209,11 +208,9 @@ class SavedHintsPanel:
         hints = []
         room_str = str(self.current_room)
         
-        if room_str in self.hints_data:
-            room_hints = self.hints_data[room_str].get('hints', {})
-            for hint in room_hints.values():
-                if hint['prop'] == prop_name:
-                    hints.append(hint['name'])
+        if room_str in self.hints_data and prop_name in self.hints_data[room_str]:
+            # Hint names are now the keys in the prop object
+            hints = list(self.hints_data[room_str][prop_name].keys())
         return sorted(hints)
 
     def update_room(self, room_number):
@@ -271,15 +268,12 @@ class SavedHintsPanel:
         original_prop_name = self.prop_name_map[selected_display_name]
         room_str = str(self.current_room)
         
-        # Find hint data by name and prop
+        # Get hint data directly from the structure
         selected_hint = None
-        if room_str in self.hints_data:
-            room_hints = self.hints_data[room_str].get('hints', {})
-            for hint_data in room_hints.values():
-                if (hint_data['name'] == hint_name and 
-                    hint_data['prop'] == original_prop_name):
-                    selected_hint = hint_data
-                    break
+        if (room_str in self.hints_data and 
+            original_prop_name in self.hints_data[room_str] and
+            hint_name in self.hints_data[room_str][original_prop_name]):
+            selected_hint = self.hints_data[room_str][original_prop_name][hint_name]
                 
         if selected_hint:
             # Update preview text
@@ -291,7 +285,8 @@ class SavedHintsPanel:
             # Update image preview
             if selected_hint.get('image'):
                 try:
-                    image_path = os.path.join('saved_hint_images', selected_hint['image'])
+                    # Get absolute path by joining with admin directory path
+                    image_path = os.path.join(os.path.dirname(__file__), selected_hint['image'])
                     if os.path.exists(image_path):
                         image = Image.open(image_path)
                         image.thumbnail((200, 200))
@@ -328,19 +323,12 @@ class SavedHintsPanel:
         original_prop_name = self.prop_name_map[selected_display_name]
         room_str = str(self.current_room)
         
-        # Find hint data by name and prop
+        # Get hint data directly from the structure
         selected_hint = None
-        if room_str in self.hints_data:
-            room_hints = self.hints_data[room_str].get('hints', {})
-            for hint_data in room_hints.values():
-                try:
-                    if (hint_data.get('name') == hint_name and 
-                        hint_data.get('prop') == original_prop_name):
-                        selected_hint = hint_data
-                        break
-                except (KeyError, AttributeError) as e:
-                    print(f"[saved hints panel]Error accessing hint data: {e}")
-                    continue
+        if (room_str in self.hints_data and 
+            original_prop_name in self.hints_data[room_str] and
+            hint_name in self.hints_data[room_str][original_prop_name]):
+            selected_hint = self.hints_data[room_str][original_prop_name][hint_name]
                 
         if selected_hint:
             # Prepare hint data
@@ -349,7 +337,8 @@ class SavedHintsPanel:
             # Add image if present
             if selected_hint.get('image'):
                 try:
-                    image_path = os.path.join('saved_hint_images', selected_hint['image'])
+                    # Get absolute path by joining with admin directory path
+                    image_path = os.path.join(os.path.dirname(__file__), selected_hint['image'])
                     if os.path.exists(image_path):
                         with open(image_path, 'rb') as img_file:
                             img_data = img_file.read()

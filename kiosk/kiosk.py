@@ -1,6 +1,6 @@
 # kiosk.py
 import tkinter as tk
-import socket, time, sys, os, subprocess, traceback, pygame, ctypes
+import socket, time, sys, os, subprocess, traceback, pygame, ctypes # type: ignore
 from networking import KioskNetwork
 from ui import KioskUI
 from config import ROOM_CONFIG

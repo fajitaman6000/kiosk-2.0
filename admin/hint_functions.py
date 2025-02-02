@@ -78,11 +78,12 @@ def save_manual_hint(interface_builder):
         state='readonly',
         width=30
     )
-    prop_dropdown.pack(pady=(0,10))
+    prop_dropdown.pack(pady=5)
     
+    # Add hint name field
     tk.Label(dialog, text="Hint Name:").pack()
-    hint_entry = tk.Entry(dialog, width=35)
-    hint_entry.pack(pady=(0,10))
+    hint_entry = ttk.Entry(dialog, width=30)
+    hint_entry.pack(pady=5)
     
     def save_hint():
         display_name = prop_var.get()
@@ -110,43 +111,29 @@ def save_manual_hint(interface_builder):
             print(f"[hint functions]Error loading hints file: {e}")
             data = {"rooms": {}}
         
-        # Ensure room structure exists
+        # Ensure room and prop structure exists
         if 'rooms' not in data:
             data['rooms'] = {}
         if room_str not in data['rooms']:
-            data['rooms'][room_str] = {"hints": {}}
-        elif 'hints' not in data['rooms'][room_str]:
-            data['rooms'][room_str]['hints'] = {}
+            data['rooms'][room_str] = {}
+        if prop_name not in data['rooms'][room_str]:
+            data['rooms'][room_str][prop_name] = {}
             
-        # Generate unique ID for hint
-        base_id = f"{prop_name.lower().replace(' ', '_')}_hint"
-        hint_id = base_id
-        counter = 1
-        while hint_id in data['rooms'][room_str]['hints']:
-            hint_id = f"{base_id}_{counter}"
-            counter += 1
-            
-        # Save image if present
-        image_filename = None
-        if interface_builder.current_hint_image:
-            # Create directory if needed
-            Path("saved_hint_images").mkdir(exist_ok=True)
-            
-            # Generate image filename
-            image_filename = f"{hint_id}.png"
-            image_path = Path("saved_hint_images") / image_filename
-            
-            # Save image
-            image_data = base64.b64decode(interface_builder.current_hint_image)
-            with open(image_path, 'wb') as f:
-                f.write(image_data)
+        # Get image path if present
+        image_path = None
+        if hasattr(interface_builder, 'current_image_file') and interface_builder.current_image_file:
+            # Convert absolute path to relative path from workspace root
+            abs_path = Path(interface_builder.current_image_file)
+            try:
+                rel_path = abs_path.relative_to(os.path.dirname(__file__))
+                image_path = str(rel_path).replace('\\', '/')
+            except ValueError as e:
+                print(f"[hint functions]Error getting relative path: {e}")
                 
-        # Add hint to data
-        data['rooms'][room_str]['hints'][hint_id] = {
-            "prop": prop_name,  # Save internal prop name
-            "name": hint_name,
+        # Add hint to data under the prop
+        data['rooms'][room_str][prop_name][hint_name] = {
             "text": message_text,
-            "image": image_filename
+            "image": image_path
         }
         
         # Save updated hints file

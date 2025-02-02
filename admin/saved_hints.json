@@ -1,24 +1,10 @@
 {
     "rooms": {
-        "7": {
-            "hints": {
-                "clock_hint": {
-                    "prop": "Clock",
-                    "name": "test",
-                    "text": "test",
-                    "image": null
-                },
-                "cylinders_hint": {
-                    "prop": "Cylinders",
-                    "name": "test",
-                    "text": "yyyyy",
-                    "image": null
-                },
-                "clock_hint_1": {
-                    "prop": "Clock",
-                    "name": "jjj",
-                    "text": "hdfghdfhg",
-                    "image": null
+        "3": {
+            "Owl": {
+                "hint 1 test": {
+                    "text": "hdfghdfgh",
+                    "image": "sync_directory/hint_image_files/wizard/Fart Owl/lol.png"
                 }
             }
         }
