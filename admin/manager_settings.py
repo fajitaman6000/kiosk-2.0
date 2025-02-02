@@ -138,6 +138,11 @@ class HintManager:
             messagebox.showinfo("Success", "Password changed successfully.")
             change_window.destroy()
 
+        # Bind Enter key to save_new_password for all entry fields
+        old_password_entry.bind('<Return>', lambda e: new_password_entry.focus())
+        new_password_entry.bind('<Return>', lambda e: confirm_password_entry.focus())
+        confirm_password_entry.bind('<Return>', lambda e: save_new_password())
+
         change_button = tk.Button(change_window, text="Save Changes", command=save_new_password)
         change_button.pack(pady=10)
 
@@ -514,6 +519,9 @@ class AdminPasswordManager:
         
         def on_close():
             login_window.destroy()
+        
+        # Bind Enter key to validate
+        password_entry.bind('<Return>', lambda e: validate())
         
         login_window.protocol("WM_DELETE_WINDOW", on_close)
         
