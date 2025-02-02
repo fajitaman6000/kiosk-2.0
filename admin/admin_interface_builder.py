@@ -1260,43 +1260,8 @@ class AdminInterfaceBuilder:
             )
 
     def send_hint(self, computer_name, hint_data=None):
-        """Send a hint to the specified kiosk"""
-        if not hint_data:
-            if 'msg_entry' not in self.stats_elements:
-                return
-                
-            hint_text = self.stats_elements['msg_entry'].get('1.0', tk.END).strip()
-            if not hint_text and not self.current_hint_image:
-                return
-                
-            hint_data = {
-                'text': hint_text,
-                'image': self.current_hint_image
-            }
-        
-        # Send the hint
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'hint',
-                'computer_name': computer_name,
-                'hint_data': hint_data
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
-        
-        # Clear the interface
-        if 'msg_entry' in self.stats_elements:
-            self.stats_elements['msg_entry'].delete('1.0', tk.END)
-        
-        self.current_hint_image = None
-        if 'attached_image_label' in self.stats_elements:
-            self.stats_elements['attached_image_label'].pack_forget()
-            
-        if 'image_btn' in self.stats_elements:
-            self.stats_elements['image_btn'].set('')
-            
-        if 'send_btn' in self.stats_elements:
-            self.stats_elements['send_btn'].config(state='disabled')
+        # Wrapper for the extracted send_hint function
+        send_hint(self, computer_name, hint_data)
 
     def play_solution_video(self, computer_name):
         """Play a solution video for the selected prop"""
