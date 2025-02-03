@@ -136,50 +136,59 @@ class KioskFileDownloader:
             response = requests.get(sync_url, timeout=10)
             response.raise_for_status()
             
-            server_file_info = response.json()
-            print(f"[kiosk_file_downloader] Server file info: {server_file_info}")
+            # Normalize server paths to use forward slashes
+            server_file_info = {k.replace('\\', '/'): v for k, v in response.json().items()}
+            print(f"[kiosk_file_downloader] Server has {len(server_file_info)} files")
             
+            # First, get all local files that could be synced (non-py files)
             local_files = {}
             for root, _, filenames in os.walk("."):
                 for filename in filenames:
                     file_path = os.path.relpath(os.path.join(root, filename), ".")
                     normalized_path = file_path.replace("\\", "/")
-                    if not normalized_path.startswith("sync_directory") and not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
-                        local_files[normalized_path] = self._calculate_file_hash(file_path)
+                    # Only include files that could exist in admin's sync directory
+                    if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                        file_hash = self._calculate_file_hash(file_path)
+                        if file_hash:  # Only add if hash calculation succeeded
+                            local_files[normalized_path] = file_hash
+                            print(f"[kiosk_file_downloader] Local file: {normalized_path} -> {file_hash[:8]}...")
 
-            print(f"[kiosk_file_downloader] Local file hashes: {local_files}")
+            print(f"[kiosk_file_downloader] Found {len(local_files)} local files to check")
 
             files_to_update = []
-            files_to_delete = []
 
-            for file, server_hash in server_file_info.items():
-                if file not in local_files or local_files[file] != server_hash:
-                    files_to_update.append(file)
-
-            for file in local_files:
-                if file not in server_file_info:
-                    files_to_delete.append(file)
-
-            # Handle deletions first
-            for file in files_to_delete:
-                target_path = os.path.join(".", file)
-                if os.path.exists(target_path):
-                    os.remove(target_path)
-                print(f"[kiosk_file_downloader] Removed file: {target_path}")
+            # Check which server files need to be updated locally
+            for file_path, server_hash in server_file_info.items():
+                if file_path in local_files:
+                    local_hash = local_files[file_path]
+                    print(f"[kiosk_file_downloader] Comparing {file_path}:")
+                    print(f"  Local:  {local_hash[:8]}...")
+                    print(f"  Server: {server_hash[:8]}...")
+                    if local_hash != server_hash:
+                        print(f"  -> Hash mismatch, will update")
+                        files_to_update.append(file_path)
+                else:
+                    print(f"[kiosk_file_downloader] File missing locally: {file_path}")
+                    files_to_update.append(file_path)
 
             # Request and update files in batches
             if files_to_update:
+                print(f"[kiosk_file_downloader] Updating {len(files_to_update)} files")
                 response_data = self._request_files(files_to_update)
                 if response_data:
                     for file_path, file_data in response_data.items():
-                        target_path = os.path.join(".", file_path)
+                        # Normalize path before writing
+                        normalized_path = file_path.replace('\\', '/')
+                        target_path = os.path.join(".", normalized_path)
                         os.makedirs(os.path.dirname(target_path), exist_ok=True)
                         with open(target_path, "wb") as file:
                             file.write(file_data.encode('latin1'))
-                        print(f"[kiosk_file_downloader] Updated file: {file_path}")
+                        print(f"[kiosk_file_downloader] Updated file: {normalized_path}")
+            else:
+                print("[kiosk_file_downloader] All files are up to date")
 
             # Mark sync as complete
-            if files_to_update or files_to_delete:
+            if files_to_update:
                 print("[kiosk_file_downloader] Sync complete")
             self._finish_sync()
             return True
