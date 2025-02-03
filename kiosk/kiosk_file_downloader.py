@@ -2,11 +2,13 @@
 import time
 import requests
 import os
+import json
 from threading import Thread
 import hashlib
 import urllib.parse
 import socket
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
+from pathlib import Path
 
 class KioskFileDownloader:
     def __init__(self, kiosk_app, admin_ip=None):
@@ -17,6 +19,53 @@ class KioskFileDownloader:
         self.kiosk_id = socket.gethostname()  # Use hostname as kiosk ID
         self.is_syncing = False
         self.sync_requested = False  # New flag to control sync
+        self.cache_dir = Path(os.path.expanduser("~")) / ".kiosk"
+        self.cache_file = self.cache_dir / "file_hashes.json"
+        self._ensure_cache_dir()
+
+    def _ensure_cache_dir(self):
+        """Create cache directory if it doesn't exist"""
+        try:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error creating cache directory: {e}")
+
+    def _load_cache(self):
+        """Load file hashes from cache file"""
+        try:
+            if self.cache_file.exists():
+                with open(self.cache_file, 'r') as f:
+                    return json.load(f)
+            return {}
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error loading cache: {e}")
+            return {}
+
+    def _save_cache(self, file_hashes):
+        """Save file hashes to cache file"""
+        try:
+            with open(self.cache_file, 'w') as f:
+                json.dump(file_hashes, f, indent=2)
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error saving cache: {e}")
+
+    def _update_cache_async(self):
+        """Update cache in background after sync"""
+        def background_update():
+            print("[kiosk_file_downloader] Starting background cache update...")
+            local_files = {}
+            for root, _, filenames in os.walk("."):
+                for filename in filenames:
+                    file_path = os.path.relpath(os.path.join(root, filename), ".")
+                    normalized_path = file_path.replace("\\", "/")
+                    if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                        file_hash = self._calculate_file_hash(file_path)
+                        if file_hash:
+                            local_files[normalized_path] = file_hash
+            self._save_cache(local_files)
+            print("[kiosk_file_downloader] Cache update complete")
+
+        Thread(target=background_update, daemon=True).start()
 
     def start(self):
         """Start the file downloader thread."""
@@ -140,18 +189,34 @@ class KioskFileDownloader:
             server_file_info = {k.replace('\\', '/'): v for k, v in response.json().items()}
             print(f"[kiosk_file_downloader] Server has {len(server_file_info)} files")
             
-            # First, get all local files that could be synced (non-py files)
-            local_files = {}
-            for root, _, filenames in os.walk("."):
-                for filename in filenames:
-                    file_path = os.path.relpath(os.path.join(root, filename), ".")
-                    normalized_path = file_path.replace("\\", "/")
-                    # Only include files that could exist in admin's sync directory
-                    if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
-                        file_hash = self._calculate_file_hash(file_path)
-                        if file_hash:  # Only add if hash calculation succeeded
-                            local_files[normalized_path] = file_hash
-                            print(f"[kiosk_file_downloader] Local file: {normalized_path} -> {file_hash[:8]}...")
+            # First try to use cached file hashes
+            local_files = self._load_cache()
+            cache_valid = True
+            
+            # Verify cache is still valid by checking if files exist and hashes match
+            for path, cached_hash in list(local_files.items()):
+                if not os.path.exists(path):
+                    del local_files[path]
+                    cache_valid = False
+                    continue
+                current_hash = self._calculate_file_hash(path)
+                if current_hash != cached_hash:
+                    del local_files[path]
+                    cache_valid = False
+
+            if not cache_valid or not local_files:
+                print("[kiosk_file_downloader] Cache invalid or empty, performing full inventory...")
+                # Fall back to full inventory if cache is invalid
+                local_files = {}
+                for root, _, filenames in os.walk("."):
+                    for filename in filenames:
+                        file_path = os.path.relpath(os.path.join(root, filename), ".")
+                        normalized_path = file_path.replace("\\", "/")
+                        if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                            file_hash = self._calculate_file_hash(file_path)
+                            if file_hash:  # Only add if hash calculation succeeded
+                                local_files[normalized_path] = file_hash
+                                print(f"[kiosk_file_downloader] Local file: {normalized_path} -> {file_hash[:8]}...")
 
             print(f"[kiosk_file_downloader] Found {len(local_files)} local files to check")
 
@@ -187,9 +252,10 @@ class KioskFileDownloader:
             else:
                 print("[kiosk_file_downloader] All files are up to date")
 
-            # Mark sync as complete
+            # Mark sync as complete and trigger async cache update
             if files_to_update:
                 print("[kiosk_file_downloader] Sync complete")
+                self._update_cache_async()  # Update cache in background after sync
             self._finish_sync()
             return True
 
