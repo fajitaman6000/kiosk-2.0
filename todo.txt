@@ -1,13 +1,12 @@
 ##############################################################################################################################
 # important/immediate todo
 
-test upload of huge file numbers to a kiosk, like 700 mp3s and 300 pngs, and if it doesn't work out:
+test upload of huge file numbers to a kiosk, like 700 mp3s and 300 pngs, and if it doesn't work out: (test failed, admin pc failed during upload)
     consider using concurrent file downloads on the kiosk side using asyncio or the threading library in order to increase the speed it takes to download files
     json on admin side to store metadata about each file and folder. track changes, only pull from admin when needed
 
 hint manager needs updating
     prop control is visible within the hint manager area
-    current saved hints in saved_hints.json are not being displayed
     hint manager could easily be renamed to just manager settings and adjusted accordingly
 
 sync failure handling
