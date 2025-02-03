@@ -70,9 +70,9 @@ class AdminSyncManager:
                 file_path = os.path.relpath(os.path.join(root, filename), ADMIN_SYNC_DIR)
                 if not file_path.endswith(".py") and not "__pycache__" in file_path:
                     files[file_path] = self._calculate_file_hash(os.path.join(ADMIN_SYNC_DIR, file_path))
-        print(f"[admin_sync_manager] File hashes: {files}")
+        print(f"[admin_sync_manager] Found {len(files)} files")
         return files
-        
+
     def _encode_file(self, path):
         """Encode a file's content to a string using latin1 to avoid encoding errors."""
         try:
@@ -83,27 +83,26 @@ class AdminSyncManager:
              import traceback
              traceback.print_exc()
              return None
+
     def _send_sync_request(self, files):
-        """Send a sync request to the server."""
+        """Send a sync request to the server with only file hashes."""
         if not files:
-          print("[admin_sync_manager] No file changes to synchronize")
-          return False
+            print("[admin_sync_manager] No file changes to synchronize")
+            return False
         try:
-            print(f"[admin_sync_manager] Sending sync request with {len(files)} files")
-            sync_url = f"http://127.0.0.1:{ADMIN_SERVER_PORT}/sync" # Changed this line
-            files_to_send = {}
-            for path, hash in files.items():
-                 files_to_send[path] = {'type': 'upload',
-                                        'data': self._encode_file(os.path.join(ADMIN_SYNC_DIR, path)) }
-            response = requests.post(sync_url, json={'files': files_to_send}, timeout=60)
-            response.raise_for_status()  # Raise HTTPError for bad responses (4xx or 5xx)
+            print(f"[admin_sync_manager] Sending sync request with {len(files)} file hashes")
+            sync_url = f"http://127.0.0.1:{ADMIN_SERVER_PORT}/sync_info"
+            
+            # Send only the file hashes
+            response = requests.post(sync_url, json={'files': files}, timeout=30)
+            response.raise_for_status()
             print(f"[admin_sync_manager] Sync request successful: {response.text}")
             return True
         except requests.exceptions.RequestException as e:
             print(f"[admin_sync_manager] Sync request failed: {e}")
             return False
         except Exception as e:
-            print(f"[admin_sync_manager] An error occured during sync: {e}")
+            print(f"[admin_sync_manager] An error occurred during sync: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -155,7 +154,7 @@ class AdminSyncManager:
             return
             
         if not self._send_sync_request(files_to_sync):
-            print("[admin_sync_manager] Sync failed to server")
+            print("[admin_sync_manager] Failed to send file hashes to server")
             return
 
         self._send_message_to_kiosks()

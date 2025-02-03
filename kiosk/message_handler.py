@@ -29,10 +29,9 @@ class MessageHandler:
                         self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
                         self.file_downloader.start()
                     
-                    # Trigger the sync check after setting up the downloader
-                    print(f"[message handler] Initiating sync check with admin at {admin_ip}")
-                    if self.file_downloader._check_for_updates():
-                        print("[message handler] Updates found and downloaded")
+                    # Request sync instead of directly checking for updates
+                    print(f"[message handler] Initiating sync with admin at {admin_ip}")
+                    self.file_downloader.request_sync()
 
             if msg['type'] == 'room_assignment' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print(f"[message handler][DEBUG] Processing room assignment: {msg['room']}")
