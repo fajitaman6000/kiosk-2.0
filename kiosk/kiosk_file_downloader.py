@@ -7,6 +7,7 @@ from threading import Thread
 import hashlib
 import urllib.parse
 import socket
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 from pathlib import Path
 
@@ -19,16 +20,8 @@ class KioskFileDownloader:
         self.kiosk_id = socket.gethostname()  # Use hostname as kiosk ID
         self.is_syncing = False
         self.sync_requested = False  # New flag to control sync
-        self.cache_dir = Path(os.path.expanduser("~")) / ".kiosk"
-        self.cache_file = self.cache_dir / "file_hashes.json"
-        self._ensure_cache_dir()
-
-    def _ensure_cache_dir(self):
-        """Create cache directory if it doesn't exist"""
-        try:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-        except Exception as e:
-            print(f"[kiosk_file_downloader] Error creating cache directory: {e}")
+        self.cache_file = Path("file_hashes.json")  # Cache file in root directory
+        self.max_workers = 5  # Number of concurrent downloads
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -49,23 +42,37 @@ class KioskFileDownloader:
         except Exception as e:
             print(f"[kiosk_file_downloader] Error saving cache: {e}")
 
-    def _update_cache_async(self):
-        """Update cache in background after sync"""
-        def background_update():
-            print("[kiosk_file_downloader] Starting background cache update...")
-            local_files = {}
+    def _update_file_inventory(self):
+        """Perform a full inventory of local files and their hashes."""
+        print("[kiosk_file_downloader] Performing full file inventory...")
+        local_files = {}
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            file_paths = []
             for root, _, filenames in os.walk("."):
                 for filename in filenames:
                     file_path = os.path.relpath(os.path.join(root, filename), ".")
                     normalized_path = file_path.replace("\\", "/")
                     if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
-                        file_hash = self._calculate_file_hash(file_path)
-                        if file_hash:
-                            local_files[normalized_path] = file_hash
-            self._save_cache(local_files)
-            print("[kiosk_file_downloader] Cache update complete")
+                        file_paths.append(normalized_path)
 
-        Thread(target=background_update, daemon=True).start()
+            future_to_path = {
+                executor.submit(self._calculate_file_hash, path): path
+                for path in file_paths
+            }
+            
+            for future in as_completed(future_to_path):
+                path = future_to_path[future]
+                try:
+                    file_hash = future.result()
+                    if file_hash:
+                        local_files[path] = file_hash
+                        print(f"[kiosk_file_downloader] Local file: {path} -> {file_hash[:8]}...")
+                except Exception as e:
+                    print(f"[kiosk_file_downloader] Error hashing {path}: {e}")
+        
+        print(f"[kiosk_file_downloader] Inventory complete - found {len(local_files)} files")
+        self._save_cache(local_files)
+        return local_files
 
     def start(self):
         """Start the file downloader thread."""
@@ -128,7 +135,7 @@ class KioskFileDownloader:
             return False
 
     def _request_files(self, file_list):
-        """Request specific files from server."""
+        """Request specific files from server with concurrent downloads."""
         try:
             remaining_files = file_list
             all_received_files = {}
@@ -138,18 +145,33 @@ class KioskFileDownloader:
                 response = requests.post(url, json={
                     'kiosk_id': self.kiosk_id,
                     'files': remaining_files
-                }, timeout=30)  # Longer timeout for file transfer
+                }, timeout=30)
                 response.raise_for_status()
                 
                 data = response.json()
                 if 'error' in data:
                     print(f"[kiosk_file_downloader] Server error: {data['error']}")
                     return None
-                    
-                # Process received files
-                for file_path, file_info in data['files'].items():
-                    all_received_files[file_path] = file_info['data']
-                    print(f"[kiosk_file_downloader] Received {file_path} ({file_info['size']} bytes)")
+
+                # Process received files concurrently
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    future_to_file = {}
+                    for file_path, file_info in data['files'].items():
+                        future = executor.submit(self._save_file, file_path, file_info['data'])
+                        future_to_file[future] = file_path
+
+                    # Process completed downloads
+                    for future in as_completed(future_to_file):
+                        file_path = future_to_file[future]
+                        try:
+                            success = future.result()
+                            if success:
+                                all_received_files[file_path] = data['files'][file_path]['data']
+                                print(f"[kiosk_file_downloader] Successfully saved {file_path}")
+                            else:
+                                print(f"[kiosk_file_downloader] Failed to save {file_path}")
+                        except Exception as e:
+                            print(f"[kiosk_file_downloader] Error saving {file_path}: {e}")
                 
                 # Check if we need to request more files
                 if data['status'] == 'partial':
@@ -164,16 +186,27 @@ class KioskFileDownloader:
             print(f"[kiosk_file_downloader] Error requesting files: {e}")
             return None
 
+    def _save_file(self, file_path, file_data):
+        """Save a single file to disk."""
+        try:
+            normalized_path = file_path.replace('\\', '/')
+            target_path = os.path.join(".", normalized_path)
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+            with open(target_path, "wb") as file:
+                file.write(file_data.encode('latin1'))
+            return True
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error saving file {file_path}: {e}")
+            return False
+
     def _check_for_updates(self):
         """Check for updates from admin server based on content hash."""
         try:
             if not self.is_syncing:
-                # Request to be added to sync queue if not already syncing
                 self._request_sync_permission()
-                self.is_syncing = True  # Set syncing flag when requesting permission
+                self.is_syncing = True
                 return False
 
-            # Check if it's our turn
             status = self._check_sync_status()
             if not status or status.get('status') != 'active':
                 if status and status.get('status') == 'queued':
@@ -185,84 +218,71 @@ class KioskFileDownloader:
             response = requests.get(sync_url, timeout=10)
             response.raise_for_status()
             
-            # Normalize server paths to use forward slashes
             server_file_info = {k.replace('\\', '/'): v for k, v in response.json().items()}
             print(f"[kiosk_file_downloader] Server has {len(server_file_info)} files")
             
-            # First try to use cached file hashes
             local_files = self._load_cache()
             cache_valid = True
             
-            # Verify cache is still valid by checking if files exist and hashes match
-            for path, cached_hash in list(local_files.items()):
-                if not os.path.exists(path):
-                    del local_files[path]
-                    cache_valid = False
-                    continue
-                current_hash = self._calculate_file_hash(path)
-                if current_hash != cached_hash:
-                    del local_files[path]
-                    cache_valid = False
+            # Verify cache validity concurrently
+            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                future_to_path = {
+                    executor.submit(self._verify_file, path, cached_hash): path
+                    for path, cached_hash in local_files.items()
+                }
+                
+                for future in as_completed(future_to_path):
+                    path = future_to_path[future]
+                    try:
+                        is_valid, current_hash = future.result()
+                        if not is_valid:
+                            del local_files[path]
+                            cache_valid = False
+                    except Exception as e:
+                        print(f"[kiosk_file_downloader] Error verifying {path}: {e}")
+                        del local_files[path]
+                        cache_valid = False
 
             if not cache_valid or not local_files:
                 print("[kiosk_file_downloader] Cache invalid or empty, performing full inventory...")
-                # Fall back to full inventory if cache is invalid
-                local_files = {}
-                for root, _, filenames in os.walk("."):
-                    for filename in filenames:
-                        file_path = os.path.relpath(os.path.join(root, filename), ".")
-                        normalized_path = file_path.replace("\\", "/")
-                        if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
-                            file_hash = self._calculate_file_hash(file_path)
-                            if file_hash:  # Only add if hash calculation succeeded
-                                local_files[normalized_path] = file_hash
-                                print(f"[kiosk_file_downloader] Local file: {normalized_path} -> {file_hash[:8]}...")
+                local_files = self._update_file_inventory()
 
             print(f"[kiosk_file_downloader] Found {len(local_files)} local files to check")
 
             files_to_update = []
-
-            # Check which server files need to be updated locally
             for file_path, server_hash in server_file_info.items():
                 if file_path in local_files:
-                    local_hash = local_files[file_path]
-                    print(f"[kiosk_file_downloader] Comparing {file_path}:")
-                    print(f"  Local:  {local_hash[:8]}...")
-                    print(f"  Server: {server_hash[:8]}...")
-                    if local_hash != server_hash:
-                        print(f"  -> Hash mismatch, will update")
+                    if local_files[file_path] != server_hash:
                         files_to_update.append(file_path)
                 else:
-                    print(f"[kiosk_file_downloader] File missing locally: {file_path}")
                     files_to_update.append(file_path)
 
-            # Request and update files in batches
             if files_to_update:
                 print(f"[kiosk_file_downloader] Updating {len(files_to_update)} files")
                 response_data = self._request_files(files_to_update)
                 if response_data:
-                    for file_path, file_data in response_data.items():
-                        # Normalize path before writing
-                        normalized_path = file_path.replace('\\', '/')
-                        target_path = os.path.join(".", normalized_path)
-                        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-                        with open(target_path, "wb") as file:
-                            file.write(file_data.encode('latin1'))
-                        print(f"[kiosk_file_downloader] Updated file: {normalized_path}")
+                    print("[kiosk_file_downloader] All files updated successfully")
             else:
                 print("[kiosk_file_downloader] All files are up to date")
 
-            # Mark sync as complete and trigger async cache update
-            if files_to_update:
-                print("[kiosk_file_downloader] Sync complete")
-                self._update_cache_async()  # Update cache in background after sync
+            # Always perform a full inventory after checking files, regardless of updates
+            print("[kiosk_file_downloader] Performing final inventory update...")
+            self._update_file_inventory()
+            
             self._finish_sync()
             return True
 
         except Exception as e:
             print(f"[kiosk_file_downloader] Error checking for updates: {e}")
-            self._finish_sync()  # Make sure to release sync lock on error
+            self._finish_sync()
             return False
+
+    def _verify_file(self, path, cached_hash):
+        """Verify if a file exists and its hash matches the cache."""
+        if not os.path.exists(path):
+            return False, None
+        current_hash = self._calculate_file_hash(path)
+        return (current_hash == cached_hash), current_hash
 
     def _download_file(self, file_path):
         """Download a single file from the admin server."""
