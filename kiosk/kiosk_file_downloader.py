@@ -7,6 +7,8 @@ from threading import Thread
 import hashlib
 import urllib.parse
 import socket
+import zlib
+import base64
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 from pathlib import Path
@@ -16,12 +18,14 @@ class KioskFileDownloader:
         self.kiosk_app = kiosk_app
         self.running = True
         self.download_thread = None
-        self.admin_ip = admin_ip or "192.168.0.110"  # Fallback only if no IP provided
-        self.kiosk_id = socket.gethostname()  # Use hostname as kiosk ID
+        self.admin_ip = admin_ip or "192.168.0.110"
+        self.kiosk_id = socket.gethostname()
         self.is_syncing = False
-        self.sync_requested = False  # New flag to control sync
-        self.cache_file = Path("file_hashes.json")  # Cache file in root directory
-        self.max_workers = 5  # Number of concurrent downloads
+        self.sync_requested = False
+        self.cache_file = Path("file_hashes.json")
+        self.max_workers = 1  # Only download one file at a time
+        self.chunk_size = 1 * 1024 * 1024  # 1MB chunks
+        self.large_file_threshold = 10 * 1024 * 1024  # 10MB threshold for large files
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -134,58 +138,6 @@ class KioskFileDownloader:
             print(f"[kiosk_file_downloader] Error finishing sync: {e}")
             return False
 
-    def _request_files(self, file_list):
-        """Request specific files from server with concurrent downloads."""
-        try:
-            remaining_files = file_list
-            all_received_files = {}
-            
-            while remaining_files:
-                url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/request_files"
-                response = requests.post(url, json={
-                    'kiosk_id': self.kiosk_id,
-                    'files': remaining_files
-                }, timeout=30)
-                response.raise_for_status()
-                
-                data = response.json()
-                if 'error' in data:
-                    print(f"[kiosk_file_downloader] Server error: {data['error']}")
-                    return None
-
-                # Process received files concurrently
-                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                    future_to_file = {}
-                    for file_path, file_info in data['files'].items():
-                        future = executor.submit(self._save_file, file_path, file_info['data'])
-                        future_to_file[future] = file_path
-
-                    # Process completed downloads
-                    for future in as_completed(future_to_file):
-                        file_path = future_to_file[future]
-                        try:
-                            success = future.result()
-                            if success:
-                                all_received_files[file_path] = data['files'][file_path]['data']
-                                print(f"[kiosk_file_downloader] Successfully saved {file_path}")
-                            else:
-                                print(f"[kiosk_file_downloader] Failed to save {file_path}")
-                        except Exception as e:
-                            print(f"[kiosk_file_downloader] Error saving {file_path}: {e}")
-                
-                # Check if we need to request more files
-                if data['status'] == 'partial':
-                    remaining_files = data['remaining_files']
-                    print(f"[kiosk_file_downloader] Partial transfer, {len(remaining_files)} files remaining")
-                else:
-                    remaining_files = []
-                    
-            return all_received_files
-            
-        except Exception as e:
-            print(f"[kiosk_file_downloader] Error requesting files: {e}")
-            return None
-
     def _save_file(self, file_path, file_data):
         """Save a single file to disk."""
         try:
@@ -198,6 +150,171 @@ class KioskFileDownloader:
         except Exception as e:
             print(f"[kiosk_file_downloader] Error saving file {file_path}: {e}")
             return False
+
+    def _download_large_file(self, file_path, file_info):
+        """Download a large file in chunks with resume capability."""
+        try:
+            normalized_path = file_path.replace('\\', '/')
+            target_path = os.path.join(".", normalized_path)
+            temp_path = f"{target_path}.temp"
+            os.makedirs(os.path.dirname(target_path), exist_ok=True)
+
+            total_size = file_info.get('size', 0)
+            
+            # Check if we have a partial download
+            start_byte = 0
+            if os.path.exists(temp_path):
+                start_byte = os.path.getsize(temp_path)
+                if start_byte >= total_size:
+                    os.replace(temp_path, target_path)
+                    return True
+
+            headers = {'Range': f'bytes={start_byte}-'} if start_byte > 0 else {}
+            
+            url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/download_file"
+            with requests.post(url, json={
+                'file_path': normalized_path,
+                'kiosk_id': self.kiosk_id
+            }, headers=headers, stream=True, timeout=300) as response:  # 5 minute timeout
+                
+                response.raise_for_status()
+                
+                mode = 'ab' if start_byte > 0 else 'wb'
+                with open(temp_path, mode, buffering=self.chunk_size) as f:
+                    bytes_downloaded = start_byte
+                    start_time = time.time()
+                    last_update = time.time()
+                    
+                    for chunk in response.iter_content(chunk_size=self.chunk_size):
+                        if not chunk:
+                            continue
+                        
+                        f.write(chunk)
+                        bytes_downloaded += len(chunk)
+                        
+                        # Update progress every second
+                        current_time = time.time()
+                        if current_time - last_update >= 1.0:
+                            progress = (bytes_downloaded / total_size) * 100 if total_size else 0
+                            speed = bytes_downloaded / (1024 * 1024 * (current_time - start_time))
+                            print(f"[kiosk_file_downloader] {file_path}: {progress:.1f}% "
+                                  f"({bytes_downloaded}/{total_size} bytes) {speed:.2f} MB/s")
+                            last_update = current_time
+
+            # Verify download is complete
+            if os.path.getsize(temp_path) == total_size:
+                os.replace(temp_path, target_path)
+                return True
+            else:
+                print(f"[kiosk_file_downloader] Incomplete download for {file_path}")
+                return False
+                
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error downloading large file {file_path}: {e}")
+            return False
+
+    def _request_files(self, file_list):
+        """Request specific files from server with conservative download settings."""
+        try:
+            remaining_files = file_list.copy()
+            all_received_files = {}
+            retry_count = 0
+            max_retries = 5  # More retries but with longer pauses
+            
+            # Process one file at a time for stability
+            batch_size = 1
+            
+            while remaining_files and retry_count < max_retries:
+                try:
+                    current_batch = remaining_files[:batch_size]
+                    
+                    url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/request_files"
+                    
+                    print(f"[kiosk_file_downloader] Requesting info for file: {current_batch[0]}")
+                    response = requests.post(url, json={
+                        'kiosk_id': self.kiosk_id,
+                        'files': current_batch,
+                        'info_only': True
+                    }, timeout=60)  # Longer initial timeout
+                    
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    if 'error' in data:
+                        print(f"[kiosk_file_downloader] Server error: {data['error']}")
+                        retry_count += 1
+                        time.sleep(5)  # Longer pause on error
+                        continue
+
+                    # Process one file at a time
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future_to_file = {}
+                        
+                        for file_path, file_info in data['files'].items():
+                            size = file_info.get('size', 0)
+                            
+                            if size > self.large_file_threshold:
+                                future = executor.submit(self._download_large_file, file_path, file_info)
+                            else:
+                                if file_info.get('compressed'):
+                                    compressed_data = base64.b64decode(file_info['data'])
+                                    file_data = zlib.decompress(compressed_data).decode('latin1')
+                                else:
+                                    file_data = file_info['data']
+                                future = executor.submit(self._save_file, file_path, file_data)
+                                
+                            future_to_file[future] = file_path
+
+                        successful_files = []
+                        
+                        for future in as_completed(future_to_file):
+                            file_path = future_to_file[future]
+                            try:
+                                success = future.result(timeout=600)  # 10 minute timeout per file
+                                if success:
+                                    all_received_files[file_path] = True
+                                    successful_files.append(file_path)
+                                    print(f"[kiosk_file_downloader] Successfully downloaded: {file_path}")
+                                    time.sleep(1)  # Brief pause between files
+                                else:
+                                    print(f"[kiosk_file_downloader] Failed to process {file_path}")
+                            except Exception as e:
+                                print(f"[kiosk_file_downloader] Error processing {file_path}: {e}")
+
+                        # Remove successfully processed files
+                        for file in successful_files:
+                            if file in remaining_files:
+                                remaining_files.remove(file)
+                        
+                        # Reset retry count on any success
+                        if successful_files:
+                            retry_count = 0
+                        else:
+                            retry_count += 1
+                            time.sleep(5)  # Longer pause between retries
+                    
+                    if remaining_files:
+                        print(f"[kiosk_file_downloader] {len(remaining_files)} files remaining: {remaining_files}")
+                        time.sleep(2)  # Pause between batches
+                
+                except requests.exceptions.Timeout:
+                    print(f"[kiosk_file_downloader] Timeout downloading file: {current_batch}")
+                    retry_count += 1
+                    time.sleep(10)  # Much longer pause after timeout
+                except Exception as e:
+                    print(f"[kiosk_file_downloader] Error in batch: {e}")
+                    retry_count += 1
+                    time.sleep(10)
+            
+            if remaining_files:
+                print(f"[kiosk_file_downloader] Failed to download {len(remaining_files)} files after {max_retries} retries")
+                print(f"[kiosk_file_downloader] Failed files: {remaining_files}")
+            
+            return all_received_files
+            
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Fatal error in file request: {e}")
+            return None
 
     def _check_for_updates(self):
         """Check for updates from admin server based on content hash."""
@@ -221,41 +338,25 @@ class KioskFileDownloader:
             server_file_info = {k.replace('\\', '/'): v for k, v in response.json().items()}
             print(f"[kiosk_file_downloader] Server has {len(server_file_info)} files")
             
+            # First try using the cache without full inventory
             local_files = self._load_cache()
-            cache_valid = True
-            
-            # Verify cache validity concurrently
-            with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                future_to_path = {
-                    executor.submit(self._verify_file, path, cached_hash): path
-                    for path, cached_hash in local_files.items()
-                }
-                
-                for future in as_completed(future_to_path):
-                    path = future_to_path[future]
-                    try:
-                        is_valid, current_hash = future.result()
-                        if not is_valid:
-                            del local_files[path]
-                            cache_valid = False
-                    except Exception as e:
-                        print(f"[kiosk_file_downloader] Error verifying {path}: {e}")
-                        del local_files[path]
-                        cache_valid = False
-
-            if not cache_valid or not local_files:
-                print("[kiosk_file_downloader] Cache invalid or empty, performing full inventory...")
-                local_files = self._update_file_inventory()
-
-            print(f"[kiosk_file_downloader] Found {len(local_files)} local files to check")
-
             files_to_update = []
+            
+            # Quick check of cache entries against server
             for file_path, server_hash in server_file_info.items():
-                if file_path in local_files:
-                    if local_files[file_path] != server_hash:
-                        files_to_update.append(file_path)
-                else:
+                if file_path not in local_files or local_files[file_path] != server_hash:
                     files_to_update.append(file_path)
+            
+            # Only do full inventory if we found files that need updating
+            if files_to_update:
+                print("[kiosk_file_downloader] Found differences, verifying local files...")
+                local_files = self._update_file_inventory()
+                
+                # Recheck with verified inventory
+                files_to_update = []
+                for file_path, server_hash in server_file_info.items():
+                    if file_path not in local_files or local_files[file_path] != server_hash:
+                        files_to_update.append(file_path)
 
             if files_to_update:
                 print(f"[kiosk_file_downloader] Updating {len(files_to_update)} files")
@@ -264,8 +365,8 @@ class KioskFileDownloader:
                     print("[kiosk_file_downloader] All files updated successfully")
             else:
                 print("[kiosk_file_downloader] All files are up to date")
-
-            # Always perform a full inventory after checking files, regardless of updates
+            
+            # Always perform final inventory after sync completes, regardless of whether files were updated
             print("[kiosk_file_downloader] Performing final inventory update...")
             self._update_file_inventory()
             

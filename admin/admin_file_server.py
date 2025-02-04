@@ -1,6 +1,6 @@
 # admin_file_server.py
 import os
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, request, jsonify, Response
 from file_sync_config import ADMIN_SYNC_DIR, ADMIN_SERVER_PORT
 import json
 import glob
@@ -254,6 +254,76 @@ def queue_processor():
 from threading import Thread
 queue_thread = Thread(target=queue_processor, daemon=True)
 queue_thread.start()
+
+@app.route('/download_file', methods=['POST'])
+def download_file():
+    """Stream a file in chunks for large file downloads."""
+    try:
+        data = request.get_json()
+        if not data or 'file_path' not in data or 'kiosk_id' not in data:
+            return jsonify({'error': 'Invalid request data'}), 400
+
+        file_path = data['file_path'].replace('\\', '/')
+        full_path = os.path.join(ADMIN_SYNC_DIR, file_path)
+        
+        if not os.path.exists(full_path):
+            return jsonify({'error': 'File not found'}), 404
+
+        # Handle range requests for resume capability
+        range_header = request.headers.get('Range', None)
+        file_size = os.path.getsize(full_path)
+        chunk_size = 1 * 1024 * 1024  # 1MB chunks to match client
+
+        if range_header:
+            try:
+                bytes_range = range_header.replace('bytes=', '').split('-')
+                start_byte = int(bytes_range[0])
+                end_byte = file_size - 1
+            except:
+                return jsonify({'error': 'Invalid range header'}), 400
+        else:
+            start_byte = 0
+            end_byte = file_size - 1
+
+        # Create response headers
+        headers = {
+            'Content-Type': 'application/octet-stream',
+            'Accept-Ranges': 'bytes',
+            'Content-Length': str(end_byte - start_byte + 1),
+            'Content-Range': f'bytes {start_byte}-{end_byte}/{file_size}',
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no'
+        }
+
+        def generate():
+            try:
+                with open(full_path, 'rb', buffering=chunk_size) as file:
+                    file.seek(start_byte)
+                    remaining = end_byte - start_byte + 1
+                    while remaining:
+                        # Read smaller chunks and add small delay to prevent overwhelming system
+                        chunk = file.read(min(chunk_size, remaining))
+                        if not chunk:
+                            break
+                        remaining -= len(chunk)
+                        time.sleep(0.01)  # Small delay between chunks
+                        yield chunk
+            except Exception as e:
+                print(f"[admin_file_server] Error during file streaming: {e}")
+                raise
+
+        return Response(
+            generate(),
+            206 if range_header else 200,
+            headers=headers,
+            direct_passthrough=True
+        )
+
+    except Exception as e:
+        print(f"[admin_file_server] Error streaming file: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=ADMIN_SERVER_PORT, debug=True)
