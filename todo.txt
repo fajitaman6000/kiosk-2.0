@@ -10,6 +10,8 @@ hint manager needs updating
     prop control is visible within the hint manager area
     hint manager could easily be renamed to just manager settings and adjusted accordingly
 
+local file check is still stopping other kiosks to download files
+
 sync failure handling
 
 message_handler may need a verification system so that the admin can resend a message if it fails to send
