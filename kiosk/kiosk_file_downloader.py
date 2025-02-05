@@ -250,12 +250,25 @@ class KioskFileDownloader:
                         time.sleep(5)  # Longer pause on error
                         continue
 
+                    if 'files' not in data:
+                        print("[kiosk_file_downloader] Error: No files in response")
+                        retry_count += 1
+                        time.sleep(5)
+                        continue
+
                     # Process files one at a time
                     with ThreadPoolExecutor(max_workers=1) as executor:
                         future_to_file = {}
                         
                         for file_path, file_info in data['files'].items():
+                            if not isinstance(file_info, dict):
+                                print(f"[kiosk_file_downloader] Error: Invalid file info for {file_path}")
+                                continue
+                                
                             size = file_info.get('size', 0)
+                            if not size:
+                                print(f"[kiosk_file_downloader] Error: No size info for {file_path}")
+                                continue
                             
                             if size > self.large_file_threshold:
                                 # For large files, first verify if we need to download
@@ -263,23 +276,43 @@ class KioskFileDownloader:
                                 if os.path.exists(local_path) and os.path.getsize(local_path) == size:
                                     print(f"[kiosk_file_downloader] Skipping {file_path} - already exists with correct size")
                                     all_received_files[file_path] = True
+                                    if file_path in remaining_files:
+                                        remaining_files.remove(file_path)
                                     continue
                                 future = executor.submit(self._download_large_file, file_path, file_info)
                             else:
-                                # Now request the actual file data
-                                response = requests.post(url, json={
-                                    'kiosk_id': self.kiosk_id,
-                                    'files': [file_path],
-                                    'info_only': False
-                                }, timeout=60)
-                                
-                                response.raise_for_status()
-                                file_data = response.json()['files'][file_path]['data']
-                                
-                                if file_info.get('compressed'):
-                                    compressed_data = base64.b64decode(file_data)
-                                    file_data = zlib.decompress(compressed_data).decode('latin1')
-                                future = executor.submit(self._save_file, file_path, file_data)
+                                try:
+                                    # Now request the actual file data
+                                    file_response = requests.post(url, json={
+                                        'kiosk_id': self.kiosk_id,
+                                        'files': [file_path],
+                                        'info_only': False
+                                    }, timeout=60)
+                                    
+                                    file_response.raise_for_status()
+                                    file_data = file_response.json()
+                                    
+                                    if 'files' not in file_data or file_path not in file_data['files']:
+                                        print(f"[kiosk_file_downloader] Error: Invalid response for {file_path}")
+                                        continue
+                                        
+                                    file_content = file_data['files'][file_path].get('data')
+                                    if not file_content:
+                                        print(f"[kiosk_file_downloader] Error: No data for {file_path}")
+                                        continue
+                                    
+                                    if file_info.get('compressed'):
+                                        try:
+                                            compressed_data = base64.b64decode(file_content)
+                                            file_content = zlib.decompress(compressed_data).decode('latin1')
+                                        except Exception as e:
+                                            print(f"[kiosk_file_downloader] Error decompressing {file_path}: {e}")
+                                            continue
+                                            
+                                    future = executor.submit(self._save_file, file_path, file_content)
+                                except Exception as e:
+                                    print(f"[kiosk_file_downloader] Error requesting file data for {file_path}: {e}")
+                                    continue
                                 
                             future_to_file[future] = file_path
 
