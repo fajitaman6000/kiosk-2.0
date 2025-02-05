@@ -371,8 +371,8 @@ class KioskFileDownloader:
         """Check for updates from admin server based on content hash."""
         try:
             if not self.is_syncing:
-                self._request_sync_permission()
-                self.is_syncing = True
+                if self._request_sync_permission():
+                    self.is_syncing = True
                 return False
 
             status = self._check_sync_status()
@@ -385,9 +385,6 @@ class KioskFileDownloader:
                 if status.get('status') == 'queued':
                     position = status.get('position', 'unknown')
                     print(f"[kiosk_file_downloader] Waiting in queue position {position}")
-                    if position == 1:  # Additional check for position 1
-                        print("[kiosk_file_downloader] Requesting sync permission again...")
-                        self._request_sync_permission()
                 elif status.get('status') == 'not_queued':
                     print("[kiosk_file_downloader] Not in queue, requesting sync permission...")
                     self.is_syncing = False  # Reset sync flag to trigger new request
@@ -431,16 +428,17 @@ class KioskFileDownloader:
                 print("[kiosk_file_downloader] All files are up to date")
             
             # First notify that we're done to let next kiosk proceed
-            self._finish_sync()
-            
-            # Then do the final inventory update asynchronously
-            Thread(target=self._update_file_inventory, daemon=True).start()
-            
-            return True
+            if self._finish_sync():
+                # Only start background inventory if finish_sync succeeded
+                Thread(target=self._update_file_inventory, daemon=True).start()
+                self.sync_requested = False  # Clear sync request flag here
+                return True
+            return False
 
         except Exception as e:
             print(f"[kiosk_file_downloader] Error checking for updates: {e}")
             self._finish_sync()
+            self.sync_requested = False  # Also clear sync request flag on error
             return False
 
     def _verify_file(self, path, cached_hash):
@@ -486,12 +484,19 @@ class KioskFileDownloader:
     def _background_download_handler(self):
         """Background handler that only processes sync when requested."""
         consecutive_errors = 0
+        last_sync_attempt = 0
         while self.running:
             try:
+                current_time = time.time()
                 if self.sync_requested:
+                    # Add minimum time between sync attempts
+                    if current_time - last_sync_attempt < 5:  # Wait at least 5 seconds between attempts
+                        time.sleep(1)
+                        continue
+                        
+                    last_sync_attempt = current_time
                     success = self._check_for_updates()
                     if success:
-                        self.sync_requested = False  # Reset flag after successful sync
                         consecutive_errors = 0  # Reset error counter on success
                     time.sleep(1)  # Small delay between checks when actively syncing
                 else:
@@ -502,6 +507,7 @@ class KioskFileDownloader:
                 if consecutive_errors >= 3:
                     print("[kiosk_file_downloader] Too many consecutive errors, resetting sync state...")
                     self.is_syncing = False
+                    self.sync_requested = False  # Also clear sync request on too many errors
                     consecutive_errors = 0
                 time.sleep(5)  # Longer delay after network error
             except Exception as e:
