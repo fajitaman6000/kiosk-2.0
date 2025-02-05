@@ -383,7 +383,11 @@ class KioskFileDownloader:
                 
             if status.get('status') != 'active':
                 if status.get('status') == 'queued':
-                    print(f"[kiosk_file_downloader] Waiting in queue position {status.get('position', 'unknown')}")
+                    position = status.get('position', 'unknown')
+                    print(f"[kiosk_file_downloader] Waiting in queue position {position}")
+                    if position == 1:  # Additional check for position 1
+                        print("[kiosk_file_downloader] Requesting sync permission again...")
+                        self._request_sync_permission()
                 elif status.get('status') == 'not_queued':
                     print("[kiosk_file_downloader] Not in queue, requesting sync permission...")
                     self.is_syncing = False  # Reset sync flag to trigger new request
@@ -426,11 +430,12 @@ class KioskFileDownloader:
             else:
                 print("[kiosk_file_downloader] All files are up to date")
             
-            # Always perform final inventory after sync completes, regardless of whether files were updated
-            print("[kiosk_file_downloader] Performing final inventory update...")
-            self._update_file_inventory()
-            
+            # First notify that we're done to let next kiosk proceed
             self._finish_sync()
+            
+            # Then do the final inventory update asynchronously
+            Thread(target=self._update_file_inventory, daemon=True).start()
+            
             return True
 
         except Exception as e:
