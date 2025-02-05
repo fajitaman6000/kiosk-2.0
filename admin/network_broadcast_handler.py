@@ -48,13 +48,14 @@ class NetworkBroadcastHandler:
                 data, addr = self.socket.recvfrom(1024)
                 msg = json.loads(data.decode())
                 
+                # Store sender address with message
+                msg['_sender_addr'] = addr
+                
                 # Only print if message content has changed
                 computer_name = msg.get('computer_name')
                 if computer_name:
                     last_msg = self.last_message.get(computer_name, {})
                     if msg != last_msg:
-                        #print(f"[network broadcast handler]\nReceived updated message from {addr}:")
-                        #print(f"[network broadcast handler]Message content: {msg}")
                         self.last_message[computer_name] = msg.copy()
                 
                 if msg['type'] == 'kiosk_announce':
@@ -77,6 +78,14 @@ class NetworkBroadcastHandler:
                     self.app.root.after(0, lambda cn=computer_name: 
                         self.app.interface_builder.add_kiosk_to_ui(cn))
                     
+                elif msg['type'] == 'sync_confirmation':
+                    computer_name = msg['computer_name']
+                    sync_id = msg.get('sync_id')
+                    status = msg.get('status')
+                    print(f"[network broadcast handler] Received sync confirmation from {computer_name} - Status: {status}")
+                    if hasattr(self.app, 'sync_manager'):
+                        self.app.sync_manager.handle_sync_confirmation(computer_name, sync_id)
+                
                 elif msg['type'] == 'help_request':
                     computer_name = msg['computer_name']
                     if computer_name in self.app.interface_builder.connected_kiosks:

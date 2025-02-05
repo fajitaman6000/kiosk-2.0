@@ -12,6 +12,8 @@ hint manager needs updating
 
 sync failure handling
 
+message_handler may need a verification system so that the admin can resend a message if it fails to send
+
 copy over casino sd card files
 
 ##############################################################################################################################

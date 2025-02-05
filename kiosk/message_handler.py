@@ -13,6 +13,7 @@ class MessageHandler:
         self.kiosk_app = kiosk_app
         self.video_manager = video_manager
         self.file_downloader = None  # Initialize later when we have the admin IP
+        self.last_sync_id = None  # Track last sync ID
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
@@ -20,6 +21,8 @@ class MessageHandler:
         try:
             if msg['type'] == SYNC_MESSAGE_TYPE:
                 admin_ip = msg.get('admin_ip')
+                sync_id = msg.get('sync_id')
+                
                 if admin_ip:
                     if self.file_downloader is None:
                         self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
@@ -29,9 +32,19 @@ class MessageHandler:
                         self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
                         self.file_downloader.start()
                     
-                    # Request sync instead of directly checking for updates
+                    # Request sync and store sync ID
                     print(f"[message handler] Initiating sync with admin at {admin_ip}")
+                    self.last_sync_id = sync_id
                     self.file_downloader.request_sync()
+                    
+                    # Send confirmation immediately that we received the sync request
+                    confirm_msg = {
+                        'type': 'sync_confirmation',
+                        'computer_name': self.kiosk_app.computer_name,
+                        'sync_id': sync_id,
+                        'status': 'received'
+                    }
+                    self.kiosk_app.network.send_message(confirm_msg)
 
             if msg['type'] == 'room_assignment' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print(f"[message handler][DEBUG] Processing room assignment: {msg['room']}")

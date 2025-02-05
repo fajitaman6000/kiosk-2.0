@@ -14,6 +14,7 @@ class AdminSyncManager:
         self.kiosk_ips = {}  # Store kiosk computer_name -> IP
         self.running = True
         self.sync_thread = None
+        self.sync_status = {}  # Track sync status for each kiosk
 
     def start(self):
         """Start the sync manager thread."""
@@ -26,24 +27,30 @@ class AdminSyncManager:
         if self.sync_thread and self.sync_thread.is_alive():
             self.sync_thread.join()
 
-    def _discover_kiosks(self):
-        """Discover kiosks on the network using the existing broadcast."""
-        print("[admin_sync_manager] Discovering Kiosks...")
-        self.kiosk_ips = {}  # Clear existing IPs
-        start_time = time.time()
-        max_retries = 3 # Try 3 times
-        while time.time() - start_time < 5 and max_retries > 0:
-            if not self.running:
-                return False
-            for computer_name, data in self.app.interface_builder.connected_kiosks.items():
-                if data.get('ip'):
-                    self.kiosk_ips[computer_name] = data.get('ip')
-            if self.kiosk_ips:
-                break # Found at least 1 device
-            time.sleep(0.5) # Sleep for a 0.5 seconds
-            max_retries -=1
+    def _get_kiosk_ips(self):
+        """Get kiosk IPs from interface builder and last messages."""
+        self.kiosk_ips = {}
         
-        print(f"[admin_sync_manager] Kiosks Discovered: {self.kiosk_ips}")
+        # First check connected kiosks from interface builder
+        for computer_name, data in self.app.interface_builder.connected_kiosks.items():
+            if data.get('ip'):
+                self.kiosk_ips[computer_name] = data.get('ip')
+            # If no IP in connected_kiosks data, check last_message from network handler
+            elif hasattr(self.app, 'network_handler') and computer_name in self.app.network_handler.last_message:
+                msg = self.app.network_handler.last_message[computer_name]
+                if msg.get('ip'):
+                    self.kiosk_ips[computer_name] = msg.get('ip')
+                # If still no IP but we have the sender's address
+                elif msg.get('_sender_addr'):
+                    self.kiosk_ips[computer_name] = msg['_sender_addr'][0]  # Use the sender's IP
+
+        if not self.kiosk_ips:
+            print("[admin_sync_manager] Warning: No kiosk IPs found, but kiosks are connected")
+            print("[admin_sync_manager] Connected kiosks:", list(self.app.interface_builder.connected_kiosks.keys()))
+            # If we have connected kiosks but no IPs, we'll proceed anyway
+            # The broadcast message will reach all kiosks on the network
+            return bool(self.app.interface_builder.connected_kiosks)
+            
         return True
 
     def _calculate_file_hash(self, file_path):
@@ -128,22 +135,18 @@ class AdminSyncManager:
         message = {
             'type': SYNC_MESSAGE_TYPE,
             'computer_name': "all",
-            'admin_ip': local_ip
+            'admin_ip': local_ip,
+            'sync_id': str(time.time())  # Add unique sync ID
         }
         self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
         print(f"[admin_sync_manager] Message sent to all devices with admin IP: {local_ip}")
-
-    def _background_sync_handler(self):
-        """This is now an empty thread. It does nothing"""
-        while self.running:
-           time.sleep(1)
 
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
         if not self.sync_thread or not self.sync_thread.is_alive():
             self.start()
         
-        if not self._discover_kiosks():
+        if not self._get_kiosk_ips():
             print("[admin_sync_manager] No kiosks found")
             return
         
@@ -157,4 +160,24 @@ class AdminSyncManager:
             print("[admin_sync_manager] Failed to send file hashes to server")
             return
 
+        # Initialize sync status for all connected kiosks, not just ones with IPs
+        self.sync_status = {name: {'sent': time.time(), 'confirmed': False} 
+                           for name in self.app.interface_builder.connected_kiosks.keys()}
         self._send_message_to_kiosks()
+
+    def handle_sync_confirmation(self, computer_name, sync_id):
+        """Handle sync confirmation from a kiosk."""
+        if computer_name in self.sync_status:
+            self.sync_status[computer_name]['confirmed'] = True
+            print(f"[admin_sync_manager] Sync confirmed for kiosk: {computer_name}")
+
+    def _background_sync_handler(self):
+        """Monitor sync status and resend if needed."""
+        while self.running:
+            current_time = time.time()
+            for computer_name, status in self.sync_status.items():
+                if not status['confirmed'] and (current_time - status['sent']) > 10:  # 10 second timeout
+                    print(f"[admin_sync_manager] Resending sync message to {computer_name}")
+                    status['sent'] = current_time
+                    self._send_message_to_kiosks()
+            time.sleep(1)
