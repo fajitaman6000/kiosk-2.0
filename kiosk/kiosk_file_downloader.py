@@ -221,8 +221,8 @@ class KioskFileDownloader:
             retry_count = 0
             max_retries = 5  # More retries but with longer pauses
             
-            # Process one file at a time for stability
-            batch_size = 1
+            # Process files in small batches for stability
+            batch_size = 5  # Increased from 1 to 5 for better performance
             
             while remaining_files and retry_count < max_retries:
                 try:
@@ -230,7 +230,7 @@ class KioskFileDownloader:
                     
                     url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/request_files"
                     
-                    print(f"[kiosk_file_downloader] Requesting info for file: {current_batch[0]}")
+                    print(f"[kiosk_file_downloader] Requesting info for files: {current_batch}")
                     response = requests.post(url, json={
                         'kiosk_id': self.kiosk_id,
                         'files': current_batch,
@@ -242,11 +242,15 @@ class KioskFileDownloader:
                     
                     if 'error' in data:
                         print(f"[kiosk_file_downloader] Server error: {data['error']}")
+                        if data['error'] == 'Not your turn to sync':
+                            print("[kiosk_file_downloader] Waiting for our turn...")
+                            time.sleep(5)  # Wait longer when it's not our turn
+                            continue
                         retry_count += 1
                         time.sleep(5)  # Longer pause on error
                         continue
 
-                    # Process one file at a time
+                    # Process files one at a time
                     with ThreadPoolExecutor(max_workers=1) as executor:
                         future_to_file = {}
                         
@@ -254,13 +258,27 @@ class KioskFileDownloader:
                             size = file_info.get('size', 0)
                             
                             if size > self.large_file_threshold:
+                                # For large files, first verify if we need to download
+                                local_path = os.path.join(".", file_path)
+                                if os.path.exists(local_path) and os.path.getsize(local_path) == size:
+                                    print(f"[kiosk_file_downloader] Skipping {file_path} - already exists with correct size")
+                                    all_received_files[file_path] = True
+                                    continue
                                 future = executor.submit(self._download_large_file, file_path, file_info)
                             else:
+                                # Now request the actual file data
+                                response = requests.post(url, json={
+                                    'kiosk_id': self.kiosk_id,
+                                    'files': [file_path],
+                                    'info_only': False
+                                }, timeout=60)
+                                
+                                response.raise_for_status()
+                                file_data = response.json()['files'][file_path]['data']
+                                
                                 if file_info.get('compressed'):
-                                    compressed_data = base64.b64decode(file_info['data'])
+                                    compressed_data = base64.b64decode(file_data)
                                     file_data = zlib.decompress(compressed_data).decode('latin1')
-                                else:
-                                    file_data = file_info['data']
                                 future = executor.submit(self._save_file, file_path, file_data)
                                 
                             future_to_file[future] = file_path
@@ -275,7 +293,7 @@ class KioskFileDownloader:
                                     all_received_files[file_path] = True
                                     successful_files.append(file_path)
                                     print(f"[kiosk_file_downloader] Successfully downloaded: {file_path}")
-                                    time.sleep(1)  # Brief pause between files
+                                    time.sleep(0.5)  # Shorter pause between files
                                 else:
                                     print(f"[kiosk_file_downloader] Failed to process {file_path}")
                             except Exception as e:
@@ -295,7 +313,7 @@ class KioskFileDownloader:
                     
                     if remaining_files:
                         print(f"[kiosk_file_downloader] {len(remaining_files)} files remaining: {remaining_files}")
-                        time.sleep(2)  # Pause between batches
+                        time.sleep(1)  # Shorter pause between batches
                 
                 except requests.exceptions.Timeout:
                     print(f"[kiosk_file_downloader] Timeout downloading file: {current_batch}")

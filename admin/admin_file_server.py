@@ -158,6 +158,7 @@ def request_sync():
         
         if kiosk_id not in sync_queue.queue and active_sync != kiosk_id:
             sync_queue.put(kiosk_id)
+            update_sync_activity(kiosk_id)
             print(f"[admin_file_server] Added {kiosk_id} to sync queue")
             
         return jsonify({'message': 'Added to sync queue'})
@@ -175,6 +176,7 @@ def request_files():
             
         kiosk_id = data['kiosk_id']
         requested_files = data['files']
+        info_only = data.get('info_only', False)
         
         # Check if this kiosk is currently active
         if active_sync != kiosk_id:
@@ -197,15 +199,20 @@ def request_files():
                         'remaining_files': requested_files[requested_files.index(file_path):]
                     })
                 
-                # Read and add file to current batch
-                with open(full_path, 'rb') as f:
-                    file_data = f.read()
+                if info_only:
                     response_data[file_path] = {
-                        'data': file_data.decode('latin1'),
                         'size': file_size
                     }
-                    total_size += file_size
-                    print(f"[admin_file_server] Added {file_path} ({file_size} bytes) to response")
+                else:
+                    # Read and add file to current batch
+                    with open(full_path, 'rb') as f:
+                        file_data = f.read()
+                        response_data[file_path] = {
+                            'data': file_data.decode('latin1'),
+                            'size': file_size
+                        }
+                total_size += file_size
+                print(f"[admin_file_server] Added {file_path} ({file_size} bytes) to response")
                     
         return jsonify({
             'files': response_data,
@@ -324,6 +331,37 @@ def download_file():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+# Add timeout handling for active syncs
+def check_sync_timeout():
+    """Check for timed out syncs and clear them."""
+    global active_sync
+    while True:
+        try:
+            with sync_lock:
+                if active_sync:
+                    # If a sync has been active for more than 5 minutes, clear it
+                    last_activity = app.config.get('last_sync_activity', {}).get(active_sync)
+                    if last_activity and time.time() - last_activity > 300:  # 5 minutes
+                        print(f"[admin_file_server] Sync timed out for {active_sync}")
+                        active_sync = None
+                        if not sync_queue.empty():
+                            active_sync = sync_queue.get()
+            time.sleep(10)  # Check every 10 seconds
+        except Exception as e:
+            print(f"[admin_file_server] Error in sync timeout checker: {e}")
+            time.sleep(10)
+
+# Start the timeout checker thread
+timeout_thread = Thread(target=check_sync_timeout, daemon=True)
+timeout_thread.start()
+
+# Update activity timestamp whenever a kiosk makes a request
+def update_sync_activity(kiosk_id):
+    """Update the last activity timestamp for a kiosk."""
+    if 'last_sync_activity' not in app.config:
+        app.config['last_sync_activity'] = {}
+    app.config['last_sync_activity'][kiosk_id] = time.time()
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=ADMIN_SERVER_PORT, debug=True)
