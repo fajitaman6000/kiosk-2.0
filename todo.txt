@@ -16,6 +16,8 @@ message_handler may need a verification system so that the admin can resend a me
 
 copy over casino sd card files
 
+data hangup commit bad
+
 ##############################################################################################################################
 # priority bugs
 
