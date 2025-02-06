@@ -114,20 +114,45 @@ class AdminSyncManager:
             traceback.print_exc()
             return False
 
+    def _get_local_ip(self):
+        """Get the local IP address of the admin machine."""
+        try:
+            # Create a temporary socket to determine local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                # Doesn't need to be reachable, just used to get local IP
+                s.connect(('10.255.255.255', 1))
+                local_ip = s.getsockname()[0]
+            finally:
+                s.close()
+            
+            if local_ip == '127.0.0.1':
+                print("[admin_sync_manager] Warning: Could not determine non-localhost IP address")
+                return None
+            return local_ip
+        except Exception as e:
+            print(f"[admin_sync_manager] Error getting local IP: {e}")
+            return None
+
     def _send_message_to_kiosk(self, computer_name):
         """Send a sync message to a specific kiosk."""
         if computer_name not in self.kiosk_ips:
             print(f"[admin_sync_manager] Warning: No IP found for {computer_name}")
             return False
 
+        local_ip = self._get_local_ip()
+        if not local_ip:
+            print("[admin_sync_manager] Error: Could not determine admin IP address")
+            return False
+
         message = {
             'type': SYNC_MESSAGE_TYPE,
             'computer_name': computer_name,  # Target specific kiosk
-            'admin_ip': self.app.network_handler.socket.getsockname()[0],
+            'admin_ip': local_ip,
             'sync_id': str(time.time())  # Add unique sync ID
         }
         self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
-        print(f"[admin_sync_manager] Message sent to kiosk: {computer_name}")
+        print(f"[admin_sync_manager] Message sent to kiosk: {computer_name} with admin IP: {local_ip}")
         return True
 
     def _send_message_to_kiosks(self, target_kiosk=None):

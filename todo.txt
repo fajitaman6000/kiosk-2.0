@@ -10,7 +10,7 @@ hint manager needs updating
     prop control is visible within the hint manager area
     hint manager could easily be renamed to just manager settings and adjusted accordingly
 
-local file check is still stopping other kiosks to download files
+infinite looping commit last good one
 
 sync failure handling
 

@@ -20,6 +20,12 @@ class MessageHandler:
         print(f"[message handler]\n[DEBUG] Received message: {msg}")
         try:
             if msg['type'] == SYNC_MESSAGE_TYPE:
+                # Only process sync message if it's meant for this kiosk or is a broadcast message
+                target_computer = msg.get('computer_name')
+                if target_computer not in ('all', self.kiosk_app.computer_name):
+                    print(f"[message handler] Ignoring sync message intended for: {target_computer}")
+                    return
+                
                 admin_ip = msg.get('admin_ip')
                 sync_id = msg.get('sync_id')
                 
