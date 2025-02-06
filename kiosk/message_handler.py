@@ -14,6 +14,34 @@ class MessageHandler:
         self.video_manager = video_manager
         self.file_downloader = None  # Initialize later when we have the admin IP
         self.last_sync_id = None  # Track last sync ID
+        self._last_admin_ip = None  # Track last admin IP to detect changes
+
+    def _ensure_file_downloader(self, admin_ip):
+        """Ensure we have a properly initialized file downloader with the correct admin IP."""
+        try:
+            if not admin_ip:
+                print("[message handler] Error: No admin IP provided")
+                return False
+            
+            # If IP changed or downloader not initialized, create new one
+            if self.file_downloader is None or self._last_admin_ip != admin_ip:
+                # Clean up old downloader if it exists
+                if self.file_downloader:
+                    print(f"[message handler] Stopping old file downloader (admin IP changed from {self._last_admin_ip} to {admin_ip})")
+                    self.file_downloader.stop()
+                    self.file_downloader = None
+                    
+                print(f"[message handler] Creating new file downloader for admin IP: {admin_ip}")
+                self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
+                self.file_downloader.start()
+                self._last_admin_ip = admin_ip
+                
+            return True
+        except Exception as e:
+            print(f"[message handler] Error initializing file downloader: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
@@ -30,27 +58,20 @@ class MessageHandler:
                 sync_id = msg.get('sync_id')
                 
                 if admin_ip:
-                    if self.file_downloader is None:
-                        self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
-                        self.file_downloader.start()
-                    elif self.file_downloader.admin_ip != admin_ip:
-                        self.file_downloader.stop()
-                        self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
-                        self.file_downloader.start()
-                    
-                    # Request sync and store sync ID
-                    print(f"[message handler] Initiating sync with admin at {admin_ip}")
-                    self.last_sync_id = sync_id
-                    self.file_downloader.request_sync()
-                    
-                    # Send confirmation immediately that we received the sync request
-                    confirm_msg = {
-                        'type': 'sync_confirmation',
-                        'computer_name': self.kiosk_app.computer_name,
-                        'sync_id': sync_id,
-                        'status': 'received'
-                    }
-                    self.kiosk_app.network.send_message(confirm_msg)
+                    if self._ensure_file_downloader(admin_ip):
+                        # Request sync and store sync ID
+                        print(f"[message handler] Initiating sync with admin at {admin_ip}")
+                        self.last_sync_id = sync_id
+                        self.file_downloader.request_sync()
+                        
+                        # Send confirmation immediately that we received the sync request
+                        confirm_msg = {
+                            'type': 'sync_confirmation',
+                            'computer_name': self.kiosk_app.computer_name,
+                            'sync_id': sync_id,
+                            'status': 'received'
+                        }
+                        self.kiosk_app.network.send_message(confirm_msg)
 
             if msg['type'] == 'room_assignment' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print(f"[message handler][DEBUG] Processing room assignment: {msg['room']}")

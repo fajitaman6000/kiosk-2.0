@@ -14,11 +14,9 @@ infinite looping commit last good one
 
 sync failure handling
 
-message_handler may need a verification system so that the admin can resend a message if it fails to send
+verify local hash-cache is being respected
 
-copy over casino sd card files
-
-data hangup commit bad
+wizard consistently not receiving sync messages
 
 ##############################################################################################################################
 # priority bugs

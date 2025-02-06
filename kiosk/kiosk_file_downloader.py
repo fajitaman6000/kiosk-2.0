@@ -485,36 +485,77 @@ class KioskFileDownloader:
         """Background handler that only processes sync when requested."""
         consecutive_errors = 0
         last_sync_attempt = 0
+        
         while self.running:
             try:
                 current_time = time.time()
-                if self.sync_requested:
-                    # Add minimum time between sync attempts
-                    if current_time - last_sync_attempt < 5:  # Wait at least 5 seconds between attempts
-                        time.sleep(1)
+                if not self.sync_requested:
+                    time.sleep(2)  # Longer delay when not actively syncing
+                    continue
+                    
+                # Add minimum time between sync attempts
+                if current_time - last_sync_attempt < 5:  # Wait at least 5 seconds between attempts
+                    time.sleep(1)
+                    continue
+                    
+                last_sync_attempt = current_time
+                
+                # First check if we're already syncing
+                if not self.is_syncing:
+                    if not self._request_sync_permission():
+                        print("[kiosk_file_downloader] Failed to request sync permission, will retry...")
+                        time.sleep(5)  # Wait before retry
                         continue
-                        
-                    last_sync_attempt = current_time
+                    self.is_syncing = True
+                    
+                # Check our position in the queue
+                status = self._check_sync_status()
+                if not status:
+                    print("[kiosk_file_downloader] Unable to get sync status, will retry...")
+                    time.sleep(2)
+                    continue
+                    
+                if status.get('status') != 'active':
+                    if status.get('status') == 'queued':
+                        position = status.get('position', 'unknown')
+                        print(f"[kiosk_file_downloader] Waiting in queue position {position}")
+                    elif status.get('status') == 'not_queued':
+                        print("[kiosk_file_downloader] Not in queue, requesting sync permission...")
+                        self.is_syncing = False  # Reset sync flag to trigger new request
+                    time.sleep(2)  # Add small delay between status checks
+                    continue
+                    
+                try:
                     success = self._check_for_updates()
                     if success:
                         consecutive_errors = 0  # Reset error counter on success
-                    time.sleep(1)  # Small delay between checks when actively syncing
-                else:
-                    time.sleep(2)  # Longer delay when not actively syncing
-            except requests.exceptions.RequestException as e:
-                print(f"[kiosk_file_downloader] Network error occurred: {e}")
-                consecutive_errors += 1
-                if consecutive_errors >= 3:
-                    print("[kiosk_file_downloader] Too many consecutive errors, resetting sync state...")
-                    self.is_syncing = False
-                    self.sync_requested = False  # Also clear sync request on too many errors
-                    consecutive_errors = 0
-                time.sleep(5)  # Longer delay after network error
+                        self.sync_requested = False  # Clear sync request flag on success
+                        self.is_syncing = False  # Reset sync state
+                    else:
+                        consecutive_errors += 1
+                        if consecutive_errors >= 3:
+                            print("[kiosk_file_downloader] Too many consecutive errors, resetting sync state...")
+                            self.is_syncing = False
+                            self.sync_requested = False
+                            consecutive_errors = 0
+                            time.sleep(5)  # Longer delay after too many errors
+                        
+                except requests.exceptions.RequestException as e:
+                    print(f"[kiosk_file_downloader] Network error during sync: {e}")
+                    consecutive_errors += 1
+                    time.sleep(5)  # Wait longer after network error
+                    
+                except Exception as e:
+                    print(f"[kiosk_file_downloader] Unexpected error during sync: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    consecutive_errors += 1
+                    time.sleep(5)  # Wait after unexpected error
+                    
             except Exception as e:
-                print(f"[kiosk_file_downloader] An error occurred: {e}")
+                print(f"[kiosk_file_downloader] Critical error in background handler: {e}")
                 import traceback
                 traceback.print_exc()
-                self.sync_requested = False  # Reset flag on error
-                self.is_syncing = False  # Reset sync state on unexpected error
-                consecutive_errors = 0
-                time.sleep(5)  # Longer delay after unexpected error
+                self.sync_requested = False  # Reset flag on critical error
+                self.is_syncing = False  # Reset sync state on critical error
+                time.sleep(5)  # Wait after critical error
