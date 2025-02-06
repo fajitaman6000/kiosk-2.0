@@ -114,32 +114,39 @@ class AdminSyncManager:
             traceback.print_exc()
             return False
 
-    def _send_message_to_kiosks(self):
-        """Send a message to kiosks to initiate update."""
-        print("[admin_sync_manager] Sending update messages to kiosks...")
-        # Get the local IP address
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            # Doesn't need to be reachable, just used to get local IP
-            s.connect(('10.255.255.255', 1))
-            local_ip = s.getsockname()[0]
-        except Exception:
-            local_ip = '127.0.0.1'
-        finally:
-            s.close()
-
-        if local_ip == '127.0.0.1':
-            print("[admin_sync_manager] Warning: Could not determine non-localhost IP address")
-            return
+    def _send_message_to_kiosk(self, computer_name):
+        """Send a sync message to a specific kiosk."""
+        if computer_name not in self.kiosk_ips:
+            print(f"[admin_sync_manager] Warning: No IP found for {computer_name}")
+            return False
 
         message = {
             'type': SYNC_MESSAGE_TYPE,
-            'computer_name': "all",
-            'admin_ip': local_ip,
+            'computer_name': computer_name,  # Target specific kiosk
+            'admin_ip': self.app.network_handler.socket.getsockname()[0],
             'sync_id': str(time.time())  # Add unique sync ID
         }
         self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
-        print(f"[admin_sync_manager] Message sent to all devices with admin IP: {local_ip}")
+        print(f"[admin_sync_manager] Message sent to kiosk: {computer_name}")
+        return True
+
+    def _send_message_to_kiosks(self, target_kiosk=None):
+        """Send sync messages to kiosks. If target_kiosk is specified, only send to that kiosk."""
+        print("[admin_sync_manager] Sending update messages to kiosks...")
+        
+        if not self._get_kiosk_ips():
+            print("[admin_sync_manager] No kiosks found")
+            return False
+
+        if target_kiosk:
+            return self._send_message_to_kiosk(target_kiosk)
+        
+        # If no target specified, send to all kiosks
+        success = False
+        for computer_name in self.kiosk_ips.keys():
+            if self._send_message_to_kiosk(computer_name):
+                success = True
+        return success
 
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
@@ -179,5 +186,5 @@ class AdminSyncManager:
                 if not status['confirmed'] and (current_time - status['sent']) > 10:  # 10 second timeout
                     print(f"[admin_sync_manager] Resending sync message to {computer_name}")
                     status['sent'] = current_time
-                    self._send_message_to_kiosks()
+                    self._send_message_to_kiosks(target_kiosk=computer_name)  # Only send to this specific kiosk
             time.sleep(1)
