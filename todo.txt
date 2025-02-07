@@ -42,6 +42,8 @@ restarter moved to kiosk app
 edit hint image content within hint manager
 ending audio is apparently admin app side?
 
+hint count on THEIR side
+
 "you won" screen
 
 save prop status for blackbox, delete save upon load

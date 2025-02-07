@@ -54,7 +54,12 @@ class KioskFileDownloader:
         """Perform a full inventory of local files and their hashes."""
         print("[kiosk_file_downloader] Performing full file inventory...")
         local_files = {}
-        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+        inventory_start_time = time.time()
+        last_progress_time = time.time()
+        processed_count = 0
+        
+        try:
+            # First just collect all file paths to process
             file_paths = []
             for root, _, filenames in os.walk("."):
                 for filename in filenames:
@@ -63,24 +68,51 @@ class KioskFileDownloader:
                     if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
                         file_paths.append(normalized_path)
 
-            future_to_path = {
-                executor.submit(self._calculate_file_hash, path): path
-                for path in file_paths
-            }
-            
-            for future in as_completed(future_to_path):
-                path = future_to_path[future]
-                try:
-                    file_hash = future.result()
-                    if file_hash:
-                        local_files[path] = file_hash
-                        print(f"[kiosk_file_downloader] Local file: {path} -> {file_hash[:8]}...")
-                except Exception as e:
-                    print(f"[kiosk_file_downloader] Error hashing {path}: {e}")
-        
-        print(f"[kiosk_file_downloader] Inventory complete - found {len(local_files)} files")
-        self._save_cache(local_files)
-        return local_files
+            total_files = len(file_paths)
+            print(f"[kiosk_file_downloader] Found {total_files} files to process")
+
+            # Process files in smaller batches
+            batch_size = 10  # Process 10 files at a time
+            for i in range(0, len(file_paths), batch_size):
+                # Check for stall
+                if time.time() - last_progress_time > self.stall_timeout:
+                    print("[kiosk_file_downloader] Inventory appears stalled, restarting process...")
+                    return self._load_cache()  # Fall back to cache on stall
+
+                batch = file_paths[i:i + batch_size]
+                with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+                    future_to_path = {
+                        executor.submit(self._calculate_file_hash, path): path
+                        for path in batch
+                    }
+                    
+                    for future in as_completed(future_to_path):
+                        path = future_to_path[future]
+                        try:
+                            file_hash = future.result(timeout=30)  # 30 second timeout per file
+                            if file_hash:
+                                local_files[path] = file_hash
+                                processed_count += 1
+                                last_progress_time = time.time()  # Update progress timestamp
+                                if processed_count % 10 == 0:  # Log progress every 10 files
+                                    print(f"[kiosk_file_downloader] Processed {processed_count}/{total_files} files...")
+                        except Exception as e:
+                            print(f"[kiosk_file_downloader] Error processing {path}: {e}")
+                            continue
+
+                # Save progress periodically
+                if len(local_files) % 50 == 0:  # Save every 50 files
+                    self._save_cache(local_files)
+
+            total_time = time.time() - inventory_start_time
+            print(f"[kiosk_file_downloader] Inventory complete - processed {processed_count}/{total_files} files in {total_time:.1f} seconds")
+            self._save_cache(local_files)
+            return local_files
+
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Critical error during inventory: {e}")
+            traceback.print_exc()
+            return self._load_cache()  # Fall back to cache on error
 
     def start(self):
         """Start the file downloader thread."""
@@ -96,9 +128,15 @@ class KioskFileDownloader:
     def _calculate_file_hash(self, file_path):
         """Calculate the SHA256 hash of a file."""
         hasher = hashlib.sha256()
+        start_time = time.time()
         try:
             with open(file_path, 'rb') as file:
                 while True:
+                    # Check for stall during hash calculation
+                    if time.time() - start_time > self.stall_timeout:
+                        print(f"[kiosk_file_downloader] Hash calculation stalled for {file_path}")
+                        return None
+                        
                     chunk = file.read(4096)
                     if not chunk:
                         break
