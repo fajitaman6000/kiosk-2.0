@@ -4,7 +4,8 @@ from pathlib import Path
 
 class RoomPersistence:
     def __init__(self):
-        self.config_dir = Path(os.path.expanduser("~")) / ".kiosk"
+        # Store data locally in the kiosk directory
+        self.config_dir = Path(__file__).parent / "data"
         self.config_file = self.config_dir / "room_assignment.json"
         print(f"[room persistence]\nRoom Persistence initialized")
         #print(f"[room persistence]Config directory: {self.config_dir}")
@@ -12,12 +13,12 @@ class RoomPersistence:
         self._ensure_config_dir()
 
     def _ensure_config_dir(self):
-        """Create config directory if it doesn't exist"""
+        """Create data directory if it doesn't exist"""
         try:
             self.config_dir.mkdir(parents=True, exist_ok=True)
             #print(f"[room persistence]Config directory created/verified at: {self.config_dir}")
         except Exception as e:
-            print(f"[room persistence]Error creating config directory: {e}")
+            print(f"[room persistence]Error creating data directory: {e}")
 
     def save_room_assignment(self, room_number):
         """Save room assignment to persistent storage"""

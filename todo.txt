@@ -12,11 +12,9 @@ hint manager needs updating
 
 infinite looping commit last good one
 
-sync failure handling
-
 verify local hash-cache is being respected
 
-
+hash file needs to be excluded from sync
 
 ##############################################################################################################################
 # priority bugs
@@ -32,7 +30,6 @@ two gamemasters requesting the same video stream crashes that kiosk
 ##############################################################################################################################
 # known bugs
 
-admin server is hardcoded to right-side admin
 mqtt connections get crippled while running file sync
 props no longer being seen as offline
 some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)

@@ -31,4 +31,5 @@ admin/saved_hints.json
 admin/sync_directory/**
 kiosk/hint_image_files/**
 kiosk/hint_audio_files/**
+kiosk/data/**
 kiosk/file_hashes.json

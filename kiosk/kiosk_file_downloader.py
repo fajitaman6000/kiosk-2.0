@@ -23,13 +23,17 @@ class KioskFileDownloader:
         self.kiosk_id = socket.gethostname()
         self.is_syncing = False
         self.sync_requested = False
-        self.cache_file = Path("file_hashes.json")
+        # Store cache file in data directory
+        self.data_dir = Path("data")
+        self.cache_file = self.data_dir / "file_hashes.json"
         self.max_workers = 1  # Only download one file at a time
         self.chunk_size = 1 * 1024 * 1024  # 1MB chunks
         self.large_file_threshold = 10 * 1024 * 1024  # 10MB threshold for large files
         self.queue_generation = None  # Track queue generation number
         self.last_successful_operation = 0  # Track when we last successfully did anything
         self.stall_timeout = 30  # If no progress for 30 seconds, consider it stalled
+        # Ensure data directory exists
+        self.data_dir.mkdir(parents=True, exist_ok=True)
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -45,6 +49,8 @@ class KioskFileDownloader:
     def _save_cache(self, file_hashes):
         """Save file hashes to cache file"""
         try:
+            # Ensure data directory exists before saving
+            self.data_dir.mkdir(parents=True, exist_ok=True)
             with open(self.cache_file, 'w') as f:
                 json.dump(file_hashes, f, indent=2)
         except Exception as e:
@@ -65,7 +71,11 @@ class KioskFileDownloader:
                 for filename in filenames:
                     file_path = os.path.relpath(os.path.join(root, filename), ".")
                     normalized_path = file_path.replace("\\", "/")
-                    if not normalized_path.endswith(".py") and not "__pycache__" in normalized_path:
+                    # Ignore Python cache, data directory, and other non-synced files
+                    if (not normalized_path.endswith(".py") and 
+                        not "__pycache__" in normalized_path and
+                        not normalized_path.startswith("data/") and  # Ignore data directory
+                        not "data\\" in normalized_path):  # Also ignore Windows path format
                         try:
                             size = os.path.getsize(file_path)
                             file_info.append((normalized_path, size))
