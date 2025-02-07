@@ -28,6 +28,8 @@ class KioskFileDownloader:
         self.chunk_size = 1 * 1024 * 1024  # 1MB chunks
         self.large_file_threshold = 10 * 1024 * 1024  # 10MB threshold for large files
         self.queue_generation = None  # Track queue generation number
+        self.last_successful_operation = 0  # Track when we last successfully did anything
+        self.stall_timeout = 30  # If no progress for 30 seconds, consider it stalled
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -106,6 +108,14 @@ class KioskFileDownloader:
             print(f"[kiosk_file_downloader] Error calculating hash for {file_path}: {e}")
             return None
 
+    def _is_stalled(self):
+        """Check if operations have stalled."""
+        return time.time() - self.last_successful_operation > self.stall_timeout
+
+    def _update_last_operation(self):
+        """Update the last successful operation timestamp."""
+        self.last_successful_operation = time.time()
+
     def _make_request(self, method, url, **kwargs):
         """Make a network request with proper timeout and error handling."""
         try:
@@ -122,6 +132,7 @@ class KioskFileDownloader:
             
             response = session.request(method, url, **kwargs)
             response.raise_for_status()
+            self._update_last_operation()  # Mark successful network operation
             return response
             
         except requests.exceptions.Timeout:
@@ -134,7 +145,10 @@ class KioskFileDownloader:
             print(f"[kiosk_file_downloader] Request failed: {url} - {str(e)}")
             return None
         finally:
-            session.close()
+            try:
+                session.close()
+            except:
+                pass  # Ignore errors during cleanup
 
     def _request_sync_permission(self):
         """Request to be added to the sync queue."""
@@ -440,6 +454,9 @@ class KioskFileDownloader:
             status = self._check_sync_status()
             if not status:
                 print("[kiosk_file_downloader] Unable to get sync status, will retry...")
+                if self._is_stalled():
+                    print("[kiosk_file_downloader] Update check appears stalled...")
+                    self._reset_sync_state()
                 time.sleep(2)
                 return False
                 
@@ -543,6 +560,13 @@ class KioskFileDownloader:
         print("[kiosk_file_downloader] Sync requested")
         self.sync_requested = True
 
+    def _reset_sync_state(self):
+        """Reset all sync-related state."""
+        self.is_syncing = False
+        self.queue_generation = None
+        self.last_successful_operation = time.time()  # Reset operation timer
+        print("[kiosk_file_downloader] Reset sync state")
+
     def _background_download_handler(self):
         """Background handler that only processes sync when requested."""
         consecutive_errors = 0
@@ -553,6 +577,13 @@ class KioskFileDownloader:
         while self.running:
             try:
                 current_time = time.time()
+                
+                # Check for stalled operations
+                if self.sync_requested and self._is_stalled():
+                    print("[kiosk_file_downloader] Operations appear to be stalled, resetting state...")
+                    self._reset_sync_state()
+                    time.sleep(5)  # Give system time to recover
+                    continue
                 
                 if not self.sync_requested:
                     time.sleep(1)
@@ -572,54 +603,73 @@ class KioskFileDownloader:
                 
                 # First check if we're already syncing
                 if not self.is_syncing:
-                    if not self._request_sync_permission():
+                    try:
+                        if not self._request_sync_permission():
+                            time.sleep(2)
+                            # Check if we're stalled during sync permission request
+                            if self._is_stalled():
+                                print("[kiosk_file_downloader] Sync permission request appears stalled...")
+                                self._reset_sync_state()
+                            continue
+                        self.is_syncing = True
+                        last_sync_attempt = current_time
+                        self._update_last_operation()
+                    except Exception as e:
+                        print(f"[kiosk_file_downloader] Error requesting sync permission: {e}")
                         time.sleep(2)
                         continue
-                    self.is_syncing = True
-                    last_sync_attempt = current_time
                 
                 # Check queue status
-                status = self._check_sync_status()
-                if not status:
-                    consecutive_errors += 1
-                    if consecutive_errors >= 3:
-                        print("[kiosk_file_downloader] Too many status check failures, resetting sync state...")
-                        self.is_syncing = False
-                        self.queue_generation = None
-                        consecutive_errors = 0
-                    time.sleep(2)
-                    continue
-                
-                consecutive_errors = 0  # Reset error counter on successful status check
-                
-                if status.get('status') == 'active':
-                    try:
-                        if self._check_for_updates():
-                            self.sync_requested = False
-                            self.is_syncing = False
-                            self.queue_generation = None
-                            print("[kiosk_file_downloader] Sync completed successfully")
-                        else:
-                            print("[kiosk_file_downloader] Sync failed, will retry...")
-                            time.sleep(2)
-                    except Exception as e:
-                        print(f"[kiosk_file_downloader] Error during sync: {e}")
+                try:
+                    status = self._check_sync_status()
+                    if not status:
+                        consecutive_errors += 1
+                        if consecutive_errors >= 3 or self._is_stalled():
+                            print("[kiosk_file_downloader] Too many status check failures or stalled, resetting sync state...")
+                            self._reset_sync_state()
+                            consecutive_errors = 0
                         time.sleep(2)
-                
-                elif status.get('status') == 'queued':
-                    position = status.get('position', 'unknown')
-                    print(f"[kiosk_file_downloader] Waiting in queue position {position}")
-                    time.sleep(1)
-                
-                elif status.get('status') == 'not_queued':
-                    print("[kiosk_file_downloader] Not in queue, resetting sync state...")
-                    self.is_syncing = False
-                    self.queue_generation = None
+                        continue
+                    
+                    consecutive_errors = 0  # Reset error counter on successful status check
+                    self._update_last_operation()  # Mark successful status check
+                    
+                    if status.get('status') == 'active':
+                        try:
+                            if self._check_for_updates():
+                                self.sync_requested = False
+                                self._reset_sync_state()
+                                print("[kiosk_file_downloader] Sync completed successfully")
+                            else:
+                                print("[kiosk_file_downloader] Sync failed, will retry...")
+                                if self._is_stalled():
+                                    print("[kiosk_file_downloader] Sync appears stalled during update...")
+                                    self._reset_sync_state()
+                                time.sleep(2)
+                        except Exception as e:
+                            print(f"[kiosk_file_downloader] Error during sync: {e}")
+                            if self._is_stalled():
+                                self._reset_sync_state()
+                            time.sleep(2)
+                    
+                    elif status.get('status') == 'queued':
+                        position = status.get('position', 'unknown')
+                        print(f"[kiosk_file_downloader] Waiting in queue position {position}")
+                        time.sleep(1)
+                    
+                    elif status.get('status') == 'not_queued':
+                        print("[kiosk_file_downloader] Not in queue, resetting sync state...")
+                        self._reset_sync_state()
+                        time.sleep(2)
+                    
+                except Exception as e:
+                    print(f"[kiosk_file_downloader] Error checking sync status: {e}")
+                    if self._is_stalled():
+                        self._reset_sync_state()
                     time.sleep(2)
                 
             except Exception as e:
                 print(f"[kiosk_file_downloader] Critical error in background handler: {e}")
                 traceback.print_exc()
-                self.is_syncing = False
-                self.queue_generation = None
-                time.sleep(2)
+                self._reset_sync_state()
+                time.sleep(5)  # Longer sleep on critical errors
