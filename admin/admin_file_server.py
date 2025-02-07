@@ -132,16 +132,16 @@ def get_sync_status():
         if not kiosk_id:
             return jsonify({'error': 'No kiosk ID provided'}), 400
             
-        if active_sync == kiosk_id:
-            return jsonify({'status': 'active'})
-            
-        position = 0
-        queue_items = list(sync_queue.queue)
-        if kiosk_id in queue_items:
-            position = queue_items.index(kiosk_id) + 1
-            return jsonify({'status': 'queued', 'position': position})
-            
-        return jsonify({'status': 'not_queued'})
+        with sync_lock:
+            if active_sync == kiosk_id:
+                return jsonify({'status': 'active'})
+                
+            queue_items = list(sync_queue.queue)
+            if kiosk_id in queue_items:
+                position = queue_items.index(kiosk_id) + 1
+                return jsonify({'status': 'queued', 'position': position, 'queue_id': id(sync_queue)})
+                
+            return jsonify({'status': 'not_queued', 'queue_id': id(sync_queue)})
     except Exception as e:
         print(f"[admin_file_server] Error getting sync status: {e}")
         return jsonify({'error': str(e)}), 500
@@ -156,12 +156,34 @@ def request_sync():
             
         kiosk_id = data['kiosk_id']
         
-        if kiosk_id not in sync_queue.queue and active_sync != kiosk_id:
+        with sync_lock:
+            # If already active, just confirm it
+            if active_sync == kiosk_id:
+                return jsonify({
+                    'status': 'active',
+                    'queue_id': id(sync_queue)
+                })
+                
+            # If already in queue, return position
+            if kiosk_id in sync_queue.queue:
+                position = list(sync_queue.queue).index(kiosk_id) + 1
+                return jsonify({
+                    'status': 'queued',
+                    'position': position,
+                    'queue_id': id(sync_queue)
+                })
+            
+            # Add to queue if not already present
             sync_queue.put(kiosk_id)
             update_sync_activity(kiosk_id)
-            print(f"[admin_file_server] Added {kiosk_id} to sync queue")
+            position = list(sync_queue.queue).index(kiosk_id) + 1
+            print(f"[admin_file_server] Added {kiosk_id} to sync queue at position {position}")
             
-        return jsonify({'message': 'Added to sync queue'})
+            return jsonify({
+                'status': 'queued',
+                'position': position,
+                'queue_id': id(sync_queue)
+            })
     except Exception as e:
         print(f"[admin_file_server] Error requesting sync: {e}")
         return jsonify({'error': str(e)}), 500
@@ -251,6 +273,9 @@ def process_next_sync():
         if active_sync is None and not sync_queue.empty():
             active_sync = sync_queue.get()
             print(f"[admin_file_server] Now syncing with {active_sync}")
+            # Clear activity timestamp when becoming active
+            if 'last_sync_activity' in app.config and active_sync in app.config['last_sync_activity']:
+                del app.config['last_sync_activity'][active_sync]
 
 # Add background thread to process queue
 def queue_processor():

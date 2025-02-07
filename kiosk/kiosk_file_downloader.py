@@ -135,6 +135,28 @@ class KioskFileDownloader:
         finally:
             session.close()
 
+    def _request_sync_permission(self):
+        """Request to be added to the sync queue."""
+        url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/request_sync"
+        response = self._make_request('POST', url, json={'kiosk_id': self.kiosk_id})
+        
+        if not response:
+            return False
+            
+        try:
+            data = response.json()
+            if data.get('status') == 'active':
+                self.current_queue_id = data.get('queue_id')
+                return True
+            elif data.get('status') == 'queued':
+                self.current_queue_id = data.get('queue_id')
+                print(f"[kiosk_file_downloader] Queued at position {data.get('position')}")
+                return False
+            return False
+        except Exception as e:
+            print(f"[kiosk_file_downloader] Error parsing sync permission response: {e}")
+            return False
+
     def _check_sync_status(self):
         """Check if it's our turn to sync."""
         url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/sync_status"
@@ -144,16 +166,17 @@ class KioskFileDownloader:
             return None
         
         try:
-            return response.json()
+            data = response.json()
+            # If queue ID changed, we need to re-request sync permission
+            if hasattr(self, 'current_queue_id') and data.get('queue_id') != self.current_queue_id:
+                print("[kiosk_file_downloader] Queue state changed, requesting new sync permission...")
+                self.is_syncing = False
+                return {'status': 'not_queued'}
+                
+            return data
         except Exception as e:
             print(f"[kiosk_file_downloader] Error parsing sync status response: {e}")
             return None
-
-    def _request_sync_permission(self):
-        """Request to be added to the sync queue."""
-        url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/request_sync"
-        response = self._make_request('POST', url, json={'kiosk_id': self.kiosk_id})
-        return response is not None
 
     def _finish_sync(self):
         """Notify server that sync is complete."""
@@ -537,7 +560,6 @@ class KioskFileDownloader:
                 # First check if we're already syncing
                 if not self.is_syncing:
                     if not self._request_sync_permission():
-                        print("[kiosk_file_downloader] Failed to request sync permission, will retry...")
                         time.sleep(2)
                         continue
                     self.is_syncing = True
@@ -561,6 +583,8 @@ class KioskFileDownloader:
                         if self._check_for_updates():
                             self.sync_requested = False
                             self.is_syncing = False
+                            if hasattr(self, 'current_queue_id'):
+                                delattr(self, 'current_queue_id')
                             print("[kiosk_file_downloader] Sync completed successfully")
                         else:
                             print("[kiosk_file_downloader] Sync failed, will retry...")
@@ -577,10 +601,14 @@ class KioskFileDownloader:
                 elif status.get('status') == 'not_queued':
                     print("[kiosk_file_downloader] Not in queue, resetting sync state...")
                     self.is_syncing = False
+                    if hasattr(self, 'current_queue_id'):
+                        delattr(self, 'current_queue_id')
                     time.sleep(2)
                 
             except Exception as e:
                 print(f"[kiosk_file_downloader] Critical error in background handler: {e}")
                 traceback.print_exc()
                 self.is_syncing = False
+                if hasattr(self, 'current_queue_id'):
+                    delattr(self, 'current_queue_id')
                 time.sleep(2)
