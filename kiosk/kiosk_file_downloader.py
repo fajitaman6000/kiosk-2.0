@@ -27,6 +27,7 @@ class KioskFileDownloader:
         self.max_workers = 1  # Only download one file at a time
         self.chunk_size = 1 * 1024 * 1024  # 1MB chunks
         self.large_file_threshold = 10 * 1024 * 1024  # 10MB threshold for large files
+        self.queue_generation = None  # Track queue generation number
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -146,10 +147,10 @@ class KioskFileDownloader:
         try:
             data = response.json()
             if data.get('status') == 'active':
-                self.current_queue_id = data.get('queue_id')
+                self.queue_generation = data.get('generation')
                 return True
             elif data.get('status') == 'queued':
-                self.current_queue_id = data.get('queue_id')
+                self.queue_generation = data.get('generation')
                 print(f"[kiosk_file_downloader] Queued at position {data.get('position')}")
                 return False
             return False
@@ -167,11 +168,18 @@ class KioskFileDownloader:
         
         try:
             data = response.json()
-            # If queue ID changed, we need to re-request sync permission
-            if hasattr(self, 'current_queue_id') and data.get('queue_id') != self.current_queue_id:
-                print("[kiosk_file_downloader] Queue state changed, requesting new sync permission...")
+            current_generation = data.get('generation')
+            
+            # If queue generation changed, we need to re-request sync permission
+            if self.queue_generation is not None and current_generation != self.queue_generation:
+                print(f"[kiosk_file_downloader] Queue generation changed from {self.queue_generation} to {current_generation}, re-requesting sync permission...")
                 self.is_syncing = False
+                self.queue_generation = None
                 return {'status': 'not_queued'}
+                
+            # Update our generation number if we don't have one
+            if self.queue_generation is None:
+                self.queue_generation = current_generation
                 
             return data
         except Exception as e:
@@ -183,6 +191,11 @@ class KioskFileDownloader:
         url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/finish_sync"
         response = self._make_request('POST', url, json={'kiosk_id': self.kiosk_id})
         if response:
+            try:
+                data = response.json()
+                self.queue_generation = data.get('generation')  # Update to new generation
+            except Exception as e:
+                print(f"[kiosk_file_downloader] Error parsing finish sync response: {e}")
             self.is_syncing = False
             return True
         return False
@@ -572,6 +585,7 @@ class KioskFileDownloader:
                     if consecutive_errors >= 3:
                         print("[kiosk_file_downloader] Too many status check failures, resetting sync state...")
                         self.is_syncing = False
+                        self.queue_generation = None
                         consecutive_errors = 0
                     time.sleep(2)
                     continue
@@ -583,8 +597,7 @@ class KioskFileDownloader:
                         if self._check_for_updates():
                             self.sync_requested = False
                             self.is_syncing = False
-                            if hasattr(self, 'current_queue_id'):
-                                delattr(self, 'current_queue_id')
+                            self.queue_generation = None
                             print("[kiosk_file_downloader] Sync completed successfully")
                         else:
                             print("[kiosk_file_downloader] Sync failed, will retry...")
@@ -601,14 +614,12 @@ class KioskFileDownloader:
                 elif status.get('status') == 'not_queued':
                     print("[kiosk_file_downloader] Not in queue, resetting sync state...")
                     self.is_syncing = False
-                    if hasattr(self, 'current_queue_id'):
-                        delattr(self, 'current_queue_id')
+                    self.queue_generation = None
                     time.sleep(2)
                 
             except Exception as e:
                 print(f"[kiosk_file_downloader] Critical error in background handler: {e}")
                 traceback.print_exc()
                 self.is_syncing = False
-                if hasattr(self, 'current_queue_id'):
-                    delattr(self, 'current_queue_id')
+                self.queue_generation = None
                 time.sleep(2)

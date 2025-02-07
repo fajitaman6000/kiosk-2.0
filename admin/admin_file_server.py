@@ -17,6 +17,9 @@ sync_queue = Queue()
 active_sync = None
 sync_lock = Lock()
 
+# Add at the start of the file, after imports
+queue_generation = 0  # Global counter for queue state changes
+
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_files(path):
@@ -134,14 +137,24 @@ def get_sync_status():
             
         with sync_lock:
             if active_sync == kiosk_id:
-                return jsonify({'status': 'active'})
+                return jsonify({
+                    'status': 'active',
+                    'generation': queue_generation
+                })
                 
             queue_items = list(sync_queue.queue)
             if kiosk_id in queue_items:
                 position = queue_items.index(kiosk_id) + 1
-                return jsonify({'status': 'queued', 'position': position, 'queue_id': id(sync_queue)})
+                return jsonify({
+                    'status': 'queued',
+                    'position': position,
+                    'generation': queue_generation
+                })
                 
-            return jsonify({'status': 'not_queued', 'queue_id': id(sync_queue)})
+            return jsonify({
+                'status': 'not_queued',
+                'generation': queue_generation
+            })
     except Exception as e:
         print(f"[admin_file_server] Error getting sync status: {e}")
         return jsonify({'error': str(e)}), 500
@@ -161,7 +174,7 @@ def request_sync():
             if active_sync == kiosk_id:
                 return jsonify({
                     'status': 'active',
-                    'queue_id': id(sync_queue)
+                    'generation': queue_generation
                 })
                 
             # If already in queue, return position
@@ -170,7 +183,7 @@ def request_sync():
                 return jsonify({
                     'status': 'queued',
                     'position': position,
-                    'queue_id': id(sync_queue)
+                    'generation': queue_generation
                 })
             
             # Add to queue if not already present
@@ -182,7 +195,7 @@ def request_sync():
             return jsonify({
                 'status': 'queued',
                 'position': position,
-                'queue_id': id(sync_queue)
+                'generation': queue_generation
             })
     except Exception as e:
         print(f"[admin_file_server] Error requesting sync: {e}")
@@ -254,24 +267,26 @@ def finish_sync():
             
         kiosk_id = data['kiosk_id']
         
-        global active_sync
+        global active_sync, queue_generation
         with sync_lock:
             if active_sync == kiosk_id:
                 active_sync = None
+                queue_generation += 1  # Increment generation on queue state change
                 if not sync_queue.empty():
                     active_sync = sync_queue.get()
                     
-        return jsonify({'message': 'Sync completed'})
+        return jsonify({'message': 'Sync completed', 'generation': queue_generation})
     except Exception as e:
         print(f"[admin_file_server] Error finishing sync: {e}")
         return jsonify({'error': str(e)}), 500
 
 def process_next_sync():
     """Process next kiosk in sync queue."""
-    global active_sync
+    global active_sync, queue_generation
     with sync_lock:
         if active_sync is None and not sync_queue.empty():
             active_sync = sync_queue.get()
+            queue_generation += 1  # Increment generation when activating new sync
             print(f"[admin_file_server] Now syncing with {active_sync}")
             # Clear activity timestamp when becoming active
             if 'last_sync_activity' in app.config and active_sync in app.config['last_sync_activity']:
