@@ -16,12 +16,16 @@ sync failure handling
 
 verify local hash-cache is being respected
 
-wizard consistently not receiving sync messages
+
 
 ##############################################################################################################################
 # priority bugs
 
-queue position not always successfully maintained
+kiosk doesn't retry/add itself back to queue after failed sync attempt
+permission issue(?) with casino computer not writing room peristence file (create it in local directory)
+time machine camera loading issue
+wizard not receiving sync messages
+
 clear hints button broken but reset kiosk still works
 two gamemasters requesting the same video stream crashes that kiosk
 
@@ -60,7 +64,7 @@ walkie to lobby: room states for automatic standbys/room victory/out of time
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
 technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
-
+dark theme
 
 profile creation,
 profile deletion (admin only)

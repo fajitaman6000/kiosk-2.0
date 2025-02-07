@@ -647,6 +647,7 @@ class KioskFileDownloader:
         consecutive_errors = 0
         last_sync_attempt = 0
         last_status_check = 0
+        last_queue_message = 0  # Track when we last printed queue position
         status_check_interval = 2  # Check status every 2 seconds
         
         while self.running:
@@ -654,11 +655,20 @@ class KioskFileDownloader:
                 current_time = time.time()
                 
                 # Check for stalled operations
-                if self.sync_requested and self._is_stalled():
-                    print("[kiosk_file_downloader] Operations appear to be stalled, resetting state...")
-                    self._reset_sync_state()
-                    time.sleep(5)  # Give system time to recover
-                    continue
+                if self.sync_requested:
+                    # If we're queued but haven't printed position in a while, we're stalled
+                    if last_queue_message > 0 and current_time - last_queue_message > self.stall_timeout:
+                        print("[kiosk_file_downloader] Queue position checks appear stalled, resetting state...")
+                        self._reset_sync_state()
+                        time.sleep(5)
+                        continue
+                        
+                    # General stall check
+                    if self._is_stalled():
+                        print("[kiosk_file_downloader] Operations appear to be stalled, resetting state...")
+                        self._reset_sync_state()
+                        time.sleep(5)
+                        continue
                 
                 if not self.sync_requested:
                     time.sleep(1)
@@ -710,6 +720,7 @@ class KioskFileDownloader:
                     self._update_last_operation()  # Mark successful status check
                     
                     if status.get('status') == 'active':
+                        last_queue_message = 0  # Reset queue message timer when active
                         try:
                             if self._check_for_updates():
                                 self.sync_requested = False
@@ -730,11 +741,13 @@ class KioskFileDownloader:
                     elif status.get('status') == 'queued':
                         position = status.get('position', 'unknown')
                         print(f"[kiosk_file_downloader] Waiting in queue position {position}")
-                        time.sleep(1)
+                        last_queue_message = current_time  # Update last queue message time
+                        self._update_last_operation()  # Count queue position check as successful operation
                     
                     elif status.get('status') == 'not_queued':
-                        print("[kiosk_file_downloader] Not in queue, resetting sync state...")
-                        self._reset_sync_state()
+                        print("[kiosk_file_downloader] Not in queue, requesting sync permission...")
+                        self.is_syncing = False  # Reset sync flag to trigger new request
+                        last_queue_message = 0  # Reset queue message timer
                         time.sleep(2)
                     
                 except Exception as e:
