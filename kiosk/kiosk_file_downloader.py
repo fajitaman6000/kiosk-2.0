@@ -272,6 +272,17 @@ class KioskFileDownloader:
             try:
                 data = response.json()
                 self.queue_generation = data.get('generation')  # Update to new generation
+                
+                # Send completion confirmation via broadcast
+                if hasattr(self.kiosk_app, 'network'):
+                    confirm_msg = {
+                        'type': 'sync_confirmation',
+                        'computer_name': self.kiosk_id,
+                        'sync_id': getattr(self.kiosk_app.message_handler, 'last_sync_id', None),
+                        'status': 'completed'
+                    }
+                    self.kiosk_app.network.send_message(confirm_msg)
+                    
             except Exception as e:
                 print(f"[kiosk_file_downloader] Error parsing finish sync response: {e}")
             self.is_syncing = False
