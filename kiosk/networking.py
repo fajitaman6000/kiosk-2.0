@@ -101,12 +101,27 @@ class KioskNetwork:
                     import traceback
                     traceback.print_exc()
                     
-            except Exception as e:
+            except socket.error as e:
                 if self.running:
-                    print(f"[networking.py]Error in listen_for_messages: {e}")
+                    print(f"[networking.py]Socket error in listen_for_messages: {e}")
                     import traceback
                     traceback.print_exc()
-                break
+                    # Try to recover the socket
+                    try:
+                        self.socket.close()
+                        time.sleep(1)  # Brief pause before reconnecting
+                        self.setup_socket()
+                        print("[networking.py]Successfully recovered socket after error")
+                    except Exception as setup_error:
+                        print(f"[networking.py]Failed to recover socket: {setup_error}")
+                        if self.running:
+                            time.sleep(5)  # Wait longer before next attempt
+            except Exception as e:
+                if self.running:
+                    print(f"[networking.py]Unexpected error in listen_for_messages: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    time.sleep(1)  # Brief pause before next iteration
                 
     def shutdown(self):
         print("[networking.py]\nShutting down network...")
