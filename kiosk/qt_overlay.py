@@ -120,6 +120,47 @@ class Overlay:
     _hint_request_text_thread = None # Add a dedicated class variable for the hint request text thread
 
     @classmethod
+    def _force_landscape_orientation(cls, window):
+        """Force a Qt window to ignore Windows orientation and stay in landscape mode"""
+        if cls._parent_hwnd and window:
+            try:
+                # Add WS_EX_NOREDIRECTIONBITMAP to prevent Windows from applying orientation
+                style = win32gui.GetWindowLong(int(window.winId()), win32con.GWL_EXSTYLE)
+                style |= win32con.WS_EX_NOACTIVATE | 0x00200000  # 0x00200000 is WS_EX_NOREDIRECTIONBITMAP
+                win32gui.SetWindowLong(
+                    int(window.winId()),
+                    win32con.GWL_EXSTYLE,
+                    style
+                )
+                
+                # For QWidget windows, we need to handle orientation differently
+                window.setAttribute(Qt.WA_TranslucentBackground)
+                window.setWindowFlags(
+                    Qt.FramelessWindowHint |
+                    Qt.WindowStaysOnTopHint |
+                    Qt.Tool |
+                    Qt.WindowDoesNotAcceptFocus
+                )
+                window.setAttribute(Qt.WA_ShowWithoutActivating)
+                
+                # Find any QGraphicsView in the window and rotate its transform
+                for child in window.findChildren(QGraphicsView):
+                    # Create a transform that rotates from portrait to landscape
+                    transform = QTransform()
+                    transform.rotate(-90)  # Rotate counter-clockwise
+                    child.setTransform(transform)
+                    
+                    # Adjust the view's coordinate system
+                    scene = child.scene()
+                    if scene:
+                        scene_rect = scene.sceneRect()
+                        # Swap width and height to match rotation
+                        child.setSceneRect(0, 0, scene_rect.height(), scene_rect.width())
+                
+            except Exception as e:
+                print(f"[qt overlay]Error forcing landscape orientation: {e}")
+
+    @classmethod
     def init(cls, tkinter_root=None):
         """Initialize Qt application and base window"""
         if not cls._app:
@@ -147,10 +188,12 @@ class Overlay:
             if cls._parent_hwnd:
                 win32gui.SetParent(int(cls._window.winId()), cls._parent_hwnd)
                 style = win32gui.GetWindowLong(int(cls._window.winId()), win32con.GWL_EXSTYLE)
+                # Add WS_EX_NOREDIRECTIONBITMAP to prevent Windows from applying orientation
+                style |= win32con.WS_EX_NOACTIVATE | 0x00200000  # 0x00200000 is WS_EX_NOREDIRECTIONBITMAP
                 win32gui.SetWindowLong(
                     int(cls._window.winId()),
                     win32con.GWL_EXSTYLE,
-                    style | win32con.WS_EX_NOACTIVATE
+                    style
                 )
             
             # Create scene and view for cooldown text
@@ -176,6 +219,17 @@ class Overlay:
             # Initialize hint text overlay
             cls._init_hint_text_overlay()
             cls._init_hint_request_text_overlay()
+
+            # Apply landscape orientation to all windows
+            cls._force_landscape_orientation(cls._window)
+            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+                cls._force_landscape_orientation(cls._hint_text['window'])
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
+                cls._force_landscape_orientation(cls._hint_request_text['window'])
+            if hasattr(cls, '_timer') and hasattr(cls._timer, '_window'):
+                cls._force_landscape_orientation(cls._timer._window)
+            if hasattr(cls, '_button') and cls._button.get('window'):
+                cls._force_landscape_orientation(cls._button['window'])
 
         cls._initialized = True
         cls.init_timer()
