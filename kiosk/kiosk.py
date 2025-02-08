@@ -16,12 +16,6 @@ from kiosk_file_downloader import KioskFileDownloader
 from qt_overlay import Overlay
 from ctypes import windll
 
-# Add DPI awareness to prevent Windows from scaling
-try:
-    windll.user32.SetProcessDPIAware()
-except Exception as e:
-    print(f"[kiosk main]Failed to set DPI awareness: {e}")
-
 class KioskApp:
     def __init__(self):
         print("[kiosk main]Starting KioskApp initialization...")

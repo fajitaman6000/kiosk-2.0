@@ -1,16 +1,24 @@
 ##############################################################################################################################
 # important/immediate todo
 
+test upload of huge file numbers to a kiosk, like 700 mp3s and 300 pngs, and if it doesn't work out: (test failed, admin pc failed during upload)
+    consider using concurrent file downloads on the kiosk side using asyncio or the threading library in order to increase the speed it takes to download files
+    json on admin side to store metadata about each file and folder. track changes, only pull from admin when needed
+    always make sure cache is updated after a sync no matter what result is
+
 hint manager needs updating
     prop control is visible within the hint manager area
     hint manager could easily be renamed to just manager settings and adjusted accordingly
 
-portrait mode support instead of changing system settings??
+infinite looping commit last good one
+
+verify local hash-cache is being respected
+
+hash file needs to be excluded from sync
 
 ##############################################################################################################################
 # priority bugs
 
-kiosk can sometimes get stuck after "background loaded successfully", no longer indicating it received a sync even if it did, until ctrl c
 kiosk doesn't retry/add itself back to queue after failed sync attempt
 permission issue(?) with casino computer not writing room peristence file (create it in local directory)
 time machine camera loading issue
