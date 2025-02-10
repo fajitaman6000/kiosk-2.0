@@ -418,10 +418,11 @@ class VideoManager:
         """Force stop all video playback and cleanup for reset scenarios"""
         print("[video manager]\nVideoManager: Force stopping all video playback")
         
-        # First store any existing callbacks so we can clear them
-        existing_callbacks = []
-        if hasattr(self, 'completion_callback') and self.completion_callback:
-            existing_callbacks.append(self.completion_callback)
+        # Store current state
+        self._temp_callback = None
+        if hasattr(self, 'completion_callback'):
+            self._temp_callback = self.completion_callback
+            self.completion_callback = None
         
         # Reset all state flags first
         self.reset_state()
@@ -447,14 +448,17 @@ class VideoManager:
                 pass
             self.video_canvas = None
 
-        # Cancel any pending 'after' callbacks
+        # Cancel any pending 'after' callbacks for the current video only
         try:
             if hasattr(self.root, 'after_cancel'):
                 # Try to find and cancel any pending after calls
                 pending = self.root.tk.call('after', 'info')
                 for after_id in pending:
                     try:
-                        self.root.after_cancel(after_id)
+                        # Only cancel callbacks related to _thread_cleanup
+                        callback_info = self.root.tk.call('after', 'info', after_id)
+                        if '_thread_cleanup' in str(callback_info):
+                            self.root.after_cancel(after_id)
                     except Exception:
                         pass
         except Exception as e:
@@ -469,7 +473,6 @@ class VideoManager:
         try:
             self.is_playing = False
             self.should_stop = True
-            self.completion_callback = None
             
             # Stop only the video audio channel, not the music
             if self.video_sound_channel.get_busy():
@@ -487,7 +490,7 @@ class VideoManager:
                 finally:
                     self.video_canvas = None
                     
-            # Clear all state
+            # Clear current state but preserve callback system
             self.original_widgets = []
             self.original_widget_info = []
             self.current_audio_path = None
@@ -497,13 +500,18 @@ class VideoManager:
         except Exception as e:
             print(f"[video manager]Error during forced cleanup: {e}")
             traceback.print_exc()
+        finally:
+            # Restore callback system for future videos
+            if hasattr(self, '_temp_callback'):
+                self.completion_callback = self._temp_callback
+                delattr(self, '_temp_callback')
 
     def reset_state(self):
         """Reset all video manager state variables"""
         print("[video manager]Resetting all VideoManager state")
         self.should_stop = True
         self.is_playing = False
-        self.completion_callback = None
+        # Don't clear completion_callback here
         self.original_widgets = []
         self.original_widget_info = []
         self.current_audio_path = None
