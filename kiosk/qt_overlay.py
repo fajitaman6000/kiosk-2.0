@@ -1000,3 +1000,58 @@ class Overlay:
         if hasattr(cls, '_button_view') and cls._button_view:
             cls._button['scene'].clear()
             cls._button_view.set_click_callback(None) # Deregister callback
+
+    @classmethod
+    def hide_all_overlays(cls):
+        """Hide all Qt overlay UI elements temporarily"""
+        print("[qt overlay]Hiding all overlay UI elements for video")
+        try:
+            if hasattr(cls, '_timer_window') and cls._timer_window:
+                print("[qt overlay]Hiding timer window")
+                cls._timer_window.hide()
+            if hasattr(cls, '_button_window') and cls._button_window:
+                print("[qt overlay]Hiding button window")
+                cls._button_window.hide()
+            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+                print("[qt overlay]Hiding hint text window")
+                cls._hint_text['window'].hide()
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
+                print("[qt overlay]Hiding hint request text window")
+                cls._hint_request_text['window'].hide()
+            if cls._window:
+                print("[qt overlay]Hiding main window")
+                cls._window.hide()
+            print("[qt overlay]All overlay UI elements hidden")
+        except Exception as e:
+            print(f"[qt overlay]Error hiding overlays: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def show_all_overlays(cls):
+        """Restore visibility of all Qt overlay UI elements"""
+        print("[qt overlay]Restoring all overlay UI elements")
+        try:
+            if hasattr(cls, '_timer_window') and cls._timer_window:
+                print("[qt overlay]Showing timer window")
+                cls._timer_window.show()
+                cls._timer_window.raise_()
+            if hasattr(cls, '_button_window') and cls._button_window:
+                print("[qt overlay]Showing button window")
+                cls._button_window.show()
+                cls._button_window.raise_()
+            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+                print("[qt overlay]Showing hint text window")
+                cls._hint_text['window'].show()
+                cls._hint_text['window'].raise_()
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
+                print("[qt overlay]Showing hint request text window")
+                cls._hint_request_text['window'].show()
+                cls._hint_request_text['window'].raise_()
+            if cls._window:
+                print("[qt overlay]Showing main window")
+                cls._window.show()
+                cls._window.raise_()
+            print("[qt overlay]All overlay UI elements restored")
+        except Exception as e:
+            print(f"[qt overlay]Error showing overlays: {e}")
+            traceback.print_exc()

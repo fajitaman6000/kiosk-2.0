@@ -11,6 +11,7 @@ import tempfile
 import sys
 import imageio_ffmpeg
 from pygame import mixer
+from qt_overlay import Overlay  # Add this import at the top
 
 class VideoManager:
     def __init__(self, root):
@@ -132,6 +133,15 @@ class VideoManager:
             # Store completion callback
             self.completion_callback = on_complete
             
+            # Stop any existing playback
+            if self.is_playing:
+                print("[video manager]VideoManager: Stopping existing playback")
+                self.stop_video()
+            
+            # Hide all Qt overlays before video starts
+            print("[video manager]Hiding Qt overlays before video start")
+            self.root.after(0, Overlay.hide_all_overlays)
+            
             # Ensure background music is at full volume before fading
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.set_volume(1.0)
@@ -140,11 +150,6 @@ class VideoManager:
             # Now fade out background music
             self._fade_background_music(0.3)  # Reduce to 30% volume
             print(f"[video manager]Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
-
-            # Stop any existing playback
-            if self.is_playing:
-                print("[video manager]VideoManager: Stopping existing playback")
-                self.stop_video()
             
             # Store current widgets and their layout info
             print("[video manager]VideoManager: Storing current window state")
@@ -331,6 +336,9 @@ class VideoManager:
         print("[video manager]\n=== Video Manager Thread Cleanup ===")
         
         try:
+            # Show all Qt overlays after video ends
+            Overlay.show_all_overlays()
+            
             # Stop video audio first (not the background music)
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
