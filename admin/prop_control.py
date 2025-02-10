@@ -233,7 +233,7 @@ class PropControl:
             else:
                 # Only check actual status if prop is online
                 status_text = prop['info']['strStatus']
-                print(f"[prop control]Setting status icon for prop {prop_id} to {status_text}")
+                #print(f"[prop control]Setting status icon for prop {prop_id} to {status_text}")
                 
                 if status_text == "Not activated" or status_text == "Not Activated":
                     icon = self.status_icons['not_activated']
@@ -250,7 +250,7 @@ class PropControl:
                 prop['status_label'].config(image=icon)
                 # Keep a reference to prevent garbage collection
                 prop['status_label'].image = icon
-                print(f"[prop control]Successfully updated status icon for prop {prop_id}")
+                #print(f"[prop control]Successfully updated status icon for prop {prop_id}")
             except Exception as e:
                 print(f"[prop control]Failed to update status icon: {e}")
             
@@ -624,7 +624,7 @@ class PropControl:
             if room_number in self.last_mqtt_updates and prop_id in self.last_mqtt_updates[room_number]:
                 last_update = self.last_mqtt_updates[room_number][prop_id]
                 time_diff = current_time - last_update
-                print(f"[prop control]Prop {prop_id} last MQTT update was {time_diff:.1f} seconds ago")
+                #print(f"[prop control]Prop {prop_id} last MQTT update was {time_diff:.1f} seconds ago")
             else:
                 print(f"[prop control]No MQTT updates recorded for prop {prop_id}")
                 
