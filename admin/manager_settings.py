@@ -504,7 +504,7 @@ class AdminPasswordManager:
         
         validated = False
 
-        tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
+        tk.Label(login_window, text="(Don't run sync during games!) Password:", font=('Arial', 12)).pack(pady=10)
         password_entry = tk.Entry(login_window, show="*", width=20)
         password_entry.pack(pady=5)
         
