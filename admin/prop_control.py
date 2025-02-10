@@ -75,9 +75,11 @@ class PropControl:
         self.UPDATE_INTERVAL = 1000  # Base update interval in ms
         self.INACTIVE_UPDATE_INTERVAL = 2000  # Update interval for non-selected rooms
         self.last_progress_times = {} # last progress events for rooms
+        self.last_mqtt_updates = {} # room_number -> {prop_id -> last_mqtt_update_time}
         for room_number in self.ROOM_CONFIGS: # Initialize timestamps for all rooms upon starting, or when switching
             self.last_progress_times[room_number] = time.time() # initialize to now
             self.all_props[room_number] = {} # Initialize the dictionary for each room
+            self.last_mqtt_updates[room_number] = {} # Initialize MQTT update tracking
         self.last_prop_finished = {} # prop status strings
         
         self.MQTT_PORT = 8080
@@ -190,19 +192,48 @@ class PropControl:
                 return
                 
             current_time = time.time()
-            last_update = prop.get('last_update', current_time)
-            time_diff = current_time - last_update
             
+            # Check for MQTT timeout using the dedicated tracking system
+            is_offline = (self.current_room not in self.last_mqtt_updates or 
+                        prop_id not in self.last_mqtt_updates[self.current_room] or
+                        current_time - self.last_mqtt_updates[self.current_room][prop_id] > 3)
+            
+            # Debug print status icon loading
             if not hasattr(self, 'status_icons'):
-                print("[prop control]Status icons not initialized")
+                print("[prop control]Status icons not initialized!")
+                try:
+                    icon_dir = os.path.join("admin_icons")
+                    self.status_icons = {
+                        'not_activated': ImageTk.PhotoImage(
+                            Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                        ),
+                        'activated': ImageTk.PhotoImage(
+                            Image.open(os.path.join(icon_dir, "activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                        ),
+                        'finished': ImageTk.PhotoImage(
+                            Image.open(os.path.join(icon_dir, "finished.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                        ),
+                        'offline': ImageTk.PhotoImage(
+                            Image.open(os.path.join(icon_dir, "offline.png")).resize((16, 16), Image.Resampling.LANCZOS)
+                        )
+                    }
+                except Exception as e:
+                    print(f"[prop control]Error loading status icons: {e}")
+                    return
+            elif 'offline' not in self.status_icons:
+                print("[prop control]Offline icon missing from status_icons!")
                 return
-                
-            if time_diff > 3:
-                # Offline status
+            
+            # Always check offline status first
+            if is_offline:
+                # Offline status takes precedence over any other status
                 icon = self.status_icons['offline']
+                prop_name = prop['info'].get('strName', 'unknown')
+                print(f"[prop control]Setting offline icon for prop '{prop_name}' (ID: {prop_id})")
             else:
-                # Get exact status string and match precisely
+                # Only check actual status if prop is online
                 status_text = prop['info']['strStatus']
+                print(f"[prop control]Setting status icon for prop {prop_id} to {status_text}")
                 
                 if status_text == "Not activated" or status_text == "Not Activated":
                     icon = self.status_icons['not_activated']
@@ -215,9 +246,13 @@ class PropControl:
                     icon = self.status_icons['not_activated']
             
             # Update the label with the appropriate icon
-            prop['status_label'].config(image=icon)
-            # Keep a reference to prevent garbage collection
-            prop['status_label'].image = icon
+            try:
+                prop['status_label'].config(image=icon)
+                # Keep a reference to prevent garbage collection
+                prop['status_label'].image = icon
+                print(f"[prop control]Successfully updated status icon for prop {prop_id}")
+            except Exception as e:
+                print(f"[prop control]Failed to update status icon: {e}")
             
         except tk.TclError:
             # Widget was destroyed, remove the reference
@@ -570,6 +605,7 @@ class PropControl:
             return
             
         current_time = time.time()
+        print(f"[prop control]Updating all props status for room {room_number}")
             
         is_activated = False
         is_finished = False
@@ -579,6 +615,23 @@ class PropControl:
             if 'info' not in prop_info:
                 continue
                     
+            # Check if prop is offline
+            is_offline = (room_number not in self.last_mqtt_updates or 
+                        prop_id not in self.last_mqtt_updates[room_number] or
+                        current_time - self.last_mqtt_updates[room_number][prop_id] > 3)
+                    
+            # Debug print for MQTT update times
+            if room_number in self.last_mqtt_updates and prop_id in self.last_mqtt_updates[room_number]:
+                last_update = self.last_mqtt_updates[room_number][prop_id]
+                time_diff = current_time - last_update
+                print(f"[prop control]Prop {prop_id} last MQTT update was {time_diff:.1f} seconds ago")
+            else:
+                print(f"[prop control]No MQTT updates recorded for prop {prop_id}")
+                
+            # Update prop status based on offline state
+            if is_offline:
+                prop_info['info']['strStatus'] = "offline"
+            
             status = prop_info['info'].get('strStatus')
             if status == "Activated":
                 is_activated = True
@@ -598,7 +651,10 @@ class PropControl:
 
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():
-                self.check_prop_status(room_number, prop_id, prop_info)
+                if prop_id in self.props:
+                    status_label = self.props[prop_id].get('status_label')
+                    if status_label and status_label.winfo_exists():
+                        self.update_prop_status(prop_id)
                 
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
@@ -772,6 +828,11 @@ class PropControl:
                     
                 prop_id = payload.get("strId")
                 if prop_id:
+                    # Update MQTT last update time
+                    if room_number not in self.last_mqtt_updates:
+                        self.last_mqtt_updates[room_number] = {}
+                    self.last_mqtt_updates[room_number][prop_id] = time.time()
+                    
                     if prop_id not in self.all_props[room_number]:
                         self.all_props[room_number][prop_id] = {
                             'info': payload.copy(),
