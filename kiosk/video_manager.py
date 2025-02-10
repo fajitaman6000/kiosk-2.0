@@ -329,11 +329,7 @@ class VideoManager:
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
         print("[video manager]\n=== Video Manager Thread Cleanup ===")
-        print(f"[video manager]should_stop flag: {self.should_stop}")
-        print(f"[video manager]on_complete callback present: {on_complete is not None}")
-        print(f"[video manager]stored completion callback present: {self.completion_callback is not None}")
-        print("[video manager]Current background music volume:", pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else "No music playing")
-
+        
         try:
             # Stop video audio first (not the background music)
             if self.video_sound_channel.get_busy():
@@ -408,7 +404,7 @@ class VideoManager:
         """Stop video and audio playback"""
         print("[video manager]\nVideoManager: Stopping video and audio")
         self.should_stop = True
-        # Do not set self.is_playing to False here
+        # Do not set self.is_playing to False here - restore original behavior
 
         # Stop video audio channel instead of music
         if self.video_sound_channel.get_busy():
@@ -417,8 +413,105 @@ class VideoManager:
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
             self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
-
         
+    def force_stop(self):
+        """Force stop all video playback and cleanup for reset scenarios"""
+        print("[video manager]\nVideoManager: Force stopping all video playback")
+        
+        # First store any existing callbacks so we can clear them
+        existing_callbacks = []
+        if hasattr(self, 'completion_callback') and self.completion_callback:
+            existing_callbacks.append(self.completion_callback)
+        
+        # Reset all state flags first
+        self.reset_state()
+        
+        # Immediately stop video audio
+        if self.video_sound_channel.get_busy():
+            self.video_sound_channel.stop()
+            time.sleep(0.1)  # Small delay to ensure audio stops
+
+        # Force stop thread with a shorter timeout since we're in a reset
+        if hasattr(self, 'video_thread') and self.video_thread.is_alive():
+            self.video_thread.join(timeout=0.2)
+            if self.video_thread.is_alive():
+                print("[video manager]Warning: Video thread did not stop cleanly during reset")
+
+        # Clear video canvas immediately
+        if self.video_canvas and self.video_canvas.winfo_exists():
+            try:
+                self.video_canvas.delete('all')
+                self.video_canvas.place_forget()
+                self.video_canvas.destroy()
+            except tk.TclError:
+                pass
+            self.video_canvas = None
+
+        # Cancel any pending 'after' callbacks
+        try:
+            if hasattr(self.root, 'after_cancel'):
+                # Try to find and cancel any pending after calls
+                pending = self.root.tk.call('after', 'info')
+                for after_id in pending:
+                    try:
+                        self.root.after_cancel(after_id)
+                    except Exception:
+                        pass
+        except Exception as e:
+            print(f"[video manager]Error canceling callbacks during reset: {e}")
+
+        # Force cleanup without callbacks
+        self._force_cleanup()
+
+    def _force_cleanup(self):
+        """Clean up resources without executing callbacks - used for resets"""
+        print("[video manager]\nVideoManager: Starting forced cleanup")
+        try:
+            self.is_playing = False
+            self.should_stop = True
+            self.completion_callback = None
+            
+            # Stop only the video audio channel, not the music
+            if self.video_sound_channel.get_busy():
+                self.video_sound_channel.stop()
+            
+            # Clean up video canvas with additional checks
+            if self.video_canvas:
+                try:
+                    if self.video_canvas.winfo_exists():
+                        self.video_canvas.delete('all')
+                        self.video_canvas.place_forget()
+                        self.video_canvas.destroy()
+                except tk.TclError:
+                    pass
+                finally:
+                    self.video_canvas = None
+                    
+            # Clear all state
+            self.original_widgets = []
+            self.original_widget_info = []
+            self.current_audio_path = None
+            
+            print("[video manager]Forced cleanup complete")
+            
+        except Exception as e:
+            print(f"[video manager]Error during forced cleanup: {e}")
+            traceback.print_exc()
+
+    def reset_state(self):
+        """Reset all video manager state variables"""
+        print("[video manager]Resetting all VideoManager state")
+        self.should_stop = True
+        self.is_playing = False
+        self.completion_callback = None
+        self.original_widgets = []
+        self.original_widget_info = []
+        self.current_audio_path = None
+        
+        # Clear any stored video-related attributes
+        if hasattr(self, 'video_thread'):
+            delattr(self, 'video_thread')
+
     def _cleanup(self):
         """Clean up resources and restore UI state"""
         print("[video manager]\nVideoManager: Starting cleanup")

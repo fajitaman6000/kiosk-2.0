@@ -7,8 +7,6 @@ hint manager needs updating
     prop control is visible within the hint manager area
     hint manager could easily be renamed to just manager settings and adjusted accordingly
 
-infinite looping commit last good one
-
 ##############################################################################################################################
 # priority bugs
 
@@ -23,8 +21,6 @@ two gamemasters requesting the same video stream crashes that kiosk
 # known bugs
 
 mqtt connections get crippled while running file sync
-props no longer being seen as offline
-some props being pulled over to their non-respective rooms, showing as offline. sometimes the whole prop page remains on the previous room? (may only be when switching)
 resets during intro videos cause crashing/audio bugs(?)
 
 ##############################################################################################################################

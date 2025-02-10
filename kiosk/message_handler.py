@@ -222,8 +222,8 @@ class MessageHandler:
                 # Stop background music
                 self.kiosk_app.audio_manager.stop_background_music()
 
-                # Stop video manager (which handles both video and its audio)
-                self.kiosk_app.video_manager.stop_video()
+                # Force stop video manager (which handles both video and its audio)
+                self.kiosk_app.video_manager.force_stop()  # This now handles all cleanup of callbacks
 
                 # Ensure pygame mixer is fully reset
                 if pygame.mixer.get_init():
@@ -238,6 +238,15 @@ class MessageHandler:
                     self.kiosk_app.current_video_process = None
                     self.kiosk_app.root.deiconify()
 
+                # Reset video-related UI state in the kiosk app's UI
+                if hasattr(self.kiosk_app.ui, 'video_solution_button') and self.kiosk_app.ui.video_solution_button:
+                    self.kiosk_app.ui.video_solution_button.destroy()
+                    self.kiosk_app.ui.video_solution_button = None
+                if hasattr(self.kiosk_app.ui, 'stored_video_info'):
+                    self.kiosk_app.ui.stored_video_info = None
+                if hasattr(self.kiosk_app.ui, 'video_is_playing'):
+                    self.kiosk_app.ui.video_is_playing = False
+
                 # Reset application state
                 print("[message handler][DEBUG] Resetting application state...")
                 self.kiosk_app.time_exceeded_45 = False
@@ -250,10 +259,12 @@ class MessageHandler:
                 self.kiosk_app.ui.hint_cooldown = False
                 self.kiosk_app.ui.current_hint = None
                 self.kiosk_app.ui.stored_image_data = None
-                if hasattr(self.kiosk_app.ui, 'stored_video_info'):
-                    self.kiosk_app.ui.stored_video_info = None
-                if hasattr(self.kiosk_app.ui, 'video_is_playing'):
-                    self.kiosk_app.ui.video_is_playing = False
+                if hasattr(self.kiosk_app.ui, 'image_button') and self.kiosk_app.ui.image_button:
+                    self.kiosk_app.ui.image_button.destroy()
+                    self.kiosk_app.ui.image_button = None
+                if hasattr(self.kiosk_app.ui, 'fullscreen_image') and self.kiosk_app.ui.fullscreen_image:
+                    self.kiosk_app.ui.fullscreen_image.destroy()
+                    self.kiosk_app.ui.fullscreen_image = None
 
                 # Cancel any existing cooldown timer and hide overlay
                 print("[message handler][DEBUG] Clearing cooldown state...")
@@ -270,17 +281,6 @@ class MessageHandler:
                     self.kiosk_app.ui.status_frame.delete('all')
                     self.kiosk_app.ui.hide_status_frame()
                 self.kiosk_app.ui.clear_all_labels()
-
-                # Clear specific hint-related elements
-                if hasattr(self.kiosk_app.ui, 'image_button') and self.kiosk_app.ui.image_button:
-                    self.kiosk_app.ui.image_button.destroy()
-                    self.kiosk_app.ui.image_button = None
-                if hasattr(self.kiosk_app.ui, 'video_solution_button') and self.kiosk_app.ui.video_solution_button:
-                    self.kiosk_app.ui.video_solution_button.destroy()
-                    self.kiosk_app.ui.video_solution_button = None
-                if hasattr(self.kiosk_app.ui, 'fullscreen_image') and self.kiosk_app.ui.fullscreen_image:
-                    self.kiosk_app.ui.fullscreen_image.destroy()
-                    self.kiosk_app.ui.fullscreen_image = None
 
                 # Schedule timer reset on main thread
                 self.kiosk_app.root.after(0, lambda: self.kiosk_app.timer._delayed_init())

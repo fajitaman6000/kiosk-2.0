@@ -605,7 +605,7 @@ class PropControl:
             return
             
         current_time = time.time()
-        print(f"[prop control]Updating all props status for room {room_number}")
+        #print(f"[prop control]Updating all props status for room {room_number}")
             
         is_activated = False
         is_finished = False
