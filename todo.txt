@@ -10,6 +10,8 @@ hint manager needs updating
 ##############################################################################################################################
 # priority bugs
 
+qt elements visible during video playback
+
 kiosk doesn't retry/add itself back to queue after failed sync attempt
 time machine camera loading issue
 wizard not receiving sync messages(?)
