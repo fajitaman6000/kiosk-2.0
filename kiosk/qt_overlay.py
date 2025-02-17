@@ -126,9 +126,23 @@ class Overlay:
         if not cls._app:
             cls._app = QApplication(sys.argv)
             
-        # Store Tkinter window handle
+        # Store Tkinter window handle and kiosk_app reference first
         if tkinter_root:
             cls._parent_hwnd = tkinter_root.winfo_id()
+            # Store kiosk app reference
+            if hasattr(tkinter_root, 'kiosk_app'):
+                print("[qt overlay] Found kiosk_app on tkinter_root")
+                # Store as class variable
+                cls.kiosk_app = tkinter_root.kiosk_app
+                print(f"[qt overlay] Stored kiosk_app with computer_name: {cls.kiosk_app.computer_name}")
+            else:
+                print("[qt overlay] Warning: tkinter_root does not have kiosk_app attribute")
+                cls.kiosk_app = None
+                print("[qt overlay] Set kiosk_app to None")
+        else:
+            print("[qt overlay] Warning: No tkinter_root provided")
+            cls.kiosk_app = None
+            cls._parent_hwnd = None
             
         # Create single persistent window if not already created
         if not cls._window:
@@ -174,12 +188,14 @@ class Overlay:
             cls._text_item.setFont(font)
             cls._scene.addItem(cls._text_item)
 
-            # Initialize all overlays
-            cls._init_hint_text_overlay()
-            cls._init_hint_request_text_overlay()
-            cls._init_gm_assistance_overlay()
-
         cls._initialized = True
+        
+        # Initialize all overlays after kiosk_app is stored
+        cls._init_hint_text_overlay()
+        cls._init_hint_request_text_overlay()
+        cls._init_gm_assistance_overlay()
+        
+        # Initialize timer and help button
         cls.init_timer()
         cls.init_help_button()
 
@@ -303,6 +319,13 @@ class Overlay:
     @classmethod
     def _init_gm_assistance_overlay(cls):
         """Initialize game master assistance overlay components."""
+        print("[qt overlay] Initializing GM assistance overlay...")
+        print(f"[qt overlay] Has kiosk_app: {hasattr(cls, 'kiosk_app')}")
+        if hasattr(cls, 'kiosk_app') and cls.kiosk_app is not None:
+            print(f"[qt overlay] Using kiosk_app with computer_name: {cls.kiosk_app.computer_name}")
+        else:
+            print("[qt overlay] No kiosk_app available")
+            
         if not hasattr(cls, '_gm_assistance_overlay') or not cls._gm_assistance_overlay:
             cls._gm_assistance_overlay = {
                 'window': QWidget(cls._window),
@@ -466,9 +489,30 @@ class Overlay:
                     for item in items:
                         if item == cls._gm_assistance_overlay['yes_rect'] or item == cls._gm_assistance_overlay['yes_button']:
                             print("[qt overlay] Yes button clicked - GM assistance accepted")
+                            # Send message to admin using the kiosk app's network
+                            if hasattr(cls, 'kiosk_app') and cls.kiosk_app is not None:
+                                print(f"[qt overlay] Found kiosk_app with computer_name: {cls.kiosk_app.computer_name}")
+                                try:
+                                    cls.kiosk_app.network.send_message({
+                                        'type': 'gm_assistance_accepted',
+                                        'computer_name': cls.kiosk_app.computer_name
+                                    })
+                                    print("[qt overlay] Message sent successfully")
+                                except Exception as e:
+                                    print(f"[qt overlay] Error sending message: {e}")
+                                    traceback.print_exc()
+                            else:
+                                print("[qt overlay] Error: kiosk_app not found or is None")
+                                print(f"[qt overlay] Has kiosk_app attribute: {hasattr(cls, 'kiosk_app')}")
+                                if hasattr(cls, 'kiosk_app'):
+                                    print(f"[qt overlay] kiosk_app value: {cls.kiosk_app}")
+                            # Hide the overlay after accepting
+                            cls.hide_gm_assistance()
                             break
                         elif item == cls._gm_assistance_overlay['no_rect'] or item == cls._gm_assistance_overlay['no_button']:
                             print("[qt overlay] No button clicked - GM assistance declined")
+                            # Hide the overlay after declining
+                            cls.hide_gm_assistance()
                             break
                     super().mousePressEvent(event)
 

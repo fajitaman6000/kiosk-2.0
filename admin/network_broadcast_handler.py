@@ -100,6 +100,12 @@ class NetworkBroadcastHandler:
                     print(f"[network broadcast handler]Received intro video complete signal from: {computer_name} and passing signal to interface builder")
                     self.app.root.after(0, lambda: self.app.interface_builder.handle_intro_video_complete(computer_name))
 
+                elif msg['type'] == 'gm_assistance_accepted':
+                    computer_name = msg['computer_name']
+                    print(f"[network broadcast handler]GM assistance accepted by: {computer_name}")
+                    # Print a message for now, as requested
+                    print(f"[network broadcast handler]Room {self.app.kiosk_tracker.kiosk_assignments.get(computer_name)} accepted GM assistance")
+
                 elif msg['type'] == 'kiosk_disconnect':
                     computer_name = msg['computer_name']
                     if computer_name in self.last_message:

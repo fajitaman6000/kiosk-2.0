@@ -38,6 +38,9 @@ class KioskApp:
         self.root.config(cursor="none")  # Hide cursor
         #self.root.bind('<Escape>', lambda e: self.toggle_fullscreen())
 
+        # Set kiosk_app reference on root window BEFORE creating UI
+        self.root.kiosk_app = self
+        
         self.start_time = None
         self.room_started = False
         self.current_video_process = None  # Add this line
@@ -56,6 +59,7 @@ class KioskApp:
         from kiosk_timer import KioskTimer
         self.timer = KioskTimer(self.root, self)  # Pass self
         
+        # Create UI after setting kiosk_app reference
         self.ui = KioskUI(self.root, self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()
         self.network.start_threads()
