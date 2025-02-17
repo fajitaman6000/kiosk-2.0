@@ -690,6 +690,20 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     play_sound_btn.pack(side='left', padx=5)  # Added side='left'
 
+    # Add offer assistance button
+    offer_assistance_btn = tk.Button(
+        button_container,
+        text="Offer Assistance",
+        command=lambda: interface_builder.app.network_handler.socket.sendto(
+            json.dumps({
+                'type': 'offer_assistance',
+                'computer_name': computer_name
+            }).encode(),
+            ('255.255.255.255', 12346)
+        )
+    )
+    offer_assistance_btn.pack(side='left', padx=5)
+
     # Sound controls container
     sound_container = tk.Frame(other_controls_frame)
     sound_container.pack(fill='x', padx=5, pady=5)

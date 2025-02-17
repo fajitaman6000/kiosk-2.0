@@ -315,6 +315,11 @@ class MessageHandler:
                 print("toggling auto start")
                 self.toggle_auto_start()
 
+            elif msg['type'] == 'offer_assistance' and msg['computer_name'] == self.kiosk_app.computer_name:
+                print("[message handler] Received offer assistance command")
+                # Call the Overlay's method to show the assistance offered message
+                self.kiosk_app.root.after(0, lambda: Overlay.show_gm_assistance())
+
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
