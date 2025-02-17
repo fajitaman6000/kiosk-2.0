@@ -811,10 +811,9 @@ class AdminInterfaceBuilder:
             print(f"[interface builder]Error loading kiosk icon: {e}")
             kiosk_icon = None
             
-        # Create icon label but initially hide it
-        icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None, cursor="hand2")  # Add hand cursor
+        # Create icon label but don't pack it yet
+        icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None, cursor="hand2")
         icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
-        icon_label.pack(side='left', padx=(0,5))  # Changed padding to be 0 on left side
         
         # Add click handler to hide the icon
         def hide_icon(event):
@@ -826,8 +825,12 @@ class AdminInterfaceBuilder:
                     self.connected_kiosks[computer_name]['icon_blink_after_id'] = None
         
         icon_label.bind('<Button-1>', hide_icon)  # Bind left click to hide function
-        icon_label.pack_forget()  # Initially hide the icon
         
+        # Pack the icon label first, before any other elements, then immediately hide it
+        icon_label.pack(side='left', padx=(0,5))
+        icon_label.pack_forget()
+        
+        # Now create and pack other elements
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
             room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
             room_name = self.app.rooms[room_num]
@@ -1006,7 +1009,24 @@ class AdminInterfaceBuilder:
             if icon_label.winfo_manager():  # If visible
                 icon_label.pack_forget()
             else:
+                # Ensure icon is packed first by unpacking and repacking all siblings
+                for widget in kiosk_data['frame'].winfo_children():
+                    if widget != icon_label and widget.winfo_manager():
+                        widget.pack_forget()
                 icon_label.pack(side='left', padx=(0,5))
+                # Repack other widgets in their original order
+                if computer_name in self.connected_kiosks:
+                    name_label = self.connected_kiosks[computer_name]['name_label']
+                    help_label = self.connected_kiosks[computer_name]['help_label']
+                    dropdown = self.connected_kiosks[computer_name]['dropdown']
+                    reboot_btn = self.connected_kiosks[computer_name]['reboot_btn']
+                    timer_label = self.connected_kiosks[computer_name]['timer_label']
+                    
+                    name_label.pack(side='left', padx=5)
+                    dropdown.pack(side='left', padx=5)
+                    help_label.pack(side='left', padx=5)
+                    reboot_btn.pack(side='left', padx=(20, 5))
+                    timer_label.pack(side='right', padx=5)
             
             # Schedule next blink
             kiosk_data['icon_blink_after_id'] = self.app.root.after(500, blink)
