@@ -274,6 +274,9 @@ class MessageHandler:
 
                 # Hide and Clear Overlay
                 self.kiosk_app.root.after(0, lambda: Overlay.hide())
+                
+                # Hide GM assistance overlay specifically
+                self.kiosk_app.root.after(0, lambda: Overlay.hide_gm_assistance())
 
                 # Clear UI elements safely
                 print("[message handler][DEBUG] Clearing UI elements...")
