@@ -682,18 +682,37 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     clear_hints_btn.pack(side='left', padx=5)  # Added side='left'
 
-    # Add play sound button
+    # Load hint sound and assistance icons
+    try:
+        hint_sound_icon = Image.open(os.path.join(icon_dir, "activate.png"))
+        hint_sound_icon = hint_sound_icon.resize((10, 20), Image.Resampling.LANCZOS)
+        hint_sound_icon = ImageTk.PhotoImage(hint_sound_icon)
+        
+        assistance_icon = Image.open(os.path.join(icon_dir, "assistance_requested.png"))
+        assistance_icon = assistance_icon.resize((15, 15), Image.Resampling.LANCZOS)
+        assistance_icon = ImageTk.PhotoImage(assistance_icon)
+    except Exception as e:
+        print(f"[stats panel]Error loading hint sound/assistance icons: {e}")
+        hint_sound_icon = assistance_icon = None
+
+    # Add play sound button with icon
     play_sound_btn = tk.Button(
-        button_container,  # Note: Parent changed to button_container
-        text="Play Hint Sound",
+        button_container,
+        text="Play Hint Sound ",  # Added space after text for icon padding
+        image=hint_sound_icon if hint_sound_icon else None,
+        compound=tk.RIGHT,  # Place icon to the right of text
         command=lambda: interface_builder.play_hint_sound(computer_name)
     )
-    play_sound_btn.pack(side='left', padx=5)  # Added side='left'
+    if hint_sound_icon:
+        play_sound_btn.image = hint_sound_icon  # Keep reference
+    play_sound_btn.pack(side='left', padx=5)
 
-    # Add offer assistance button
+    # Add offer assistance button with icon
     offer_assistance_btn = tk.Button(
         button_container,
-        text="Offer Assistance",
+        text="Offer Assistance ",  # Added space after text for icon padding
+        image=assistance_icon if assistance_icon else None,
+        compound=tk.RIGHT,  # Place icon to the right of text
         command=lambda: interface_builder.app.network_handler.socket.sendto(
             json.dumps({
                 'type': 'offer_assistance',
@@ -702,6 +721,8 @@ def setup_stats_panel(interface_builder, computer_name):
             ('255.255.255.255', 12346)
         )
     )
+    if assistance_icon:
+        offer_assistance_btn.image = assistance_icon  # Keep reference
     offer_assistance_btn.pack(side='left', padx=5)
 
     # Sound controls container
