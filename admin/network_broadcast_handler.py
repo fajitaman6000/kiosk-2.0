@@ -103,7 +103,8 @@ class NetworkBroadcastHandler:
                 elif msg['type'] == 'gm_assistance_accepted':
                     computer_name = msg['computer_name']
                     print(f"[network broadcast handler]GM assistance accepted by: {computer_name}")
-                    # Print a message for now, as requested
+                    # Call the new handler method
+                    self.app.interface_builder.handle_gm_assistance_accepted(computer_name)
                     print(f"[network broadcast handler]Room {self.app.kiosk_tracker.kiosk_assignments.get(computer_name)} accepted GM assistance")
 
                 elif msg['type'] == 'kiosk_disconnect':

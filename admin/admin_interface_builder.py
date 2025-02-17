@@ -489,6 +489,9 @@ class AdminInterfaceBuilder:
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
         
+        # Stop GM assistance icon if it's blinking
+        self.stop_gm_assistance_icon(computer_name)
+        
         # Send reset message through network handler
         self.app.network_handler.socket.sendto(
             json.dumps({
@@ -749,13 +752,20 @@ class AdminInterfaceBuilder:
         )
 
     def remove_kiosk(self, computer_name):
+        """Remove a kiosk from the UI"""
         # Stop camera if it was active for this kiosk
         if getattr(self, 'camera_active', False) and \
            self.stats_elements.get('current_computer') == computer_name:
             self.toggle_camera(computer_name)
         
-        # Rest of your existing remove_kiosk code...
         if computer_name in self.connected_kiosks:
+            # Stop GM assistance icon if it's blinking
+            self.stop_gm_assistance_icon(computer_name)
+            
+            # Cancel any blinking timer
+            if self.connected_kiosks[computer_name]['icon_blink_after_id']:
+                self.app.root.after_cancel(self.connected_kiosks[computer_name]['icon_blink_after_id'])
+            
             self.connected_kiosks[computer_name]['frame'].destroy()
             del self.connected_kiosks[computer_name]
             
@@ -791,6 +801,21 @@ class AdminInterfaceBuilder:
         frame = tk.Frame(self.kiosk_frame)
         frame.configure(relief='flat', borderwidth=0, highlightthickness=0)
         frame.pack(fill='x', pady=2)
+        
+        # Load kiosk icon
+        try:
+            kiosk_icon = Image.open(os.path.join("admin_icons", "assistance_requested.png"))
+            kiosk_icon = kiosk_icon.resize((16, 16), Image.Resampling.LANCZOS)
+            kiosk_icon = ImageTk.PhotoImage(kiosk_icon)
+        except Exception as e:
+            print(f"[interface builder]Error loading kiosk icon: {e}")
+            kiosk_icon = None
+            
+        # Create icon label but initially hide it
+        icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None)
+        icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
+        icon_label.pack(side='left', padx=(5,2))
+        icon_label.pack_forget()  # Initially hide the icon
         
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
             room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
@@ -890,7 +915,9 @@ class AdminInterfaceBuilder:
             'reboot_btn': reboot_btn,
             'last_seen': current_time,
             'name_label': name_label,
-            'timer_label': timer_label  # Store timer label reference
+            'timer_label': timer_label,  # Store timer label reference
+            'icon_label': icon_label,  # Store icon label reference
+            'icon_blink_after_id': None  # For tracking blink timer
         }
         
         # Check if the hint requested flag was set
@@ -948,31 +975,49 @@ class AdminInterfaceBuilder:
         else:
             print(f"[interface builder][AdminInterface] mark_help_requested: Ignoring help request - kiosk {computer_name} not in connected kioskl list")
             
-    def remove_kiosk(self, computer_name):
-        # Stop camera if it was active for this kiosk
-        if getattr(self, 'camera_active', False) and \
-           self.stats_elements.get('current_computer') == computer_name:
-            self.toggle_camera(computer_name)
+    def handle_gm_assistance_accepted(self, computer_name):
+        """Handle when GM assistance is accepted by showing and blinking the icon"""
+        if computer_name not in self.connected_kiosks:
+            return
         
-        # Rest of your existing remove_kiosk code...
-        if computer_name in self.connected_kiosks:
-            print(f"[interface builder][AdminInterface] remove_kiosk: Removing kiosk {computer_name} from UI")
-            self.connected_kiosks[computer_name]['frame'].destroy()
-            del self.connected_kiosks[computer_name]
+        kiosk_data = self.connected_kiosks[computer_name]
+        icon_label = kiosk_data['icon_label']
+        
+        # Cancel any existing blink timer
+        if kiosk_data['icon_blink_after_id']:
+            self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
+        
+        def blink():
+            """Toggle icon visibility every 500ms"""
+            if computer_name not in self.connected_kiosks:
+                return
             
-            if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-                del self.app.kiosk_tracker.kiosk_assignments[computer_name]
-            if computer_name in self.app.kiosk_tracker.kiosk_stats:
-                del self.app.kiosk_tracker.kiosk_stats[computer_name]
-            if computer_name in self.app.kiosk_tracker.assigned_rooms:
-                del self.app.kiosk_tracker.assigned_rooms[computer_name]
+            if icon_label.winfo_manager():  # If visible
+                icon_label.pack_forget()
+            else:
+                icon_label.pack(side='left', padx=(5,2))
             
-            if self.selected_kiosk == computer_name:
-                self.selected_kiosk = None
-                self.stats_frame.configure(text="No Room Selected")
-                for widget in self.stats_frame.winfo_children():
-                    widget.destroy()
-                self.stats_elements = {key: None for key in self.stats_elements}
+            # Schedule next blink
+            kiosk_data['icon_blink_after_id'] = self.app.root.after(500, blink)
+        
+        # Start blinking
+        blink()
+
+    def stop_gm_assistance_icon(self, computer_name):
+        """Stop the GM assistance icon from blinking and hide it"""
+        if computer_name not in self.connected_kiosks:
+            return
+        
+        kiosk_data = self.connected_kiosks[computer_name]
+        
+        # Cancel blink timer if it exists
+        if kiosk_data['icon_blink_after_id']:
+            self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
+            kiosk_data['icon_blink_after_id'] = None
+        
+        # Hide the icon
+        if kiosk_data['icon_label'].winfo_manager():
+            kiosk_data['icon_label'].pack_forget()
 
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
@@ -1264,8 +1309,44 @@ class AdminInterfaceBuilder:
             )
 
     def send_hint(self, computer_name, hint_data=None):
-        # Wrapper for the extracted send_hint function
-        send_hint(self, computer_name, hint_data)
+        """Send a hint to the selected kiosk."""
+        # Validate kiosk assignment
+        if not computer_name in self.app.kiosk_tracker.kiosk_assignments:
+            return
+            
+        if hint_data is None:
+            # Using manual entry
+            message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
+            if not message_text and not self.current_hint_image:
+                return
+            
+            hint_data = {
+                'text': message_text,
+                'image_path': self.current_hint_image if self.current_hint_image else None
+            }
+        
+        # Get room number
+        room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+        
+        # Send the hint
+        self.app.network_handler.send_hint(room_number, hint_data)
+        
+        # Stop GM assistance icon if it's blinking
+        self.stop_gm_assistance_icon(computer_name)
+        
+        # Clear any pending help requests
+        if computer_name in self.app.kiosk_tracker.help_requested:
+            self.app.kiosk_tracker.help_requested.remove(computer_name)
+            if computer_name in self.connected_kiosks:
+                self.connected_kiosks[computer_name]['help_label'].config(text="")
+            
+        # Clear ALL hint entry fields regardless of which method was used
+        if self.stats_elements['msg_entry']:
+            self.stats_elements['msg_entry'].delete('1.0', 'end')
+        
+        if self.stats_elements['image_preview']:
+            self.stats_elements['image_preview'].configure(image='')
+            self.stats_elements['image_preview'].image = None
 
     def play_solution_video(self, computer_name):
         """Play a solution video for the selected prop"""
