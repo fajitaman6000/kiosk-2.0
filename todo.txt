@@ -40,7 +40,6 @@ save prop status for blackbox, delete save upon load
 "enable drink menu" by default on
 run soundcheck button
 set alarm on prop to make sound when gm-chosen prop finishes
-admin can display button for them to yes/no on having staff member finish prop
 
 ##############################################################################################################################
 # ambitious extra ideas:
