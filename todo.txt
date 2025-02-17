@@ -28,12 +28,11 @@ resets during intro videos cause crashing/audio bugs(?)
 ##############################################################################################################################
 # planned features: 
 
+hint count on THEIR side
 admin mode (technician/upper managers),
 restarter moved to kiosk app
 edit hint image content within hint manager
 ending audio is apparently admin app side?
-
-hint count on THEIR side
 
 "you won" screen
 

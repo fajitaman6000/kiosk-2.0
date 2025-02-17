@@ -1,7 +1,7 @@
 # qt_overlay.py
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF
-from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem
+from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem
 from PIL import Image
 import sys
 import win32gui
@@ -114,10 +114,11 @@ class Overlay:
     _initialized = False
     _timer_thread = None
     _button_thread = None
-    _hint_text_thread = None  # Add thread for hint text
-    _hint_text = None # Add a dedicated class variable for the hint text scene, view and related logic
-    _hint_request_text = None # Add a dedicated class variable for the hint request text
-    _hint_request_text_thread = None # Add a dedicated class variable for the hint request text thread
+    _hint_text_thread = None
+    _hint_text = None
+    _hint_request_text = None
+    _hint_request_text_thread = None
+    _gm_assistance_overlay = None  # Add GM assistance overlay variable
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -173,9 +174,10 @@ class Overlay:
             cls._text_item.setFont(font)
             cls._scene.addItem(cls._text_item)
 
-            # Initialize hint text overlay
+            # Initialize all overlays
             cls._init_hint_text_overlay()
             cls._init_hint_request_text_overlay()
+            cls._init_gm_assistance_overlay()
 
         cls._initialized = True
         cls.init_timer()
@@ -250,7 +252,9 @@ class Overlay:
                 'window': None,
                 'scene': None,
                 'view': None,
-                'text_item': None
+                'text_item': None,
+                'bg_image_item': None,
+                'current_background': None
             }
 
         # Create hint window if needed
@@ -295,6 +299,196 @@ class Overlay:
                 win32con.GWL_EXSTYLE,
                 style | win32con.WS_EX_NOACTIVATE
             )
+
+    @classmethod
+    def _init_gm_assistance_overlay(cls):
+        """Initialize game master assistance overlay components."""
+        if not hasattr(cls, '_gm_assistance_overlay') or not cls._gm_assistance_overlay:
+            cls._gm_assistance_overlay = {
+                'window': QWidget(cls._window),
+                'scene': QGraphicsScene(),
+                'view': None,
+                'text_item': None,
+                'yes_button': None,
+                'no_button': None,
+                'yes_rect': None,
+                'no_rect': None
+            }
+
+            # Set up window properties
+            cls._gm_assistance_overlay['window'].setAttribute(Qt.WA_TranslucentBackground)
+            cls._gm_assistance_overlay['window'].setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            cls._gm_assistance_overlay['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Set up view
+            cls._gm_assistance_overlay['view'] = QGraphicsView(
+                cls._gm_assistance_overlay['scene'],
+                cls._gm_assistance_overlay['window']
+            )
+            cls._gm_assistance_overlay['view'].setStyleSheet("""
+                QGraphicsView {
+                    background: rgba(0, 0, 0, 180);
+                    border: 2px solid white;
+                    border-radius: 10px;
+                }
+            """)
+            cls._gm_assistance_overlay['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._gm_assistance_overlay['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._gm_assistance_overlay['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+            # Create and set up text item with centered text
+            cls._gm_assistance_overlay['text_item'] = QGraphicsTextItem()
+            cls._gm_assistance_overlay['text_item'].setDefaultTextColor(Qt.white)
+            font = QFont('Arial', 24)
+            cls._gm_assistance_overlay['text_item'].setFont(font)
+            
+            # Set text with proper centering - using table for guaranteed centering
+            cls._gm_assistance_overlay['text_item'].setHtml(
+                '<div style="width: 500px;">'
+                '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">'
+                'Your game master offered<br>'
+                'in-room assistance'
+                '</td></tr></table>'
+                '</div>'
+            )
+            cls._gm_assistance_overlay['scene'].addItem(cls._gm_assistance_overlay['text_item'])
+
+            # Create button backgrounds (rectangles)
+            yes_rect = QGraphicsRectItem(0, 0, 200, 60)  # Larger fixed size for buttons
+            yes_rect.setBrush(QBrush(QColor(0, 128, 0, 204)))  # Semi-transparent green
+            yes_rect.setPen(QPen(Qt.white))
+            cls._gm_assistance_overlay['yes_rect'] = yes_rect
+            cls._gm_assistance_overlay['scene'].addItem(yes_rect)
+
+            no_rect = QGraphicsRectItem(0, 0, 200, 60)  # Larger fixed size for buttons
+            no_rect.setBrush(QBrush(QColor(255, 0, 0, 204)))  # Semi-transparent red
+            no_rect.setPen(QPen(Qt.white))
+            cls._gm_assistance_overlay['no_rect'] = no_rect
+            cls._gm_assistance_overlay['scene'].addItem(no_rect)
+
+            # Create Yes button text
+            yes_button = QGraphicsTextItem("Yes")
+            yes_button.setDefaultTextColor(Qt.white)
+            yes_button.setFont(QFont('Arial', 20))
+            cls._gm_assistance_overlay['yes_button'] = yes_button
+            cls._gm_assistance_overlay['scene'].addItem(yes_button)
+
+            # Create No button text
+            no_button = QGraphicsTextItem("No")
+            no_button.setDefaultTextColor(Qt.white)
+            no_button.setFont(QFont('Arial', 20))
+            cls._gm_assistance_overlay['no_button'] = no_button
+            cls._gm_assistance_overlay['scene'].addItem(no_button)
+
+            # For a sideways window:
+            window_width = 400
+            window_height = 600
+
+            # Position the window in the center of the screen
+            screen_width = 1920  # Standard screen width
+            screen_height = 1080  # Standard screen height
+            x_pos = (screen_width - window_width) // 2  # Center horizontally
+            y_pos = (screen_height - window_height) // 2  # Center vertically
+
+            # Set window and view geometry
+            cls._gm_assistance_overlay['window'].setGeometry(x_pos, y_pos, window_width, window_height)
+            cls._gm_assistance_overlay['view'].setGeometry(0, 0, window_width, window_height)
+            cls._gm_assistance_overlay['scene'].setSceneRect(0, 0, window_width, window_height)
+
+            # First rotate all items
+            cls._gm_assistance_overlay['text_item'].setRotation(90)
+            yes_button.setRotation(90)
+            no_button.setRotation(90)
+            yes_rect.setRotation(90)
+            no_rect.setRotation(90)
+
+            # Get the rotated bounding rectangle for text
+            text_rect = cls._gm_assistance_overlay['text_item'].boundingRect()
+            text_width = text_rect.width()
+            text_height = text_rect.height()
+
+            # Calculate center position for rotated text
+            x_center = (window_width - text_height) / 2 + 140
+            y_center = (window_height + text_width) / 2
+
+            # Position text in center, accounting for rotation pivot point
+            cls._gm_assistance_overlay['text_item'].setPos(x_center, y_center - text_width)
+
+            # Position buttons vertically (will appear to the left of text when rotated)
+            button_spacing = 270  # Increased spacing for No button (was 40)
+            button_width = 170  # Width of button rectangles
+            button_height = 60  # Height of button rectangles
+            
+            # Base position for buttons (to the left of text when rotated)
+            base_x = x_center - 150  # Distance from text
+            base_y = y_center - text_width/2  # Center vertically relative to text
+
+            # Position Yes button and its background (stays at original position)
+            cls._gm_assistance_overlay['yes_rect'].setPos(base_x, base_y)
+
+            # Center Yes text in button - calculate center of the button rectangle
+            yes_text_width = cls._gm_assistance_overlay['yes_button'].boundingRect().width()
+            yes_text_height = cls._gm_assistance_overlay['yes_button'].boundingRect().height()
+            # Calculate the center point of the button rectangle
+            yes_rect_center_x = base_x + button_height/2
+            yes_rect_center_y = base_y + button_width/2
+            # Position text at center point, accounting for text dimensions
+            cls._gm_assistance_overlay['yes_button'].setPos(
+                yes_rect_center_x - yes_text_height/2,
+                yes_rect_center_y - yes_text_width/2
+            )
+
+            # Position No button and its background (moved up significantly)
+            cls._gm_assistance_overlay['no_rect'].setPos(base_x, base_y - button_spacing)
+            
+            # Center No text in button - using same centering logic
+            no_text_width = cls._gm_assistance_overlay['no_button'].boundingRect().width()
+            no_text_height = cls._gm_assistance_overlay['no_button'].boundingRect().height()
+            # Calculate the center point of the button rectangle
+            no_rect_center_x = base_x + button_height/2
+            no_rect_center_y = (base_y - button_spacing) + button_width/2
+            # Position text at center point, accounting for text dimensions
+            cls._gm_assistance_overlay['no_button'].setPos(
+                no_rect_center_x - no_text_height/2,
+                no_rect_center_y - no_text_width/2
+            )
+
+            # Add click handling to the view
+            class GMAssistanceView(QGraphicsView):
+                def mousePressEvent(self, event):
+                    scene_pos = self.mapToScene(event.pos())
+                    items = self.scene().items(scene_pos)
+                    for item in items:
+                        if item == cls._gm_assistance_overlay['yes_rect'] or item == cls._gm_assistance_overlay['yes_button']:
+                            print("[qt overlay] Yes button clicked - GM assistance accepted")
+                            break
+                        elif item == cls._gm_assistance_overlay['no_rect'] or item == cls._gm_assistance_overlay['no_button']:
+                            print("[qt overlay] No button clicked - GM assistance declined")
+                            break
+                    super().mousePressEvent(event)
+
+            # Replace the view with our custom view
+            old_view = cls._gm_assistance_overlay['view']
+            cls._gm_assistance_overlay['view'] = GMAssistanceView(
+                cls._gm_assistance_overlay['scene'],
+                cls._gm_assistance_overlay['window']
+            )
+            cls._gm_assistance_overlay['view'].setStyleSheet(old_view.styleSheet())
+            cls._gm_assistance_overlay['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._gm_assistance_overlay['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._gm_assistance_overlay['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+            cls._gm_assistance_overlay['view'].setGeometry(0, 0, window_width, window_height)
+            old_view.deleteLater()
+
+            # Show the window immediately
+            cls._gm_assistance_overlay['window'].show()
+            cls._gm_assistance_overlay['view'].show()
+            cls._gm_assistance_overlay['window'].raise_()
 
     @classmethod
     def show_hint_text(cls, text, room_number=None):
@@ -1018,6 +1212,9 @@ class Overlay:
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
                 print("[qt overlay]Hiding hint request text window")
                 cls._hint_request_text['window'].hide()
+            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+                print("[qt overlay]Hiding GM assistance window")
+                cls._gm_assistance_overlay['window'].hide()
             if cls._window:
                 print("[qt overlay]Hiding main window")
                 cls._window.hide()
@@ -1047,6 +1244,10 @@ class Overlay:
                 print("[qt overlay]Showing hint request text window")
                 cls._hint_request_text['window'].show()
                 cls._hint_request_text['window'].raise_()
+            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+                print("[qt overlay]Showing GM assistance window")
+                cls._gm_assistance_overlay['window'].show()
+                cls._gm_assistance_overlay['window'].raise_()
             if cls._window:
                 print("[qt overlay]Showing main window")
                 cls._window.show()
@@ -1055,3 +1256,29 @@ class Overlay:
         except Exception as e:
             print(f"[qt overlay]Error showing overlays: {e}")
             traceback.print_exc()
+
+    @classmethod
+    def show_gm_assistance(cls):
+        """Show the game master assistance overlay."""
+        if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+            # Center the text
+            text_width = cls._gm_assistance_overlay['text_item'].boundingRect().width()
+            text_height = cls._gm_assistance_overlay['text_item'].boundingRect().height()
+            view_width = cls._gm_assistance_overlay['view'].width()
+            view_height = cls._gm_assistance_overlay['view'].height()
+            
+            # Position text in center
+            cls._gm_assistance_overlay['text_item'].setPos(
+                (view_width - text_height) / 2,  # Note: width/height are swapped due to rotation
+                (view_height - text_width) / 2
+            )
+            
+            # Show the window
+            cls._gm_assistance_overlay['window'].show()
+            cls._gm_assistance_overlay['view'].show()
+
+    @classmethod
+    def hide_gm_assistance(cls):
+        """Hide the game master assistance overlay."""
+        if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+            cls._gm_assistance_overlay['window'].hide()
