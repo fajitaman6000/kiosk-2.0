@@ -812,9 +812,20 @@ class AdminInterfaceBuilder:
             kiosk_icon = None
             
         # Create icon label but initially hide it
-        icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None)
+        icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None, cursor="hand2")  # Add hand cursor
         icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
-        icon_label.pack(side='left', padx=(5,2))
+        icon_label.pack(side='left', padx=(0,5))  # Changed padding to be 0 on left side
+        
+        # Add click handler to hide the icon
+        def hide_icon(event):
+            if icon_label.winfo_manager():  # If visible
+                icon_label.pack_forget()
+                # Also stop the blink timer if it exists
+                if self.connected_kiosks[computer_name]['icon_blink_after_id']:
+                    self.app.root.after_cancel(self.connected_kiosks[computer_name]['icon_blink_after_id'])
+                    self.connected_kiosks[computer_name]['icon_blink_after_id'] = None
+        
+        icon_label.bind('<Button-1>', hide_icon)  # Bind left click to hide function
         icon_label.pack_forget()  # Initially hide the icon
         
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
@@ -995,7 +1006,7 @@ class AdminInterfaceBuilder:
             if icon_label.winfo_manager():  # If visible
                 icon_label.pack_forget()
             else:
-                icon_label.pack(side='left', padx=(5,2))
+                icon_label.pack(side='left', padx=(0,5))
             
             # Schedule next blink
             kiosk_data['icon_blink_after_id'] = self.app.root.after(500, blink)
