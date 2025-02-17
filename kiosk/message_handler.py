@@ -320,6 +320,8 @@ class MessageHandler:
 
             elif msg['type'] == 'offer_assistance' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[message handler] Received offer assistance command")
+                # Play the hint received sound
+                self.kiosk_app.audio_manager.play_sound("hint_received.mp3")
                 # Call the Overlay's method to show the assistance offered message
                 self.kiosk_app.root.after(0, lambda: Overlay.show_gm_assistance())
 
