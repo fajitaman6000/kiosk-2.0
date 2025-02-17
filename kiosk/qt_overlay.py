@@ -420,13 +420,13 @@ class Overlay:
             cls._gm_assistance_overlay['text_item'].setPos(x_center, y_center - text_width)
 
             # Position buttons vertically (will appear to the left of text when rotated)
-            button_spacing = 270  # Increased spacing for No button (was 40)
+            button_spacing = 270  # Space between buttons
             button_width = 170  # Width of button rectangles
             button_height = 60  # Height of button rectangles
             
             # Base position for buttons (to the left of text when rotated)
             base_x = x_center - 150  # Distance from text
-            base_y = y_center - text_width/2  # Center vertically relative to text
+            base_y = y_center - text_width/2 + 30  # Moved base position down by 100 pixels
 
             # Position Yes button and its background (stays at original position)
             cls._gm_assistance_overlay['yes_rect'].setPos(base_x, base_y)
