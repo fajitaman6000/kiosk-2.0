@@ -228,13 +228,13 @@ class SavedHintsPanel:
         hints = []
         room_str = str(self.current_room)
         
-        print(f"[saved hints panel]Getting hints for room {room_str} and prop {prop_display_name}")
-        print(f"[saved hints panel]Available hints data: {self.hints_data}")
+        #print(f"[saved hints panel]Getting hints for room {room_str} and prop {prop_display_name}")
+        #print(f"[saved hints panel]Available hints data: {self.hints_data}")
         
         # Extract original prop name from the combined format
         original_name = prop_display_name.split('(')[-1].rstrip(')')
         original_name = original_name.strip()  # Remove any whitespace
-        print(f"[saved hints panel]Extracted original name: '{original_name}'")
+        #print(f"[saved hints panel]Extracted original name: '{original_name}'")
         
         # Get the display name mapping for this prop
         room_map = {
@@ -258,7 +258,7 @@ class SavedHintsPanel:
                     name_mapping[display_name.lower()] = display_name
         
         if room_str in self.hints_data:
-            print(f"[saved hints panel]Props in room {room_str}: {list(self.hints_data[room_str].keys())}")
+            #print(f"[saved hints panel]Props in room {room_str}: {list(self.hints_data[room_str].keys())}")
             # Try to find hints using either the original name or its display name
             for prop_key in self.hints_data[room_str]:
                 # Check if this prop matches either the original name or its mapped display name
@@ -325,13 +325,13 @@ class SavedHintsPanel:
     def on_prop_select(self, event):
         """Handle prop selection from dropdown"""
         selected_display_name = self.prop_var.get()
-        print(f"[saved hints panel]Selected prop from dropdown: {selected_display_name}")
+        #print(f"[saved hints panel]Selected prop from dropdown: {selected_display_name}")
         
         self.hint_listbox.delete(0, tk.END)
         
         if selected_display_name:
             hints = self.get_hints_for_prop(selected_display_name)
-            print(f"[saved hints panel]Found hints: {hints}")
+            #print(f"[saved hints panel]Found hints: {hints}")
             for hint in hints:
                 self.hint_listbox.insert(tk.END, hint)
 
@@ -341,13 +341,13 @@ class SavedHintsPanel:
             print("[saved hints panel]No current room selected")
             return
             
-        print(f"[saved hints panel]Trying to select prop: {prop_name}")
-        print(f"[saved hints panel]Available dropdown values: {self.prop_dropdown['values']}")
+        #print(f"[saved hints panel]Trying to select prop: {prop_name}")
+        #print(f"[saved hints panel]Available dropdown values: {self.prop_dropdown['values']}")
             
         # Find the display name that matches this prop name in parentheses
         for formatted_name in self.prop_dropdown['values']:
             if f"({prop_name})" in formatted_name:
-                print(f"[saved hints panel]Found matching prop in dropdown: {formatted_name}")
+                #print(f"[saved hints panel]Found matching prop in dropdown: {formatted_name}")
                 # Set the dropdown value
                 self.prop_dropdown.set(formatted_name)
                 self.on_prop_select(None)  # Trigger hint list update
