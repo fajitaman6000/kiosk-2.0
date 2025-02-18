@@ -32,14 +32,15 @@ class CollapsibleFrame(ttk.Frame):
         else:
             self.sub_frame.grid_remove()
 
-class HintManager:
+class ManagerSettings:
     def __init__(self, app, admin_interface):
         self.app = app
         self.admin_interface = admin_interface
         self.main_container = None
         self.original_widgets = []
         self.load_prop_mappings()
-        self.password_manager = AdminPasswordManager(app)  # Use the new password manager
+        self.password_manager = AdminPasswordManager(app)
+        self.current_page = None
 
     def load_prop_mappings(self):
         """Load prop name mappings from JSON"""
@@ -177,23 +178,57 @@ class HintManager:
             command=self.restore_original_view
         )
         back_btn.pack(side='left')
-        
-        change_pass_btn = ttk.Button(
-            header_frame,
-            text="Change Password",
-            command=self.change_password
-        )
-        change_pass_btn.pack(side='left', padx=5)
 
         ttk.Label(
             header_frame,
-            text="Hint Manager",
+            text="Settings",
             font=('Arial', 14, 'bold')
         ).pack(side='left', padx=20)
 
+        # Create settings navigation frame
+        nav_frame = ttk.Frame(self.main_container)
+        nav_frame.pack(fill='x', pady=(0, 10))
+
+        # Create buttons for different settings pages
+        hint_btn = ttk.Button(
+            nav_frame,
+            text="Hint Management",
+            command=lambda: self.show_settings_page('hints')
+        )
+        hint_btn.pack(side='left', padx=5)
+
+        password_btn = ttk.Button(
+            nav_frame,
+            text="Password Settings",
+            command=lambda: self.show_settings_page('password')
+        )
+        password_btn.pack(side='left', padx=5)
+
+        # Create container for settings pages
+        self.settings_container = ttk.Frame(self.main_container)
+        self.settings_container.pack(fill='both', expand=True)
+
+        # Show hints page by default
+        self.show_settings_page('hints')
+
+    def show_settings_page(self, page):
+        """Switch to the specified settings page"""
+        # Clear current page
+        for widget in self.settings_container.winfo_children():
+            widget.destroy()
+
+        self.current_page = page
+
+        if page == 'hints':
+            self.create_hints_page()
+        elif page == 'password':
+            self.create_password_page()
+
+    def create_hints_page(self):
+        """Create the hints management page"""
         # Create scrollable frame for hints
-        canvas = tk.Canvas(self.main_container)
-        scrollbar = ttk.Scrollbar(self.main_container, orient="vertical", command=canvas.yview)
+        canvas = tk.Canvas(self.settings_container)
+        scrollbar = ttk.Scrollbar(self.settings_container, orient="vertical", command=canvas.yview)
         self.scrollable_frame = ttk.Frame(canvas)
 
         self.scrollable_frame.bind(
@@ -210,6 +245,24 @@ class HintManager:
 
         # Load and display hints
         self.load_hints()
+
+    def create_password_page(self):
+        """Create the password management page"""
+        password_frame = ttk.Frame(self.settings_container)
+        password_frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        ttk.Label(
+            password_frame,
+            text="Password Management",
+            font=('Arial', 12, 'bold')
+        ).pack(pady=(0, 20))
+
+        change_pass_btn = ttk.Button(
+            password_frame,
+            text="Change Admin Password",
+            command=self.change_password
+        )
+        change_pass_btn.pack(pady=10)
 
     def load_hints(self):
         """Load and display all hints from saved_hints.json"""

@@ -7,7 +7,7 @@ from classic_audio_hints import ClassicAudioHints
 from setup_stats_panel import setup_stats_panel
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 from admin_audio_manager import AdminAudioManager
-from manager_settings import HintManager
+from manager_settings import ManagerSettings
 import cv2 # type: ignore
 from PIL import Image, ImageTk
 import threading
@@ -36,7 +36,7 @@ class AdminInterfaceBuilder:
         self.audio_active = False
         self.speaking = False
         self.current_hint_image = None
-        self.hint_manager = HintManager(app, self)  # Initialize hint manager
+        self.hint_manager = ManagerSettings(app, self)  # Initialize hint manager
         self.setup_ui()
         
         # Start timer update loop using app's root
