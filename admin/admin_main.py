@@ -125,6 +125,15 @@ try:
                         # Try to select prop in audio hints panel
                         if hasattr(self.interface_builder, 'audio_hints'):
                             self.interface_builder.audio_hints.select_prop_by_name(prop_name)
+                            
+                        # Try to select prop in image hint selection
+                        if hasattr(self.interface_builder, 'stats_elements') and 'image_btn' in self.interface_builder.stats_elements:
+                            # Find the matching prop in the image dropdown values
+                            for formatted_name in self.interface_builder.stats_elements['image_btn']['values']:
+                                if f"({prop_name})" in formatted_name:
+                                    self.interface_builder.img_prop_var.set(formatted_name)
+                                    self.interface_builder.on_image_prop_select(None)
+                                    break
 
             # Register callback with PropControl
             self.prop_control.add_prop_select_callback(on_prop_select)
