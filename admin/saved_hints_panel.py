@@ -106,6 +106,10 @@ class SavedHintsPanel:
 
         # Show list view initially
         self.show_list_view()
+
+        # Register for prop selection notifications if parent has prop_control
+        if hasattr(parent, 'app') and hasattr(parent.app, 'prop_control'):
+            parent.app.prop_control.add_prop_select_callback(self.select_prop_by_name)
     
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
@@ -187,18 +191,36 @@ class SavedHintsPanel:
 
     def get_props_for_room(self, room_number):
         """Get available props for the current room from hints data"""
-        props = {}  # Using dict to maintain mapping of display name to original name
-        room_str = str(room_number)  # Convert room number to string for dict key
+        # Load prop mappings
+        try:
+            with open('prop_name_mapping.json', 'r') as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"[saved hints panel]Error loading prop mappings: {e}")
+            prop_mappings = {}
+            
+        # Get room-specific props if room is assigned
+        props_list = []
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time"
+        }
         
-        if room_str in self.hints_data:
-            # Props are now stored by their display name
-            for prop_display_name in self.hints_data[room_str].keys():
-                # Format as just the display name since that's what we're using now
-                props[prop_display_name] = prop_display_name
+        if room_number in room_map:
+            room_key = room_map[room_number]
+            if room_key in prop_mappings:
+                # Sort props by order
+                props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
+                props.sort(key=lambda x: x[1]["order"])
+                props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
         
         # Sort by display names
-        sorted_display_names = sorted(props.keys())
-        self.prop_name_map = props  # Store mapping for later use
+        sorted_display_names = sorted(props_list)
         return sorted_display_names
 
     def get_hints_for_prop(self, prop_display_name):
@@ -206,9 +228,51 @@ class SavedHintsPanel:
         hints = []
         room_str = str(self.current_room)
         
-        if room_str in self.hints_data and prop_display_name in self.hints_data[room_str]:
-            # Hint names are the keys in the prop object
-            hints = list(self.hints_data[room_str][prop_display_name].keys())
+        print(f"[saved hints panel]Getting hints for room {room_str} and prop {prop_display_name}")
+        print(f"[saved hints panel]Available hints data: {self.hints_data}")
+        
+        # Extract original prop name from the combined format
+        original_name = prop_display_name.split('(')[-1].rstrip(')')
+        original_name = original_name.strip()  # Remove any whitespace
+        print(f"[saved hints panel]Extracted original name: '{original_name}'")
+        
+        # Get the display name mapping for this prop
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time"
+        }
+        
+        # Build a mapping of original names to display names
+        name_mapping = {}
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                for orig_name, prop_info in self.prop_name_mappings[room_key]['mappings'].items():
+                    display_name = prop_info.get('display', orig_name)
+                    name_mapping[orig_name.lower()] = display_name
+                    name_mapping[display_name.lower()] = display_name
+        
+        if room_str in self.hints_data:
+            print(f"[saved hints panel]Props in room {room_str}: {list(self.hints_data[room_str].keys())}")
+            # Try to find hints using either the original name or its display name
+            for prop_key in self.hints_data[room_str]:
+                # Check if this prop matches either the original name or its mapped display name
+                if (prop_key.lower() == original_name.lower() or 
+                    (original_name.lower() in name_mapping and 
+                     prop_key.lower() == name_mapping[original_name.lower()].lower())):
+                    print(f"[saved hints panel]Found hints for prop: {list(self.hints_data[room_str][prop_key].keys())}")
+                    hints = list(self.hints_data[room_str][prop_key].keys())
+                    break
+            else:
+                print(f"[saved hints panel]No hints found for prop '{original_name}'")
+        else:
+            print(f"[saved hints panel]No hints found for room {room_str}")
+            
         return sorted(hints)
 
     def get_image_path(self, room_number, prop_display_name, image_filename):
@@ -261,26 +325,35 @@ class SavedHintsPanel:
     def on_prop_select(self, event):
         """Handle prop selection from dropdown"""
         selected_display_name = self.prop_var.get()
+        print(f"[saved hints panel]Selected prop from dropdown: {selected_display_name}")
+        
         self.hint_listbox.delete(0, tk.END)
         
-        if selected_display_name and hasattr(self, 'prop_name_map'):
-            original_name = self.prop_name_map[selected_display_name]
-            hints = self.get_hints_for_prop(original_name)
+        if selected_display_name:
+            hints = self.get_hints_for_prop(selected_display_name)
+            print(f"[saved hints panel]Found hints: {hints}")
             for hint in hints:
                 self.hint_listbox.insert(tk.END, hint)
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its original name"""
-        if not hasattr(self, 'prop_name_map'):
+        if not self.current_room:
+            print("[saved hints panel]No current room selected")
             return
             
-        # Find the display name that contains this prop name in parentheses
+        print(f"[saved hints panel]Trying to select prop: {prop_name}")
+        print(f"[saved hints panel]Available dropdown values: {self.prop_dropdown['values']}")
+            
+        # Find the display name that matches this prop name in parentheses
         for formatted_name in self.prop_dropdown['values']:
             if f"({prop_name})" in formatted_name:
+                print(f"[saved hints panel]Found matching prop in dropdown: {formatted_name}")
                 # Set the dropdown value
                 self.prop_dropdown.set(formatted_name)
                 self.on_prop_select(None)  # Trigger hint list update
                 break
+        else:
+            print(f"[saved hints panel]No matching prop found for {prop_name}")
 
     def on_hint_select(self, event):
         """Handle hint selection from listbox"""
@@ -291,15 +364,42 @@ class SavedHintsPanel:
         hint_name = self.hint_listbox.get(selection[0])
         prop_display_name = self.prop_var.get()
         
-        # No need for mapping since we're using display names directly
+        # Extract original prop name from the combined format
+        original_name = prop_display_name.split('(')[-1].rstrip(')')
+        original_name = original_name.strip()
+        
         room_str = str(self.current_room)
         
-        # Get hint data directly from the structure
+        # Build name mapping just like in get_hints_for_prop
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time"
+        }
+        
+        name_mapping = {}
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                for orig_name, prop_info in self.prop_name_mappings[room_key]['mappings'].items():
+                    display_name = prop_info.get('display', orig_name)
+                    name_mapping[orig_name.lower()] = display_name
+                    name_mapping[display_name.lower()] = display_name
+        
+        # Get hint data directly from the structure with name mapping lookup
         selected_hint = None
-        if (room_str in self.hints_data and 
-            prop_display_name in self.hints_data[room_str] and
-            hint_name in self.hints_data[room_str][prop_display_name]):
-            selected_hint = self.hints_data[room_str][prop_display_name][hint_name]
+        if room_str in self.hints_data:
+            for prop_key in self.hints_data[room_str]:
+                if (prop_key.lower() == original_name.lower() or 
+                    (original_name.lower() in name_mapping and 
+                     prop_key.lower() == name_mapping[original_name.lower()].lower())):
+                    if hint_name in self.hints_data[room_str][prop_key]:
+                        selected_hint = self.hints_data[room_str][prop_key][hint_name]
+                    break
                 
         if selected_hint:
             # Update preview text
@@ -314,7 +414,7 @@ class SavedHintsPanel:
                     # Get path using room, prop display name, and image filename
                     image_path = self.get_image_path(
                         self.current_room,
-                        prop_display_name,
+                        original_name,
                         selected_hint['image']
                     )
                     if image_path and os.path.exists(image_path):

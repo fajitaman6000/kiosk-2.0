@@ -15,6 +15,24 @@
                     "image": "lol.png"
                 }
             }
+        },
+        "6": {
+            "Color Buttons": {
+                "gsdfgds": {
+                    "text": "gsdgsdfg",
+                    "image": null
+                },
+                "hdfdf": {
+                    "text": "hdfghdfg",
+                    "image": null
+                }
+            },
+            "Stone Fragments": {
+                "test": {
+                    "text": "sgdfgsdf",
+                    "image": null
+                }
+            }
         }
     }
 }
