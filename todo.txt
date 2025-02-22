@@ -5,7 +5,6 @@ hangup reliability: kiosks don't always launch successfully, especially after th
 
 hint manager needs updating
     prop control is visible within the hint manager area
-    hint manager could easily be renamed to just manager settings and adjusted accordingly
 
 ##############################################################################################################################
 # priority bugs
@@ -28,6 +27,7 @@ resets during intro videos cause crashing/audio bugs(?)
 ##############################################################################################################################
 # planned features: 
 
+colors on props based on their reset circuit
 hint count on THEIR side
 admin mode (technician/upper managers),
 restarter moved to kiosk app

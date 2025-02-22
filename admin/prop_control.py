@@ -229,7 +229,7 @@ class PropControl:
                 # Offline status takes precedence over any other status
                 icon = self.status_icons['offline']
                 prop_name = prop['info'].get('strName', 'unknown')
-                print(f"[prop control]Setting offline icon for prop '{prop_name}' (ID: {prop_id})")
+                #print(f"[prop control]Setting offline icon for prop '{prop_name}' (ID: {prop_id})")
             else:
                 # Only check actual status if prop is online
                 status_text = prop['info']['strStatus']
