@@ -89,6 +89,11 @@ class PropControl:
         # Create left side panel for prop controls using parent's left_panel
         self.frame = app.interface_builder.left_panel
         
+        # Create custom styles for circuit highlighting
+        style = ttk.Style()
+        style.configure('Circuit.TFrame', background='#ffe6e6', borderwidth=2, relief='solid')
+        style.configure('Circuit.TLabel', background='#ffe6e6', font=('Arial', 8, 'bold'))
+        
         # Title label
         title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
         title_label.pack(fill='x', pady=(0, 10))
@@ -1164,7 +1169,7 @@ class PropControl:
     def highlight_circuit_props(self, prop_name, highlight):
         """Highlight or unhighlight props that share the same circuit"""
         # Get the circuit value for the hovered prop
-        print(f"[prop control]Highlighting circuit props for {prop_name}")
+        #print(f"[prop control]Highlighting circuit props for {prop_name}")
         circuit = self.get_prop_circuit(prop_name)
         if not circuit:
             return
@@ -1182,12 +1187,17 @@ class PropControl:
         for prop_id, prop_data in self.props.items():
             if prop_data['info']['strName'] in circuit_props:
                 try:
+                    prop_frame = prop_data.get('frame')
                     name_label = prop_data.get('name_label')
-                    if name_label and name_label.winfo_exists():
+                    if prop_frame and prop_frame.winfo_exists() and name_label and name_label.winfo_exists():
                         if highlight:
-                            name_label.configure(foreground='red')
+                            # Add visual highlighting
+                            prop_frame.configure(style='Circuit.TFrame')
+                            name_label.configure(style='Circuit.TLabel')
                         else:
-                            name_label.configure(foreground='black')
+                            # Remove visual highlighting
+                            prop_frame.configure(style='TFrame')
+                            name_label.configure(style='TLabel')
                 except tk.TclError:
                     continue
 
