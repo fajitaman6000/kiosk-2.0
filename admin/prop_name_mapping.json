@@ -51,17 +51,20 @@
             "Sit on chair": {
                 "display": "Chair",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "1"
             },
             "Code panel": {
                 "display": "Code Panel",
                 "order": 4,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "1"
             },
             "Stone piece": {
                 "display": "Stone Pieces",
                 "order": 5,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "1"
             },
             "Dragon to cat": {
                 "display": "Dragon to Cat",

@@ -44,6 +44,7 @@ set alarm on prop to make sound when gm-chosen prop finishes
 ##############################################################################################################################
 # ambitious extra ideas:
 
+LLM translator call
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)

@@ -940,6 +940,12 @@ class PropControl:
                     width=2,
                     height=4
                 )
+                # Store prop name for hover events
+                prop_name = prop_data.get("strName", "")
+                if prop_name:
+                    reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
+                    reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
+                    print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
                 reset_btn.pack(side='left', padx=1)
                         
                 activate_btn = tk.Button(
@@ -1071,6 +1077,12 @@ class PropControl:
                 width=2,
                 height=4
             )
+            # Store prop name for hover events
+            prop_name = prop_data.get("strName", "")
+            if prop_name:
+                reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
+                reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
+                print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
             reset_btn.pack(side='left', padx=1)
             
             activate_btn = tk.Button(
@@ -1133,6 +1145,51 @@ class PropControl:
                 for key in ['name_label', 'status_label', 'frame']:
                     if key in self.props[prop_id]:
                         del self.props[prop_id][key]
+
+    def get_prop_circuit(self, prop_name):
+        """Get the circuit value for a prop if it exists"""
+        if self.current_room not in self.ROOM_MAP:
+            return None
+            
+        room_key = self.ROOM_MAP[self.current_room]
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+            
+        if room_key not in self.prop_name_mappings:
+            return None
+            
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        return prop_info.get('circuit')
+
+    def highlight_circuit_props(self, prop_name, highlight):
+        """Highlight or unhighlight props that share the same circuit"""
+        # Get the circuit value for the hovered prop
+        print(f"[prop control]Highlighting circuit props for {prop_name}")
+        circuit = self.get_prop_circuit(prop_name)
+        if not circuit:
+            return
+            
+        # Find all props with the same circuit value
+        room_key = self.ROOM_MAP[self.current_room]
+        circuit_props = []
+        
+        # Get all props that share this circuit
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
+            if info.get('circuit') == circuit:
+                circuit_props.append(name)
+                
+        # Find and highlight/unhighlight the name labels for these props
+        for prop_id, prop_data in self.props.items():
+            if prop_data['info']['strName'] in circuit_props:
+                try:
+                    name_label = prop_data.get('name_label')
+                    if name_label and name_label.winfo_exists():
+                        if highlight:
+                            name_label.configure(foreground='red')
+                        else:
+                            name_label.configure(foreground='black')
+                except tk.TclError:
+                    continue
 
     def is_finishing_prop(self, room_number, prop_name):
         """Check if a prop is marked as a finishing prop"""
