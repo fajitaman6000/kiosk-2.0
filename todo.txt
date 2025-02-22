@@ -27,7 +27,6 @@ resets during intro videos cause crashing/audio bugs(?)
 ##############################################################################################################################
 # planned features: 
 
-colors on props based on their reset circuit
 hint count on THEIR side
 admin mode (technician/upper managers),
 restarter moved to kiosk app
