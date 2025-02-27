@@ -157,11 +157,11 @@ class KioskUI:
             self.show_status_frame()
             self.status_frame.delete('pending_text')
             
-            # Add rotated text to the canvas
+            # Add rotated text to the canvas # DEPRECATED
             self.status_frame.create_text(
                 50,  # center of width (100/2)
                 540,  # center of height (1079/2)
-                text="Hint Requested, please wait...",
+                text="HINT REQUESTED\nPlease wait for your game master to evaluate your game",
                 fill='yellow',
                 font=('Arial', 24),
                 angle=90,

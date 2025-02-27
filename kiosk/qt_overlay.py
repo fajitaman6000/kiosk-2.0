@@ -650,7 +650,7 @@ class Overlay:
             cls._hint_request_text_thread.start()
 
         # Send update through thread
-        cls._hint_request_text_thread.update_text("Hint Requested, please wait...")
+        cls._hint_request_text_thread.update_text("HINT REQUESTED")
 
     @classmethod
     def _actual_hint_request_text_update(cls, text):
@@ -701,8 +701,8 @@ class Overlay:
             cls._hint_request_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
             cls._hint_request_text['text_item'] = QGraphicsTextItem()
-            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.yellow) # Keep the color
-            font = QFont('Arial', 24)  # Keep the font
+            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.white) # Keep the color
+            font = QFont('Arial', 36)  # Keep the font
             cls._hint_request_text['text_item'].setFont(font)
             cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
 
