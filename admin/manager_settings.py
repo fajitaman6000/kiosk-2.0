@@ -37,7 +37,7 @@ class ManagerSettings:
         self.app = app
         self.admin_interface = admin_interface
         self.main_container = None
-        self.original_widgets = []
+        #self.original_widgets = []  # No longer needed
         self.load_prop_mappings()
         self.password_manager = AdminPasswordManager(app)
         self.current_page = None
@@ -75,22 +75,18 @@ class ManagerSettings:
         return prop_name
 
     def check_credentials(self):
-        """Prompt for credentials and validate them, prevent creation if canceled."""
+        """Prompt for credentials and validate them."""
         def on_success():
             self.create_hint_management_view()
-        
-        if not self.password_manager.verify_password(callback=on_success):
-            self.restore_original_view()
+          
+        return self.password_manager.verify_password(callback=on_success)
+
 
     def show_hint_manager(self):
-        """Store current widgets and show hint management interface"""
-        self.original_widgets = []
-        for widget in self.admin_interface.main_container.winfo_children():
-            widget.pack_forget()
-            self.original_widgets.append(widget)
-        
-        # Directly create the hint management view without password check
-        self.create_hint_management_view()
+        """Show the hint management interface in a new window."""
+
+        # Directly create the hint management view without password check in initial call
+        self.check_credentials()
 
     def change_password(self):
         """Prompt for old password, new password, and save the new hash"""
@@ -155,29 +151,26 @@ class ManagerSettings:
         
         self.app.root.wait_window(change_window)
 
-    def restore_original_view(self):
-        """Restore the original interface"""
-        if self.main_container:
-            self.main_container.destroy()
+    # def restore_original_view(self):  # No longer needed
+    #     """Restore the original interface"""
+    #     if self.main_container:
+    #         self.main_container.destroy()
 
-        for widget in self.original_widgets:
-            widget.pack(side='left', fill='both', expand=True, padx=5)
+    #     for widget in self.original_widgets:
+    #         widget.pack(side='left', fill='both', expand=True, padx=5)
 
     def create_hint_management_view(self):
-        """Create the hint management interface"""
-        self.main_container = ttk.Frame(self.admin_interface.main_container)
+        """Create the hint management interface in a new window."""
+        settings_window = tk.Toplevel(self.app.root)  # Create a new window
+        settings_window.title("Settings")
+        settings_window.geometry("800x600")  # Adjust size as needed
+
+        self.main_container = ttk.Frame(settings_window)  # Use the new window
         self.main_container.pack(fill='both', expand=True, padx=10, pady=5)
 
-        # Create header with back button
+        # Create header (without back button)
         header_frame = ttk.Frame(self.main_container)
         header_frame.pack(fill='x', pady=(0, 10))
-
-        back_btn = ttk.Button(
-            header_frame,
-            text="← Back to Control Panel",
-            command=self.restore_original_view
-        )
-        back_btn.pack(side='left')
 
         ttk.Label(
             header_frame,
@@ -210,6 +203,8 @@ class ManagerSettings:
 
         # Show hints page by default
         self.show_settings_page('hints')
+
+
 
     def show_settings_page(self, page):
         """Switch to the specified settings page"""

@@ -29,7 +29,7 @@ try:
 
             # Handle icon setting
             myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid) # allows icon to show in task bar
 
             try:
                 # Construct the absolute path to the icon file
