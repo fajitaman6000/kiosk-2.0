@@ -660,7 +660,10 @@ class Overlay:
                 print("[qt overlay]Error: Hint request text window not initialized")
                 return
 
-            # Rebuild objects before updating
+            # --- SIMPLIFIED SETUP ---
+            # We keep separate objects, but position them like the cooldown.
+
+            # Rebuild objects before updating (GOOD PRACTICE, KEEPS THINGS CLEAN)
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
                if cls._hint_request_text.get('window'):
                    cls._hint_request_text['window'].hide()
@@ -675,7 +678,7 @@ class Overlay:
                cls._hint_request_text['text_item'] = None
 
 
-            cls._hint_request_text['window'] = QWidget(cls._window)
+            cls._hint_request_text['window'] = QWidget(cls._window)  # Parent to main window
             cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground)
             cls._hint_request_text['window'].setWindowFlags(
                 Qt.FramelessWindowHint |
@@ -685,7 +688,6 @@ class Overlay:
             )
             cls._hint_request_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
 
-            # Create scene and view if needed
             cls._hint_request_text['scene'] = QGraphicsScene()
             cls._hint_request_text['view'] = QGraphicsView(cls._hint_request_text['scene'], cls._hint_request_text['window'])
             cls._hint_request_text['view'].setStyleSheet("""
@@ -698,10 +700,9 @@ class Overlay:
             cls._hint_request_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._hint_request_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
-            # Create text item if needed
             cls._hint_request_text['text_item'] = QGraphicsTextItem()
-            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.yellow)
-            font = QFont('Arial', 24)
+            cls._hint_request_text['text_item'].setDefaultTextColor(Qt.yellow) # Keep the color
+            font = QFont('Arial', 24)  # Keep the font
             cls._hint_request_text['text_item'].setFont(font)
             cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
 
@@ -713,31 +714,33 @@ class Overlay:
                     style | win32con.WS_EX_NOACTIVATE
                 )
                 
-            width = 120 # Reduced width
-            height = 600 # Increased height
+            # --- POSITIONING (LIKE show_hint_cooldown) ---
+            width = 100  # Match cooldown width
+            height = 1079  # Match cooldown height
 
-            cls._hint_request_text['window'].setGeometry(340, 300, width, height) # positioned to match button
+            cls._hint_request_text['window'].setGeometry(510, 0, width, height) # Same position as cooldown
             cls._hint_request_text['view'].setGeometry(0, 0, width, height)
             cls._hint_request_text['scene'].setSceneRect(QRectF(0, 0, width, height))
-                
-            # Update text
+
+            # --- STYLING AND ROTATION (LIKE show_hint_cooldown) ---
+
             cls._hint_request_text['text_item'].setHtml(
-                 f'<div style="background-color: transparent; padding: 20px;text-align:center;width:{height-40}px">{text}</div>'
+                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{text}</div>'
             )
-            
+
             cls._hint_request_text['text_item'].setTransform(QTransform())
-            cls._hint_request_text['text_item'].setRotation(90)
-            
+            cls._hint_request_text['text_item'].setRotation(90) # Same rotation
+
             text_width = cls._hint_request_text['text_item'].boundingRect().width()
             text_height = cls._hint_request_text['text_item'].boundingRect().height()
-            
             cls._hint_request_text['text_item'].setPos(
-               (width + text_height) / 2,
-               (height - text_width) / 2
+                (width + text_height) / 2,  # Center like cooldown
+                (height - text_width) / 2
             )
-                
+
             cls._hint_request_text['window'].show()
             cls._hint_request_text['window'].raise_()
+
         except Exception as e:
             print(f"[qt overlay]Error in _actual_hint_request_text_update: {e}")
             traceback.print_exc()

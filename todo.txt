@@ -9,6 +9,10 @@ hint manager needs updating
 ##############################################################################################################################
 # priority bugs
 
+"[audio manager]Could not determine music for room: 7"
+
+clear hints doesn't clear hint cooldown text item
+
 qt elements visible during video playback
 
 kiosk doesn't retry/add itself back to queue after failed sync attempt
@@ -19,7 +23,7 @@ clear hints button broken but reset kiosk still works
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################
-# known bugs
+# known low priority bugs
 
 mqtt connections get crippled while running file sync
 resets during intro videos cause crashing/audio bugs(?)
