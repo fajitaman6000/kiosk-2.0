@@ -7,6 +7,8 @@ hangup reliability: kiosks don't always launch successfully, especially after th
 ##############################################################################################################################
 # priority bugs
 
+room changes do not change loaded music on that kiosk
+
 "[audio manager]Could not determine music for room: 7"
 
 clear hints doesn't clear hint cooldown text item
