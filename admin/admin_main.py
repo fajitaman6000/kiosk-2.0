@@ -24,7 +24,16 @@ try:
             
             self.root = tk.Tk()
             self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
-            
+
+            try:
+                # Construct the absolute path to the icon file
+                icon_path = os.path.join(os.path.dirname(__file__), "icon.ico")  # Assuming icon.ico is in the same directory
+
+                self.root.iconbitmap(default=icon_path)  # Use -default for .ico with multiple sizes
+
+            except tk.TclError as e:
+                print(f"[main]Error loading icon: {e}")  # Handle icon loading error
+
             # Get screen dimensions
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
