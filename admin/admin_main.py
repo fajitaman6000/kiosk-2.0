@@ -11,6 +11,8 @@ from admin_interface_builder import AdminInterfaceBuilder
 from admin_sync_manager import AdminSyncManager
 from manager_settings import AdminPasswordManager, ManagerSettings
 
+import ctypes
+
 def show_error_and_wait():
     print("[main]\nAn error occurred. Error details above.")
     input("Press Enter to exit...")
@@ -24,6 +26,10 @@ try:
             
             self.root = tk.Tk()
             self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
+
+            # Handle icon setting
+            myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
 
             try:
                 # Construct the absolute path to the icon file

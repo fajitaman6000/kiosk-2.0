@@ -33,6 +33,10 @@ class KioskApp:
         self.root = tk.Tk()
         self.root.title(f"Kiosk App: {self.computer_name}")
 
+        # Handle icon setting
+        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
         try:
             # Construct the absolute path to the icon file
             icon_path = os.path.join(os.path.dirname(__file__), "icon.ico")  # Assuming icon.ico is in the same directory
