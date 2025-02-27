@@ -3,8 +3,6 @@
 
 hangup reliability: kiosks don't always launch successfully, especially after the video feed check
 
-hint manager needs updating
-    prop control is visible within the hint manager area
 
 ##############################################################################################################################
 # priority bugs
@@ -19,12 +17,12 @@ kiosk doesn't retry/add itself back to queue after failed sync attempt
 time machine camera loading issue
 wizard not receiving sync messages(?)
 
-clear hints button broken but reset kiosk still works
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################
 # known low priority bugs
 
+password for settings gets prompted twice
 victory condition runs on and off during room reset of a won game
 mqtt connections get crippled while running file sync
 resets during intro videos cause crashing/audio bugs(?)
