@@ -52,19 +52,19 @@
                 "display": "Chair",
                 "order": 3,
                 "finishing_prop": false,
-                "circuit": "1"
+                "circuit": "desk"
             },
             "Code panel": {
                 "display": "Code Panel",
                 "order": 4,
                 "finishing_prop": false,
-                "circuit": "1"
+                "circuit": "desk"
             },
             "Stone piece": {
                 "display": "Stone Pieces",
                 "order": 5,
                 "finishing_prop": false,
-                "circuit": "1"
+                "circuit": "desk"
             },
             "Dragon to cat": {
                 "display": "Dragon to Cat",
@@ -94,7 +94,7 @@
         }
     },
     "casino": {
-        "comments": "Casino Props",
+        "comments": "Casino props",
         "mappings": {
             "Tubes": {
                 "display": "Buzzwire",
@@ -119,12 +119,14 @@
             "Boxes": {
                 "display": "Drawers",
                 "order": 12,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "lockers"
             },
             "Code panel": {
                 "display": "Case Code",
                 "order": 13,
-                "finishing_prop": true
+                "finishing_prop": true,
+                "circuit": "lockers"
             },
             "Weight game": {
                 "display": "Weight Game",
@@ -139,17 +141,20 @@
             "Cache in table": {
                 "display": "Table Cache",
                 "order": 7,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Painting cache": {
                 "display": "Painting Cache",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Dildo": {
                 "display": "Dildo Game",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Painting 2": {
                 "display": "Painting 2",
@@ -159,17 +164,20 @@
             "Cameras": {
                 "display": "Cameras",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Planting bomb": {
                 "display": "Plant Bombs",
                 "order": 9,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Blast": {
                 "display": "Blast Open",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Clocks": {
                 "display": "Clocks",
@@ -205,12 +213,14 @@
             "Boxes": {
                 "display": "Drawers",
                 "order": 12,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "lockers"
             },
             "Code panel": {
                 "display": "Case Code",
                 "order": 13,
-                "finishing_prop": true
+                "finishing_prop": true,
+                "circuit": "lockers"
             },
             "Weight game": {
                 "display": "Weight Game",
@@ -225,17 +235,20 @@
             "Cache in table": {
                 "display": "Table Cache",
                 "order": 7,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Painting cache": {
                 "display": "Painting Cache",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Dildo": {
                 "display": "Dildo Game",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Painting 2": {
                 "display": "Painting 2",
@@ -245,17 +258,20 @@
             "Cameras": {
                 "display": "Cameras",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Planting bomb": {
                 "display": "Plant Bombs",
                 "order": 9,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Blast": {
                 "display": "Blast Open",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Clocks": {
                 "display": "Clocks",
@@ -276,12 +292,14 @@
             "Change the object": {
                 "display": "Diary/Cross",
                 "order": 5,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "maze"
             },
             "Symbol maze": {
                 "display": "Symbol Maze",
                 "order": 1,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "maze"
             },
             "Ghost puzzle": {
                 "display": "Yellow Puzzle",
@@ -471,7 +489,8 @@
             "Clock": {
                 "display": "Clock",
                 "order": 1,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Control panel": {
                 "display": "Control Panel",
@@ -496,7 +515,8 @@
             "Machine door": {
                 "display": "Door",
                 "order": 99,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "door"
             },
             "Skull button": {
                 "display": "Skull Button",
@@ -516,12 +536,14 @@
             "Prism": {
                 "display": "Color Prism",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Radium matrix": {
                 "display": "Desk Ball",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Time capacitor": {
                 "display": "Time Capacitor",
@@ -541,7 +563,8 @@
             "Air flow filter": {
                 "display": "Desk Fan",
                 "order": 2,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "circuit": "desk"
             },
             "Inverse vault": {
                 "display": "Inverse Vault",

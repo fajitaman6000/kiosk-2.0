@@ -25,7 +25,7 @@ try:
             print(f"[main]Working directory set to: {os.getcwd()}")
             
             self.root = tk.Tk()
-            self.root.title("Kiosk Control Center (WIP, Do not use to run rooms yet)")
+            self.root.title("Game Master Control Center")
 
             # Handle icon setting
             myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string

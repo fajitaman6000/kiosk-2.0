@@ -25,6 +25,7 @@ two gamemasters requesting the same video stream crashes that kiosk
 ##############################################################################################################################
 # known low priority bugs
 
+victory condition runs on and off during room reset of a won game
 mqtt connections get crippled while running file sync
 resets during intro videos cause crashing/audio bugs(?)
 
