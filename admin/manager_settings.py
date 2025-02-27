@@ -172,11 +172,11 @@ class ManagerSettings:
         header_frame = ttk.Frame(self.main_container)
         header_frame.pack(fill='x', pady=(0, 10))
 
-        ttk.Label(
-            header_frame,
-            text="Settings",
-            font=('Arial', 14, 'bold')
-        ).pack(side='left', padx=20)
+        #ttk.Label(
+            #header_frame,
+            #text="Settings",
+            #font=('Arial', 14, 'bold')
+        #).pack(side='left', padx=20)
 
         # Create settings navigation frame
         nav_frame = ttk.Frame(self.main_container)
@@ -547,27 +547,23 @@ class AdminPasswordManager:
     def verify_password(self, callback=None):
         """Prompt for password and verify it"""
         login_window = tk.Toplevel(self.app.root)
-        login_window.title("Enter Password")
-        login_window.geometry("300x150")
-        
-        validated = False
+        login_window.title("Enter Password (DO NOT RUN SYNC DURING GAMES!)")
+        login_window.geometry("400x150")
 
-        tk.Label(login_window, text="(Don't run sync during games!) Password:", font=('Arial', 12)).pack(pady=10)
-        password_entry = tk.Entry(login_window, show="*", width=20)
+        tk.Label(login_window, text="Password:", font=('Arial', 12)).pack(pady=10)
+        password_entry = tk.Entry(login_window, show="*", width=40)
         password_entry.pack(pady=5)
-        
+
         def validate():
-            nonlocal validated
             entered_password = password_entry.get()
             hashed_entered = hashlib.sha256(entered_password.encode()).hexdigest()
-            if hashed_entered == self.hashed_password:
-                validated = True
+            if hashed_entered == self.hashed_password:  # Corrected line
                 login_window.destroy()
                 if callback:
                     callback()
             else:
                 messagebox.showerror("Error", "Incorrect password.")
-                login_window.destroy()
+                #login_window.destroy()  # Removed unnecessary destroy
         
         def on_close():
             login_window.destroy()
@@ -587,5 +583,3 @@ class AdminPasswordManager:
         password_entry.focus_set()
         
         self.app.root.wait_window(login_window)
-        
-        return validated
