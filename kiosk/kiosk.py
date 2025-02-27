@@ -20,7 +20,7 @@ class KioskApp:
     def __init__(self):
         print("[kiosk main]Starting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
-        
+
         #get_stats items to pass with info payload
         self.computer_name = socket.gethostname()
         self.hint_requested_flag = False
@@ -31,7 +31,16 @@ class KioskApp:
         self.times_touched_screen = 0
 
         self.root = tk.Tk()
-        self.root.title(f"Kiosk: {self.computer_name}")
+        self.root.title(f"Kiosk App: {self.computer_name}")
+
+        try:
+            # Construct the absolute path to the icon file
+            icon_path = os.path.join(os.path.dirname(__file__), "icon.ico")  # Assuming icon.ico is in the same directory
+
+            self.root.iconbitmap(default=icon_path)  # Use -default for .ico with multiple sizes
+
+        except tk.TclError as e:
+            print(f"[kiosk main]Error loading icon: {e}")  # Handle icon loading erro
         
         # Add fullscreen and cursor control
         self.root.attributes('-fullscreen', True)
