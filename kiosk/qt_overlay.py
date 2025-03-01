@@ -1282,8 +1282,13 @@ class Overlay:
         try:
             if hasattr(cls, '_timer_window') and cls._timer_window:
                 print("[qt overlay]Showing timer window")
-                cls._timer_window.show()
-                cls._timer_window.raise_()
+                # Check if the timer display needs to be updated before showing
+                if hasattr(cls, '_timer') and cls._timer.text_item:
+                    current_time_str = cls._timer.text_item.toPlainText()
+                    if current_time_str:  # Only show if there's a time to display
+                        cls._timer_window.show()
+                        cls._timer_window.raise_()
+
             if hasattr(cls, '_button_window') and cls._button_window:
                 print("[qt overlay]Showing button window")
                 cls._button_window.show()

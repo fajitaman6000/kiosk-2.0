@@ -1,3 +1,4 @@
+# video_manager.py
 import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
@@ -26,16 +27,15 @@ class VideoManager:
         self.temp_dir = tempfile.mkdtemp()
         self.current_audio_path = None
         self.completion_callback = None
-        
+
         # Get ffmpeg path from imageio-ffmpeg
         self.ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
         #print(f"[video manager]Using ffmpeg from: {self.ffmpeg_path}")
-            
+
         # Initialize Pygame mixer
         pygame.mixer.init(frequency=44100)
         # Initialize a dedicated channel for video audio
         self.video_sound_channel = pygame.mixer.Channel(0)  # Use channel 0 for video audio
-
     def _fade_background_music(self, target_volume, duration=0.2, steps=10):
         """
         Gradually changes background music volume over the specified duration.
@@ -44,18 +44,18 @@ class VideoManager:
             if not pygame.mixer.music.get_busy():
                 print("[video manager]No background music playing, skipping fade")
                 return
-                
+
             current_volume = pygame.mixer.music.get_volume()
             print(f"[video manager]Starting volume fade from {current_volume} to {target_volume}")
-            
+
             # Force volume to current value before starting fade
             pygame.mixer.music.set_volume(current_volume)
             time.sleep(0.05)  # Small delay to ensure volume is set
-            
+
             volume_diff = target_volume - current_volume
             step_size = volume_diff / steps
             step_duration = duration / steps
-            
+
             for i in range(steps):
                 if self.should_stop:  # Check if video was stopped
                     print("[video manager]Video stopped during fade, breaking")
@@ -65,14 +65,14 @@ class VideoManager:
                 pygame.mixer.music.set_volume(new_volume)
                 print(f"[video manager]Fade step {i+1}/{steps}: Volume set to {new_volume}")
                 time.sleep(step_duration)
-                
+
             # Force final volume
             pygame.mixer.music.set_volume(target_volume)
             time.sleep(0.05)  # Small delay to ensure final volume is set
-            
+
             final_volume = pygame.mixer.music.get_volume()
             print(f"[video manager]Fade complete. Final volume: {final_volume}")
-                
+
         except Exception as e:
             print(f"[video manager]Error fading background music: {e}")
             traceback.print_exc()
@@ -91,11 +91,11 @@ class VideoManager:
             if not self.ffmpeg_path:
                 print("[video manager]Error: ffmpeg not available")
                 return None
-                
+
             # Create unique temp WAV file name using timestamp
             base_name = os.path.splitext(os.path.basename(video_path))[0]
             temp_audio = os.path.join(self.temp_dir, f"{base_name}_{int(time.time())}.wav")
-            
+
             # Extract audio using ffmpeg
             print(f"[video manager]Extracting audio from video to: {temp_audio}")
             command = [
@@ -108,18 +108,18 @@ class VideoManager:
                 '-y',  # Overwrite output file
                 temp_audio
             ]
-            
+
             # Run ffmpeg command and capture output
             result = subprocess.run(command, capture_output=True, text=True)
-            
+
             if result.returncode != 0:
                 print(f"[video manager]ffmpeg error: {result.stderr}")
                 return None
-                
+
             if os.path.exists(temp_audio):
                 return temp_audio
             return None
-            
+
         except Exception as e:
             print(f"[video manager]Exception during audio extraction: {e}")
             traceback.print_exc()
@@ -128,34 +128,34 @@ class VideoManager:
     def play_video(self, video_path, on_complete=None):
         """Play a video file in fullscreen with synchronized audio."""
         print(f"[video manager]\nVideoManager: Starting video playback: {video_path}")
-        
+
         try:
             # Store completion callback
             self.completion_callback = on_complete
-            
+
             # Stop any existing playback
             if self.is_playing:
                 print("[video manager]VideoManager: Stopping existing playback")
                 self.stop_video()
-            
+
             # Hide all Qt overlays before video starts
             print("[video manager]Hiding Qt overlays before video start")
             self.root.after(0, Overlay.hide_all_overlays)
-            
+
             # Ensure background music is at full volume before fading
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.set_volume(1.0)
                 time.sleep(0.1)  # Small delay to ensure volume is set
-            
+
             # Now fade out background music
             self._fade_background_music(0.3)  # Reduce to 30% volume
             print(f"[video manager]Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
-            
+
             # Store current widgets and their layout info
             print("[video manager]VideoManager: Storing current window state")
             self.original_widgets = []
             self.original_widget_info = []
-            
+
             for widget in self.root.winfo_children():
                 self.original_widgets.append(widget)
                 info = {
@@ -163,7 +163,7 @@ class VideoManager:
                     'geometry_info': None,
                     'manager': None
                 }
-                
+
                 # Detect geometry manager
                 if widget.winfo_manager():
                     info['manager'] = widget.winfo_manager()
@@ -178,10 +178,10 @@ class VideoManager:
                         info['geometry_info'] = widget.grid_info()
                     elif info['manager'] == 'pack':
                         info['geometry_info'] = widget.pack_info()
-                
+
                 self.original_widget_info.append(info)
                 widget.place_forget()
-                
+
             # Create video canvas and ensure it covers the full window
             print("[video manager]VideoManager: Creating video canvas")
             self.video_canvas = tk.Canvas(
@@ -193,11 +193,11 @@ class VideoManager:
             )
             # Use place with relwidth/relheight to ensure full coverage
             self.video_canvas.place(x=0, y=0, relwidth=1, relheight=1)
-            
+
             # Ensure the canvas is on top
             self.root.update_idletasks()
             self.video_canvas.master.lift(self.video_canvas)
-            
+
             # Reset state flags
             self.should_stop = False
             self.is_playing = True
@@ -206,12 +206,12 @@ class VideoManager:
             audio_path = self.extract_audio(video_path)
             self.current_audio_path = audio_path
             has_audio = audio_path is not None
-            
+
             if has_audio:
                 print(f"[video manager]VideoManager: Successfully extracted audio to: {audio_path}")
             else:
                 print("[video manager]VideoManager: Failed to extract audio")
-            
+
             print("[video manager]VideoManager: Starting playback thread")
             self.video_thread = threading.Thread(
                 target=self._play_video_thread,
@@ -219,14 +219,14 @@ class VideoManager:
                 daemon=True
             )
             self.video_thread.start()
-            
+
         except Exception as e:
             print("[video manager]\nVideoManager: Critical error in play_video:")
             traceback.print_exc()
             self._cleanup()
             if on_complete:
                 self.root.after(0, on_complete)
-            
+
     def _play_video_thread(self, video_path, audio_path, on_complete):
         """Video playback thread with synchronized audio"""
         print("[video manager]\nVideoManager: Video thread starting")
@@ -330,15 +330,15 @@ class VideoManager:
 
             # Schedule cleanup and callback on main thread
             self.root.after(0, lambda: self._thread_cleanup(on_complete))
-    
+
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
         print("[video manager]\n=== Video Manager Thread Cleanup ===")
-        
+
         try:
             # Show all Qt overlays after video ends
             Overlay.show_all_overlays()
-            
+
             # Stop video audio first (not the background music)
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
@@ -407,7 +407,7 @@ class VideoManager:
         except Exception as e:
             print(f"[video manager]VideoManager: Error updating frame: {e}")
             self.stop_video()
-            
+
     def stop_video(self):
         """Stop video and audio playback"""
         print("[video manager]\nVideoManager: Stopping video and audio")
@@ -421,20 +421,20 @@ class VideoManager:
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
             self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
-        
+
     def force_stop(self):
         """Force stop all video playback and cleanup for reset scenarios"""
         print("[video manager]\nVideoManager: Force stopping all video playback")
-        
+
         # Store current state
         self._temp_callback = None
         if hasattr(self, 'completion_callback'):
             self._temp_callback = self.completion_callback
             self.completion_callback = None
-        
+
         # Reset all state flags first
         self.reset_state()
-        
+
         # Immediately stop video audio
         if self.video_sound_channel.get_busy():
             self.video_sound_channel.stop()
@@ -481,11 +481,11 @@ class VideoManager:
         try:
             self.is_playing = False
             self.should_stop = True
-            
+
             # Stop only the video audio channel, not the music
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
-            
+
             # Clean up video canvas with additional checks
             if self.video_canvas:
                 try:
@@ -497,14 +497,14 @@ class VideoManager:
                     pass
                 finally:
                     self.video_canvas = None
-                    
+
             # Clear current state but preserve callback system
             self.original_widgets = []
             self.original_widget_info = []
             self.current_audio_path = None
-            
+
             print("[video manager]Forced cleanup complete")
-            
+
         except Exception as e:
             print(f"[video manager]Error during forced cleanup: {e}")
             traceback.print_exc()
@@ -523,7 +523,7 @@ class VideoManager:
         self.original_widgets = []
         self.original_widget_info = []
         self.current_audio_path = None
-        
+
         # Clear any stored video-related attributes
         if hasattr(self, 'video_thread'):
             delattr(self, 'video_thread')
@@ -534,11 +534,11 @@ class VideoManager:
         try:
             self.is_playing = False
             self.should_stop = True
-            
+
             # Stop only the video audio channel, not the music
             if self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
-            
+
             # Clean up video canvas with additional checks
             if self.video_canvas:
                 try:
@@ -548,13 +548,13 @@ class VideoManager:
                             self.video_canvas.delete('all')
                         except tk.TclError:
                             pass
-                        
+
                         # Remove from layout manager
                         try:
                             self.video_canvas.place_forget()
                         except tk.TclError:
                             pass
-                            
+
                         # Ensure canvas is destroyed
                         try:
                             self.video_canvas.destroy()
@@ -570,7 +570,7 @@ class VideoManager:
                     print(f"[video manager]VideoManager: Error cleaning up canvas: {e}")
                 finally:
                     self.video_canvas = None
-            
+
             # Restore original widgets with their original geometry management
             restored_widgets = []
             for info in self.original_widget_info:
@@ -581,7 +581,7 @@ class VideoManager:
                         widget_name = widget.winfo_name() if hasattr(widget, 'winfo_name') else ''
                         if any(name in widget_name.lower() for name in ['hint', 'video_solution', 'help']):
                             continue
-                            
+
                         manager = info['manager']
                         if manager == 'place':
                             widget.place(
@@ -601,19 +601,19 @@ class VideoManager:
                     print(f"[video manager]Widget no longer exists, skipping restoration")
                 except Exception as e:
                     print(f"[video manager]Error restoring widget: {e}")
-            
+
             # Only keep track of successfully restored widgets
             self.original_widgets = restored_widgets
-            self.original_widget_info = [info for info in self.original_widget_info 
+            self.original_widget_info = [info for info in self.original_widget_info
                                        if info['widget'] in restored_widgets]
-            
+
             # Force a complete update of the window with error handling
             try:
                 self.root.update_idletasks()
                 self.root.update()
             except tk.TclError:
                 pass
-            
+
             # Clean up temp audio file
             if self.current_audio_path:
                 for _ in range(3):
@@ -627,9 +627,9 @@ class VideoManager:
                         print(f"[video manager]Attempt to remove temp file failed: {e}")
                         time.sleep(0.1)
                 self.current_audio_path = None
-                        
+
             print("[video manager]VideoManager: Cleanup complete")
-            
+
         except Exception as e:
             print("[video manager]\nVideoManager: Error during cleanup:")
             traceback.print_exc()

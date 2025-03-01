@@ -103,13 +103,10 @@ class KioskApp:
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
-        #print("[kiosk main]\n[DEBUG] _actual_help_button_update - START")
         try:
             Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
         except Exception as e:
-            #print(f"[kiosk main][DEBUG] Exception in _actual_help_button_update: {e}")
             traceback.print_exc()
-        #print("[kiosk main][DEBUG] _actual_help_button_update - END")
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""
