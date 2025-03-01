@@ -1301,6 +1301,13 @@ class Overlay:
                 print("[qt overlay]Showing hint request text window")
                 cls._hint_request_text['window'].show()
                 cls._hint_request_text['window'].raise_()
+            # Added condition to show cooldown window
+            if cls._window:
+                if hasattr(cls._text_item, 'toPlainText'):
+                  current_cooldown_text = cls._text_item.toPlainText()
+                  if current_cooldown_text:
+                      cls._window.show()
+                      cls._window.raise_()
 
             # ONLY show GM assistance if it was previously visible
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
@@ -1311,11 +1318,6 @@ class Overlay:
                     cls._gm_assistance_overlay['_was_visible'] = False  # Reset flag after showing
                 else:
                     print("[qt overlay]GM assistance window was NOT previously visible, not showing")
-
-            if cls._window:
-                print("[qt overlay]Showing main window")
-                cls._window.show()
-                cls._window.raise_()
             print("[qt overlay]All overlay UI elements restored")
         except Exception as e:
             print(f"[qt overlay]Error showing overlays: {e}")

@@ -387,9 +387,10 @@ class KioskUI:
         
     def update_cooldown(self, seconds_left):
         if seconds_left > 0 and self.hint_cooldown:
-            Overlay.show_hint_cooldown(seconds_left)
+            if not self.message_handler.video_manager.is_playing: # Added Check
+                Overlay.show_hint_cooldown(seconds_left)
             self.cooldown_after_id = self.root.after(
-                1000, 
+                1000,
                 lambda: self.update_cooldown(seconds_left - 1)
             )
         else:
