@@ -534,31 +534,37 @@ class KioskUI:
         """Handle cleanup after video finishes playing while maintaining cooldown state"""
         print("[ui.py]\nHandling video completion")
         self.video_is_playing = False
-        
+
         try:
             # Store video info before cleanup
             stored_video_info = None
             if hasattr(self, 'stored_video_info') and self.stored_video_info:
                 stored_video_info = self.stored_video_info.copy()
-            
+
             # Store cooldown state
             was_in_cooldown = self.hint_cooldown
             cooldown_after_id = self.cooldown_after_id
-            
+
             # Clear UI state without affecting cooldown
             print("[ui.py]Clearing UI state...")
             # Don't call clear_all_labels() as it would reset cooldown
             Overlay.hide_hint_text()
-            Overlay.hide_help_button() # Replaced help button removal with this
+            Overlay.hide_help_button()  # Replaced help button removal with this
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
                 self.video_solution_button.destroy()
                 self.video_solution_button = None
-                
+
             # Restore room interface - this will properly recreate the hint display area
             if self.message_handler.assigned_room:
                 print("[ui.py]Restoring room interface")
                 self.setup_room_interface(self.message_handler.assigned_room)
-                
+
+                # Restore hint text *after* setup_room_interface
+                if self.current_hint:
+                    print("[ui.py]Restoring hint text")
+                    hint_text = self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', '')
+                    Overlay.show_hint_text(hint_text, self.message_handler.assigned_room)
+
                 # If we had a video solution, create a fresh button
                 if stored_video_info:
                     print("[ui.py]Creating fresh video solution button")
@@ -566,7 +572,6 @@ class KioskUI:
                         stored_video_info['room_folder'],
                         stored_video_info['video_filename']
                     )
-            
             # Restore cooldown state if it was active
             if was_in_cooldown:
                 print("[ui.py]Restoring cooldown state")
@@ -588,7 +593,7 @@ class KioskUI:
             else:
                 # Only refresh help button if not in cooldown
                 self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
-                
+
         except Exception as e:
             print(f"[ui.py]\nError in handle_video_completion: {e}")
             traceback.print_exc()
