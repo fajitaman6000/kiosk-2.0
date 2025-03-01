@@ -31,7 +31,8 @@ class KioskApp:
         self.times_touched_screen = 0
 
         self.root = tk.Tk()
-        self.root.title(f"Kiosk App: {self.computer_name}")
+        #self.root.title(f"Kiosk App: {self.computer_name}")\
+        self.root.title(f"Kiosk App")
 
         # Handle icon setting
         myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string

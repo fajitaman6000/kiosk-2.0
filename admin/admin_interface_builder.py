@@ -879,7 +879,7 @@ class AdminInterfaceBuilder:
         
         reboot_btn = tk.Button(
             frame, 
-            text="Reboot Kiosk",
+            text="Reboot Kiosk Computer",
             bg='#FF6B6B',
             fg='white'
         )
@@ -891,7 +891,7 @@ class AdminInterfaceBuilder:
         def reset_reboot_button(btn=reboot_btn):
             """Reset the button to its original state"""
             btn.confirmation_pending = False
-            btn.config(text="Reboot Kiosk")
+            btn.config(text="Reboot Kiosk Computer")
             btn.after_id = None
             
         def handle_reboot_click():

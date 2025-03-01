@@ -1264,6 +1264,8 @@ class Overlay:
                 cls._hint_request_text['window'].hide()
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
                 print("[qt overlay]Hiding GM assistance window")
+                # Store visibility BEFORE hiding
+                cls._gm_assistance_overlay['_was_visible'] = cls._gm_assistance_overlay['window'].isVisible()
                 cls._gm_assistance_overlay['window'].hide()
             if cls._window:
                 print("[qt overlay]Hiding main window")
@@ -1294,10 +1296,17 @@ class Overlay:
                 print("[qt overlay]Showing hint request text window")
                 cls._hint_request_text['window'].show()
                 cls._hint_request_text['window'].raise_()
+
+            # ONLY show GM assistance if it was previously visible
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
-                print("[qt overlay]Showing GM assistance window")
-                cls._gm_assistance_overlay['window'].show()
-                cls._gm_assistance_overlay['window'].raise_()
+                if hasattr(cls._gm_assistance_overlay, '_was_visible') and cls._gm_assistance_overlay['_was_visible']:  # Check the flag
+                    print("[qt overlay]Showing GM assistance window (previously visible)")
+                    cls._gm_assistance_overlay['window'].show()
+                    cls._gm_assistance_overlay['window'].raise_()
+                    cls._gm_assistance_overlay['_was_visible'] = False  # Reset flag after showing
+                else:
+                    print("[qt overlay]GM assistance window was NOT previously visible, not showing")
+
             if cls._window:
                 print("[qt overlay]Showing main window")
                 cls._window.show()
@@ -1380,6 +1389,9 @@ class Overlay:
                     no_rect_center_y - no_text_width/2
                 )
 
+                # Set visibility flag BEFORE showing
+                cls._gm_assistance_overlay['_was_visible'] = True
+
                 # Show and raise the window
                 cls._gm_assistance_overlay['window'].show()
                 cls._gm_assistance_overlay['window'].raise_()
@@ -1394,3 +1406,4 @@ class Overlay:
         """Hide the game master assistance overlay."""
         if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
             cls._gm_assistance_overlay['window'].hide()
+            # DO NOT reset _was_visible here.  We want to remember it was shown.
