@@ -7,6 +7,8 @@ hangup reliability: kiosks don't always launch successfully, especially after th
 ##############################################################################################################################
 # priority bugs
 
+kiosk resets in message handler are not fully resetting text hints (old hints appear after intro videos)
+
 hint button can show itself during video playback
 
 room changes do not change loaded music on that kiosk
