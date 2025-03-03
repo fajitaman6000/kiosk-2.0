@@ -192,7 +192,7 @@ class ClassicAudioHints:
 
     def show_lists(self):
         """Show dropdown and audio list, hide control buttons"""
-        print("[audio hints] showing audio list")
+        #print("[audio hints] showing audio list")
         self.control_frame.pack_forget()
         self.prop_frame.pack(pady=(0, 5))
         self.audio_frame.pack(pady=5)

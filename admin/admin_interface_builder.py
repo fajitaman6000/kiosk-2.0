@@ -248,14 +248,15 @@ class AdminInterfaceBuilder:
         room_key = None
         if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
             room_key = self.audio_hints.ROOM_MAP.get(room_name)
-            print(f"[image hints] Updating props for room: {room_name} (key: {room_key})")
+            #if(room_name != None):
+                #print(f"[image hints] Updating props for room: {room_name} (key: {room_key})")
         
         props_list = []
         if room_key and room_key in prop_mappings:
             props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
             props.sort(key=lambda x: x[1]["order"])
             props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
-            print(f"[image hints] Found {len(props_list)} props for room")
+            #print(f"[image hints] Found {len(props_list)} props for room")
         
         self.stats_elements['image_btn']['values'] = props_list
         self.img_prop_var.set("")

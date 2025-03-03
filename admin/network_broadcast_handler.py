@@ -65,9 +65,7 @@ class NetworkBroadcastHandler:
                     # Only print room assignment changes
                     current_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
                     if room != current_room:
-                        print(f"[network broadcast handler]Processing room change for {computer_name}:")
-                        print(f"[network broadcast handler]Previous room: {current_room}")
-                        print(f"[network broadcast handler]New room: {room}")
+                        print(f"[network broadcast handler]Processing room change for {computer_name}, Previous room: {current_room}, New room: {room}")
                     
                     if room is not None:
                         self.app.kiosk_tracker.kiosk_assignments[computer_name] = room

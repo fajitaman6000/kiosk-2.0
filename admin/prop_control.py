@@ -950,7 +950,7 @@ class PropControl:
                 if prop_name:
                     reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
                     reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
-                    print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
+                    #print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
                 reset_btn.pack(side='left', padx=1)
                         
                 activate_btn = tk.Button(
@@ -1087,7 +1087,7 @@ class PropControl:
             if prop_name:
                 reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
                 reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
-                print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
+                #print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
             reset_btn.pack(side='left', padx=1)
             
             activate_btn = tk.Button(

@@ -309,7 +309,7 @@ class SavedHintsPanel:
 
     def update_room(self, room_number):
         """Update the prop dropdown for the selected room"""
-        print(f"[saved hints panel]\n=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
+        #print(f"[saved hints panel]\n=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
         
         self.current_room = room_number
         self.clear_preview()
