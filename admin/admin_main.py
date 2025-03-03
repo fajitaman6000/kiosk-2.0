@@ -11,6 +11,8 @@ from admin_interface_builder import AdminInterfaceBuilder
 from admin_sync_manager import AdminSyncManager
 from manager_settings import AdminPasswordManager, ManagerSettings
 
+import json
+
 import ctypes
 
 def show_error_and_wait():
@@ -91,7 +93,8 @@ try:
 
             # Configure button callbacks with password protection
             self.interface_builder.sync_button.config(command=self.handle_sync_button_click)
-            self.interface_builder.hints_library_btn.config(command=self.handle_settings_button_click)
+            self.interface_builder.settings_button.config(command=self.handle_settings_button_click)
+            self.interface_builder.soundcheck_button.config(command=self.handle_soundcheck_button_click)
 
             # Set up window close handler
             self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -107,6 +110,20 @@ try:
             def on_success():
                 self.interface_builder.hint_manager.show_hint_manager()
             self.password_manager.verify_password(callback=on_success)
+
+        def handle_soundcheck_button_click(self):
+            if self.interface_builder.selected_kiosk:
+                computer_name = self.interface_builder.selected_kiosk
+                # Send soundcheck command through network handler
+                self.network_handler.socket.sendto(
+                    json.dumps({
+                        'type': 'soundcheck',
+                        'computer_name': computer_name
+                    }).encode(),
+                    ('255.255.255.255', 12346)
+                )
+            else:
+                print("[main] No kiosk selected for soundcheck.")
 
         def setup_prop_panel_sync(self):
             """Set up synchronization between prop controls and hint panels"""

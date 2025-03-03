@@ -107,7 +107,7 @@ class AdminInterfaceBuilder:
         hints_button_frame.pack(side='left', anchor='n', padx=(10,0), pady=8)  # Anchor to top
         
         # Add Hints Library button in its own frame - small and square
-        self.hints_library_btn = tk.Button(
+        self.settings_button = tk.Button(
             hints_button_frame,
             image=settings_icon if settings_icon else None,
             command=lambda: self.show_hints_library(),
@@ -120,11 +120,11 @@ class AdminInterfaceBuilder:
             highlightthickness=0,
             compound=tk.LEFT
         )
-        self.hints_library_btn.pack(anchor='n')  # Anchor to top of its frame
+        self.settings_button.pack(anchor='n')  # Anchor to top of its frame
         
         # Keep a reference to settings icon so that it does not get gc'ed
         if settings_icon:
-           self.hints_library_btn.image = settings_icon
+           self.settings_button.image = settings_icon
         
         # Load Sync Icon
         try:
@@ -139,8 +139,6 @@ class AdminInterfaceBuilder:
         self.sync_button = tk.Button( # Assign to self so that we can access it
             hints_button_frame,
             image=sync_icon if sync_icon else None,
-            #command=lambda: self.app.methodDoesn'tExistYet(),
-            #bg='#C6AE66',
             fg='white',
             font=('Arial', 9),
             width=32,  # set to same width as hints button
@@ -154,17 +152,17 @@ class AdminInterfaceBuilder:
         if sync_icon:
             self.sync_button.image = sync_icon
 
-        # Load placeholder icon button                                                    --BUTTON PLACEHOLDER
+        # Load soundcheck icon button                                                    --BUTTON PLACEHOLDER
         try:
            soundcheck_icon = Image.open(os.path.join(icon_dir, "soundcheck.png"))
            soundcheck_icon = soundcheck_icon.resize((32,32), Image.Resampling.LANCZOS)
            soundcheck_icon = ImageTk.PhotoImage(soundcheck_icon)
         except Exception as e:
-            print(f"[interface builder] Error loading sync icon: {e}")
+            print(f"[interface builder] Error loading soundcheck icon: {e}")
             soundcheck_icon = None
         
-        # Add placeholder button, directly below the sync button
-        soundcheck_button = tk.Button(
+        # Add soundcheck button, directly below the sync button
+        self.soundcheck_button = tk.Button(
             hints_button_frame,
             image=soundcheck_icon if soundcheck_icon else None,
             #command=lambda: self.app.methodDoesn'tExistYet(),
@@ -177,10 +175,10 @@ class AdminInterfaceBuilder:
             highlightthickness=0,
             compound=tk.LEFT
         )
-        soundcheck_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
+        self.soundcheck_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
 
         if soundcheck_icon:
-            soundcheck_button.image = soundcheck_icon
+            self.soundcheck_button.image = soundcheck_icon
 
         # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)

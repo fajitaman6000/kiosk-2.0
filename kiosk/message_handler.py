@@ -183,6 +183,9 @@ class MessageHandler:
             elif msg['type'] == 'video_command' and msg['computer_name'] == self.kiosk_app.computer_name:
                 self.kiosk_app.play_video(msg['video_type'], msg['minutes'])
 
+            elif msg['type'] == 'soundcheck' and msg['computer_name'] == self.kiosk_app.computer_name:
+                print("[message handler]soundcheck command received")
+
             elif msg['type'] == 'clear_hints' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[message handler]\n[DEBUG] Processing clear hints command")
                 self.kiosk_app.clear_hints()

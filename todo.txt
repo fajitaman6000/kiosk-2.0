@@ -1,13 +1,12 @@
 ##############################################################################################################################
 # important/immediate todo
 
-hangup reliability: kiosks don't always launch successfully, especially after the video feed check
-
+run soundcheck button
 
 ##############################################################################################################################
 # priority bugs
 
-"[audio manager]Could not determine music for room: 7"
+hangup reliability: kiosks don't always launch successfully, especially after the video feed check
 clear hints doesn't clear hint cooldown text item, doesn't really work in general
 kiosk doesn't retry/add itself back to queue after failed sync attempt
 time machine camera loading issue
@@ -27,16 +26,14 @@ resets during intro videos cause crashing/audio bugs(?)
 # planned features: 
 
 hint count on THEIR side
-admin mode (technician/upper managers),
 restarter moved to kiosk app
 edit hint image content within hint manager
-ending audio is apparently admin app side?
+ending audio is apparently admin app side(?)
 
 "you won" screen
 
 save prop status for blackbox, delete save upon load
 "enable drink menu" by default on
-run soundcheck button
 set alarm on prop to make sound when gm-chosen prop finishes
 
 ##############################################################################################################################
