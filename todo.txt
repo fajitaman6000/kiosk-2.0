@@ -7,18 +7,11 @@ hangup reliability: kiosks don't always launch successfully, especially after th
 ##############################################################################################################################
 # priority bugs
 
-hint button can show itself during video playback
-
-room changes do not change loaded music on that kiosk
-
 "[audio manager]Could not determine music for room: 7"
-
 clear hints doesn't clear hint cooldown text item, doesn't really work in general
-
 kiosk doesn't retry/add itself back to queue after failed sync attempt
 time machine camera loading issue
 wizard not receiving sync messages(?)
-
 two gamemasters requesting the same video stream crashes that kiosk
 
 ##############################################################################################################################

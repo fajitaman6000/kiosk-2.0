@@ -88,6 +88,25 @@ class MessageHandler:
                     self.kiosk_app.ui.status_frame.delete('all')
                 self.kiosk_app.ui.clear_all_labels()
 
+                # --- MUSIC RELOADING LOGIC ---
+                if self.kiosk_app.assigned_room:
+                    room_name = self.kiosk_app.audio_manager.get_room_music_name(self.kiosk_app.assigned_room)
+                    if room_name:
+                        music_name = room_name.lower().replace(" ", "_") + ".mp3"
+                        music_path = os.path.join(self.kiosk_app.audio_manager.music_dir, music_name)
+                        if os.path.exists(music_path):
+                            self.kiosk_app.audio_manager.current_music = music_name
+                            print(f"[message handler] Updated current_music to: {music_name}")
+                        else:
+                            print(f"[message handler] Music file not found: {music_path}")
+                            self.kiosk_app.audio_manager.current_music = None  # Clear if not found
+                    else:
+                        print(f"[message handler] Could not determine music for room: {self.kiosk_app.assigned_room}")
+                        self.kiosk_app.audio_manager.current_music = None #Clear if not found
+                else:
+                    print("[message handler] No room assigned, cannot load music.")
+                    self.kiosk_app.audio_manager.current_music = None #Clear if not found
+
                 self.kiosk_app.root.after(0, lambda: self.kiosk_app.ui.setup_room_interface(msg['room']))
 
             elif msg['type'] == 'hint' and self.kiosk_app.assigned_room:
