@@ -1094,7 +1094,7 @@ class Overlay:
         #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
-            if show_button:
+            if not cls.kiosk_app.video_manager.is_playing and show_button:
                 # Rebuild the button window to make sure everything is clean
                 if hasattr(cls, '_button_window') and cls._button_window:
                    cls._button_window.hide()
@@ -1199,7 +1199,7 @@ class Overlay:
                     cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
                 else:
                     print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
-            else: # add this else statement.
+            else:
                 print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
                 Overlay.hide_hint_text()
         except Exception as e:

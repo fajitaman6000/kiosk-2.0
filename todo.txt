@@ -7,8 +7,6 @@ hangup reliability: kiosks don't always launch successfully, especially after th
 ##############################################################################################################################
 # priority bugs
 
-kiosk resets in message handler are not fully resetting text hints (old hints appear after intro videos)
-
 hint button can show itself during video playback
 
 room changes do not change loaded music on that kiosk
@@ -26,6 +24,7 @@ two gamemasters requesting the same video stream crashes that kiosk
 ##############################################################################################################################
 # known low priority bugs
 
+UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
 password for settings gets prompted twice
 victory condition runs on and off during room reset of a won game
 mqtt connections get crippled while running file sync
