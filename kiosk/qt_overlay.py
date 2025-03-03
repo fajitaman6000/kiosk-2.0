@@ -1217,11 +1217,12 @@ class Overlay:
             cls._button_window.hide()
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             cls._hint_text['window'].hide()
+            cls._hint_text['text_item'].setPlainText("")  # Or setHtml("")
         # Clear hint request overlay
         if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
             if cls._hint_request_text['window']:
                 cls._hint_request_text['window'].hide()
-                
+
             if cls._hint_request_text['scene']:
                 cls._hint_request_text['scene'].clear()
 
