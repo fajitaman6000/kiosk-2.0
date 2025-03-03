@@ -2,6 +2,7 @@
 # important/immediate todo
 
 soundcheck logic kiosk side
+set alarm on prop to make sound when gm-chosen prop finishes
 
 ##############################################################################################################################
 # priority bugs
@@ -16,6 +17,7 @@ two gamemasters requesting the same video stream crashes that kiosk
 ##############################################################################################################################
 # known low priority bugs
 
+mouse doesn't turn to click appearance when hovering buttons
 UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
 password for settings gets prompted twice
 victory condition runs on and off during room reset of a won game

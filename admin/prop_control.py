@@ -81,27 +81,28 @@ class PropControl:
             self.all_props[room_number] = {} # Initialize the dictionary for each room
             self.last_mqtt_updates[room_number] = {} # Initialize MQTT update tracking
         self.last_prop_finished = {} # prop status strings
-        
+        self.flagged_props = {}  # room_number -> {prop_id: True/False}
+
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
         self.MQTT_PASS = "indestroom"
-        
+
         # Create left side panel for prop controls using parent's left_panel
         self.frame = app.interface_builder.left_panel
-        
+
         # Create custom styles for circuit highlighting
         style = ttk.Style()
         style.configure('Circuit.TFrame', background='#ffe6e6', borderwidth=2, relief='solid')
         style.configure('Circuit.TLabel', background='#ffe6e6', font=('Arial', 8, 'bold'))
-        
+
         # Title label
         title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
         title_label.pack(fill='x', pady=(0, 10))
-        
+
         # Global controls section
         self.global_controls = ttk.Frame(self.frame)
         self.global_controls.pack(fill='x', pady=(0, 10))
-        
+
         # Create Start Game and Reset All buttons
         self.start_button = tk.Button(
             self.global_controls,
@@ -128,11 +129,11 @@ class PropControl:
                 # First click - show confirmation
                 self.reset_button.confirmation_pending = True
                 self.reset_button.config(text="Confirm")
-                
+
                 # Cancel any existing timer
                 if self.reset_button.after_id:
                     self.reset_button.after_cancel(self.reset_button.after_id)
-                    
+
                 # Set timer to reset button after 2 seconds
                 self.reset_button.after_id = self.reset_button.after(2000, reset_reset_button)
 
@@ -143,30 +144,30 @@ class PropControl:
             bg='#DB4260',   # Red
             fg='white'
         )
-        
+
         # Track confirmation state
         self.reset_button.confirmation_pending = False
         self.reset_button.after_id = None
         self.reset_button.pack(fill='x', pady=2)
-        
+
         # Special buttons section
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
         self.special_frame.pack(fill='x', pady=5)
-        
+
         # Scrollable props section
         self.canvas = tk.Canvas(self.frame)
         self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.props_frame = ttk.Frame(self.canvas)
-        
+
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
-        
+
         # Pack scrolling components
         self.scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
-        
+
         # Create window in canvas for props
         self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
-        
+
         # Configure canvas scrolling
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
@@ -176,34 +177,37 @@ class PropControl:
         self.status_label.pack(fill='x', pady=5)
 
         self.load_prop_name_mappings()
+        self.load_flagged_prop_image()
 
         # Initialize MQTT clients for all rooms
         for room_number in self.ROOM_CONFIGS:
             self.initialize_mqtt_client(room_number)
+            self.flagged_props[room_number] = {} #initialize the flag props dict
 
     def update_prop_status(self, prop_id):
-        """Update the status display of a prop using icons"""
+        """Update the status display, including flagged status."""
         if prop_id not in self.props:
             return
-            
+
         prop = self.props[prop_id]
         if 'status_label' not in prop:
             return
-            
+
         try:
             # Verify widget still exists
             if not prop['status_label'].winfo_exists():
                 del prop['status_label']
                 return
-                
+
             current_time = time.time()
-            
-            # Check for MQTT timeout using the dedicated tracking system
-            is_offline = (self.current_room not in self.last_mqtt_updates or 
+
+            # Check for MQTT timeout
+            is_offline = (self.current_room not in self.last_mqtt_updates or
                         prop_id not in self.last_mqtt_updates[self.current_room] or
                         current_time - self.last_mqtt_updates[self.current_room][prop_id] > 3)
-            
-            # Debug print status icon loading
+
+
+            # Debug print status icon loading (This part is correct)
             if not hasattr(self, 'status_icons'):
                 print("[prop control]Status icons not initialized!")
                 try:
@@ -228,18 +232,12 @@ class PropControl:
             elif 'offline' not in self.status_icons:
                 print("[prop control]Offline icon missing from status_icons!")
                 return
-            
-            # Always check offline status first
+
+
             if is_offline:
-                # Offline status takes precedence over any other status
                 icon = self.status_icons['offline']
-                prop_name = prop['info'].get('strName', 'unknown')
-                #print(f"[prop control]Setting offline icon for prop '{prop_name}' (ID: {prop_id})")
             else:
-                # Only check actual status if prop is online
                 status_text = prop['info']['strStatus']
-                #print(f"[prop control]Setting status icon for prop {prop_id} to {status_text}")
-                
                 if status_text == "Not activated" or status_text == "Not Activated":
                     icon = self.status_icons['not_activated']
                 elif status_text == "Activated":
@@ -247,23 +245,73 @@ class PropControl:
                 elif status_text == "Finished":
                     icon = self.status_icons['finished']
                 else:
-                    print(f"[prop control]Unknown status: '{status_text}', defaulting to not_activated")
                     icon = self.status_icons['not_activated']
-            
-            # Update the label with the appropriate icon
-            try:
+
+            # Check if prop is flagged and overlay the flag image if it is
+            if (self.current_room in self.flagged_props and
+                prop_id in self.flagged_props[self.current_room] and
+                self.flagged_props[self.current_room][prop_id]):
+
+                if self.flagged_prop_image:
+                    # Create a new PhotoImage for the composite image
+                    composite_image = Image.new('RGBA', (16, 16), (0, 0, 0, 0))  # Transparent background
+                    background_image = ImageTk.getimage(icon).convert("RGBA")
+                    flag_image = ImageTk.getimage(self.flagged_prop_image).convert("RGBA")
+
+                    composite_image.paste(background_image, (0, 0), background_image)
+                    composite_image.paste(flag_image, (0, 0), flag_image)
+
+                    combined_icon = ImageTk.PhotoImage(composite_image)
+                    prop['status_label'].config(image=combined_icon)
+                    prop['status_label'].image = combined_icon  # Keep reference
+                else:  #fallback if image is bad
+                     prop['status_label'].config(image=icon)
+                     prop['status_label'].image = icon
+            else:
+                # Update the label with the appropriate icon
                 prop['status_label'].config(image=icon)
-                # Keep a reference to prevent garbage collection
-                prop['status_label'].image = icon
-                #print(f"[prop control]Successfully updated status icon for prop {prop_id}")
-            except Exception as e:
-                print(f"[prop control]Failed to update status icon: {e}")
-            
+                prop['status_label'].image = icon  # Keep a reference
+
+
+            # Bind click event to toggle flag (only if not offline)
+            if not is_offline:
+                prop['status_label'].bind("<Button-1>", lambda event, pid=prop_id: self.toggle_prop_flag(pid))
+                prop['status_label'].config(cursor="hand2")
+            else:
+                prop['status_label'].unbind("<Button-1>")  # Remove binding if offline
+                prop['status_label'].config(cursor="")
+
+
         except tk.TclError:
             # Widget was destroyed, remove the reference
             del prop['status_label']
         except Exception as e:
             print(f"[prop control]Error updating prop status: {e}")
+
+    def load_flagged_prop_image(self):
+        """Loads the flagged_prop image."""
+        try:
+            icon_dir = os.path.join("admin_icons")
+            self.flagged_prop_image = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "flagged_prop.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+        except Exception as e:
+            print(f"[prop control] Error loading flagged prop image: {e}")
+            self.flagged_prop_image = None
+
+    def toggle_prop_flag(self, prop_id):
+        """Toggles the flagged status of a prop."""
+        if self.current_room is None:
+            return
+
+        if self.current_room not in self.flagged_props:
+            self.flagged_props[self.current_room] = {}
+
+        # Toggle the flag
+        current_flag = self.flagged_props[self.current_room].get(prop_id, False)
+        self.flagged_props[self.current_room][prop_id] = not current_flag
+
+        self.update_prop_status(prop_id)  # Update the visual display
 
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
@@ -533,22 +581,22 @@ class PropControl:
             self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
 
     def check_prop_status(self, room_number, prop_id, prop_info):
-        """Check status of a single prop and update UI if needed"""
+        """Check status, update UI, and handle flagged prop finish."""
         if not prop_info or 'info' not in prop_info:
             return
-                
+
         try:
             # Get current status
             status = prop_info['info'].get('strStatus')
             last_status = self.all_props[room_number][prop_id].get('last_status')
-            
-            # Only update progress time if we have a real status change and prop shouldn't be ignored
-            if (last_status is not None and 
-                status != last_status and 
+
+            # Only update progress time if we have a real status change
+            if (last_status is not None and
+                status != last_status and
                 status != "offline" and
                 not self.should_ignore_progress(room_number, prop_info['info'].get('strName', ''))):
                 self.last_progress_times[room_number] = time.time()
-                #print(f"[prop control]Updated progress time for NOT CURRENTLY SELECTED room {room_number} - prop '{prop_info['info'].get('strName', 'unknown')}' changed from {last_status} to {status}")
+
 
             if (status == "finished" or status == "finish" or status == "Finished" or status == "Finish"):
                 #Update Last Finished Prop Data (NOT CURRENTLY SELECTED)
@@ -556,20 +604,20 @@ class PropControl:
                     self.last_prop_finished[room_number] = "N/A"
                 if last_status is not None and status != last_status:
                     prop_name = prop_info['info'].get('strName', 'unknown')
-                    
+
                     # Get the mapped prop name here
                     mapped_name = self.get_mapped_prop_name(prop_name, room_number)
-                    
+
                     self.last_prop_finished[room_number] = mapped_name # Set mapped name instead
-                
-            # Update the last status in all_props, not the local prop_info
+
+            # Update the last status
             self.all_props[room_number][prop_id]['last_status'] = status
-            
+
             # Check if this is a finishing prop
             is_finishing = self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
-            
+
             if is_finishing:
-                # Get activation status for all props in this room
+                # Get activation status
                 is_activated = False
                 if room_number in self.all_props:
                     for pid, pdata in self.all_props[room_number].items():
@@ -577,7 +625,7 @@ class PropControl:
                             is_activated = True
                             break
 
-                # Get timer status for the kiosk
+                # Get timer status
                 timer_expired = False
                 for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
                     if room_num == room_number:
@@ -585,22 +633,37 @@ class PropControl:
                             timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
                             timer_expired = timer_time <= 0
                         break
-                
-                # Update kiosk highlighting with all states
+
+                # Update kiosk highlighting
                 self.update_kiosk_highlight(room_number, status == "Finished", is_activated, timer_expired)
-                
+
+            # Check if the prop is flagged AND finished
+            if (room_number in self.flagged_props and
+                prop_id in self.flagged_props[room_number] and
+                self.flagged_props[room_number][prop_id] and
+                status == "Finished"):
+
+                # Play sound
+                audio_manager = AdminAudioManager()
+                audio_manager.play_hint_notification()
+                print(f"[prop control] flagged prop {prop_id} finished")
+
+                # Reset flag
+                self.flagged_props[room_number][prop_id] = False
+
+
             # Only update status label if this is current room and widget exists
             if room_number == self.current_room and 'status_label' in prop_info:
                 try:
-                    # Verify widget still exists and is valid
+                    # Verify widget still exists
                     prop_info['status_label'].winfo_exists()
                     self.update_prop_status(prop_id)
                 except tk.TclError:
-                    # Widget is invalid, remove the reference
+                    # Widget is invalid, remove reference
                     del prop_info['status_label']
                 except Exception as e:
                     print(f"[prop control]Error updating prop UI: {e}")
-                        
+
         except Exception as e:
             print(f"[prop control]Error in check_prop_status: {e}")
 
@@ -877,8 +940,8 @@ class PropControl:
         self.app.root.after(0, lambda: self._handle_prop_update_ui(prop_id, prop_data))
 
     def _handle_prop_update_ui(self, prop_id, prop_data):
-        """Actual implementation of handle_prop_update using after"""
-        # Load status icons if needed
+        """Actual implementation of handle_prop_update, using after."""
+        # Load status icons (Correct)
         if not hasattr(self, 'status_icons'):
             try:
                 icon_dir = os.path.join("admin_icons")
@@ -900,26 +963,26 @@ class PropControl:
                 print(f"[prop control]Error loading status icons: {e}")
                 self.status_icons = None
 
-        # Get order for prop
-        order = 999  
+        # Get order (Correct)
+        order = 999
         if self.current_room in self.ROOM_MAP:
             room_key = self.ROOM_MAP[self.current_room]
             if room_key in self.prop_name_mappings:
                 prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_data["strName"], {})
                 order = prop_info.get('order', 999)
-        
+
         current_status = prop_data.get("strStatus", "")
-        
-        # For the current room, we need to check status changes here as well
+
+        # Check for status changes and update last_progress_times (Correct)
         if self.current_room is not None:
-            previous_status = (self.all_props[self.current_room][prop_id].get('last_status') 
+            previous_status = (self.all_props[self.current_room][prop_id].get('last_status')
                             if prop_id in self.all_props[self.current_room] else None)
-            if (previous_status is not None and 
-                current_status != previous_status and 
+            if (previous_status is not None and
+                current_status != previous_status and
                 current_status != "offline" and
                 not self.should_ignore_progress(self.current_room, prop_data["strName"])):
                 self.last_progress_times[self.current_room] = time.time()
-            
+
             if current_status in ("finished", "finish", "Finished", "Finish"):
                 if self.current_room not in self.last_prop_finished:
                     self.last_prop_finished[self.current_room] = ""
@@ -930,11 +993,11 @@ class PropControl:
 
         try:
             if prop_id not in self.props:
-                # Create new prop widgets
+                # Create new prop widgets (Correct)
                 prop_frame = ttk.Frame(self.props_frame)
                 button_frame = ttk.Frame(prop_frame)
                 button_frame.pack(side='left', padx=(0, 5))
-                
+
                 button_size = 20
                 reset_btn = tk.Button(
                     button_frame,
@@ -950,9 +1013,8 @@ class PropControl:
                 if prop_name:
                     reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
                     reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
-                    #print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
                 reset_btn.pack(side='left', padx=1)
-                        
+
                 activate_btn = tk.Button(
                     button_frame,
                     text="A",
@@ -963,7 +1025,7 @@ class PropControl:
                     height=4
                 )
                 activate_btn.pack(side='left', padx=1)
-                        
+
                 finish_btn = tk.Button(
                     button_frame,
                     text="F",
@@ -974,21 +1036,22 @@ class PropControl:
                     height=4
                 )
                 finish_btn.pack(side='left', padx=1)
-                
+
                 mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
-                
-                # Create name label with conditional formatting
+
+                # Create name label (Correct)
                 name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
                 if self.is_finishing_prop(self.current_room, prop_data['strName']):
                     name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
                 name_label.pack(side='left', padx=5)
-                
+
                 name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
                 name_label.config(cursor="hand2")
-                
+
                 status_label = tk.Label(prop_frame)
                 status_label.pack(side='right', padx=5)
-                
+
+
                 self.props[prop_id] = {
                     'frame': prop_frame,
                     'status_label': status_label,
@@ -997,37 +1060,38 @@ class PropControl:
                     'order': order,
                     'name_label': name_label,
                 }
-                
-                # Set initial last status from newly loaded data
+
+                # Set initial last status (Correct)
                 if self.current_room not in self.all_props:
                     self.all_props[self.current_room] = {}
 
                 if prop_id not in self.all_props[self.current_room]:
                     self.all_props[self.current_room][prop_id] = {}
                 self.all_props[self.current_room][prop_id]['last_status'] = current_status
-                
-                # Sort and repack widgets
+
+                # Sort and repack widgets (Correct)
                 sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
                 for _, prop_info in sorted_props:
                     if 'frame' in prop_info and prop_info['frame'].winfo_exists():
                         prop_info['frame'].pack_forget()
                         prop_info['frame'].pack(fill='x', pady=1)
-                
+
             else:
-                # Update existing prop info with widget safety checks
+                # Update existing prop info (Correct)
                 name_label = self.props[prop_id].get('name_label')
                 if name_label and name_label.winfo_exists():
                     try:
-                        # Update values, including order
+                        # Update values
                         self.props[prop_id]['info'] = prop_data
                         self.props[prop_id]['last_update'] = time.time()
                         self.props[prop_id]['order'] = order
-                        
+
                         # Get mapped name and set it here on update
                         mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
                         name_label.config(text = mapped_name)
 
-                        # Update the last status with the current status
+
+                        # Update the last status
                         if self.current_room not in self.all_props:
                             self.all_props[self.current_room] = {}
                         if prop_id not in self.all_props[self.current_room]:
@@ -1040,21 +1104,22 @@ class PropControl:
                         else:
                             name_label.config(font=('Arial', 8, 'bold'))
                     except tk.TclError:
-                        # If widget was destroyed during update, remove reference
+                        # Widget destroyed, remove reference
                         del self.props[prop_id]['name_label']
                 else:
                     # Remove invalid widget reference
                     if 'name_label' in self.props[prop_id]:
                         del self.props[prop_id]['name_label']
-            
-            # Update status displays if widgets still exist
+
+            # Update status displays (Correct)
             if prop_id in self.props:
                 status_label = self.props[prop_id].get('status_label')
                 if status_label and status_label.winfo_exists():
                     self.update_prop_status(prop_id)
-                    
+
             self.check_finishing_prop_status(prop_id, prop_data)
-                
+
+
         except tk.TclError as e:
             print(f"[prop control]Widget error in handle_prop_update: {e}")
             # Clean up invalid widget references

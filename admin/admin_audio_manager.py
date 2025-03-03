@@ -45,6 +45,10 @@ class AdminAudioManager:
         
         self._initialized = True
     
+    def play_hint_notification(self):
+        """Plays the hint notification sound."""
+        self.play_sound("hint_notification")
+
     def _load_sound(self, sound_id, filename):
         """
         Load a sound file into memory
