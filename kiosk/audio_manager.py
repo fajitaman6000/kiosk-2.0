@@ -93,8 +93,8 @@ class AudioManager:
             1: "casino_heist",
             5: "haunted_manor",
             4: "zombie_outbreak",
-            6: "time_machine",
-            5: "atlantis_rising",
+            7: "time_machine",
+            6: "atlantis_rising",
             3: "wizard_trials"
         }
         return room_names.get(room_number)
