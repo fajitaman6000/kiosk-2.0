@@ -624,9 +624,10 @@ class Overlay:
             #print(f"[qt overlay]Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
             
             
-            
-            cls._hint_text['window'].show()
-            cls._hint_text['window'].raise_()
+            # ADDED CHECK: Only show if no video is playing.
+            if not cls.kiosk_app.video_manager.is_playing:
+                cls._hint_text['window'].show()
+                cls._hint_text['window'].raise_()
         except Exception as e:
             print(f"[qt overlay]Error in _actual_hint_text_update: {e}")
             traceback.print_exc()
