@@ -1111,7 +1111,7 @@ class Overlay:
                     Qt.WindowDoesNotAcceptFocus
                 )
                 cls._button_window.setAttribute(Qt.WA_ShowWithoutActivating)
-            
+
                 # Set up button scene and view using ClickableView instead of QGraphicsView
                 cls._button['scene'] = QGraphicsScene()
                 cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
@@ -1136,10 +1136,10 @@ class Overlay:
                 cls._button['scene'].setSceneRect(scene_rect)
 
                 # Debug prints
-                print(f"[qt overlay]\nView Setup Debug:")
-                print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
-                print(f"[qt overlay]Scene rect: {scene_rect}")
-                print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
+                #print(f"[qt overlay]\nView Setup Debug:")
+                #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
+                #print(f"[qt overlay]Scene rect: {scene_rect}")
+                #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
 
                 # Set up placeholders for images
                 cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -1175,10 +1175,10 @@ class Overlay:
                 # Define offsets for position
                 button_x_offset = -40 # Adjust to move the button within it's parent window
                 button_y_offset = -73 # Adjust to move the button within it's parent window
-                
+
                 shadow_x_offset = 0  # Adjust to move the shadow within it's parent window
                 shadow_y_offset = 0 # Adjust to move the shadow within it's parent window
-                
+
                 cls._button['bg_image_item'].setPos(button_x_offset, button_y_offset)
                 cls._button['shadow_item'].setPos(shadow_x_offset, shadow_y_offset)
 
@@ -1190,6 +1190,18 @@ class Overlay:
                 if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
                     cls._button_window.hide()
                     print("[qt overlay]Help button hidden")
+
+            # Only show hint text if it's not empty ---
+            if ui.current_hint:  # First, check for the existence of current_hint
+                hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
+                if hint_text is not None and hint_text.strip() != "":
+                    print("[qt_overlay] Restoring hint text from within _actual_help_button_update")
+                    cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
+                else:
+                    print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
+            else: # add this else statement.
+                print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
+                Overlay.hide_hint_text()
         except Exception as e:
            print(f"[qt overlay]Exception during help button update: {e}")
            traceback.print_exc()

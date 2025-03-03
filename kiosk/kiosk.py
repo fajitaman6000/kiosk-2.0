@@ -214,7 +214,17 @@ class KioskApp:
             
             print("[kiosk main]Resetting UI state...")
             self.ui.hint_cooldown = False
-            self.ui.clear_all_labels()
+
+            # Clear hint if it's empty before restoring UI
+            if self.ui.current_hint is not None:
+                hint_text = self.ui.current_hint if isinstance(self.ui.current_hint, str) else self.ui.current_hint.get('text', '')
+                if hint_text is None or hint_text.strip() == "":
+                    print("[kiosk main]Clearing empty hint before setup_room_interface")
+                    self.ui.current_hint = None  # Explicitly clear the hint
+                    Overlay.hide_hint_text() # Hide the hint.
+                    
+
+            self.ui.clear_all_labels() # moved this BELOW the new IF statement.
             if self.assigned_room:
                 print(f"[kiosk main]Restoring room interface for: {self.assigned_room}")
                 self.ui.setup_room_interface(self.assigned_room)
@@ -222,7 +232,6 @@ class KioskApp:
                     print("[kiosk main]Creating help button")
                     Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
             print("[kiosk main]=== Video Sequence Complete ===\n")
-
         def play_game_video():
             """Helper to play game video if it exists"""
             print("[kiosk main]\n=== Starting Game Video Sequence ===")

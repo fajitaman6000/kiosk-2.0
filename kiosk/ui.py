@@ -118,7 +118,7 @@ class KioskUI:
             if widget is self.status_frame:
                 continue
             widget.destroy()
-            
+
         # Configure the room-specific elements
         if room_number > 0:
             self.current_room = room_number
@@ -126,16 +126,26 @@ class KioskUI:
             if self.background_image:
                 bg_label = tk.Label(self.root, image=self.background_image)
                 bg_label.place(x=0, y=0, relwidth=1, relheight=1)
-            
+
             # Load room-specific timer background
             self.message_handler.timer.load_room_background(room_number)
-            
+
             # Show the timer if it exists
             if hasattr(self.message_handler, 'timer'):
                 Overlay.update_timer_display(self.message_handler.timer.get_time_str())
-                
-            # Update help button state after room setup
-            self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Change to lambda for thread safety
+
+            # Conditional Help Button and Hint Restore ---
+            # Only update the help button OR restore the hint if there is an active hint.
+            if self.current_hint is not None:
+                hint_text = self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', '')
+                # Check again here, just before showing the hint.
+                if hint_text is not None and hint_text.strip() != "":
+                    print("[ui.py]Restoring non-empty hint within setup_room_interface")
+                    Overlay.show_hint_text(hint_text, self.current_room)
+            else:
+                # If there's NO current hint, then update the help button.
+                print("[ui.py]No current hint, updating help button within setup_room_interface")
+                self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update())
     
     def request_help(self):
         """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
