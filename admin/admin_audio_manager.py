@@ -42,6 +42,7 @@ class AdminAudioManager:
         self._load_sound("hint_notification", "hint_notification.mp3")
         self._load_sound("game_finish", "game_finish.mp3")
         self._load_sound("game_fail", "game_fail.mp3")
+        self._load_sound("flagged_finish", "flagged_finish.mp3")
         
         self._initialized = True
     

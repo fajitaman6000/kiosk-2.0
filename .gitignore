@@ -38,3 +38,4 @@ kiosk/timer_backgrounds/**
 kiosk/data/**
 kiosk/file_hashes.json
 kiosk/music/
+kiosk/loss_audio/**

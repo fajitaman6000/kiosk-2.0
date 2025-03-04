@@ -2,7 +2,9 @@
 # important/immediate todo
 
 soundcheck logic kiosk side
-set alarm on prop to make sound when gm-chosen prop finishes
+
+victory screen, NOT audio; victory audio is prop-side
+loss audio + screen
 
 ##############################################################################################################################
 # priority bugs
@@ -30,9 +32,6 @@ resets during intro videos cause crashing/audio bugs(?)
 hint count on THEIR side
 restarter moved to kiosk app
 edit hint image content within hint manager
-ending audio is apparently admin app side(?)
-
-"you won" screen
 
 save prop status for blackbox, delete save upon load
 "enable drink menu" by default on
@@ -41,7 +40,7 @@ set alarm on prop to make sound when gm-chosen prop finishes
 ##############################################################################################################################
 # ambitious extra ideas:
 
-route sound to audio in game room instead of from headphones
+route sound to speaker placed in office instead of from headphones
 LLM translator call
 AI generated text hint based on room state
 walkie to lobby: room states for automatic standbys/room victory/out of time 

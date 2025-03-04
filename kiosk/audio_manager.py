@@ -14,6 +14,7 @@ class AudioManager:
         self.is_playing = False
         self.kiosk_app = kiosk_app
         self.hint_audio_dir = "hint_audio_files"
+        self.loss_audio_dir = "loss_audio"
 
     def play_sound(self, sound_name):
         """
@@ -152,3 +153,36 @@ class AudioManager:
                 pygame.mixer.music.set_volume(volume)
         except Exception as e:
             print(f"[audio manager]Error setting music volume: {e}")
+
+    def play_loss_audio(self, room_name):
+        """Plays the loss audio for the given room."""
+        try:
+            audio_name = room_name.lower().replace(" ", "_") + ".mp3"
+            audio_path = os.path.join(self.loss_audio_dir, audio_name)
+            if os.path.exists(audio_path):
+                # Stop any other audio
+                self.stop_all_audio()
+                # Use channel 3 for loss audio
+                sound = pygame.mixer.Sound(audio_path)
+                sound_channel = pygame.mixer.Channel(3)
+                sound_channel.play(sound)
+                print(f"[audio manager] Playing loss audio {audio_name} on channel 3")
+            else:
+                print(f"[audio manager] Loss audio not found: {audio_path}")
+
+        except Exception as e:
+            print(f"[audio manager] Error playing loss audio: {e}")
+    
+    def stop_all_audio(self):
+        """Stops all currently playing audio, including music and sound effects."""
+        try:
+            self.stop_background_music()  # Stop music if playing
+
+            # Stop all active channels
+            for channel_id in range(pygame.mixer.get_num_channels()):
+                channel = pygame.mixer.Channel(channel_id)
+                if channel.get_busy():
+                    channel.stop()
+            print("[audio manager] Stopped all audio.")
+        except Exception as e:
+            print(f"[audio manager] Error stopping all audio: {e}")

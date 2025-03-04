@@ -241,8 +241,8 @@ class MessageHandler:
                 # First, stop all audio and video playback
                 print("[message handler][DEBUG] Stopping all media playback...")
 
-                # Stop background music
-                self.kiosk_app.audio_manager.stop_background_music()
+                # Stop background music and any other audio
+                self.kiosk_app.audio_manager.stop_all_audio()
 
                 # Force stop video manager (which handles both video and its audio)
                 self.kiosk_app.video_manager.force_stop()  # This now handles all cleanup of callbacks

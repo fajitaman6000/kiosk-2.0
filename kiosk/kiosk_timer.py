@@ -84,7 +84,21 @@ class KioskTimer:
                     if hasattr(self.kiosk_app, 'ui'):
                         self.kiosk_app.ui.show_status_frame()
                         self.kiosk_app.ui.status_frame.delete('pending_text')
+                
+                # --- LOSS AUDIO LOGIC ---
+                if self.time_remaining <= 0 and old_time > 0:  # Just reached zero
+                    print(f"[kiosk timer] Timer reached zero - playing loss audio")
+                    self.kiosk_app.audio_manager.stop_background_music() # Stop current music
 
+                    if self.kiosk_app.assigned_room:
+                        room_name = self.kiosk_app.audio_manager.get_room_music_name(self.kiosk_app.assigned_room)
+                        if room_name:
+                            self.kiosk_app.audio_manager.play_loss_audio(room_name)
+                        else:
+                            print(f"[kiosk timer] Could not determine loss audio for room: {self.kiosk_app.assigned_room}")
+                    else:
+                        print("[kiosk timer] No room assigned, cannot play loss audio.")
+                # --- END LOSS AUDIO ---
 
                 self.update_display()
 
