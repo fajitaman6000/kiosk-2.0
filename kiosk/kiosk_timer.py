@@ -16,6 +16,7 @@ class KioskTimer:
         self.last_update = None
         self.current_room = None
         self._update_scheduled = False  # Flag to track scheduled updates
+        self.game_lost = False  # NEW: Flag to indicate game loss
 
         # Delay Qt timer initialization until UI is ready
         self.root.after(1000, self._delayed_init)
@@ -57,6 +58,7 @@ class KioskTimer:
 
         elif command == "set" and minutes is not None:
             self.time_remaining = minutes * 60
+            self.game_lost = False  # NEW: Reset game_lost flag when timer is set
             print(f"[kiosk timer]Timer set to {minutes} minutes")
 
         self.update_display()
@@ -84,7 +86,7 @@ class KioskTimer:
                     if hasattr(self.kiosk_app, 'ui'):
                         self.kiosk_app.ui.show_status_frame()
                         self.kiosk_app.ui.status_frame.delete('pending_text')
-                
+
                 # --- LOSS AUDIO LOGIC ---
                 if self.time_remaining <= 0 and old_time > 0:  # Just reached zero
                     print(f"[kiosk timer] Timer reached zero - playing loss audio")
@@ -98,6 +100,11 @@ class KioskTimer:
                             print(f"[kiosk timer] Could not determine loss audio for room: {self.kiosk_app.assigned_room}")
                     else:
                         print("[kiosk timer] No room assigned, cannot play loss audio.")
+
+                    # NEW: Handle game loss
+                    self.game_lost = True
+                    self.kiosk_app.handle_game_loss()
+
                 # --- END LOSS AUDIO ---
 
                 self.update_display()

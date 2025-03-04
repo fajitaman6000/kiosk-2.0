@@ -201,6 +201,7 @@ class Overlay:
 
         # Hide GM assistance overlay
         cls.hide_gm_assistance()
+        
 
     @classmethod
     def _init_hint_text_overlay(cls):
@@ -553,6 +554,110 @@ class Overlay:
         cls._hint_text_thread.update_text({'text':text, 'room_number':room_number})
 
     @classmethod
+    def show_loss_screen(cls):
+        """Display the game loss screen."""
+        if not cls._initialized:
+            return
+
+        # --- Create/Rebuild Loss Screen Elements --- (GOOD PRACTICE)
+        if hasattr(cls, '_loss_screen') and cls._loss_screen:
+            if cls._loss_screen.get('window'):
+                cls._loss_screen['window'].hide()  # Hide before deleting
+                cls._loss_screen['window'].deleteLater()
+                cls._loss_screen['window'] = None
+            if cls._loss_screen.get('scene'):
+                cls._loss_screen['scene'].clear()  # Clear items
+                cls._loss_screen['scene'] = None
+            if cls._loss_screen.get('view'):
+                cls._loss_screen['view'].deleteLater()
+                cls._loss_screen['view'] = None
+            cls._loss_screen['text_item'] = None # Ensure text is gone
+
+        if not hasattr(cls, '_loss_screen'):
+            cls._loss_screen = {}
+
+        cls._loss_screen['window'] = QWidget(cls._window)  # Parent to main if needed
+        cls._loss_screen['window'].setAttribute(Qt.WA_TranslucentBackground)
+        cls._loss_screen['window'].setWindowFlags(
+            Qt.FramelessWindowHint |
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool |
+            Qt.WindowDoesNotAcceptFocus
+        )
+        cls._loss_screen['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+        cls._loss_screen['scene'] = QGraphicsScene()
+        cls._loss_screen['view'] = QGraphicsView(cls._loss_screen['scene'], cls._loss_screen['window'])
+        cls._loss_screen['view'].setStyleSheet("""
+            QGraphicsView {
+                background: transparent;  /* Or a loss-screen background */
+                border: none;
+            }
+        """)
+        cls._loss_screen['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        cls._loss_screen['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        cls._loss_screen['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+        cls._loss_screen['text_item'] = QGraphicsTextItem()
+        cls._loss_screen['text_item'].setDefaultTextColor(Qt.white) # Loss text color
+        font = QFont('Arial', 48)  # Larger font
+        cls._loss_screen['text_item'].setFont(font)
+        cls._loss_screen['scene'].addItem(cls._loss_screen['text_item'])
+
+        if cls._parent_hwnd:  # Set window attributes if parent exists
+            style = win32gui.GetWindowLong(int(cls._loss_screen['window'].winId()), win32con.GWL_EXSTYLE)
+            win32gui.SetWindowLong(
+                int(cls._loss_screen['window'].winId()),
+                win32con.GWL_EXSTYLE,
+                style | win32con.WS_EX_NOACTIVATE
+            )
+
+        # --- Geometry and Positioning ---
+        width = 1920
+        height = 1080
+        cls._loss_screen['window'].setGeometry(0, 0, width, height)  # Full screen
+        cls._loss_screen['view'].setGeometry(0, 0, width, height)
+        cls._loss_screen['scene'].setSceneRect(QRectF(0, 0, width, height))
+
+        message = "Time's up! A host will arrive to collect you shortly."
+        cls._loss_screen['text_item'].setHtml(
+            f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>' # Semi-transparent BG
+        )
+
+        cls._loss_screen['text_item'].setTransform(QTransform())
+        cls._loss_screen['text_item'].setRotation(90)
+
+        text_width = cls._loss_screen['text_item'].boundingRect().width()
+        text_height = cls._loss_screen['text_item'].boundingRect().height()
+        cls._loss_screen['text_item'].setPos(
+            (width + text_height) / 2,
+            (height - text_width) / 2
+        )
+
+        cls._loss_screen['window'].show()
+        cls._loss_screen['window'].raise_()
+
+    @classmethod
+    def hide_loss_screen(cls):
+        """Hide the loss screen."""
+        if hasattr(cls, '_loss_screen') and cls._loss_screen and cls._loss_screen.get('window'):
+            cls._loss_screen['window'].hide()
+
+    @classmethod
+    def _check_game_loss_visibility(cls, game_lost):
+        """Helper to control visibility based on game_lost flag."""
+        if game_lost:
+            # Game is lost, hide ALL other elements
+            cls.hide_all_overlays()  # Existing method
+            cls.show_loss_screen()
+
+        else:
+            # Game is NOT lost, proceed as before
+            cls.hide_loss_screen()
+            # ... (rest of your existing logic for showing other overlays)
+            cls.show_all_overlays()
+
+    @classmethod
     def _actual_hint_text_update(cls, data):
         """Update the hint text in the main thread."""
         try:
@@ -861,8 +966,10 @@ class Overlay:
 
     @classmethod
     def update_timer_display(cls, time_str):
-        """Update the timer display with the given time string"""
+        """Update timer display, but NOT if game is lost."""
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
+            return
+        if cls.kiosk_app.timer.game_lost:  # NEW CHECK: Don't update if game is lost
             return
             
         # Initialize timer thread if needed
@@ -1086,10 +1193,11 @@ class Overlay:
         assigned_room = button_data['assigned_room']
         current_minutes = timer.time_remaining / 60
 
-        # Check visibility conditions
+        # Check visibility conditions - NOW includes game_lost
         show_button = (
             not ui.hint_cooldown and
-            not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45)
+            not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45) and
+            not timer.game_lost  # NEW: Don't show if game is lost
         )
 
         #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
@@ -1293,6 +1401,12 @@ class Overlay:
     def show_all_overlays(cls):
         """Restore visibility of all Qt overlay UI elements"""
         print("[qt overlay]Restoring all overlay UI elements")
+
+        if cls.kiosk_app.timer.game_lost:
+            # Game is lost, ONLY show the loss screen, nothing else
+            cls.show_loss_screen()
+            return  # IMPORTANT: Exit early
+
         try:
             if hasattr(cls, '_timer_window') and cls._timer_window:
                 print("[qt overlay]Showing timer window")

@@ -139,7 +139,18 @@ class KioskApp:
         
     def handle_message(self, msg):
         self.message_handler.handle_message(msg)
-            
+    
+    def handle_game_loss(self):
+        """Handles the game loss event."""
+        print("[kiosk app]Handling game loss...")
+
+        # Stop all audio/video (you already have this logic, keep it):
+        #self.audio_manager.stop_all_audio() redundant as timer already does this
+        self.video_manager.force_stop()  # Ensure video is stopped
+
+        # Hide all other UI elements and show loss screen:
+        self.root.after(0, lambda: Overlay._check_game_loss_visibility(True))
+
     def request_help(self):
         if not self.ui.hint_cooldown:
             self.hints_requested += 1

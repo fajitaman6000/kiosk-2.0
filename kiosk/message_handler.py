@@ -241,6 +241,9 @@ class MessageHandler:
                 # First, stop all audio and video playback
                 print("[message handler][DEBUG] Stopping all media playback...")
 
+                # Reset game_lost flag:
+                self.kiosk_app.timer.game_lost = False
+
                 # Stop background music and any other audio
                 self.kiosk_app.audio_manager.stop_all_audio()
 
@@ -325,6 +328,9 @@ class MessageHandler:
                         # Update help button state after reset
                         self.kiosk_app._actual_help_button_update()
                         print("[message handler][DEBUG] Kiosk reset complete")
+
+                    # NEW: Check game loss status *after* setup
+                    self.kiosk_app.root.after(0, lambda: Overlay._check_game_loss_visibility(self.kiosk_app.timer.game_lost))
 
                 # Schedule UI restoration after timer reset
                 self.kiosk_app.root.after(100, restore_ui)
