@@ -74,7 +74,8 @@
             "Wizards shelf": {
                 "display": "Magic Shelf",
                 "order": 13,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "standby_prop": true
             },
             "Spirits board": {
                 "display": "Spirits Board",
@@ -120,7 +121,8 @@
                 "display": "Drawers",
                 "order": 12,
                 "finishing_prop": false,
-                "circuit": "lockers"
+                "circuit": "lockers",
+                "standby_prop": true
             },
             "Code panel": {
                 "display": "Case Code",
@@ -214,7 +216,8 @@
                 "display": "Drawers",
                 "order": 12,
                 "finishing_prop": false,
-                "circuit": "lockers"
+                "circuit": "lockers",
+                "standby_prop": true
             },
             "Code panel": {
                 "display": "Case Code",
@@ -349,7 +352,8 @@
             "Place the photos": {
                 "display": "Vanity Photos",
                 "order": 13,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "standby_prop": true
             }
         }
     },
@@ -379,7 +383,8 @@
             "ZOMBIE Loops": {
                 "display": "Zombie Loops",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "standby_prop": true
             },
             "Microwave": {
                 "display": "Microwave",
@@ -414,7 +419,8 @@
             "Crown": {
                 "display": "Laser Crown",
                 "order": 49,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "standby_prop": true
             },
             "Trident": {
                 "display": "Trident",

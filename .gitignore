@@ -39,3 +39,4 @@ kiosk/data/**
 kiosk/file_hashes.json
 kiosk/music/
 kiosk/loss_audio/**
+kiosk/other_files/**

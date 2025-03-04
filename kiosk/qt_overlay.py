@@ -571,7 +571,10 @@ class Overlay:
             if cls._loss_screen.get('view'):
                 cls._loss_screen['view'].deleteLater()
                 cls._loss_screen['view'] = None
-            cls._loss_screen['text_item'] = None # Ensure text is gone
+            # Remove the text item attribute, as we'll be using an image.
+            if '_text_item' in cls._loss_screen:
+                del cls._loss_screen['_text_item']
+
 
         if not hasattr(cls, '_loss_screen'):
             cls._loss_screen = {}
@@ -598,11 +601,10 @@ class Overlay:
         cls._loss_screen['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cls._loss_screen['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
 
-        cls._loss_screen['text_item'] = QGraphicsTextItem()
-        cls._loss_screen['text_item'].setDefaultTextColor(Qt.white) # Loss text color
-        font = QFont('Arial', 48)  # Larger font
-        cls._loss_screen['text_item'].setFont(font)
-        cls._loss_screen['scene'].addItem(cls._loss_screen['text_item'])
+        # --- Image Item Instead of Text Item ---
+        cls._loss_screen['image_item'] = QGraphicsPixmapItem()
+        cls._loss_screen['scene'].addItem(cls._loss_screen['image_item'])
+
 
         if cls._parent_hwnd:  # Set window attributes if parent exists
             style = win32gui.GetWindowLong(int(cls._loss_screen['window'].winId()), win32con.GWL_EXSTYLE)
@@ -619,20 +621,53 @@ class Overlay:
         cls._loss_screen['view'].setGeometry(0, 0, width, height)
         cls._loss_screen['scene'].setSceneRect(QRectF(0, 0, width, height))
 
-        message = "Time's up! A host will arrive to collect you shortly."
-        cls._loss_screen['text_item'].setHtml(
-            f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>' # Semi-transparent BG
-        )
+        # --- Load and Set Image ---
+        image_path = os.path.join("other_files", "loss.png")
+        if os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            # --- Scale the Pixmap ---
+            scale_factor = 0.5
+            scaled_pixmap = pixmap.scaled(
+                int(pixmap.width() * scale_factor),
+                int(pixmap.height() * scale_factor),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation  # Use SmoothTransformation for better quality
+            )
+            cls._loss_screen['image_item'].setPixmap(scaled_pixmap)
 
-        cls._loss_screen['text_item'].setTransform(QTransform())
-        cls._loss_screen['text_item'].setRotation(90)
+            # --- Positioning the Image ---
+            cls._loss_screen['image_item'].setTransform(QTransform())
+            cls._loss_screen['image_item'].setRotation(90)
 
-        text_width = cls._loss_screen['text_item'].boundingRect().width()
-        text_height = cls._loss_screen['text_item'].boundingRect().height()
-        cls._loss_screen['text_item'].setPos(
-            (width + text_height) / 2,
-            (height - text_width) / 2
-        )
+
+            image_width = scaled_pixmap.width()  # Use scaled width and height
+            image_height = scaled_pixmap.height() # Use scaled width and height
+            cls._loss_screen['image_item'].setPos(
+                (width + image_height) / 2,
+                (height - image_width) / 2
+            )
+
+        else:
+            print(f"[qt overlay] Loss image not found: {image_path}")
+            #  Fallback to text display IF the image is missing.  Good practice.
+            cls._loss_screen['text_item'] = QGraphicsTextItem()
+            cls._loss_screen['text_item'].setDefaultTextColor(Qt.white)
+            font = QFont('Arial', 48)
+            cls._loss_screen['text_item'].setFont(font)
+            cls._loss_screen['scene'].addItem(cls._loss_screen['text_item'])
+            message = "Time's up! A host will arrive to collect you shortly."
+            cls._loss_screen['text_item'].setHtml(
+                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
+            )
+            cls._loss_screen['text_item'].setTransform(QTransform())
+            cls._loss_screen['text_item'].setRotation(90)
+            text_width = cls._loss_screen['text_item'].boundingRect().width()
+            text_height = cls._loss_screen['text_item'].boundingRect().height()
+            cls._loss_screen['text_item'].setPos(
+                (width + text_height) / 2,
+                (height - text_width) / 2
+            )
+            
 
         cls._loss_screen['window'].show()
         cls._loss_screen['window'].raise_()

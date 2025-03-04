@@ -29,6 +29,8 @@ resets during intro videos cause crashing/audio bugs(?)
 ##############################################################################################################################
 # planned features: 
 
+standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
+
 hint count on THEIR side
 restarter moved to kiosk app
 edit hint image content within hint manager
