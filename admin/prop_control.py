@@ -258,8 +258,10 @@ class PropControl:
                     background_image = ImageTk.getimage(icon).convert("RGBA")
                     flag_image = ImageTk.getimage(self.flagged_prop_image).convert("RGBA")
 
-                    composite_image.paste(background_image, (0, 0), background_image)
+                    # *** KEY CHANGE: Paste flag_image FIRST ***
                     composite_image.paste(flag_image, (0, 0), flag_image)
+                    composite_image.paste(background_image, (0, 0), background_image)
+
 
                     combined_icon = ImageTk.PhotoImage(composite_image)
                     prop['status_label'].config(image=combined_icon)
@@ -645,7 +647,7 @@ class PropControl:
 
                 # Play sound
                 audio_manager = AdminAudioManager()
-                audio_manager.play_hint_notification()
+                audio_manager.play_flagged_finish_notification()
                 print(f"[prop control] flagged prop {prop_id} finished")
 
                 # Reset flag
