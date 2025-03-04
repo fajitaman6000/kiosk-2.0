@@ -169,6 +169,15 @@ class NetworkBroadcastHandler:
             message['minutes'] = minutes
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
 
+    def send_victory_message(self, room_number, computer_name):
+        """Send a victory message."""
+        message = {
+            'type': 'victory',
+            'room_number': room_number,
+            'computer_name': computer_name
+        }
+        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+
     def send_video_command(self, computer_name, video_type, minutes):
         message = {
             'type': 'video_command',

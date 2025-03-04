@@ -4,7 +4,6 @@
 soundcheck logic kiosk side
 
 victory screen, NOT audio; victory audio is prop-side
-loss audio + screen
 
 ##############################################################################################################################
 # priority bugs
@@ -42,6 +41,7 @@ set alarm on prop to make sound when gm-chosen prop finishes
 ##############################################################################################################################
 # ambitious extra ideas:
 
+"your host/gamemaster's name" shown at victory/loss(?) screen
 route sound to speaker placed in office instead of from headphones
 LLM translator call
 AI generated text hint based on room state

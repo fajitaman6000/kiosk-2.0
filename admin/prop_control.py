@@ -82,6 +82,7 @@ class PropControl:
             self.last_mqtt_updates[room_number] = {} # Initialize MQTT update tracking
         self.last_prop_finished = {} # prop status strings
         self.flagged_props = {}  # room_number -> {prop_id: True/False}
+        self.victory_sent = {}  # room_number -> bool
 
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -530,6 +531,9 @@ class PropControl:
         if old_room:
           self.update_prop_tracking_interval(old_room, is_selected=False)
         self.update_prop_tracking_interval(room_number, is_selected=True)
+
+        self.victory_sent[room_number] = False
+        print(f"[prop control] set victory sent false for room {room_number}")
 
         if room_number in self.connection_states and hasattr(self, 'status_label'):
             try:
@@ -1290,47 +1294,60 @@ class PropControl:
         """
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
-            
+
         # Get prop name from data
         prop_name = prop_data.get("strName")
         if not prop_name:
             return
-            
+
         if self.current_room not in self.ROOM_MAP:
             return
-            
+
         room_key = self.ROOM_MAP[self.current_room]
-        
+
         # Find the kiosk assigned to this room
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == self.current_room:
                 assigned_kiosk = computer_name
                 break
-        
+
         if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
             # Check if any props are activated or if finishing prop is finished
             is_activated = False
             is_finished = False
-            
+
             # Check all props in current room for activated state
             for pid, pdata in self.props.items():
                 if pdata['info']['strStatus'] == "Activated":
                     is_activated = True
-                
+
                 # Check if this is a finishing prop and it's finished
                 prop_info = self.prop_name_mappings.get(room_key, {}).get('mappings', {}).get(pdata['info']['strName'], {})
                 if prop_info.get('finishing_prop', False) and pdata['info']['strStatus'] == "Finished":
                     is_finished = True
-            
+
             # Get timer status for the kiosk
             timer_expired = False
             if assigned_kiosk in self.app.kiosk_tracker.kiosk_stats:
                 timer_time = self.app.kiosk_tracker.kiosk_stats[assigned_kiosk].get('timer_time', 2700)
                 timer_expired = timer_time <= 0
-            
+
             # Update the highlight state with timer status
             self.update_kiosk_highlight(self.current_room, is_finished, is_activated, timer_expired)
+
+            # Handle victory message sending ---
+            if is_finished:
+                if self.current_room not in self.victory_sent:
+                    self.victory_sent[self.current_room] = False  # Initialize if not present
+
+                if not self.victory_sent[self.current_room]:
+                    self._send_victory_message(self.current_room, assigned_kiosk)
+                    self.victory_sent[self.current_room] = True  # Set flag AFTER sending
+                #else:
+                    #print(f"[prop control]Victory message already sent for room {self.current_room}, skipping.")
+            elif self.current_room in self.victory_sent:
+                self.victory_sent[self.current_room] = False  # Reset if NOT finished
 
     def update_kiosk_highlight(self, room_number, is_finished, is_activated, timer_expired=False):
         """
@@ -1391,6 +1408,23 @@ class PropControl:
             self.update_prop_status(prop_id)
             # Schedule next update in 1 second
             self.app.root.after(1000, lambda: self.schedule_status_update(prop_id))
+
+    def _send_victory_message(self, room_number, computer_name):
+        """Sends a victory message to the kiosk (internal use)."""
+        if hasattr(self.app, 'network_handler') and self.app.network_handler:
+            message = {
+                'type': 'victory',
+                'room_number': room_number,
+                'computer_name': computer_name
+            }
+            try:
+                encoded_message = json.dumps(message).encode()
+                self.app.network_handler.socket.sendto(encoded_message, ('255.255.255.255', 12346))
+                print(f"[prop control]Victory message sent to room {room_number} ({computer_name})")
+            except Exception as e:
+                print(f"[prop control]Failed to send victory message: {e}")
+        else:
+            print("[prop control]Network handler not available.")
 
     def send_command(self, prop_id, command):
         """Send command to standard props"""

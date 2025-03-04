@@ -353,6 +353,10 @@ class MessageHandler:
                 # Call the Overlay's method to show the assistance offered message
                 self.kiosk_app.root.after(0, lambda: Overlay.show_gm_assistance())
 
+            elif msg['type'] == 'victory' and msg['computer_name'] == self.kiosk_app.computer_name:
+                # this message will be received many times, so just set a flag based on this
+                print("[message handler]Victory detected")
+
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
