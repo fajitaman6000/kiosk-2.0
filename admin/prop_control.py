@@ -110,7 +110,8 @@ class PropControl:
             text="START GAME",
             command=self.start_game,
             bg='#2898ED',   # Blue
-            fg='white'
+            fg='white',
+            cursor="hand2"
         )
         self.start_button.pack(fill='x', pady=2)
 
@@ -143,7 +144,8 @@ class PropControl:
             text="RESET ALL PROPS",
             command=handle_reset_click,  # Use the new handler
             bg='#DB4260',   # Red
-            fg='white'
+            fg='white',
+            cursor="hand2"
         )
 
         # Track confirmation state
@@ -863,14 +865,16 @@ class PropControl:
                     buttons_grid, 
                     text=button_text,
                     command=lambda qt=quest_type: self.send_quest_command(qt),
-                    **button_style
+                    **button_style,
+                    cursor="hand2"
                 )
             else:
                 btn = tk.Button(
                     buttons_grid, 
                     text=button_text,
                     command=lambda pn=command_name: self.send_special_command(pn, "on"),
-                    **button_style
+                    **button_style,
+                    cursor="hand2"
                 )
                 
             # Pack button into grid with minimal padding
@@ -1012,7 +1016,8 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "reset"),
                     bg='#cc362b',
                     width=2,
-                    height=4
+                    height=4,
+                    cursor="hand2"
                 )
                 # Store prop name for hover events
                 prop_name = prop_data.get("strName", "")
@@ -1028,7 +1033,8 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "activate"),
                     bg='#ff8c00',
                     width=2,
-                    height=4
+                    height=4,
+                    cursor="hand2"
                 )
                 activate_btn.pack(side='left', padx=1)
 
@@ -1039,7 +1045,8 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "finish"),
                     bg='#28a745',
                     width=2,
-                    height=4
+                    height=4,
+                    cursor="hand2"
                 )
                 finish_btn.pack(side='left', padx=1)
 
@@ -1151,7 +1158,8 @@ class PropControl:
                 command=lambda: self.send_command(prop_id, "reset"),
                 bg='#cc362b',
                 width=2,
-                height=4
+                height=4,
+                cursor="hand2"
             )
             # Store prop name for hover events
             prop_name = prop_data.get("strName", "")
@@ -1168,7 +1176,8 @@ class PropControl:
                 command=lambda: self.send_command(prop_id, "activate"),
                 bg='#ff8c00',
                 width=2,
-                height=4
+                height=4,
+                cursor="hand2"
             )
             activate_btn.pack(side='left', padx=1)
             
@@ -1179,7 +1188,8 @@ class PropControl:
                 command=lambda: self.send_command(prop_id, "finish"),
                 bg='#28a745',
                 width=2,
-                height=4
+                height=4,
+                cursor="hand2"
             )
             finish_btn.pack(side='left', padx=1)
             

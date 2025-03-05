@@ -118,7 +118,8 @@ class AdminInterfaceBuilder:
             height=32,     # Set fixed height for the icon
             bd=0,
             highlightthickness=0,
-            compound=tk.LEFT
+            compound=tk.LEFT,
+            cursor="hand2"
         )
         self.settings_button.pack(anchor='n')  # Anchor to top of its frame
         
@@ -145,7 +146,8 @@ class AdminInterfaceBuilder:
             height=32, # set to same height as hints button
             bd=0,
             highlightthickness=0,
-            compound=tk.LEFT
+            compound=tk.LEFT,
+            cursor="hand2"
         )
         self.sync_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
 
@@ -173,7 +175,8 @@ class AdminInterfaceBuilder:
             height=32, # set to same height as hints button
             bd=0,
             highlightthickness=0,
-            compound=tk.LEFT
+            compound=tk.LEFT,
+            cursor="hand2"
         )
         self.soundcheck_button.pack(anchor='n', pady=(25,0))  # Keep below hints button
 
@@ -880,7 +883,8 @@ class AdminInterfaceBuilder:
             frame, 
             text="Reboot Kiosk Computer",
             bg='#FF6B6B',
-            fg='white'
+            fg='white',
+            cursor="hand2"
         )
         
         # Track confirmation state

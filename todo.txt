@@ -3,8 +3,6 @@
 
 soundcheck logic kiosk side
 
-victory screen, NOT audio; victory audio is prop-side
-
 ##############################################################################################################################
 # priority bugs
 
@@ -27,6 +25,10 @@ resets during intro videos cause crashing/audio bugs(?)
 
 ##############################################################################################################################
 # planned features: 
+
+reset props, reset room (runs reset all + reset kiosk)
+
+preview kiosk screen visible on admin side
 
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
 

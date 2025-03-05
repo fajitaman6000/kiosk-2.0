@@ -37,7 +37,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='#7897bf',
         fg='white',
         padx=10,
-        justify='left'
+        justify='left',
+        cursor="hand2"
     )
     # Track confirmation state
     reset_btn.confirmation_pending = False
@@ -140,7 +141,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bd=0,
         highlightthickness=0,
         #bg='black',
-        #activebackground='black'
+        #activebackground='black',
+        cursor="hand2"
     )
 
     # Store both icons with the button for later use
@@ -162,7 +164,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bd=0,
         highlightthickness=0,
         #bg='black',
-        #activebackground='black'
+        #activebackground='black',
+        cursor="hand2"
     )
     # Store both icons with the button for later use
     if play_icon and stop_icon:
@@ -196,7 +199,8 @@ def setup_stats_panel(interface_builder, computer_name):
         width=24,
         height=24,
         bd=0,
-        highlightthickness=0
+        highlightthickness=0,
+        cursor="hand2"
     )
     if video_icon:
         video_btn.image = video_icon
@@ -223,7 +227,8 @@ def setup_stats_panel(interface_builder, computer_name):
         width=24,
         height=24,
         bd=0,
-        highlightthickness=0
+        highlightthickness=0,
+        cursor="hand2"
     )
     if skip_icon:
         skip_btn.image = skip_icon
@@ -247,7 +252,8 @@ def setup_stats_panel(interface_builder, computer_name):
         width=24,
         height=24,
         bd=0,
-        highlightthickness=0
+        highlightthickness=0,
+        cursor="hand2"
     )
     if clock_icon:
         set_time_btn.image = clock_icon
@@ -270,7 +276,8 @@ def setup_stats_panel(interface_builder, computer_name):
         width=24,
         height=24,
         bd=0,
-        highlightthickness=0
+        highlightthickness=0,
+        cursor="hand2"
     )
     if plus_icon:
         add_time_btn.image = plus_icon
@@ -293,7 +300,8 @@ def setup_stats_panel(interface_builder, computer_name):
         width=24,
         height=24,
         bd=0,
-        highlightthickness=0
+        highlightthickness=0,
+        cursor="hand2"
     )
     if minus_icon:
         reduce_time_btn.image = minus_icon
@@ -310,7 +318,8 @@ def setup_stats_panel(interface_builder, computer_name):
         anchor='e',
         fg='black',
         bg='systemButtonFace',
-        activebackground='systemButtonFace'
+        activebackground='systemButtonFace',
+        cursor="hand2"
     )
     interface_builder.stats_elements['auto_start_check'].pack(side='right', padx=10)
 
@@ -348,13 +357,15 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
         prop_control_buttons,
         text="Back",
-        command=interface_builder.show_manual_hint
+        command=interface_builder.show_manual_hint,
+        cursor="hand2"
     )
 
     interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
         prop_control_buttons,
         text="Attach",
-        command=interface_builder.attach_image
+        command=interface_builder.attach_image,
+        cursor="hand2"
     )
 
     # Add listbox for image files (initially hidden)
@@ -396,21 +407,24 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['send_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'], 
         text="Send",
-        command=lambda: interface_builder.send_hint(computer_name)
+        command=lambda: interface_builder.send_hint(computer_name),
+        cursor="hand2"
     )
     interface_builder.stats_elements['send_btn'].pack(side='left', padx=5)
 
     interface_builder.stats_elements['save_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Save",
-        command=interface_builder.save_manual_hint
+        command=interface_builder.save_manual_hint,
+        cursor="hand2"
     )
     interface_builder.stats_elements['save_btn'].pack(side='left', padx=5)
 
     interface_builder.stats_elements['clear_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Clear",
-        command=interface_builder.clear_manual_hint
+        command=interface_builder.clear_manual_hint,
+        cursor="hand2"
     )
     interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5)
 
@@ -524,7 +538,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bd=0,
         highlightthickness=0,
         bg='systemButtonFace',  # Match system background
-        activebackground='systemButtonFace'  # Match system background when clicked
+        activebackground='systemButtonFace',  # Match system background when clicked
+        cursor="hand2"
     )
     if camera_icon and stop_camera_icon:
         camera_btn.camera_icon = camera_icon
@@ -542,7 +557,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bd=0,
         highlightthickness=0,
         bg='systemButtonFace',
-        activebackground='systemButtonFace'
+        activebackground='systemButtonFace',
+        cursor="hand2"
     )
     if listen_icon and stop_listening_icon:
         listen_btn.listen_icon = listen_icon
@@ -561,7 +577,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bd=0,
         highlightthickness=0,
         bg='systemButtonFace',
-        activebackground='systemButtonFace'
+        activebackground='systemButtonFace',
+        cursor="hand2"
     )
     if enable_mic_icon and disable_mic_icon:
         speak_btn.enable_mic_icon = enable_mic_icon
@@ -631,7 +648,8 @@ def setup_stats_panel(interface_builder, computer_name):
         solutions_container,
         text="Send Video Solution",
         command=lambda: interface_builder.play_solution_video(computer_name),
-        state='normal' if props_list else 'disabled'
+        state='normal' if props_list else 'disabled',
+        cursor="hand2"
     )
     play_solution_btn.pack(side='left')
 
@@ -678,7 +696,8 @@ def setup_stats_panel(interface_builder, computer_name):
     clear_hints_btn = tk.Button(
         button_container,  # Note: Parent changed to button_container
         text="Clear Hints",
-        command=lambda: interface_builder.clear_kiosk_hints(computer_name)
+        command=lambda: interface_builder.clear_kiosk_hints(computer_name),
+        cursor="hand2"
     )
     clear_hints_btn.pack(side='left', padx=5)  # Added side='left'
 
@@ -701,7 +720,8 @@ def setup_stats_panel(interface_builder, computer_name):
         text="Play Hint Sound ",  # Added space after text for icon padding
         image=hint_sound_icon if hint_sound_icon else None,
         compound=tk.RIGHT,  # Place icon to the right of text
-        command=lambda: interface_builder.play_hint_sound(computer_name)
+        command=lambda: interface_builder.play_hint_sound(computer_name),
+        cursor="hand2"
     )
     if hint_sound_icon:
         play_sound_btn.image = hint_sound_icon  # Keep reference
@@ -719,7 +739,8 @@ def setup_stats_panel(interface_builder, computer_name):
                 'computer_name': computer_name
             }).encode(),
             ('255.255.255.255', 12346)
-        )
+        ),
+        cursor="hand2"
     )
     if assistance_icon:
         offer_assistance_btn.image = assistance_icon  # Keep reference
