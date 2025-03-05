@@ -17,18 +17,19 @@ class KioskUI:
         self.parent_app = message_handler
         
         self.background_image = None
-        self.hint_cooldown = False
         self.status_frame = None
         self.cooldown_label = None
         self.request_pending_label = None
-        self.current_hint = None
         self.hint_label = None
-        self.cooldown_after_id = None
         self.fullscreen_image = None
         self.image_button = None
-        self.stored_image_data = None
         self.video_solution_button = None # keep the video solution button
         self._lock = threading.Lock()
+
+        self.hint_cooldown = False
+        self.current_hint = None
+        self.cooldown_after_id = None
+        self.stored_image_data = None
 
         self.setup_root()
         self.create_status_frame()
@@ -107,6 +108,31 @@ class KioskUI:
                 
         self.hint_label = None
         
+    def clear_hint_ui(self):
+        """Clears Tkinter-related UI elements associated with hints."""
+        print("[ui.py] Clearing Tkinter hint UI elements")
+
+        # Clear any status frame content.
+        if self.status_frame:
+            self.status_frame.delete('all')
+            self.hide_status_frame()
+        print("[ui.clear_hint_ui] 1")
+        # Clear image button.
+        if hasattr(self, 'image_button') and self.image_button:
+            self.image_button.destroy()
+            self.image_button = None
+        print("[ui.clear_hint_ui] 2")
+        # Clear video solution button
+        if hasattr(self, 'video_solution_button') and self.video_solution_button:
+            self.video_solution_button.destroy()
+            self.video_solution_button = None
+        print("[ui.clear_hint_ui] 3")
+        # Clear fullscreen image if shown
+        if hasattr(self, 'fullscreen_image') and self.fullscreen_image:
+            self.fullscreen_image.destroy()
+            self.fullscreen_image = None
+        print("[ui.clear_hint_ui] 4")
+
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
         # Clear any existing widgets except persistent ones

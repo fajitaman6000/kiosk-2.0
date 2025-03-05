@@ -556,6 +556,48 @@ class Overlay:
         cls._hint_text_thread.update_text({'text':text, 'room_number':room_number})
 
     @classmethod
+    def _actual_hide(cls):
+        """Internal helper to perform the actual hiding, now thread-safe."""
+        print("[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===")
+
+        if cls._window:
+            cls._window.hide()
+        if hasattr(cls, '_timer_window') and cls._timer_window:
+            cls._timer_window.hide()
+        if hasattr(cls, '_button_window') and cls._button_window:
+            cls._button_window.hide()
+        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+            cls._hint_text['window'].hide()
+            cls._hint_text['text_item'].setPlainText("")
+        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
+            if cls._hint_request_text['window']:
+                cls._hint_request_text['window'].hide()
+            if cls._hint_request_text['scene']:
+                cls._hint_request_text['scene'].clear()
+
+        if cls._timer_thread is not None:
+            cls._timer_thread.quit()
+            cls._timer_thread.wait()
+            cls._timer_thread = None
+        if hasattr(cls, '_timer') and cls._timer:
+            if cls._timer.text_item:
+                cls._timer.text_item.setPlainText("")
+            if cls._timer.bg_image_item:
+                cls._timer.bg_image_item.setPixmap(QPixmap())
+            if hasattr(cls, '_timer_scene') and cls._timer.scene:
+                cls._timer.scene.clear()
+        if hasattr(cls, '_button_view') and cls._button_view:
+            if hasattr(cls, "_button") and cls._button:
+                 if cls._button.get('scene'):
+                    cls._button['scene'].clear()
+                 else:
+                    print("[qt_overlay.py - hide] _button['scene'] does NOT exist")
+            else:
+                print("[qt_overlay.py - hide] _button does not exist.")
+            cls._button_view.set_click_callback(None)
+        print("[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===")
+
+    @classmethod
     def show_loss_screen(cls):
         """Display the game loss screen."""
         if not cls._initialized:
@@ -910,9 +952,17 @@ class Overlay:
     
     @classmethod
     def hide_hint_text(cls):
-        """Hide the hint text overlay"""
+        """Hide the hint text overlay (thread-safe)."""
+        print("[qt overlay.hide_hint_text] Called")
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-            cls._hint_text['window'].hide()
+            QMetaObject.invokeMethod(
+                cls._hint_text['window'],
+                "hide",
+                Qt.QueuedConnection  # Use QueuedConnection for thread safety
+            )
+            print("[qt overlay.hide_hint_text] hide() invoked via QMetaObject")
+        else:
+            print("[qt overlay.hide_hint_text] _hint_text or window does not exist")
     
     @classmethod
     def show_hint_request_text(cls):
@@ -1498,48 +1548,20 @@ class Overlay:
     @classmethod
     def hide_cooldown(cls):
         """Hide just the cooldown overlay"""
+        print("[qt overlay.hide_cooldown] Called")
         if cls._window:
-            cls._window.hide()
+            QMetaObject.invokeMethod(
+                cls._window,
+                "hide",
+                Qt.QueuedConnection
+            )
+            print("[qt_overlay.hide_cooldown] hide() invoked")
     
     @classmethod
     def hide(cls):
-        """Hide all overlay windows and clean up timer resources"""
-        if cls._window:
-            cls._window.hide()
-        if hasattr(cls, '_timer_window') and cls._timer_window:
-            cls._timer_window.hide()
-        if hasattr(cls, '_button_window') and cls._button_window:
-            cls._button_window.hide()
-        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-            cls._hint_text['window'].hide()
-            cls._hint_text['text_item'].setPlainText("")  # Or setHtml("")
-        # Clear hint request overlay
-        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
-            if cls._hint_request_text['window']:
-                cls._hint_request_text['window'].hide()
-
-            if cls._hint_request_text['scene']:
-                cls._hint_request_text['scene'].clear()
-
-        # Clean up timer thread if it exists
-        if cls._timer_thread is not None:
-            cls._timer_thread.quit()
-            cls._timer_thread.wait()
-            cls._timer_thread = None
-
-        # Clear timer display and associated items
-        if hasattr(cls, '_timer') and cls._timer:
-            if cls._timer.text_item:
-                cls._timer.text_item.setPlainText("")
-            if cls._timer.bg_image_item:
-                cls._timer.bg_image_item.setPixmap(QPixmap()) # Clear the pixmap
-            if hasattr(cls, '_timer_scene') and cls._timer.scene:
-                cls._timer.scene.clear() # Clear the scene of existing items
-
-        # Clear button view if it exists
-        if hasattr(cls, '_button_view') and cls._button_view:
-            cls._button['scene'].clear()
-            cls._button_view.set_click_callback(None) # Deregister callback
+        """Hide all overlay windows (thread-safe entry point)."""
+        print("[qt_overlay.py - hide] === STARTING hide() - Calling _actual_hide via invokeMethod ===")
+        QMetaObject.invokeMethod(cls, "_actual_hide", Qt.QueuedConnection)
 
     @classmethod
     def hide_all_overlays(cls):

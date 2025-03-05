@@ -298,42 +298,28 @@ class KioskApp:
         sys.exit(0)
 
     def clear_hints(self):
-        """Clear all visible hints without resetting other kiosk state"""
-        #print("[kiosk main]\n[DEBUG] Clearing visible hints...")
-        
-        # Reset UI hint-related state
+        """Clears all visible hints and resets hint-related state."""
+        print("[kiosk main] Clearing hints (delegated approach)")
+
+        # 1. Reset KioskApp's internal state.  This is the *source of truth*.
         self.ui.hint_cooldown = False
         self.ui.current_hint = None
         self.ui.stored_image_data = None
-        
-        # Cancel any existing cooldown timer
         if self.ui.cooldown_after_id:
             self.root.after_cancel(self.ui.cooldown_after_id)
             self.ui.cooldown_after_id = None
-        
-        # Clear UI elements related to hints
-        self.ui.clear_all_labels()
-        
-        # Clear specific hint-related elements
-        if hasattr(self.ui, 'image_button') and self.ui.image_button:
-            self.ui.image_button.destroy()
-            self.ui.image_button = None
-        if hasattr(self.ui, 'video_solution_button') and self.ui.video_solution_button:
-            self.ui.video_solution_button.destroy()
-            self.ui.video_solution_button = None
-        if hasattr(self.ui, 'fullscreen_image') and self.ui.fullscreen_image:
-            self.ui.fullscreen_image.destroy()
-            self.ui.fullscreen_image = None
-        
-        # Clear any pending request status
-        if self.ui.status_frame:
-            self.ui.status_frame.delete('all')
-            self.ui.hide_status_frame()
-            
-        # Update help button state
-        self._actual_help_button_update()
-        
-        #print("[kiosk main][DEBUG] Hint clearing complete")
+
+        # 2. Issue commands to the UI handlers.
+        self.ui.clear_hint_ui()  # Command to ui.py to handle Tkinter cleanup
+        print("[kiosk main.clear_hints] 1")
+        Overlay.hide_hint_text() # Command to qt_overlay.py
+        print("[kiosk main.clear_hints] 2")
+        Overlay.hide_hint_request_text()  # Hide any pending request
+        print("[kiosk main.clear_hints] 3")
+        Overlay.hide_cooldown() # Hide Cooldown
+        print("[kiosk main.clear_hints] 4")
+        self._actual_help_button_update() # Update help button (which checks state)
+        print("[kiosk main.clear_hints] 5")
 
     def run(self):
         self.root.mainloop()
