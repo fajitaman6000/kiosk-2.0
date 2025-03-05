@@ -119,6 +119,8 @@ class Overlay:
     _hint_request_text = None
     _hint_request_text_thread = None
     _gm_assistance_overlay = None  # Add GM assistance overlay variable
+    _victory_screen = None  # Victory screen data
+    _game_won = False       # Flag for game won status
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -679,6 +681,132 @@ class Overlay:
             cls._loss_screen['window'].hide()
 
     @classmethod
+    def show_victory_screen(cls):
+        """Display the game victory screen."""
+        if not cls._initialized:
+            return
+
+        # --- Create/Rebuild Victory Screen Elements ---
+        if hasattr(cls, '_victory_screen') and cls._victory_screen:
+            if cls._victory_screen.get('window'):
+                cls._victory_screen['window'].hide()  # Hide before deleting
+                cls._victory_screen['window'].deleteLater()
+                cls._victory_screen['window'] = None
+            if cls._victory_screen.get('scene'):
+                cls._victory_screen['scene'].clear()  # Clear items
+                cls._victory_screen['scene'] = None
+            if cls._victory_screen.get('view'):
+                cls._victory_screen['view'].deleteLater()
+                cls._victory_screen['view'] = None
+            # Remove the text item attribute, as we'll be using an image.
+            if '_text_item' in cls._victory_screen:
+                del cls._victory_screen['_text_item']
+
+
+        # Initialize _victory_screen as a dictionary HERE:
+        if not hasattr(cls, '_victory_screen') or cls._victory_screen is None:
+            cls._victory_screen = {}
+
+        cls._victory_screen['window'] = QWidget(cls._window)  # Parent to main if needed
+        cls._victory_screen['window'].setAttribute(Qt.WA_TranslucentBackground)
+        cls._victory_screen['window'].setWindowFlags(
+            Qt.FramelessWindowHint |
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool |
+            Qt.WindowDoesNotAcceptFocus
+        )
+        cls._victory_screen['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+
+        cls._victory_screen['scene'] = QGraphicsScene()
+        cls._victory_screen['view'] = QGraphicsView(cls._victory_screen['scene'], cls._victory_screen['window'])
+        cls._victory_screen['view'].setStyleSheet("""
+            QGraphicsView {
+                background: transparent;  /* Or a victory-screen background */
+                border: none;
+            }
+        """)
+        cls._victory_screen['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        cls._victory_screen['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        cls._victory_screen['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+        # --- Image Item Instead of Text Item ---
+        cls._victory_screen['image_item'] = QGraphicsPixmapItem()
+        cls._victory_screen['scene'].addItem(cls._victory_screen['image_item'])
+
+
+        if cls._parent_hwnd:  # Set window attributes if parent exists
+            style = win32gui.GetWindowLong(int(cls._victory_screen['window'].winId()), win32con.GWL_EXSTYLE)
+            win32gui.SetWindowLong(
+                int(cls._victory_screen['window'].winId()),
+                win32con.GWL_EXSTYLE,
+                style | win32con.WS_EX_NOACTIVATE
+            )
+
+        # --- Geometry and Positioning ---
+        width = 1920
+        height = 1080
+        cls._victory_screen['window'].setGeometry(0, 0, width, height)  # Full screen
+        cls._victory_screen['view'].setGeometry(0, 0, width, height)
+        cls._victory_screen['scene'].setSceneRect(QRectF(0, 0, width, height))
+
+        # --- Load and Set Image ---
+        image_path = os.path.join("other_files", "victory.png")  # CHANGED FILENAME
+        if os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            # --- Scale the Pixmap ---
+            scale_factor = 0.5
+            scaled_pixmap = pixmap.scaled(
+                int(pixmap.width() * scale_factor),
+                int(pixmap.height() * scale_factor),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation  # Use SmoothTransformation for better quality
+            )
+            cls._victory_screen['image_item'].setPixmap(scaled_pixmap)
+
+            # --- Positioning the Image ---
+            cls._victory_screen['image_item'].setTransform(QTransform())
+            cls._victory_screen['image_item'].setRotation(90)
+
+
+            image_width = scaled_pixmap.width()  # Use scaled width and height
+            image_height = scaled_pixmap.height() # Use scaled width and height
+            cls._victory_screen['image_item'].setPos(
+                (width + image_height) / 2,
+                (height - image_width) / 2
+            )
+
+        else:
+            print(f"[qt overlay] Victory image not found: {image_path}")
+            #  Fallback to text display IF the image is missing.  Good practice.
+            cls._victory_screen['text_item'] = QGraphicsTextItem()
+            cls._victory_screen['text_item'].setDefaultTextColor(Qt.white)
+            font = QFont('Arial', 48)
+            cls._victory_screen['text_item'].setFont(font)
+            cls._victory_screen['scene'].addItem(cls._victory_screen['text_item'])
+            message = "Congratulations! You won!"  # CHANGED MESSAGE
+            cls._victory_screen['text_item'].setHtml(
+                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
+            )
+            cls._victory_screen['text_item'].setTransform(QTransform())
+            cls._victory_screen['text_item'].setRotation(90)
+            text_width = cls._victory_screen['text_item'].boundingRect().width()
+            text_height = cls._victory_screen['text_item'].boundingRect().height()
+            cls._victory_screen['text_item'].setPos(
+                (width + text_height) / 2,
+                (height - text_width) / 2
+            )
+
+
+        cls._victory_screen['window'].show()
+        cls._victory_screen['window'].raise_()
+
+    @classmethod
+    def hide_victory_screen(cls):
+        """Hide the victory screen."""
+        if hasattr(cls, '_victory_screen') and cls._victory_screen and cls._victory_screen.get('window'):
+            cls._victory_screen['window'].hide()
+
+    @classmethod
     def _check_game_loss_visibility(cls, game_lost):
         """Helper to control visibility based on game_lost flag."""
         if game_lost:
@@ -689,7 +817,15 @@ class Overlay:
         else:
             # Game is NOT lost, proceed as before
             cls.hide_loss_screen()
-            # ... (rest of your existing logic for showing other overlays)
+            cls.show_all_overlays()
+
+    @classmethod
+    def _check_game_win_visibility(cls, game_won):
+        if game_won:
+            cls.hide_all_overlays()
+            cls.show_victory_screen()
+        else:
+            cls.hide_victory_screen()
             cls.show_all_overlays()
 
     @classmethod
@@ -1004,7 +1140,9 @@ class Overlay:
         """Update timer display, but NOT if game is lost."""
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
             return
-        if cls.kiosk_app.timer.game_lost:  # NEW CHECK: Don't update if game is lost
+        if cls.kiosk_app.timer.game_lost:  # Don't update if game is lost
+            return
+        if cls.kiosk_app.timer.game_won: # Don't update if game is won.
             return
             
         # Initialize timer thread if needed
@@ -1232,7 +1370,8 @@ class Overlay:
         show_button = (
             not ui.hint_cooldown and
             not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45) and
-            not timer.game_lost  # NEW: Don't show if game is lost
+            not timer.game_lost  and # Don't show if game is lost
+            not timer.game_won # Don't show if game is wo
         )
 
         #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
@@ -1427,6 +1566,7 @@ class Overlay:
             if cls._window:
                 print("[qt overlay]Hiding main window")
                 cls._window.hide()
+            cls.hide_victory_screen() # Hide victory screen too
             print("[qt overlay]All overlay UI elements hidden")
         except Exception as e:
             print(f"[qt overlay]Error hiding overlays: {e}")
@@ -1441,6 +1581,9 @@ class Overlay:
             # Game is lost, ONLY show the loss screen, nothing else
             cls.show_loss_screen()
             return  # IMPORTANT: Exit early
+        if cls.kiosk_app.timer.game_won:
+            cls.show_victory_screen()
+            return
 
         try:
             if hasattr(cls, '_timer_window') and cls._timer_window:

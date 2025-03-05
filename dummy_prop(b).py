@@ -1,13 +1,3 @@
-# =========================================================================
-# IMPORTANT: COMPLETE FILE REPLACEMENT INSTRUCTIONS
-# =========================================================================
-# 1. SELECT *EVERYTHING* IN YOUR CURRENT FILE AND DELETE IT
-# 2. COPY *EVERYTHING* BETWEEN THESE MARKERS (FROM # === START === TO # === END ===)
-# 3. PASTE THE COPIED CODE AS THE *ENTIRE* NEW FILE CONTENT
-# =========================================================================
-# === START OF COMPLETE FILE REPLACEMENT === START === START === START === 
-# =========================================================================
-
 import json
 import time
 import tkinter as tk

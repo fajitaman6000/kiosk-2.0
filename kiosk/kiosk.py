@@ -72,6 +72,7 @@ class KioskApp:
         
         from kiosk_timer import KioskTimer
         self.timer = KioskTimer(self.root, self)  # Pass self
+        self.timer.game_won = False 
         
         # Create UI after setting kiosk_app reference
         self.ui = KioskUI(self.root, self.computer_name, ROOM_CONFIG, self)
@@ -150,6 +151,17 @@ class KioskApp:
 
         # Hide all other UI elements and show loss screen:
         self.root.after(0, lambda: Overlay._check_game_loss_visibility(True))
+
+    def handle_game_win(self):
+        """Handles the game win event"""
+        print("[Kiosk app] Handling game win...")
+
+        #Stop all audio and video
+        self.audio_manager.stop_all_audio()
+        self.video_manager.force_stop()
+
+        # Hide all other UI elements and show the victory screen using qt_overlay
+        self.root.after(0, lambda: Overlay._check_game_win_visibility(True))
 
     def request_help(self):
         if not self.ui.hint_cooldown:

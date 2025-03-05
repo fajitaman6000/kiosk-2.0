@@ -16,7 +16,8 @@ class KioskTimer:
         self.last_update = None
         self.current_room = None
         self._update_scheduled = False  # Flag to track scheduled updates
-        self.game_lost = False  # NEW: Flag to indicate game loss
+        self.game_lost = False  #Flag to indicate game loss
+        self.game_won = False # Flag for game won
 
         # Delay Qt timer initialization until UI is ready
         self.root.after(1000, self._delayed_init)
@@ -58,7 +59,7 @@ class KioskTimer:
 
         elif command == "set" and minutes is not None:
             self.time_remaining = minutes * 60
-            self.game_lost = False  # NEW: Reset game_lost flag when timer is set
+            self.game_lost = False  # Reset game_lost flag when timer is set
             print(f"[kiosk timer]Timer set to {minutes} minutes")
 
         self.update_display()
@@ -101,7 +102,7 @@ class KioskTimer:
                     else:
                         print("[kiosk timer] No room assigned, cannot play loss audio.")
 
-                    # NEW: Handle game loss
+                    # Handle game loss
                     self.game_lost = True
                     self.kiosk_app.handle_game_loss()
 

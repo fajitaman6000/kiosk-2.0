@@ -1,10 +1,3 @@
-# ===========================================================================
-# CREATE A NEW FILE: mqtt_sniffer.py
-# COMPLETELY REPLACE ANY EXISTING VERSION WITH EVERYTHING BETWEEN THESE MARKERS
-# THIS IS THE ENTIRE FILE FROM START TO FINISH
-# ===========================================================================
-# ============================== START OF FILE ==============================
-
 import paho.mqtt.client as mqtt
 import time
 

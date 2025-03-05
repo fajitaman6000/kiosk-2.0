@@ -243,6 +243,8 @@ class MessageHandler:
 
                 # Reset game_lost flag:
                 self.kiosk_app.timer.game_lost = False
+                # Reset game_won flag:
+                self.kiosk_app.timer.game_won = False
 
                 # Stop background music and any other audio
                 self.kiosk_app.audio_manager.stop_all_audio()
@@ -329,8 +331,9 @@ class MessageHandler:
                         self.kiosk_app._actual_help_button_update()
                         print("[message handler][DEBUG] Kiosk reset complete")
 
-                    # NEW: Check game loss status *after* setup
+                    # Check game loss status *after* setup
                     self.kiosk_app.root.after(0, lambda: Overlay._check_game_loss_visibility(self.kiosk_app.timer.game_lost))
+                    self.kiosk_app.root.after(0, lambda: Overlay._check_game_win_visibility(self.kiosk_app.timer.game_won))
 
                 # Schedule UI restoration after timer reset
                 self.kiosk_app.root.after(100, restore_ui)
@@ -354,8 +357,9 @@ class MessageHandler:
                 self.kiosk_app.root.after(0, lambda: Overlay.show_gm_assistance())
 
             elif msg['type'] == 'victory' and msg['computer_name'] == self.kiosk_app.computer_name:
-                # this message will be received many times, so just set a flag based on this
                 print("[message handler]Victory detected")
+                self.kiosk_app.timer.game_won = True # set the flag
+                self.kiosk_app.handle_game_win()  # Call handle_game_win
 
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")

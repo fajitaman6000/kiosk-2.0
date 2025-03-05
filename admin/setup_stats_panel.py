@@ -665,7 +665,7 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.app.prop_control.add_prop_select_callback(on_prop_select)
 
     # ===========================================
-    # NEW SECTION: Other Controls
+    # SECTION: Other Controls
     # ===========================================
     other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
     other_controls_frame.pack(fill='x', pady=10)
