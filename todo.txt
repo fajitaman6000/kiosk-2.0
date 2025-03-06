@@ -6,8 +6,6 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 ##############################################################################################################################
 # priority bugs
 
-clear hints doesn't clear hint cooldown text item, doesn't really work in general
-
 image hints do not clear ui elements when viewed
     "Image hint received" text is cleared after viewing image hint
 
@@ -56,6 +54,7 @@ mqtt LEDs for GMs to point out items (checkbox on hints, available or not based 
 kiosk responds to prop finishes with vfx
 technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
 dark theme
+destroy all tkinter kiosk side
 
 profile creation,
 profile deletion (admin only)
