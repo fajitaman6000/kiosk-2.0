@@ -214,50 +214,33 @@ class KioskUI:
             })
 
     def show_hint(self, text_or_data, start_cooldown=True):
-        """Shows the hint text and optionally creates an image received button
-        
-        Args:
-            text_or_data: Either a string containing hint text or a dict with 'text' and optional 'image' keys
-            start_cooldown: Boolean indicating whether to start the cooldown timer (default: True)
-        """
-        print("[ui.py]\n=== PROCESSING NEW HINT ===")
-        print(f"[ui.py]Received hint data: {type(text_or_data)}")
-        
         try:
-            # Remove existing UI elements
-            Overlay.hide_help_button() # Removed help button and replaced with this line
-            
+            Overlay.hide_help_button()
+
             if self.fullscreen_image:
                 self.fullscreen_image.destroy()
                 self.fullscreen_image = None
-                
-            # Clear any existing video solution
+
             if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                print("[ui.py]Clearing existing video solution")
                 self.video_solution_button.destroy()
                 self.video_solution_button = None
-                
-            # Stop any playing video
+
             if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                print("[ui.py]Stopping playing video")
                 self.message_handler.video_manager.stop_video()
                 self.video_is_playing = False
-                
-            # Clear stored video info
+
             if hasattr(self, 'stored_video_info'):
                 self.stored_video_info = None
 
-            # Start cooldown timer only if requested
             if start_cooldown:
                 self.start_cooldown()
+
             self.current_hint = text_or_data
-            
-            # Clear pending request label if it exists
+
             if self.request_pending_label:
                 self.request_pending_label.destroy()
                 self.request_pending_label = None
-            
-            # Parse hint data and clear any existing image button
+
             if self.image_button:
                 self.image_button.destroy()
                 self.image_button = None
@@ -272,20 +255,16 @@ class KioskUI:
                 self.stored_image_data = text_or_data.get('image')
             else:
                 hint_text = str(text_or_data)
-            
-            # Default text if no text and image data
-            if not hint_text and self.stored_image_data:
+
+            if self.stored_image_data and not hint_text:
                 hint_text = "Image hint received"
 
-            # Call PyQt text hint display
             Overlay.show_hint_text(hint_text, self.current_room)
 
-            # Create image received button in left panel only if image exists
             if self.stored_image_data:
-                button_width = 100  # Make button narrower
-                button_height = 300  # Make button taller for better text visibility
-                
-                # Create button canvas
+                button_width = 100
+                button_height = 300
+
                 self.image_button = tk.Canvas(
                     self.root,
                     width=button_width,
@@ -293,14 +272,12 @@ class KioskUI:
                     bg='blue',
                     highlightthickness=0
                 )
-                
-                # Position button well to the left of the hint text area
+
                 self.image_button.place(
-                    x=750,  # Move button further left, away from hint text
-                    y= (1015-64)/2 - button_height/2 + 64  # Keep vertical center alignment
+                    x=750,
+                    y= (1015-64)/2 - button_height/2 + 64
                 )
-                
-                # Add button text
+
                 self.image_button.create_text(
                     button_width/2,
                     button_height/2,
@@ -309,12 +286,10 @@ class KioskUI:
                     font=('Arial', 24),
                     angle=270
                 )
-                
-                # Bind click event
                 self.image_button.bind('<Button-1>', lambda e: self.show_fullscreen_image())
 
         except Exception as e:
-            print("[ui.py]\nCritical error in show_hint:")
+            print(f"[ui.py]Critical error in show_hint: {e}")
             traceback.print_exc()
             
     def show_fullscreen_image(self):
@@ -396,15 +371,23 @@ class KioskUI:
                 )
         
     def restore_hint_view(self):
-        """Return to the original hint view"""
-        self.image_is_fullscreen = False  # Reset flag first
+        self.image_is_fullscreen = False
         if self.fullscreen_image:
             self.fullscreen_image.destroy()
             self.fullscreen_image = None
 
-        Overlay.show_hint_text(self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', ''), self.current_room)
+        hint_text = ""
+        if isinstance(self.current_hint, str):
+            hint_text = self.current_hint
+        elif isinstance(self.current_hint, dict):
+            hint_text = self.current_hint.get('text', '')
+            if self.current_hint.get('image') and not hint_text:
+                hint_text = "Image hint received"
+        else:
+            hint_text = str(self.current_hint)
 
-        # Restore image button with consistent positioning
+        Overlay.show_hint_text(hint_text, self.current_room)
+
         if self.image_button:
             button_height = 200
             self.image_button.place(
@@ -412,11 +395,10 @@ class KioskUI:
                 y= (1015-64)/2 - button_height/2 + 64
             )
 
-        # Restore Help button and Timer
-        self.message_handler.root.after(0, lambda: self.message_handler._actual_help_button_update()) # added back the help button functionality
-        if hasattr(Overlay, '_timer_window') and Overlay._timer_window: #check existance
+        self.message_handler.root.after(0, lambda: self.message_handler._actual_help_button_update())
+        if hasattr(Overlay, '_timer_window') and Overlay._timer_window:
             if not self.message_handler.video_manager.is_playing:
-                Overlay._timer_window.show()  # Show timer (if not in video)
+                Overlay._timer_window.show()
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""

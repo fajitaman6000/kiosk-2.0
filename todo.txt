@@ -6,9 +6,6 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 ##############################################################################################################################
 # priority bugs
 
-image hints do not clear ui elements when viewed
-    "Image hint received" text is cleared after viewing image hint
-
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
     kiosk doesn't retry/add itself back to queue after failed sync attempt
@@ -31,6 +28,7 @@ resets during intro videos cause crashing/audio bugs(?)
 ##############################################################################################################################
 # planned features: 
 
+auto reset kiosk 3 - 5 minutes after game conclusion
 reset props, reset room (runs reset all + reset kiosk)
 preview kiosk screen visible on admin side
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
@@ -40,6 +38,7 @@ edit hint image content within hint manager
 ##############################################################################################################################
 # ambitious extra ideas:
 
+make "reset kiosk" a reliable UI debugger somehow
 soundcheck logic kiosk side
 save props' status for blackbox, delete save upon load
 "enable drink menu" by default on
