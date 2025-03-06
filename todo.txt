@@ -6,6 +6,10 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 ##############################################################################################################################
 # priority bugs
 
+victory condition runs on and off during room reset of a won game
+
+reset kiosk is registered as a half-ass video finish causing audio bugs
+
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
     kiosk doesn't retry/add itself back to queue after failed sync attempt
@@ -13,16 +17,13 @@ hangup reliability:
 time machine camera loading issue
 wizard not receiving sync messages(?)
 
-
 ##############################################################################################################################
 # known low priority bugs
 
 tab out doesn't always clear UI elements from view
 kiosk UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
 password for settings gets prompted twice
-victory condition runs on and off during room reset of a won game
 mqtt connections get crippled while running file sync
-resets during intro videos cause crashing/audio bugs(?)
 
 ##############################################################################################################################
 # planned features: 

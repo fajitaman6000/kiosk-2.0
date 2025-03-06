@@ -589,16 +589,13 @@ class PropControl:
             self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
 
     def check_prop_status(self, room_number, prop_id, prop_info):
-        """Check status, update UI, and handle flagged prop finish."""
         if not prop_info or 'info' not in prop_info:
             return
 
         try:
-            # Get current status
             status = prop_info['info'].get('strStatus')
             last_status = self.all_props[room_number][prop_id].get('last_status')
 
-            # Only update progress time if we have a real status change
             if (last_status is not None and
                 status != last_status and
                 status != "offline" and
@@ -607,43 +604,16 @@ class PropControl:
 
 
             if (status == "finished" or status == "finish" or status == "Finished" or status == "Finish"):
-                #Update Last Finished Prop Data (NOT CURRENTLY SELECTED)
                 if room_number not in self.last_prop_finished:
                     self.last_prop_finished[room_number] = "N/A"
                 if last_status is not None and status != last_status:
                     prop_name = prop_info['info'].get('strName', 'unknown')
 
-                    # Get the mapped prop name here
                     mapped_name = self.get_mapped_prop_name(prop_name, room_number)
 
-                    self.last_prop_finished[room_number] = mapped_name # Set mapped name instead
+                    self.last_prop_finished[room_number] = mapped_name
 
-            # Update the last status
             self.all_props[room_number][prop_id]['last_status'] = status
-
-            # Check if this is a finishing prop
-            is_finishing = self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
-
-            if is_finishing:
-                # Get activation status
-                is_activated = False
-                if room_number in self.all_props:
-                    for pid, pdata in self.all_props[room_number].items():
-                        if 'info' in pdata and pdata['info'].get('strStatus') == "Activated":
-                            is_activated = True
-                            break
-
-                # Get timer status
-                timer_expired = False
-                for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
-                    if room_num == room_number:
-                        if computer_name in self.app.kiosk_tracker.kiosk_stats:
-                            timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
-                            timer_expired = timer_time <= 0
-                        break
-
-                # Update kiosk highlighting
-                self.update_kiosk_highlight(room_number, status == "Finished", is_activated, timer_expired)
 
             # Check if the prop is flagged AND finished
             if (room_number in self.flagged_props and
@@ -651,23 +621,17 @@ class PropControl:
                 self.flagged_props[room_number][prop_id] and
                 status == "Finished"):
 
-                # Play sound
                 audio_manager = AdminAudioManager()
                 audio_manager.play_flagged_finish_notification()
                 print(f"[prop control] flagged prop {prop_id} finished")
 
-                # Reset flag
                 self.flagged_props[room_number][prop_id] = False
 
-
-            # Only update status label if this is current room and widget exists
             if room_number == self.current_room and 'status_label' in prop_info:
                 try:
-                    # Verify widget still exists
                     prop_info['status_label'].winfo_exists()
                     self.update_prop_status(prop_id)
                 except tk.TclError:
-                    # Widget is invalid, remove reference
                     del prop_info['status_label']
                 except Exception as e:
                     print(f"[prop control]Error updating prop UI: {e}")
@@ -676,54 +640,55 @@ class PropControl:
             print(f"[prop control]Error in check_prop_status: {e}")
 
     def update_all_props_status(self, room_number):
-        """Update status for all props in a room, and UI if needed."""
         if room_number not in self.all_props:
             return
-            
+
         current_time = time.time()
-        #print(f"[prop control]Updating all props status for room {room_number}")
-            
+
         is_activated = False
-        is_finished = False
+        is_finished = False  # Initialize is_finished to False
         timer_expired = False
-            
+        finishing_prop_offline = False # New flag
+
         for prop_id, prop_info in self.all_props[room_number].items():
             if 'info' not in prop_info:
                 continue
-                    
-            # Check if prop is offline
-            is_offline = (room_number not in self.last_mqtt_updates or 
+
+            is_offline = (room_number not in self.last_mqtt_updates or
                         prop_id not in self.last_mqtt_updates[room_number] or
                         current_time - self.last_mqtt_updates[room_number][prop_id] > 3)
-                    
-            # Debug print for MQTT update times
-            if room_number in self.last_mqtt_updates and prop_id in self.last_mqtt_updates[room_number]:
-                last_update = self.last_mqtt_updates[room_number][prop_id]
-                time_diff = current_time - last_update
-                #print(f"[prop control]Prop {prop_id} last MQTT update was {time_diff:.1f} seconds ago")
-            else:
-                print(f"[prop control]No MQTT updates recorded for prop {prop_id}")
-                
-            # Update prop status based on offline state
+
             if is_offline:
                 prop_info['info']['strStatus'] = "offline"
-            
+                if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
+                    finishing_prop_offline = True # Set the flag
+
+
             status = prop_info['info'].get('strStatus')
             if status == "Activated":
                 is_activated = True
-                
-            if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
-                if status == "Finished":
-                    is_finished = True
-            
+
+            if (not finishing_prop_offline and  # Only check if no finishing prop is offline
+                self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')) and
+                status == "Finished"):
+                is_finished = True
+
+        # Handle finishing prop offline scenario
+        if finishing_prop_offline:
+            is_finished = False  # Ensure is_finished is False
+            self.reset_game_finish_state(room_number)
+
+
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
                 if computer_name in self.app.kiosk_tracker.kiosk_stats:
                     timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
                     timer_expired = timer_time <= 0
                 break
-        
+
+        # Update kiosk highlight *before* further UI updates
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
+
 
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():
@@ -731,7 +696,7 @@ class PropControl:
                     status_label = self.props[prop_id].get('status_label')
                     if status_label and status_label.winfo_exists():
                         self.update_prop_status(prop_id)
-                
+
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
             self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
@@ -1298,14 +1263,9 @@ class PropControl:
         return prop_info.get('finishing_prop', False)
 
     def check_finishing_prop_status(self, prop_id, prop_data):
-        """
-        Check prop status and update kiosk display accordingly.
-        Checks finishing props, activated states, and timer status.
-        """
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
 
-        # Get prop name from data
         prop_name = prop_data.get("strName")
         if not prop_name:
             return
@@ -1315,7 +1275,6 @@ class PropControl:
 
         room_key = self.ROOM_MAP[self.current_room]
 
-        # Find the kiosk assigned to this room
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == self.current_room:
@@ -1323,90 +1282,51 @@ class PropControl:
                 break
 
         if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
-            # Check if any props are activated or if finishing prop is finished
-            is_activated = False
-            is_finished = False
+            # This method no longer needs to handle game-finish state directly.
+            # Its purpose is solely to check for flagged prop finishes, and to
+            # call handle_prop_update.
+            pass
 
-            # Check all props in current room for activated state
-            for pid, pdata in self.props.items():
-                if pdata['info']['strStatus'] == "Activated":
-                    is_activated = True
+    def reset_game_finish_state(self, room_number):
+        if room_number in self.victory_sent:
+            self.victory_sent[room_number] = False
 
-                # Check if this is a finishing prop and it's finished
-                prop_info = self.prop_name_mappings.get(room_key, {}).get('mappings', {}).get(pdata['info']['strName'], {})
-                if prop_info.get('finishing_prop', False) and pdata['info']['strStatus'] == "Finished":
-                    is_finished = True
+        # Kiosk highlight reset is now handled in update_all_props_status
 
-            # Get timer status for the kiosk
-            timer_expired = False
-            if assigned_kiosk in self.app.kiosk_tracker.kiosk_stats:
-                timer_time = self.app.kiosk_tracker.kiosk_stats[assigned_kiosk].get('timer_time', 2700)
-                timer_expired = timer_time <= 0
-
-            # Update the highlight state with timer status
-            self.update_kiosk_highlight(self.current_room, is_finished, is_activated, timer_expired)
-
-            # Handle victory message sending ---
-            if is_finished:
-                if self.current_room not in self.victory_sent:
-                    self.victory_sent[self.current_room] = False  # Initialize if not present
-
-                if not self.victory_sent[self.current_room]:
-                    self._send_victory_message(self.current_room, assigned_kiosk)
-                    self.victory_sent[self.current_room] = True  # Set flag AFTER sending
-                #else:
-                    #print(f"[prop control]Victory message already sent for room {self.current_room}, skipping.")
-            elif self.current_room in self.victory_sent:
-                self.victory_sent[self.current_room] = False  # Reset if NOT finished
+        audio_manager = AdminAudioManager()
+        if room_number in audio_manager.sound_states:
+            audio_manager.sound_states[room_number]['game_finish'] = False
 
     def update_kiosk_highlight(self, room_number, is_finished, is_activated, timer_expired=False):
-        """
-        Update kiosk frame highlighting based on prop status and timer
-        
-        Args:
-            room_number: The room number to update
-            is_finished: Boolean indicating if finishing prop is finished
-            is_activated: Boolean indicating if any props are activated
-            timer_expired: Boolean indicating if timer has expired
-        """
-        # Find kiosk assigned to this room
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
                 assigned_kiosk = computer_name
                 break
-                
+
         if not assigned_kiosk or assigned_kiosk not in self.app.interface_builder.connected_kiosks:
             return
-            
+
         try:
             kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
-            
-            # Initialize audio manager if needed
             audio_manager = AdminAudioManager()
-            
-            # Handle timer expiration sound
             audio_manager.handle_timer_expired(timer_expired, room_number)
-            
-            # Handle game finish sound
             audio_manager.handle_game_finish(is_finished, room_number)
-            
-            # Update visual highlighting
+
             if timer_expired:
-                new_color = '#FFB6C1'  # Light red for expired timer
+                new_color = '#FFB6C1'
             elif is_finished:
-                new_color = '#90EE90'  # Light green for finished
+                new_color = '#90EE90'
             elif is_activated:
-                new_color = '#faf8ca'  # Pale yellow for activated
+                new_color = '#faf8ca'
             else:
-                new_color = 'SystemButtonFace'  # Default system color
-                
-            # Update frame and child widgets
+                new_color = 'SystemButtonFace'
+
             kiosk_frame.configure(bg=new_color)
             for widget in kiosk_frame.winfo_children():
                 if not isinstance(widget, (tk.Button, ttk.Combobox)):
                     widget.configure(bg=new_color)
-                        
+
         except tk.TclError:
             print(f"[prop control]Widget for kiosk {assigned_kiosk} was destroyed")
         except Exception as e:
