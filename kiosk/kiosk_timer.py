@@ -130,7 +130,7 @@ class KioskTimer:
         self._update_scheduled = True
         try:
             # Check if a video is currently playing
-            if self.kiosk_app.video_manager.is_playing:
+            if self.kiosk_app.video_manager.is_playing or self.kiosk_app.ui.image_is_fullscreen:
                 #print("[kiosk timer] Video is playing, skipping timer update")
                 self._update_scheduled = False # Immediately reset since we did nothing
                 return

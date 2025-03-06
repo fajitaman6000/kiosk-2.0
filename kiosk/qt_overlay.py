@@ -1427,7 +1427,7 @@ class Overlay:
         #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
-            if not cls.kiosk_app.video_manager.is_playing and show_button:
+            if not cls.kiosk_app.video_manager.is_playing and not cls.kiosk_app.ui.image_is_fullscreen and show_button:
                 # Rebuild the button window to make sure everything is clean
                 if hasattr(cls, '_button_window') and cls._button_window:
                    cls._button_window.hide()

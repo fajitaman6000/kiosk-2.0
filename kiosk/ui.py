@@ -31,6 +31,8 @@ class KioskUI:
         self.cooldown_after_id = None
         self.stored_image_data = None
 
+        self.image_is_fullscreen = False
+
         self.setup_root()
         self.create_status_frame()
 
@@ -317,23 +319,26 @@ class KioskUI:
             
     def show_fullscreen_image(self):
         """Display the image in nearly fullscreen with margins"""
+        self.image_is_fullscreen = True  # Set the flag FIRST
         if not self.stored_image_data:
             return
-            
+
         try:
-            # Hide hint interface
-            # if self.hint_label:
-            #     self.hint_label.place_forget()
+            # Hide hint interface and button
             Overlay.hide_hint_text()
+            Overlay.hide_help_button()
+            Overlay.hide_cooldown()
+            if hasattr(Overlay, '_timer_window') and Overlay._timer_window: #check for existance before hiding it
+                Overlay._timer_window.hide()
 
             if self.image_button:
                 self.image_button.place_forget()
-                
+
             # Calculate dimensions (full screen minus margins)
             screen_width = self.root.winfo_screenwidth()
             screen_height = self.root.winfo_screenheight()
             margin = 50  # pixels on each side
-            
+
             # Create fullscreen canvas
             self.fullscreen_image = tk.Canvas(
                 self.root,
@@ -343,29 +348,29 @@ class KioskUI:
                 highlightthickness=0
             )
             self.fullscreen_image.place(x=margin, y=0)
-            
+
             # Decode and process image
             image_bytes = base64.b64decode(self.stored_image_data)
             image = Image.open(io.BytesIO(image_bytes))
-            
+
             # Calculate resize ratio maintaining aspect ratio
             width_ratio = (screen_height - 80) / image.width  # Leave margin for height
             height_ratio = (screen_width - (2 * margin) - 80) / image.height  # Leave margin for width
             ratio = min(width_ratio, height_ratio)
-            
+
             new_size = (
                 int(image.width * ratio),
                 int(image.height * ratio)
             )
-            
+
             # Resize and rotate image
             image = image.resize(new_size, Image.Resampling.LANCZOS)
             image = image.rotate(90, expand=True)
-            
+
             # Convert to PhotoImage and display
             photo = ImageTk.PhotoImage(image)
             self.fullscreen_image.photo = photo
-            
+
             # Center image in canvas
             self.fullscreen_image.create_image(
                 (screen_width - (2 * margin)) / 2,
@@ -373,10 +378,10 @@ class KioskUI:
                 image=photo,
                 anchor='center'
             )
-            
+
             # Add click handler to return to hint view
             self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
-            
+
         except Exception as e:
             print("[ui.py]\nError displaying fullscreen image:")
             traceback.print_exc()
@@ -392,23 +397,26 @@ class KioskUI:
         
     def restore_hint_view(self):
         """Return to the original hint view"""
+        self.image_is_fullscreen = False  # Reset flag first
         if self.fullscreen_image:
             self.fullscreen_image.destroy()
             self.fullscreen_image = None
-            
-        # if self.hint_label:
-        #     self.hint_label.place(x=911, y=64)
-        
+
         Overlay.show_hint_text(self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', ''), self.current_room)
 
         # Restore image button with consistent positioning
         if self.image_button:
-            # hint_height = 1015 - 64  # Same calculation as in show_hint
-            button_height = 200  # Match the height from show_hint
+            button_height = 200
             self.image_button.place(
-                x=750,  # Match the x-position from show_hint
-                y= (1015-64)/2 - button_height/2 + 64  # Match the centering calculation from show_hint
+                x=750,
+                y= (1015-64)/2 - button_height/2 + 64
             )
+
+        # Restore Help button and Timer
+        self.message_handler.root.after(0, lambda: self.message_handler._actual_help_button_update()) # added back the help button functionality
+        if hasattr(Overlay, '_timer_window') and Overlay._timer_window: #check existance
+            if not self.message_handler.video_manager.is_playing:
+                Overlay._timer_window.show()  # Show timer (if not in video)
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
@@ -423,7 +431,7 @@ class KioskUI:
         
     def update_cooldown(self, seconds_left):
         if seconds_left > 0 and self.hint_cooldown:
-            if not self.message_handler.video_manager.is_playing: # Added Check
+            if not self.message_handler.video_manager.is_playing and not self.image_is_fullscreen:
                 Overlay.show_hint_cooldown(seconds_left)
             self.cooldown_after_id = self.root.after(
                 1000,
