@@ -379,7 +379,32 @@ class ManagerSettings:
                          self.autosave_hint(r_id, p_name, h_name, t_widget))
 
 
-        # Hint image if present
+        # --- Image Selection ---
+        image_frame = ttk.Frame(hint_frame)
+        image_frame.pack(fill='x', pady=2)
+
+        # "Select Image" button
+        select_image_btn = ttk.Button(
+            image_frame,
+            text="Select Image",
+            command=lambda r_id=room_id, p_name=prop_display_name, h_name=hint_name: self.show_image_selector(r_id, p_name, h_name)
+        )
+        select_image_btn.pack(side='left', padx=5)
+        
+        # Image controls (listbox and preview - initially hidden)
+        self.image_listbox = tk.Listbox(
+            image_frame,
+            height=4,
+            width=30,
+            selectmode=tk.SINGLE,
+            exportselection=False
+        )
+        self.image_listbox.bind('<<ListboxSelect>>', self.preview_selected_image)
+
+        self.image_preview_label = ttk.Label(image_frame)  # For image preview
+
+
+        # Hint image if present (display existing image)
         if hint_info.get('image'):
             try:
                 # Get path using room, prop display name, and image filename
@@ -431,6 +456,103 @@ class ManagerSettings:
                 ).pack(pady=2)
 
         return hint_frame
+
+    def show_image_selector(self, room_id, prop_display_name, hint_name):
+        """Show the image selection listbox and preview"""
+
+        # 1. Determine the image directory.
+        room_map = {
+            '1': "casino",
+            '2': "ma",
+            '3': "wizard",
+            '4': "zombie",
+            '5': "haunted",
+            '6': "atlantis",
+            '7': "time"
+        }
+        room_folder = room_map.get(str(room_id), "").lower()
+        image_dir = os.path.join(
+            os.path.dirname(__file__),
+            "sync_directory",
+            "hint_image_files",
+            room_folder,
+            prop_display_name
+        )
+
+        # 2. Populate the listbox.
+        self.image_listbox.delete(0, tk.END)  # Clear previous entries
+        if os.path.exists(image_dir):
+            for filename in os.listdir(image_dir):
+                if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                    self.image_listbox.insert(tk.END, filename)
+
+            # 3. Pack the listbox and preview label (make them visible).
+            self.image_listbox.pack(pady=5)
+            self.image_preview_label.pack(pady=5)
+            
+            # Store current context
+            self.current_image_context = {
+                'room_id': room_id,
+                'prop_display_name': prop_display_name,
+                'hint_name': hint_name,
+                'image_dir': image_dir
+            }
+          
+        else:
+            print(f"[hint library]Image directory not found: {image_dir}")
+            # Handle the case where the directory doesn't exist, perhaps show a message.
+
+    def preview_selected_image(self, event=None):
+        """Preview the selected image from the listbox"""
+
+        selection = self.image_listbox.curselection()
+        if not selection:
+            return  # Nothing selected
+
+        filename = self.image_listbox.get(selection[0])
+        if not hasattr(self, 'current_image_context'):
+            return
+        image_path = os.path.join(self.current_image_context['image_dir'], filename)
+
+        try:
+            image = Image.open(image_path)
+            image.thumbnail((200, 200))  # Resize for preview
+            photo = ImageTk.PhotoImage(image)
+            self.image_preview_label.config(image=photo)
+            self.image_preview_label.image = photo  # Keep a reference!
+
+            # Update the hint data with the new image and save
+            self.update_hint_image(filename)
+
+        except Exception as e:
+            print(f"[hint library]Error displaying image preview: {e}")
+            self.image_preview_label.config(text="Error loading preview")
+
+    def update_hint_image(self, filename):
+        """Update the hint data with the selected image and save"""
+        if not hasattr(self, 'current_image_context'):
+            return # No image context
+
+        room_id = self.current_image_context['room_id']
+        prop_display_name = self.current_image_context['prop_display_name']
+        hint_name = self.current_image_context['hint_name']
+        
+        try:
+            with open('saved_hints.json', 'r') as f:
+                hint_data = json.load(f)
+
+            # Update the image filename
+            hint_data['rooms'][room_id][prop_display_name][hint_name]['image'] = filename
+            
+            with open('saved_hints.json', 'w') as f:
+                json.dump(hint_data, f, indent=4)
+            
+            # Reload to update the display, showing new image
+            self.load_hints()
+            
+        except (FileNotFoundError, KeyError, json.JSONDecodeError) as e:
+            print(f"Error updating hint image: {e}")
+            messagebox.showerror("Error", f"Failed to update image: {e}")
 
     def autosave_hint(self, room_id, prop_display_name, hint_name, text_widget):
         """Debounced autosave function."""
