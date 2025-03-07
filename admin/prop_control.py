@@ -689,6 +689,20 @@ class PropControl:
         # Update kiosk highlight *before* further UI updates
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
 
+        for computer_name, assigned_room_num in self.app.kiosk_tracker.kiosk_assignments.items():
+            if assigned_room_num == room_number:
+                # Check if timer is ALREADY running for this kiosk
+                if computer_name not in self.app.interface_builder.auto_reset_timer_ids:
+                    if is_finished:
+                        room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+                        print(f"[prop control.update_all_props_status]{room_name} just won")
+                        self._send_victory_message(room_number, computer_name)
+                        self.app.interface_builder.start_auto_reset_timer(computer_name)
+                    elif timer_expired:
+                        room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+                        print(f"[prop control.update_all_props_status]{room_name} timer expired")
+                        self.app.interface_builder.start_auto_reset_timer(computer_name)
+                break  # Important: Only process for the assigned kiosk
 
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():

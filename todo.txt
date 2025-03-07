@@ -3,6 +3,10 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
+auto reset kiosk 3 - 5 minutes after game conclusion
+
+edit hint image content within hint manager
+
 ##############################################################################################################################
 # priority bugs
 
@@ -26,12 +30,10 @@ mqtt connections get crippled while running file sync
 
 
 detection of casino/morning after based on prop mqtt names, potentially send room-quest signal based upon this according to kiosk's reported room selection
-auto reset kiosk 3 - 5 minutes after game conclusion
 reset props, reset room (runs reset all + reset kiosk)
 preview kiosk screen visible on admin side
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
 restarter moved to kiosk app
-edit hint image content within hint manager
 
 ##############################################################################################################################
 # ambitious extra ideas:
@@ -61,3 +63,15 @@ save hint to global/default (admin only)
 set hint color
 
 ##############################################################################################################################
+
+prop monitoring functionality prompt:
+
+For now, on the admin side, it need only print every message it receives from the kiosk, but it will only receive such messages when it has asked the kiosk for them.
+
+So, it sends a message to kiosk message handler, and that tells message_handler to tell prop_data_monitor to gather a copy of all the data and send via networking.
+
+it will be up to the admin's network_broadcast_handler to receive and parse this data, again, but that's later and for now it will just print.
+
+The admin will have a file which will contain all of the IPs that the kiosk will need to report its latest data on, so this info will be included in the message sent via message_handler.
+
+Please examine the structure of prop_name_mapping.json. Each item will have added to it (if necessary; some items will not have an "ip" property) "ip". So when admin requests data on props, it will pull all the IPs from that room's props based on prop_name_mapping.json.

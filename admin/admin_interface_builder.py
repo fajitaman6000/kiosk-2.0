@@ -37,6 +37,7 @@ class AdminInterfaceBuilder:
         self.speaking = False
         self.current_hint_image = None
         self.hint_manager = ManagerSettings(app, self)  # Initialize hint manager
+        self.auto_reset_timer_ids = {}
         self.setup_ui()
         
         # Start timer update loop using app's root
@@ -51,7 +52,50 @@ class AdminInterfaceBuilder:
         3: "#9240a8",  # Wizard - dark teal
         5: "#808080",  # Haunted - grey
     }
-        
+
+    def start_auto_reset_timer(self, computer_name):
+        """Starts (or restarts) the auto-reset timer."""
+
+        duration = 60
+
+        # Cancel any existing timer for this kiosk
+        if computer_name in self.auto_reset_timer_ids:
+            self.app.root.after_cancel(self.auto_reset_timer_ids[computer_name])
+            del self.auto_reset_timer_ids[computer_name]
+
+        # Initial update of the label
+        self.update_auto_reset_timer_display(computer_name, duration)
+
+        def reset_and_clear():
+            self.reset_kiosk(computer_name)
+            if computer_name in self.auto_reset_timer_ids:
+                del self.auto_reset_timer_ids[computer_name]
+            self.stats_elements['auto_reset_label'].config(text=" ")
+
+        # Schedule the reset_kiosk call and store the after_id
+        after_id = self.app.root.after(duration*1000, reset_and_clear)
+        self.auto_reset_timer_ids[computer_name] = after_id
+
+        # Start countdown
+        self.auto_reset_countdown(computer_name, duration) # Start the countdown   
+
+    def auto_reset_countdown(self, computer_name, remaining_seconds):
+        """Updates the auto-reset timer display every second"""
+        if computer_name in self.auto_reset_timer_ids:
+            self.update_auto_reset_timer_display(computer_name, remaining_seconds)
+
+            if remaining_seconds > 0:
+                self.app.root.after(1000, self.auto_reset_countdown, computer_name, remaining_seconds -1)
+
+    def update_auto_reset_timer_display(self, computer_name, remaining_seconds):
+        """Updates the 'Auto resetting kiosk in...' label."""
+        if 'auto_reset_label' in self.stats_elements and self.stats_elements['auto_reset_label']:
+            minutes = remaining_seconds // 60
+            seconds = remaining_seconds % 60
+            self.stats_elements['auto_reset_label'].config(
+                text=f"Auto resetting kiosk in... {minutes:02d}:{seconds:02d}"
+            )
+
     def setup_ui(self):
         # Create left panel that spans full height
         self.left_panel = tk.Frame(

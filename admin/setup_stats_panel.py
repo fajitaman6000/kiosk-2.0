@@ -56,6 +56,13 @@ def setup_stats_panel(interface_builder, computer_name):
             # Second click - perform reset
             interface_builder.reset_kiosk(computer_name)
             reset_reset_button()
+
+            # CANCEL AUTO-RESET TIMER
+            if computer_name in interface_builder.auto_reset_timer_ids:
+                interface_builder.app.root.after_cancel(interface_builder.auto_reset_timer_ids[computer_name])
+                del interface_builder.auto_reset_timer_ids[computer_name]
+            interface_builder.stats_elements['auto_reset_label'].config(text=" ")
+
         else:
             # First click - show confirmation
             reset_btn.confirmation_pending = True
@@ -70,6 +77,13 @@ def setup_stats_panel(interface_builder, computer_name):
 
     reset_btn.config(command=handle_reset_click)
     reset_btn.pack(side='left', padx=10)
+
+    # ADD AUTO-RESET TIMER LABEL
+    interface_builder.stats_elements['auto_reset_label'] = tk.Label(
+        hints_frame,
+        text=" "
+    )
+    interface_builder.stats_elements['auto_reset_label'].pack(side='left', padx=5)
 
     # Timer controls section
     timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black')
