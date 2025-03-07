@@ -3,8 +3,6 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
-auto reset kiosk 3 - 5 minutes after game conclusion
-
 edit hint image content within hint manager
 
 ##############################################################################################################################
@@ -20,6 +18,7 @@ wizard not receiving sync messages(?) (issue non reproducible; perhaps all messa
 ##############################################################################################################################
 # known low priority bugs
 
+kiosk auto resets twice
 tab out doesn't always clear UI elements from view
 kiosk UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
 password for settings gets prompted twice

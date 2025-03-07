@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 from PIL import Image, ImageTk
 import shutil
-import hashlib # For simple password storage
+import hashlib  # For simple password storage
 
 class CollapsibleFrame(ttk.Frame):
     def __init__(self, parent, text, **kwargs):
@@ -37,10 +37,11 @@ class ManagerSettings:
         self.app = app
         self.admin_interface = admin_interface
         self.main_container = None
-        #self.original_widgets = []  # No longer needed
+        # self.original_widgets = []  # No longer needed
         self.load_prop_mappings()
         self.password_manager = AdminPasswordManager(app)
         self.current_page = None
+        self.autosave_after_id = None  # Store the after() ID for debouncing
 
     def load_prop_mappings(self):
         """Load prop name mappings from JSON"""
@@ -78,7 +79,7 @@ class ManagerSettings:
         """Prompt for credentials and validate them."""
         def on_success():
             self.create_hint_management_view()
-          
+
         return self.password_manager.verify_password(callback=on_success)
 
 
@@ -122,7 +123,7 @@ class ManagerSettings:
             if new_password != confirm_password:
                 messagebox.showerror("Error", "New passwords do not match.")
                 return
-            
+
             if not new_password:
                 messagebox.showerror("Error", "New password cannot be blank.")
                 return
@@ -145,19 +146,11 @@ class ManagerSettings:
 
         change_window.transient(self.app.root)
         change_window.grab_set()
-        
+
         # Focus the old password entry
         old_password_entry.focus_set()
-        
+
         self.app.root.wait_window(change_window)
-
-    # def restore_original_view(self):  # No longer needed
-    #     """Restore the original interface"""
-    #     if self.main_container:
-    #         self.main_container.destroy()
-
-    #     for widget in self.original_widgets:
-    #         widget.pack(side='left', fill='both', expand=True, padx=5)
 
     def create_hint_management_view(self):
         """Create the hint management interface in a new window."""
@@ -171,12 +164,6 @@ class ManagerSettings:
         # Create header (without back button)
         header_frame = ttk.Frame(self.main_container)
         header_frame.pack(fill='x', pady=(0, 10))
-
-        #ttk.Label(
-            #header_frame,
-            #text="Settings",
-            #font=('Arial', 14, 'bold')
-        #).pack(side='left', padx=20)
 
         # Create settings navigation frame
         nav_frame = ttk.Frame(self.main_container)
@@ -293,7 +280,7 @@ class ManagerSettings:
                 for prop_name, prop_hints in room_data.items():
                     display_name = self.get_display_name(room_id, prop_name)
                     print(f"[hint library]Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
-                    
+
                     prop_frame = CollapsibleFrame(
                         room_frame.sub_frame,
                         text=f"Prop: {display_name}"
@@ -318,7 +305,7 @@ class ManagerSettings:
         """Construct the full path to a hint image based on room and prop"""
         if not image_filename:
             return None
-            
+
         # Map room IDs to their folder names
         room_map = {
             '1': "casino",
@@ -329,11 +316,11 @@ class ManagerSettings:
             '6': "atlantis",
             '7': "time"
         }
-        
+
         room_folder = room_map.get(str(room_id), "").lower()
         if not room_folder:
             return None
-            
+
         # Construct path: sync_directory/hint_image_files/room/prop/image
         image_path = os.path.join(
             os.path.dirname(__file__),
@@ -343,28 +330,28 @@ class ManagerSettings:
             prop_display_name,
             image_filename
         )
-        
+
         return image_path if os.path.exists(image_path) else None
 
     def create_hint_display(self, parent, room_id, prop_display_name, hint_name, hint_info):
         """Create a display frame for a single hint"""
         hint_frame = ttk.Frame(parent)
-        
+
         # Create header with hint name
         header_frame = ttk.Frame(hint_frame)
         header_frame.pack(fill='x', pady=(2,0))
-        
+
         name_label = ttk.Label(
             header_frame,
             text=f"Name: {hint_name}",
             font=('Arial', 9, 'bold')
         )
         name_label.pack(side='left')
-        
+
         # Create text display
         text_frame = ttk.Frame(hint_frame)
         text_frame.pack(fill='x', pady=2)
-        
+
         text_widget = tk.Text(
             text_frame,
             height=3,
@@ -373,19 +360,12 @@ class ManagerSettings:
         )
         text_widget.insert('1.0', hint_info.get('text', ''))
         text_widget.pack(side='left', fill='x', expand=True)
-        
+
         # Add a status label for save feedback
-        status_label = ttk.Label(text_frame, text="")
-        status_label.pack(side='left', padx=5)
-        
-        # Save button
-        save_button = ttk.Button(
-            text_frame,
-            text="Save",
-            command=lambda: self.save_hint_changes(room_id, prop_display_name, hint_name, text_widget, status_label)
-        )
-        save_button.pack(side='right')
-        
+        self.status_label = ttk.Label(text_frame, text="")  # Use self for access
+        self.status_label.pack(side='left', padx=5)
+
+
         # Delete button
         delete_button = ttk.Button(
             header_frame,
@@ -393,28 +373,33 @@ class ManagerSettings:
             command=lambda: self.delete_hint(room_id, prop_display_name, hint_name)
         )
         delete_button.pack(side='right')
-        
+
+        # --- Autosave Setup ---
+        text_widget.bind("<<Modified>>", lambda event, r_id=room_id, p_name=prop_display_name, h_name=hint_name, t_widget=text_widget:
+                         self.autosave_hint(r_id, p_name, h_name, t_widget))
+
+
         # Hint image if present
         if hint_info.get('image'):
             try:
                 # Get path using room, prop display name, and image filename
                 image_path = self.get_image_path(room_id, prop_display_name, hint_info['image'])
-                
+
                 # Create image info frame
                 image_info_frame = ttk.Frame(hint_frame)
                 image_info_frame.pack(fill='x', pady=2)
-                
+
                 # Show image filename
                 ttk.Label(
                     image_info_frame,
                     text=f"Image: {hint_info['image']}",
                     font=('Arial', 9)
                 ).pack(side='left')
-                
+
                 if image_path and os.path.exists(image_path):
                     # Show relative path from sync_directory
                     rel_path = os.path.relpath(
-                        image_path, 
+                        image_path,
                         os.path.join(os.path.dirname(__file__), "sync_directory")
                     )
                     ttk.Label(
@@ -422,7 +407,7 @@ class ManagerSettings:
                         text=f"Path: {rel_path}",
                         foreground='green'
                     ).pack(side='left', padx=5)
-                    
+
                     # Show image preview
                     image = Image.open(image_path)
                     image.thumbnail((200, 200))
@@ -436,7 +421,7 @@ class ManagerSettings:
                         text="(Image file not found)",
                         foreground='red'
                     ).pack(side='left', padx=5)
-                    
+
             except Exception as e:
                 print(f"[hint library]Error loading hint image: {e}")
                 ttk.Label(
@@ -447,7 +432,17 @@ class ManagerSettings:
 
         return hint_frame
 
-    def save_hint_changes(self, room_id, prop_display_name, hint_name, text_widget, status_label):
+    def autosave_hint(self, room_id, prop_display_name, hint_name, text_widget):
+        """Debounced autosave function."""
+
+        # If there's a pending save, cancel it
+        if self.autosave_after_id:
+            self.status_label.after_cancel(self.autosave_after_id)
+
+        # Schedule the save after a short delay (e.g., 500ms)
+        self.autosave_after_id = self.status_label.after(500, lambda: self.save_hint_changes(room_id, prop_display_name, hint_name, text_widget))
+
+    def save_hint_changes(self, room_id, prop_display_name, hint_name, text_widget):
         """Save changes made to a hint's text"""
         try:
             # Get the current text from the widget
@@ -464,14 +459,19 @@ class ManagerSettings:
             with open('saved_hints.json', 'w') as f:
                 json.dump(hint_data, f, indent=4)
 
-            # Show success message
-            status_label.config(text="Saved!", foreground='green')
-            status_label.after(2000, lambda: status_label.config(text=""))
+            # Show success message (briefly)
+            self.status_label.config(text="Saved!", foreground='green')
+            self.status_label.after(1000, lambda: self.status_label.config(text=""))
+
+            # Reset the modified flag on the text widget
+            text_widget.edit_modified(False)
 
         except Exception as e:
             print(f"[hint library]Error saving hint changes: {e}")
-            status_label.config(text="Error saving!", foreground='red')
-            status_label.after(2000, lambda: status_label.config(text=""))
+            self.status_label.config(text="Error saving!", foreground='red')
+            self.status_label.after(2000, lambda: self.status_label.config(text=""))
+
+
 
     def show_save_status(self, message, error=False):
         """Show a temporary status message"""
@@ -519,7 +519,7 @@ class ManagerSettings:
             # No need to delete the image file since it's now stored in the sync directory
             # and may be used by other hints
 
-            self.load_hints()
+            self.load_hints()  # Reload to refresh the display
 
         except Exception as e:
             print(f"[hint library]Error deleting hint: {e}")
@@ -564,22 +564,22 @@ class AdminPasswordManager:
             else:
                 messagebox.showerror("Error", "Incorrect password.")
                 #login_window.destroy()  # Removed unnecessary destroy
-        
+
         def on_close():
             login_window.destroy()
-        
+
         # Bind Enter key to validate
         password_entry.bind('<Return>', lambda e: validate())
-        
+
         login_window.protocol("WM_DELETE_WINDOW", on_close)
-        
+
         login_button = tk.Button(login_window, text="Login", command=validate)
         login_button.pack(pady=10)
 
         login_window.transient(self.app.root)
         login_window.grab_set()
-        
+
         # Focus the password entry
         password_entry.focus_set()
-        
+
         self.app.root.wait_window(login_window)
