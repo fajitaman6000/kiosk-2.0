@@ -53,17 +53,17 @@ class MessageHandler:
                 if target_computer not in ('all', self.kiosk_app.computer_name):
                     print(f"[message handler] Ignoring sync message intended for: {target_computer}")
                     return
-                
+
                 admin_ip = msg.get('admin_ip')
                 sync_id = msg.get('sync_id')
-                
+
                 if admin_ip:
                     if self._ensure_file_downloader(admin_ip):
                         # Request sync and store sync ID
                         print(f"[message handler] Initiating sync with admin at {admin_ip}")
                         self.last_sync_id = sync_id
                         self.file_downloader.request_sync()
-                        
+
                         # Send confirmation immediately that we received the sync request
                         confirm_msg = {
                             'type': 'sync_confirmation',
@@ -238,8 +238,8 @@ class MessageHandler:
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.kiosk_app.computer_name:
                 print("[message handler]\n[DEBUG] Processing kiosk reset")
 
-                # First, stop all audio and video playback
-                print("[message handler][DEBUG] Stopping all media playback...")
+                # --- Use force_stop ---
+                self.video_manager.force_stop()
 
                 # Reset game_lost flag:
                 self.kiosk_app.timer.game_lost = False
@@ -249,21 +249,11 @@ class MessageHandler:
                 # Stop background music and any other audio
                 self.kiosk_app.audio_manager.stop_all_audio()
 
-                # Force stop video manager (which handles both video and its audio)
-                self.kiosk_app.video_manager.force_stop()  # This now handles all cleanup of callbacks
-
                 # Ensure pygame mixer is fully reset
                 if pygame.mixer.get_init():
                     pygame.mixer.music.stop()
                     pygame.mixer.music.unload()
                     pygame.mixer.stop()  # Stop all sound channels
-
-                # Kill any remaining video process
-                if self.kiosk_app.current_video_process:
-                    print("[message handler][DEBUG] Terminating external video process")
-                    self.kiosk_app.current_video_process.terminate()
-                    self.kiosk_app.current_video_process = None
-                    self.kiosk_app.root.deiconify()
 
                 # Reset video-related UI state in the kiosk app's UI
                 if hasattr(self.kiosk_app.ui, 'video_solution_button') and self.kiosk_app.ui.video_solution_button:
@@ -301,7 +291,7 @@ class MessageHandler:
 
                 # Hide and Clear Overlay
                 self.kiosk_app.root.after(0, lambda: Overlay.hide())
-                
+
                 # Hide GM assistance overlay specifically
                 self.kiosk_app.root.after(0, lambda: Overlay.hide_gm_assistance())
 

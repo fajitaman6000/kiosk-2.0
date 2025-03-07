@@ -6,8 +6,6 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 ##############################################################################################################################
 # priority bugs
 
-victory condition runs on and off during room reset of a won game
-
 reset kiosk is registered as a half-ass video finish causing audio bugs
 
 hangup reliability: 
@@ -28,6 +26,8 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
+
+detection of casino/morning after based on prop mqtt names, potentially send room-quest signal based upon this according to kiosk's reported room selection
 auto reset kiosk 3 - 5 minutes after game conclusion
 reset props, reset room (runs reset all + reset kiosk)
 preview kiosk screen visible on admin side

@@ -27,6 +27,7 @@ class VideoManager:
         self.temp_dir = tempfile.mkdtemp()
         self.current_audio_path = None
         self.completion_callback = None
+        self.resetting = False  # ADD THIS FLAG
 
         # Get ffmpeg path from imageio-ffmpeg
         self.ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
@@ -36,6 +37,7 @@ class VideoManager:
         pygame.mixer.init(frequency=44100)
         # Initialize a dedicated channel for video audio
         self.video_sound_channel = pygame.mixer.Channel(0)  # Use channel 0 for video audio
+
     def _fade_background_music(self, target_volume, duration=0.2, steps=10):
         """
         Gradually changes background music volume over the specified duration.
@@ -270,6 +272,11 @@ class VideoManager:
 
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
+                # Added check for resetting flag:
+                if self.resetting:
+                    print("[video manager]Resetting flag is True, breaking out of video playback loop")
+                    break
+
                 # Calculate desired frame position based on elapsed time
                 if start_time is not None:
                     elapsed_time = time.time() - start_time
@@ -328,12 +335,21 @@ class VideoManager:
                 self.video_sound_channel.stop()
                 time.sleep(0.1)  # Give a small delay for the audio to stop
 
-            # Schedule cleanup and callback on main thread
-            self.root.after(0, lambda: self._thread_cleanup(on_complete))
+            # Check resetting flag before calling _thread_cleanup
+            if not self.resetting:
+                # Schedule cleanup and callback on main thread
+                self.root.after(0, lambda: self._thread_cleanup(on_complete))
+            else:
+                print("[video manager]Resetting is True, skipping _thread_cleanup")
 
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
         print("[video manager]\n=== Video Manager Thread Cleanup ===")
+
+        # Check if resetting is in progress.  If so, skip normal completion.
+        if self.resetting:
+            print("[video manager]Resetting in progress, skipping normal thread cleanup")
+            return
 
         try:
             # Show all Qt overlays after video ends
@@ -412,6 +428,8 @@ class VideoManager:
         """Stop video and audio playback"""
         print("[video manager]\nVideoManager: Stopping video and audio")
         self.should_stop = True
+        # Clear completion callback
+        self.completion_callback = None
         # Do not set self.is_playing to False here - restore original behavior
 
         # Stop video audio channel instead of music
@@ -426,10 +444,12 @@ class VideoManager:
         """Force stop all video playback and cleanup for reset scenarios"""
         print("[video manager]\nVideoManager: Force stopping all video playback")
 
+        # Set resetting flag to True
+        self.resetting = True
+
         # Store current state
-        self._temp_callback = None
+        self._temp_callback = None  # Clear any callbacks.
         if hasattr(self, 'completion_callback'):
-            self._temp_callback = self.completion_callback
             self.completion_callback = None
 
         # Reset all state flags first
@@ -474,6 +494,8 @@ class VideoManager:
 
         # Force cleanup without callbacks
         self._force_cleanup()
+        # Reset resetting flag
+        self.resetting = False
 
     def _force_cleanup(self):
         """Clean up resources without executing callbacks - used for resets"""
