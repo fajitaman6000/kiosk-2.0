@@ -6,14 +6,12 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 ##############################################################################################################################
 # priority bugs
 
-reset kiosk is registered as a half-ass video finish causing audio bugs
-
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
     kiosk doesn't retry/add itself back to queue after failed sync attempt
 
 time machine camera loading issue
-wizard not receiving sync messages(?)
+wizard not receiving sync messages(?) (issue non reproducible; perhaps all messages need to be "copied" to resolve this issue)
 
 ##############################################################################################################################
 # known low priority bugs
