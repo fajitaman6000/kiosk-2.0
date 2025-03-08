@@ -5,8 +5,6 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
 
-preview kiosk screen visible on admin side
-
 ##############################################################################################################################
 # priority bugs
 
