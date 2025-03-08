@@ -1332,15 +1332,15 @@ class AdminInterfaceBuilder:
             if room_number in self.app.prop_control.last_progress_times:
                 self.update_last_progress_time_display(room_number)
         else:
-            self.stats_elements['last_progress_label'].config(text="Last Progress: N/A")
+            self.stats_elements['last_progress_label'].config(text="Last Progress:\nN/A", anchor='w')
 
         # Update last prop finished name
         last_prop_finished = self.app.prop_control.last_prop_finished.get(room_number, 'N/A')
         if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
-          self.stats_elements['last_prop_label'].config(text=f"Last Prop Finished: {last_prop_finished}")
+          self.stats_elements['last_prop_label'].config(text=f"Last Prop Finished:\n{last_prop_finished}",anchor='w')
         else:
             if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
-                self.stats_elements['last_prop_label'].config(text="Last Prop Finished: N/A")
+                self.stats_elements['last_prop_label'].config(text="Last Prop Finished:\nN/A", anchor='w')
 
         # Auto-start state update
         auto_start_check = self.stats_elements.get('auto_start_check')
@@ -1369,7 +1369,7 @@ class AdminInterfaceBuilder:
             else:
                 time_string = f"{minutes} minutes {seconds} seconds ago"
             
-            self.stats_elements['last_progress_label'].config(text=f"Last Progress: {time_string}")
+            self.stats_elements['last_progress_label'].config(text=f"Last Progress:\n{time_string}", anchor='w')
 
     def save_manual_hint(self):
         # Wrapper for the extracted save_manual_hint function

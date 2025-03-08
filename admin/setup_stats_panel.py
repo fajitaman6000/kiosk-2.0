@@ -806,12 +806,45 @@ def setup_stats_panel(interface_builder, computer_name):
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name
 
+    # --- ADD IMAGE DISPLAY FRAME HERE ---
+    #  Wrap stats_below_video and image_display_frame in a container
+    stats_and_image_container = tk.Frame(right_panel)
+    stats_and_image_container.pack(side='top', anchor='nw', pady=3)  # Pack container at the top
+
+
     stats_below_video = tk.Frame(
-        right_panel,
+        stats_and_image_container,  # Parent is now the container
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', pady=3, anchor='nw')
-    
+    stats_below_video.pack(side='left', anchor='nw') # Pack to the LEFT inside the container
+
+
+    image_display_frame = tk.Frame(
+        stats_and_image_container,  # Parent is now the container
+        bg='black',  # Black background when empty
+        width=112,   #  9:16 aspect ratio, scaled down (e.g., 112.5 x 200)
+        height=200  #  Adjust as needed, maintaining 9:16
+    )
+    image_display_frame.pack(
+        side='right',  # Pack to the RIGHT inside the container
+        anchor='ne',    # Anchor to the north-east (top-right relative to container)
+        pady=(2,0), # Some vertical padding
+        padx=(7,0),
+
+    )
+    image_display_frame.pack_propagate(False)  # Prevent frame from shrinking
+
+    # Image display label (initially empty)
+    interface_builder.stats_elements['image_display_label'] = tk.Label(
+        image_display_frame,
+        bg='black'
+    )
+    interface_builder.stats_elements['image_display_label'].pack(
+        fill='both',
+        expand=True
+    )
+
+
     # Create frame for vertical layout with a darker grey background
     stats_vertical_frame = tk.Frame(
         stats_below_video,

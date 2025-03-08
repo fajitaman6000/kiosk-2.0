@@ -3,6 +3,10 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
+standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
+
+preview kiosk screen visible on admin side
+
 ##############################################################################################################################
 # priority bugs
 
@@ -25,12 +29,10 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
-move hint editing properties to right side of hint editor
 periodic setting of casino/morning after according to room?
+
 reset props, reset room (runs reset all + reset kiosk)
-preview kiosk screen visible on admin side
-standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
-restarter moved to kiosk app
+rebooter added to kiosk app
 
 ##############################################################################################################################
 # ambitious extra ideas:
