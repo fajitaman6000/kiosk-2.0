@@ -73,14 +73,9 @@ class KioskNetwork:
             try:
                 # Use larger buffer for receiving
                 data, addr = self.socket.recvfrom(16 * 1024 * 1024)  # 16MB buffer
-                msg_size = len(data) / 1024  # Size in KB
-                
-                print(f"[networking.py]\nReceived data from {addr}")
-                print(f"[networking.py]Data size: {msg_size:.2f}KB")
                 
                 try:
                     msg = json.loads(data.decode())
-                    print(f"[networking.py]Message type: {msg.get('type')}")
                     
                     # Special handling for hint messages
                     if msg.get('type') == 'hint':

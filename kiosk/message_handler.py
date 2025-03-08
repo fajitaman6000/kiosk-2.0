@@ -45,7 +45,8 @@ class MessageHandler:
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
-        print(f"[message handler]\n[DEBUG] Received message: {msg}")
+        if (msg['type'] != 'request_screenshot'):
+            print(f"[message handler]\nReceived message: {msg}")
         try:
             if msg['type'] == SYNC_MESSAGE_TYPE:
                 # Only process sync message if it's meant for this kiosk or is a broadcast message
