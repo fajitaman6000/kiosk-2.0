@@ -809,27 +809,27 @@ def setup_stats_panel(interface_builder, computer_name):
     # --- ADD IMAGE DISPLAY FRAME HERE ---
     #  Wrap stats_below_video and image_display_frame in a container
     stats_and_image_container = tk.Frame(right_panel)
-    stats_and_image_container.pack(side='top', anchor='nw', pady=3)  # Pack container at the top
+    stats_and_image_container.pack(side='left', anchor='nw', pady=3)  # Pack container at the top
 
 
     stats_below_video = tk.Frame(
         stats_and_image_container,  # Parent is now the container
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', anchor='nw', fill='both', expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
+    stats_below_video.pack(side='left', anchor='n', fill='x', pady=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
 
 
     image_display_frame = tk.Frame(
         stats_and_image_container,  # Parent is now the container
         bg='black',  # Black background when empty
-        width=112,   #  9:16 aspect ratio, scaled down (e.g., 112.5 x 200)
-        height=200  #  Adjust as needed, maintaining 9:16
+        width=112*1.65,   #  9:16 aspect ratio, scaled down (e.g., 112.5 x 200)
+        height=200*1.65  #  Adjust as needed, maintaining 9:16
     )
     image_display_frame.pack(
         side='right',  # Pack to the RIGHT inside the container
-        anchor='ne',    # Anchor to the north-east (top-right relative to container)
+        anchor='e',    # Anchor to the north-east (top-right relative to container)
         pady=(2,0), # Some vertical padding
-        padx=(7,0),
+        padx=(2,0),
 
     )
     image_display_frame.pack_propagate(False)  # Prevent frame from shrinking
@@ -854,18 +854,21 @@ def setup_stats_panel(interface_builder, computer_name):
         borderwidth=1,
         relief='solid' # For border
     )
-    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x')  # Crucial: fill='x' here
+    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True)  # Crucial: fill='x' here, and expand = True
+
+    stats_panel_ypadding = 14
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
         stats_vertical_frame,
-        text="TTC: 45:00",
-        font=('Arial', 10, 'bold'),
+        text="TTC:\n--:--",
+        font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
-        anchor='w' # Anchor text to left
+        anchor='w', # Anchor text to left
+        justify='left'
     )
-    interface_builder.stats_elements['ttc_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
+    interface_builder.stats_elements['ttc_label'].pack(side='top', pady=stats_panel_ypadding, fill='x') # Fill 'x'
 
     # Get current hints count from tracker
     current_hints = 0
@@ -875,13 +878,14 @@ def setup_stats_panel(interface_builder, computer_name):
     # Hints requested label
     interface_builder.stats_elements['hints_label_below'] = tk.Label(
         stats_vertical_frame,
-        text=f"Hints requested: {current_hints}",
-        font=('Arial', 10, 'bold'),
+        text=f"Hints requested:\n{current_hints}",
+        font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
-        anchor='w' # Anchor text to left
+        anchor='w', # Anchor text to left
+        justify='left'
     )
-    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=1, fill='x') # Fill 'x'
+    interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=stats_panel_ypadding, fill='x') # Fill 'x'
     
     # Hints received label
     current_hints_received = 0
@@ -890,37 +894,38 @@ def setup_stats_panel(interface_builder, computer_name):
         
     interface_builder.stats_elements['hints_received_label'] = tk.Label(
         stats_vertical_frame,
-        text=f"Hints received: {current_hints_received}",
-        font=('Arial', 10, 'bold'),
+        text=f"Hints received:\n{current_hints_received}",
+        font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
-        anchor='w' # Anchor text to left
+        anchor='w', # Anchor text to left
+        justify='left'
     )
-    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=1, fill='x') # Fill 'x'
+    interface_builder.stats_elements['hints_received_label'].pack(side='top', pady=stats_panel_ypadding, fill='x') # Fill 'x'
 
     # Add "Time Since Last Progress" label:
     interface_builder.stats_elements['last_progress_label'] = tk.Label(
         stats_vertical_frame,
         text="Last Progress:\nN/A",  # Keep the newline for now
-        font=('Arial', 10, 'bold'),
+        font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
         anchor='w',
         justify='left'  # ADD THIS LINE
     )
-    interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=1, fill='x')
+    interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=stats_panel_ypadding, fill='x')
 
     # Last prop finished label
     interface_builder.stats_elements['last_prop_label'] = tk.Label(
         stats_vertical_frame,
         text="Last Prop Finished:\nN/A",  # Keep the newline for now
-        font=('Arial', 10, 'bold'),
+        font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
         anchor='w',
         justify='left'
     )
-    interface_builder.stats_elements['last_prop_label'].pack(side='top', pady=2, fill='x')
+    interface_builder.stats_elements['last_prop_label'].pack(side='top', pady=stats_panel_ypadding, fill='x')
 
     # Screen Touches label
     #current_touches = 0

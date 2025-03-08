@@ -10,7 +10,7 @@ class ScreenshotHandler:
     def __init__(self, app):
         self.app = app
         self.last_request_time = 0
-        self.request_interval = 2  # seconds
+        self.request_interval = 1  # seconds
 
     def request_screenshot(self):
         """Request a screenshot from the currently selected kiosk."""
