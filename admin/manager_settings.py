@@ -16,9 +16,9 @@ class ManagerSettings:
         self.current_page = None
         self.autosave_after_id = None
         self.selected_hint = None
-        self.hint_tree = None  # Use a Treeview
+        self.hint_tree = None
         self.hint_map = {}
-        self.tree_items = {}  # Store room/prop info for collapsing {tree_id: {"type": "room" or "prop", ...}}
+        self.tree_items = {}
 
     def load_prop_mappings(self):
         try:
@@ -126,10 +126,12 @@ class ManagerSettings:
         self.hint_list_frame = ttk.Frame(paned_window)
         paned_window.add(self.hint_list_frame, weight=1)
 
-        self.hint_tree = ttk.Treeview(self.hint_list_frame, selectmode='browse')  # Use Treeview
+        self.hint_tree = ttk.Treeview(self.hint_list_frame, selectmode='browse')
         self.hint_tree.pack(side="left", fill="both", expand=True)
-        self.hint_tree.bind('<<TreeviewSelect>>', self.on_hint_select)  # Bind selection
-        self.hint_tree.bind("<Double-1>", self.toggle_collapse)
+        self.hint_tree.bind('<<TreeviewSelect>>', self.on_hint_select)
+        # Use the built-in "open" event instead of double-click
+        self.hint_tree.bind('<<TreeviewOpen>>', self.on_treeview_open)
+        self.hint_tree.bind('<<TreeviewClose>>', self.on_treeview_close)
 
 
         scrollbar = ttk.Scrollbar(self.hint_list_frame, orient="vertical", command=self.hint_tree.yview)
@@ -161,10 +163,18 @@ class ManagerSettings:
         ttk.Label(password_frame, text="Password Management", font=('Arial', 12, 'bold')).pack(pady=(0, 20))
         change_pass_btn = ttk.Button(password_frame, text="Change Admin Password", command=self.change_password)
         change_pass_btn.pack(pady=10)
+    def on_treeview_open(self, event):
+        """Handle TreeviewOpen event (item expanded)."""
+        #print("treeview opened") #debugging
+        pass  # Placeholder if needed
+
+    def on_treeview_close(self, event):
+        """Handle TreeviewClose event (item collapsed)."""
+        #print("treeview closed") #debugging
+        pass  # Placeholder if needed
 
     def load_hints(self):
-        """Load hints and populate the Treeview (organized and collapsible)."""
-        for item in self.hint_tree.get_children():  # Clear existing items
+        for item in self.hint_tree.get_children():
             self.hint_tree.delete(item)
         self.hint_map = {}
         self.tree_items = {}
@@ -175,21 +185,20 @@ class ManagerSettings:
 
             for room_id, room_data in hint_data.get('rooms', {}).items():
                 room_text = f"Room {room_id}"
-                room_item = self.hint_tree.insert("", "end", text=room_text, open=True)  # Insert room, initially open
+                room_item = self.hint_tree.insert("", "end", text=room_text, open=True)
                 self.tree_items[room_item] = {"type": "room", "id": room_id}
 
                 for prop_name, prop_hints in room_data.items():
                     display_name = self.get_display_name(room_id, prop_name)
                     prop_text = f"{display_name}"
-                    prop_item = self.hint_tree.insert(room_item, "end", text=prop_text, open=True)  # Insert prop under room
+                    prop_item = self.hint_tree.insert(room_item, "end", text=prop_text, open=True)
                     self.tree_items[prop_item] = {"type": "prop", "room_id": room_id, "prop_name": prop_name, "display_name": display_name}
 
                     for hint_name, hint_info in prop_hints.items():
                         hint_key = f"{room_id}-{prop_name}-{hint_name}"
                         display_text = f"{hint_name}"
-                        hint_item = self.hint_tree.insert(prop_item, "end", text=display_text)  # Insert hint under prop
+                        hint_item = self.hint_tree.insert(prop_item, "end", text=display_text)
                         self.hint_map[hint_key] = (room_id, prop_name, hint_name, hint_info)
-                        # No need for tree_items entry for hints
 
         except Exception as e:
             print(f"[hint library]Error loading hints: {e}")
@@ -199,15 +208,12 @@ class ManagerSettings:
       if not selection:
           return
 
-      selected_item = selection[0]  # Get the selected item ID
+      selected_item = selection[0]
 
-      # Check if it's a hint (not a room or prop)
       if selected_item not in self.tree_items:
-          # It's a hint.  Find the parent prop and grandparent room.
           parent_prop = self.hint_tree.parent(selected_item)
           parent_room = self.hint_tree.parent(parent_prop)
 
-          # Extract data using the stored info and the Treeview text
           room_id = self.tree_items[parent_room]["id"]
           prop_name = self.tree_items[parent_prop]["prop_name"]
           hint_name = self.hint_tree.item(selected_item, "text")
@@ -215,12 +221,12 @@ class ManagerSettings:
 
           hint_key = f"{room_id}-{prop_name}-{hint_name}"
           #print(hint_key)
-          if hint_key in self.hint_map: # make sure the hint actually exists
-            room_id, prop_name_returned, hint_name_returned, hint_info = self.hint_map[hint_key] # get hint info
+          if hint_key in self.hint_map:
+            room_id, prop_name_returned, hint_name_returned, hint_info = self.hint_map[hint_key]
             #print (f"{room_id}, {display_name}, {hint_name}, {hint_info}") # debug
-            self.select_hint(room_id, display_name, hint_name, hint_info) # and display it
-          else: # if it doesn't
-            print(f"could not find {hint_key} in hint map.") # print for debugging
+            self.select_hint(room_id, display_name, hint_name, hint_info)
+          else:
+            print(f"could not find {hint_key} in hint map.")
             return
 
     def select_hint(self, room_id, prop_display_name, hint_name, hint_info):
@@ -360,16 +366,6 @@ class ManagerSettings:
 
         except Exception as e:
             print(f"[hint library]Error deleting hint: {e}")
-
-
-    def toggle_collapse(self, event):
-        """Handle double-click to collapse/expand rooms and props."""
-        selected_item = self.hint_tree.focus()  # Use focus() to get the clicked item
-        if not selected_item:
-            return
-
-        if selected_item in self.tree_items:  # Only collapse rooms/props
-            self.hint_tree.item(selected_item, open=not self.hint_tree.item(selected_item, 'open'))
 
 class AdminPasswordManager:
     def __init__(self, app):
