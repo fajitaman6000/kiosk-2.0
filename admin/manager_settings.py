@@ -19,7 +19,7 @@ class ManagerSettings:
         self.hint_tree = None
         self.hint_map = {}
         self.tree_items = {}
-        self.current_prop_name = ""  # Store current prop name for image label
+        self.current_prop_name = ""
 
     def load_prop_mappings(self):
         try:
@@ -127,6 +127,9 @@ class ManagerSettings:
         self.hint_list_frame = ttk.Frame(paned_window)
         paned_window.add(self.hint_list_frame, weight=1)
 
+        # Add the title label *above* the Treeview
+        ttk.Label(self.hint_list_frame, text="Hint Manager", font=('Arial', 14, 'bold')).pack(pady=(5,2))  # Title
+
         self.hint_tree = ttk.Treeview(self.hint_list_frame, selectmode='browse')
         self.hint_tree.pack(side="left", fill="both", expand=True)
         self.hint_tree.bind('<<TreeviewSelect>>', self.on_hint_select)
@@ -141,14 +144,12 @@ class ManagerSettings:
         self.hint_editor_frame = ttk.Frame(paned_window)
         paned_window.add(self.hint_editor_frame, weight=3)
 
-        # Hint text
-        ttk.Label(self.hint_editor_frame, text="Text content:").pack(anchor='w', padx=5, pady=2) # Added label
+        ttk.Label(self.hint_editor_frame, text="Text content:", font=('Arial', 10, 'bold')).pack(anchor='w', padx=5, pady=2)
         self.text_widget = tk.Text(self.hint_editor_frame, height=3, width=40, wrap=tk.WORD)
         self.text_widget.pack(pady=5)
 
-        # Image selection and preview (using a frame for layout)
-        self.image_label = ttk.Label(self.hint_editor_frame, text="") # Initially empty
-        self.image_label.pack(anchor='w', padx=5, pady=2) # align left
+        self.image_label = ttk.Label(self.hint_editor_frame, text="")
+        self.image_label.pack(anchor='w', padx=5, pady=2)
 
         image_frame = ttk.Frame(self.hint_editor_frame)
         image_frame.pack(fill='x', pady=5)
@@ -162,7 +163,7 @@ class ManagerSettings:
 
         self.status_label = ttk.Label(self.hint_editor_frame, text="")
         self.status_label.pack(pady=5)
-        self.delete_button = ttk.Button(self.hint_editor_frame, text="Delete Hint", command=self.delete_selected_hint)
+        self.delete_button = ttk.Button(self.hint_editor_frame, text="Delete", command=self.delete_selected_hint)
         self.delete_button.pack(pady=5)
 
         self.text_widget.bind("<<Modified>>", lambda event: self.autosave_hint())
@@ -224,18 +225,16 @@ class ManagerSettings:
           parent_room_item = self.hint_tree.parent(parent_prop_item)
 
           room_id = self.tree_items[parent_room_item]["id"]
-          # prop_name = self.tree_items[parent_prop_item]["prop_name"]  # Get original prop_name
           hint_name = self.hint_tree.item(selected_item, "text")
-          display_name = self.tree_items[parent_prop_item]['display_name']  # Get display_name
+          display_name = self.tree_items[parent_prop_item]['display_name']
 
-          hint_key = f"{room_id}-{self.tree_items[parent_prop_item]['prop_name']}-{hint_name}" # use original prop name
+          hint_key = f"{room_id}-{self.tree_items[parent_prop_item]['prop_name']}-{hint_name}"
           if hint_key in self.hint_map:
             room_id, prop_name_returned, hint_name_returned, hint_info = self.hint_map[hint_key]
-            self.select_hint(room_id, display_name, hint_name, hint_info)  # Use display_name
+            self.select_hint(room_id, display_name, hint_name, hint_info)
 
-            # Update current_prop_name for image label
             self.current_prop_name = display_name
-            self.image_label.config(text=f"Images available for {self.current_prop_name}:")
+            self.image_label.config(text=f"Images available for {self.current_prop_name}:", font=('Arial', 10, 'bold'))
 
           else:
             print(f"could not find {hint_key} in hint map.")
@@ -257,8 +256,8 @@ class ManagerSettings:
             self.image_listbox.delete(0, tk.END)
             self.image_preview_label.config(image=None)
             self.image_preview_label.image = None
-            self.image_label.config(text="") # clear image label
-            self.current_prop_name = "" # clear prop name
+            self.image_label.config(text="")
+            self.current_prop_name = ""
 
     def get_image_path(self, room_id, prop_display_name, image_filename):
         if not image_filename:
