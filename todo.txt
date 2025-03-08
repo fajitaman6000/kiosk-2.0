@@ -4,6 +4,7 @@
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
+    needs standby prop sound files, e.g time_standby.mp3
 
 ##############################################################################################################################
 # priority bugs

@@ -548,6 +548,21 @@ class PropControl:
         else:
           self.initialize_mqtt_client(room_number)
 
+    def is_standby_prop(self, room_number, prop_name):
+        """Check if a prop is marked as a standby prop"""
+        if room_number not in self.ROOM_MAP:
+            return False
+
+        room_key = self.ROOM_MAP[room_number]
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+
+        if room_key not in self.prop_name_mappings:
+            return False
+
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        return prop_info.get('standby_prop', False)
+
     def update_prop_ui_elements(self, prop_id, prop_data):
         """Updates prop name label based on the selected room without creating a new prop UI element"""
         if prop_id not in self.props:
@@ -618,7 +633,7 @@ class PropControl:
             # Check if the prop is flagged AND finished
             if (room_number in self.flagged_props and
                 prop_id in self.flagged_props[room_number] and
-                self.flagged_props[room_number][prop_id] and
+                self.flagged_props[self.current_room][prop_id] and
                 status == "Finished"):
 
                 audio_manager = AdminAudioManager()
@@ -626,6 +641,13 @@ class PropControl:
                 print(f"[prop control] flagged prop {prop_id} finished")
 
                 self.flagged_props[room_number][prop_id] = False
+            
+            # --- STANDBY PROP HANDLING ---
+            if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
+                    status == "Finished"):
+                self.play_standby_sound(room_number)
+            # --- END STANDBY PROP HANDLING ---
+
 
             if room_number == self.current_room and 'status_label' in prop_info:
                 try:
@@ -639,6 +661,17 @@ class PropControl:
         except Exception as e:
             print(f"[prop control]Error in check_prop_status: {e}")
 
+    def play_standby_sound(self, room_number):
+        """Plays the room-specific standby sound."""
+        if room_number not in self.ROOM_MAP:
+            return
+
+        room_name = self.ROOM_MAP[room_number]
+        sound_file = f"{room_name}_standby.mp3"
+        audio_manager = AdminAudioManager()  # Get the singleton instance
+        audio_manager._load_sound(f"{room_name}_standby", sound_file)  # Ensure sound is loaded
+        audio_manager.play_sound(f"{room_name}_standby")
+
     def update_all_props_status(self, room_number):
         if room_number not in self.all_props:
             return
@@ -649,6 +682,7 @@ class PropControl:
         is_finished = False  # Initialize is_finished to False
         timer_expired = False
         finishing_prop_offline = False # New flag
+        is_standby = False
 
         for prop_id, prop_info in self.all_props[room_number].items():
             if 'info' not in prop_info:
@@ -672,6 +706,12 @@ class PropControl:
                 self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')) and
                 status == "Finished"):
                 is_finished = True
+            
+            # --- STANDBY PROP CHECK ---
+            if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
+                    status == "Finished"):
+                is_standby = True
+            # --- END STANDBY PROP CHECK ---
 
         # Handle finishing prop offline scenario
         if finishing_prop_offline:
@@ -1033,8 +1073,14 @@ class PropControl:
 
                 # Create name label (Correct)
                 name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
+                # --- MODIFIED NAME LABEL FORMATTING ---
                 if self.is_finishing_prop(self.current_room, prop_data['strName']):
                     name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+                elif self.is_standby_prop(self.current_room, prop_data['strName']):
+                    name_label.config(font=('Arial', 8, 'bold', 'italic'))  # Italic for standby
+                else:
+                    name_label.config(font=('Arial', 8, 'bold'))
+                # --- END MODIFIED NAME LABEL FORMATTING ---
                 name_label.pack(side='left', padx=5)
 
                 name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
@@ -1090,11 +1136,15 @@ class PropControl:
                             self.all_props[self.current_room][prop_id] = {}
                         self.all_props[self.current_room][prop_id]['last_status'] = current_status
 
-                        # Update name label formatting
+                        # --- MODIFIED NAME LABEL FORMATTING ---
                         if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                            name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+                            name_label.config(font=('Arial', 9, 'bold', 'italic', 'underline'))
+                        elif self.is_standby_prop(self.current_room, prop_data['strName']):
+                            name_label.config(font=('Arial', 9, 'italic'))
                         else:
                             name_label.config(font=('Arial', 8, 'bold'))
+                        # --- END MODIFIED NAME LABEL FORMATTING ---
+
                     except tk.TclError:
                         # Widget destroyed, remove reference
                         del self.props[prop_id]['name_label']
