@@ -816,7 +816,7 @@ def setup_stats_panel(interface_builder, computer_name):
         stats_and_image_container,  # Parent is now the container
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', anchor='nw') # Pack to the LEFT inside the container
+    stats_below_video.pack(side='left', anchor='nw', fill='both', expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
 
 
     image_display_frame = tk.Frame(
@@ -850,11 +850,11 @@ def setup_stats_panel(interface_builder, computer_name):
         stats_below_video,
         bg='#E0E0E0',  # Slightly darker grey
         padx=5,
-        pady=5,
+        pady=0,
         borderwidth=1,
         relief='solid' # For border
     )
-    stats_vertical_frame.pack(side='left', padx=0, pady=1)
+    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x')  # Crucial: fill='x' here
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
@@ -901,22 +901,24 @@ def setup_stats_panel(interface_builder, computer_name):
     # Add "Time Since Last Progress" label:
     interface_builder.stats_elements['last_progress_label'] = tk.Label(
         stats_vertical_frame,
-        text="Last Progress: N/A", # Start with "N/A" until progress is made.
+        text="Last Progress:\nN/A",  # Keep the newline for now
         font=('Arial', 10, 'bold'),
         fg='black',
         bg='#E0E0E0',
-        anchor='w'
+        anchor='w',
+        justify='left'  # ADD THIS LINE
     )
     interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=1, fill='x')
 
     # Last prop finished label
     interface_builder.stats_elements['last_prop_label'] = tk.Label(
         stats_vertical_frame,
-        text="Last Prop Finished: N/A", # Start with "N/A" until a prop finishes.
+        text="Last Prop Finished:\nN/A",  # Keep the newline for now
         font=('Arial', 10, 'bold'),
         fg='black',
         bg='#E0E0E0',
-        anchor='w'
+        anchor='w',
+        justify='left'
     )
     interface_builder.stats_elements['last_prop_label'].pack(side='top', pady=2, fill='x')
 
