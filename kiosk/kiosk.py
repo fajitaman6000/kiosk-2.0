@@ -136,7 +136,45 @@ class KioskApp:
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
             #print(f"[kiosk main]\nStats updated: {stats}")
             self._last_stats = stats.copy()
+
+        # --- Add screenshot logic HERE ---
+        if hasattr(self, 'take_screenshot_requested') and self.take_screenshot_requested:
+            self.send_screenshot()
+            self.take_screenshot_requested = False  # Reset flag after sending
+
         return stats
+    
+    def send_screenshot(self):
+        """Takes and sends a screenshot to the admin."""
+        try:
+            from PIL import ImageGrab, Image
+            import io, base64
+
+            # Take screenshot
+            screen = ImageGrab.grab()
+
+            # Resize for efficiency -  AGGRESSIVE reduction
+            max_width = 320  # Even smaller
+            ratio = max_width / screen.width
+            new_height = int(screen.height * ratio)
+            screen = screen.resize((max_width, new_height), Image.Resampling.LANCZOS)
+
+            # Convert to JPEG and base64
+            buf = io.BytesIO()
+            screen.save(buf, format='JPEG', quality=30)  # Much lower quality
+            image_data = base64.b64encode(buf.getvalue()).decode()
+
+            # Send message
+            self.network.send_message({
+                'type': 'screenshot',
+                'computer_name': self.computer_name,
+                'image_data': image_data
+            })
+            print(f"[kiosk]Screenshot sent ({len(image_data)} bytes)")
+
+        except Exception as e:
+            print(f"[kiosk]Error taking/sending screenshot: {e}")
+            traceback.print_exc()
         
     def handle_message(self, msg):
         self.message_handler.handle_message(msg)
@@ -296,6 +334,7 @@ class KioskApp:
         self.file_downloader.stop() # Add this line
         self.root.destroy()
         sys.exit(0)
+
 
     def clear_hints(self):
         """Clears all visible hints and resets hint-related state."""

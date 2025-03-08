@@ -350,6 +350,11 @@ class MessageHandler:
                 print("[message handler]Victory detected")
                 self.kiosk_app.timer.game_won = True # set the flag
                 self.kiosk_app.handle_game_win()  # Call handle_game_win
+            
+            # Kiosk side of screenshot request
+            elif msg['type'] == 'request_screenshot' and msg['computer_name'] == self.kiosk_app.computer_name:
+                self.kiosk_app.take_screenshot_requested = True
+                #print("[message handler] Kiosk received screenshot request - will send on next stats update")
 
         except Exception as e:
             print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")

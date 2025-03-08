@@ -80,6 +80,10 @@ try:
             
             # Set up prop panel synchronization
             self.setup_prop_panel_sync()
+
+            # --- Add screenshot handler ---
+            from screenshot_handler import ScreenshotHandler
+            self.screenshot_handler = ScreenshotHandler(self)
             
             # Start network handling
             self.network_handler.start()
@@ -87,6 +91,7 @@ try:
             # Set up update timers
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
+            self.root.after(2000, self.screenshot_handler.request_screenshot) # Request screenshots
 
             # Start the sync manager
             self.sync_manager.start()

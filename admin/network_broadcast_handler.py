@@ -11,6 +11,8 @@ class NetworkBroadcastHandler:
         
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            # Increase the receive buffer size (to 65536, the max for UDP)
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536)
             self.socket.bind(('', 12345))
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
             
@@ -45,7 +47,7 @@ class NetworkBroadcastHandler:
         print("[network broadcast handler]Started listening for kiosks...")
         while self.running:
             try:
-                data, addr = self.socket.recvfrom(1024)
+                data, addr = self.socket.recvfrom(65536)
                 msg = json.loads(data.decode())
                 
                 # Store sender address with message
@@ -111,6 +113,14 @@ class NetworkBroadcastHandler:
                         del self.last_message[computer_name]
                     self.app.root.after(0, lambda n=computer_name: 
                         self.app.interface_builder.remove_kiosk(n))
+
+                elif msg['type'] == 'screenshot':
+                    computer_name = msg['computer_name']
+                    image_data = msg.get('image_data')
+                    if computer_name and image_data:
+                        # Pass the screenshot to the handler
+                        if hasattr(self.app, 'screenshot_handler'):
+                            self.app.screenshot_handler.handle_screenshot(computer_name, image_data)
                             
             except Exception as e:
                 if self.running:
