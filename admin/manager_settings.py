@@ -37,11 +37,11 @@ class ManagerSettings:
         self.app = app
         self.admin_interface = admin_interface
         self.main_container = None
-        # self.original_widgets = []  # No longer needed
         self.load_prop_mappings()
         self.password_manager = AdminPasswordManager(app)
         self.current_page = None
         self.autosave_after_id = None  # Store the after() ID for debouncing
+        self.selected_hint = None # Store the currently selected hint
 
     def load_prop_mappings(self):
         """Load prop name mappings from JSON"""
@@ -155,7 +155,7 @@ class ManagerSettings:
     def create_hint_management_view(self):
         """Create the hint management interface in a new window."""
         settings_window = tk.Toplevel(self.app.root)  # Create a new window
-        settings_window.title("Settings")
+        settings_window.title("Manager Settings")
         settings_window.geometry("800x600")  # Adjust size as needed
 
         self.main_container = ttk.Frame(settings_window)  # Use the new window
@@ -208,9 +208,18 @@ class ManagerSettings:
 
     def create_hints_page(self):
         """Create the hints management page"""
-        # Create scrollable frame for hints
-        canvas = tk.Canvas(self.settings_container)
-        scrollbar = ttk.Scrollbar(self.settings_container, orient="vertical", command=canvas.yview)
+
+        # Create a paned window for the hint list and editor
+        paned_window = ttk.PanedWindow(self.settings_container, orient=tk.HORIZONTAL)
+        paned_window.pack(fill='both', expand=True)
+
+        # --- Left side: Hint list ---
+        self.hint_list_frame = ttk.Frame(paned_window)
+        paned_window.add(self.hint_list_frame, weight=1)  # Allow resizing
+
+        # Create scrollable frame for hints (inside hint_list_frame)
+        canvas = tk.Canvas(self.hint_list_frame)
+        scrollbar = ttk.Scrollbar(self.hint_list_frame, orient="vertical", command=canvas.yview)
         self.scrollable_frame = ttk.Frame(canvas)
 
         self.scrollable_frame.bind(
@@ -221,12 +230,33 @@ class ManagerSettings:
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Pack scrolling components
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Load and display hints
+
+        # --- Right side: Hint editor ---
+        self.hint_editor_frame = ttk.Frame(paned_window)
+        paned_window.add(self.hint_editor_frame, weight=3) # Editor takes more space
+
+        # Add placeholder widgets to the editor frame (they'll be updated later)
+        self.text_widget = tk.Text(self.hint_editor_frame, height=3, width=40, wrap=tk.WORD)
+        self.text_widget.pack(pady=5)
+        self.image_listbox = tk.Listbox(self.hint_editor_frame, height=4, width=20, selectmode=tk.SINGLE, exportselection=False)
+        self.image_listbox.pack(pady=5)
+        self.image_preview_label = ttk.Label(self.hint_editor_frame)
+        self.image_preview_label.pack(pady=5)
+        self.status_label = ttk.Label(self.hint_editor_frame, text="")
+        self.status_label.pack(pady=5)
+
+        self.delete_button = ttk.Button(self.hint_editor_frame, text="Delete", command=self.delete_selected_hint)
+        self.delete_button.pack(pady=5)
+
+        self.image_listbox.bind('<<ListboxSelect>>', self.preview_selected_image)
+        self.text_widget.bind("<<Modified>>", lambda event: self.autosave_hint())
+
+        # Load and display hints (populates the scrollable_frame)
         self.load_hints()
+
 
     def create_password_page(self):
         """Create the password management page"""
@@ -245,7 +275,6 @@ class ManagerSettings:
             command=self.change_password
         )
         change_pass_btn.pack(pady=10)
-
     def load_hints(self):
         """Load and display all hints from saved_hints.json"""
         try:
@@ -279,7 +308,7 @@ class ManagerSettings:
                 # Create collapsible sections for each prop
                 for prop_name, prop_hints in room_data.items():
                     display_name = self.get_display_name(room_id, prop_name)
-                    print(f"[hint library]Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
+                    #print(f"[hint library]Room: {room_id} -> {mapped_room}, Prop: {prop_name} -> {display_name}")
 
                     prop_frame = CollapsibleFrame(
                         room_frame.sub_frame,
@@ -289,17 +318,41 @@ class ManagerSettings:
 
                     # Add hints for this prop
                     for hint_name, hint_info in prop_hints.items():
-                        hint_display = self.create_hint_display(
-                            prop_frame.sub_frame,
-                            room_id,
-                            display_name,
-                            hint_name,
-                            hint_info
-                        )
-                        hint_display.pack(fill='x', padx=5, pady=2)
+                        hint_button = ttk.Button(prop_frame.sub_frame, text=hint_name, command=lambda r=room_id, p=display_name, h=hint_name, i=hint_info: self.select_hint(r, p, h, i))
+                        hint_button.pack(fill='x', padx=5, pady=2)
+
 
         except Exception as e:
             print(f"[hint library]Error loading hints: {e}")
+
+
+    def select_hint(self, room_id, prop_display_name, hint_name, hint_info):
+        """Handle hint selection: update the editor."""
+        self.selected_hint = (room_id, prop_display_name, hint_name)
+
+        # Update text
+        self.text_widget.delete('1.0', tk.END)
+        self.text_widget.insert('1.0', hint_info.get('text', ''))
+        self.text_widget.edit_modified(False) # Reset modified flag
+
+        # Update image selector
+        self.show_image_selector(room_id, prop_display_name, hint_name)
+
+        # Update delete button (it now works on the selected hint)
+        #self.delete_button.config(command=lambda: self.delete_hint(room_id, prop_display_name, hint_name)) # Removed, replaced with delete_selected_hint
+
+    def delete_selected_hint(self):
+        """Delete the currently selected hint"""
+        if self.selected_hint:
+            room_id, prop_display_name, hint_name = self.selected_hint
+            self.delete_hint(room_id, prop_display_name, hint_name)
+            self.selected_hint = None  # Clear selection after deletion
+
+            # Clear the editor display
+            self.text_widget.delete('1.0', tk.END)
+            self.image_listbox.delete(0, tk.END)
+            self.image_preview_label.config(image=None)
+            self.image_preview_label.image = None
 
     def get_image_path(self, room_id, prop_display_name, image_filename):
         """Construct the full path to a hint image based on room and prop"""
@@ -333,76 +386,6 @@ class ManagerSettings:
 
         return image_path if os.path.exists(image_path) else None
 
-    def create_hint_display(self, parent, room_id, prop_display_name, hint_name, hint_info):
-        """Create a display frame for a single hint"""
-        hint_frame = ttk.Frame(parent)
-
-        # Create header with hint name
-        header_frame = ttk.Frame(hint_frame)
-        header_frame.pack(fill='x', pady=(2,0))
-
-        name_label = ttk.Label(
-            header_frame,
-            text=f"Name: {hint_name}",
-            font=('Arial', 9, 'bold')
-        )
-        name_label.pack(side='left')
-
-        # Create text display
-        text_frame = ttk.Frame(hint_frame)
-        text_frame.pack(fill='x', pady=2)
-
-        text_widget = tk.Text(
-            text_frame,
-            height=3,
-            width=40,
-            wrap=tk.WORD
-        )
-        text_widget.insert('1.0', hint_info.get('text', ''))
-        text_widget.pack(side='left', fill='x', expand=True)
-
-        # Add a status label for save feedback
-        self.status_label = ttk.Label(text_frame, text="")  # Use self for access
-        self.status_label.pack(side='left', padx=5)
-
-
-        # Delete button
-        delete_button = ttk.Button(
-            header_frame,
-            text="Delete",
-            command=lambda: self.delete_hint(room_id, prop_display_name, hint_name)
-        )
-        delete_button.pack(side='right')
-
-        # --- Autosave Setup ---
-        text_widget.bind("<<Modified>>", lambda event, r_id=room_id, p_name=prop_display_name, h_name=hint_name, t_widget=text_widget:
-                         self.autosave_hint(r_id, p_name, h_name, t_widget))
-
-
-        # --- Image Selection and Preview ---
-        image_frame = ttk.Frame(hint_frame)
-        image_frame.pack(fill='x', pady=2)
-
-        # Image listbox (initially hidden)
-        self.image_listbox = tk.Listbox(
-            image_frame,
-            height=4,
-            width=20,  # Adjusted width
-            selectmode=tk.SINGLE,
-            exportselection=False
-        )
-        self.image_listbox.bind('<<ListboxSelect>>', self.preview_selected_image)
-        self.image_listbox.pack(side='left', padx=5) # Pack to the left
-
-        # Image preview label (also initially hidden)
-        self.image_preview_label = ttk.Label(image_frame)
-        self.image_preview_label.pack(side='left', padx=5) # Pack next to listbox
-
-        # Populate image list and show initial preview (if available)
-        self.show_image_selector(room_id, prop_display_name, hint_name)
-
-
-        return hint_frame
 
     def show_image_selector(self, room_id, prop_display_name, hint_name):
         """Populate the image listbox and show initial preview"""
@@ -509,28 +492,38 @@ class ManagerSettings:
             print(f"Error updating hint image: {e}")
             messagebox.showerror("Error", f"Failed to update image: {e}")
 
-    def autosave_hint(self, room_id, prop_display_name, hint_name, text_widget):
-        """Debounced autosave function."""
+
+    def autosave_hint(self):
+        """Debounced autosave function, now simplified."""
+        if self.selected_hint is None:
+            return
 
         # If there's a pending save, cancel it
         if self.autosave_after_id:
             self.status_label.after_cancel(self.autosave_after_id)
 
-        # Schedule the save after a short delay (e.g., 500ms)
-        self.autosave_after_id = self.status_label.after(500, lambda: self.save_hint_changes(room_id, prop_display_name, hint_name, text_widget))
+        # Schedule save after delay
+        self.autosave_after_id = self.status_label.after(500, self.save_hint_changes)
 
-    def save_hint_changes(self, room_id, prop_display_name, hint_name, text_widget):
+
+
+    def save_hint_changes(self):
         """Save changes made to a hint's text"""
+        if self.selected_hint is None:
+            return  # No hint selected
+
+        room_id, prop_display_name, hint_name = self.selected_hint
+
         try:
-            # Get the current text from the widget
-            new_text = text_widget.get('1.0', 'end-1c')
+            # Get the current text
+            new_text = self.text_widget.get('1.0', 'end-1c')
 
             # Load current hint data
             with open('saved_hints.json', 'r') as f:
                 hint_data = json.load(f)
 
-            # Update the hint text
-            hint_data['rooms'][room_id][prop_display_name][hint_name]['text'] = new_text
+            # Update the hint text (using string keys for room_id)
+            hint_data['rooms'][str(room_id)][prop_display_name][hint_name]['text'] = new_text
 
             # Save the updated data
             with open('saved_hints.json', 'w') as f:
@@ -540,14 +533,13 @@ class ManagerSettings:
             self.status_label.config(text="Saved!", foreground='green')
             self.status_label.after(1000, lambda: self.status_label.config(text=""))
 
-            # Reset the modified flag on the text widget
-            text_widget.edit_modified(False)
+            # Reset modified flag
+            self.text_widget.edit_modified(False)
 
         except Exception as e:
             print(f"[hint library]Error saving hint changes: {e}")
             self.status_label.config(text="Error saving!", foreground='red')
             self.status_label.after(2000, lambda: self.status_label.config(text=""))
-
 
 
     def show_save_status(self, message, error=False):
@@ -581,14 +573,15 @@ class ManagerSettings:
             with open('saved_hints.json', 'r') as f:
                 hint_data = json.load(f)
 
-            # Delete the hint
-            del hint_data['rooms'][room_id][prop_display_name][hint_name]
+            # Delete the hint (use string for room_id)
+            del hint_data['rooms'][str(room_id)][prop_display_name][hint_name]
 
             # Clean up empty structures
-            if not hint_data['rooms'][room_id][prop_display_name]:
-                del hint_data['rooms'][room_id][prop_display_name]
-            if not hint_data['rooms'][room_id]:
-                del hint_data['rooms'][room_id]
+            if not hint_data['rooms'][str(room_id)][prop_display_name]:
+                del hint_data['rooms'][str(room_id)][prop_display_name]
+            if not hint_data['rooms'][str(room_id)]:
+                del hint_data['rooms'][str(room_id)]
+
 
             with open('saved_hints.json', 'w') as f:
                 json.dump(hint_data, f, indent=4)

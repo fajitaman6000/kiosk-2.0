@@ -35,6 +35,7 @@ restarter moved to kiosk app
 ##############################################################################################################################
 # ambitious extra ideas:
 
+log video solution usage to discourage excessive use
 make "reset kiosk" a reliable UI debugger somehow
 soundcheck logic kiosk side
 save props' status for blackbox, delete save upon load
