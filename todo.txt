@@ -3,8 +3,6 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
-edit hint image content within hint manager
-
 ##############################################################################################################################
 # priority bugs
 
@@ -27,8 +25,8 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
-
-detection of casino/morning after based on prop mqtt names, potentially send room-quest signal based upon this according to kiosk's reported room selection
+move hint editing properties to right side of hint editor
+periodic setting of casino/morning after according to room?
 reset props, reset room (runs reset all + reset kiosk)
 preview kiosk screen visible on admin side
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
