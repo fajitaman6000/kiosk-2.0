@@ -19,6 +19,7 @@ class ManagerSettings:
         self.hint_tree = None
         self.hint_map = {}
         self.tree_items = {}
+        self.current_prop_name = ""  # Store current prop name for image label
 
     def load_prop_mappings(self):
         try:
@@ -129,10 +130,8 @@ class ManagerSettings:
         self.hint_tree = ttk.Treeview(self.hint_list_frame, selectmode='browse')
         self.hint_tree.pack(side="left", fill="both", expand=True)
         self.hint_tree.bind('<<TreeviewSelect>>', self.on_hint_select)
-        # Use the built-in "open" event instead of double-click
-        self.hint_tree.bind('<<TreeviewOpen>>', self.on_treeview_open)
-        self.hint_tree.bind('<<TreeviewClose>>', self.on_treeview_close)
-
+        self.hint_tree.bind("<<TreeviewOpen>>", self.on_treeview_open)
+        self.hint_tree.bind("<<TreeviewClose>>", self.on_treeview_close)
 
         scrollbar = ttk.Scrollbar(self.hint_list_frame, orient="vertical", command=self.hint_tree.yview)
         scrollbar.pack(side="right", fill="y")
@@ -141,19 +140,32 @@ class ManagerSettings:
         # --- Right side: Hint editor ---
         self.hint_editor_frame = ttk.Frame(paned_window)
         paned_window.add(self.hint_editor_frame, weight=3)
+
+        # Hint text
+        ttk.Label(self.hint_editor_frame, text="Text content:").pack(anchor='w', padx=5, pady=2) # Added label
         self.text_widget = tk.Text(self.hint_editor_frame, height=3, width=40, wrap=tk.WORD)
         self.text_widget.pack(pady=5)
-        self.image_listbox = tk.Listbox(self.hint_editor_frame, height=4, width=20, selectmode=tk.SINGLE, exportselection=False)
-        self.image_listbox.pack(pady=5)
-        self.image_preview_label = ttk.Label(self.hint_editor_frame)
-        self.image_preview_label.pack(pady=5)
+
+        # Image selection and preview (using a frame for layout)
+        self.image_label = ttk.Label(self.hint_editor_frame, text="") # Initially empty
+        self.image_label.pack(anchor='w', padx=5, pady=2) # align left
+
+        image_frame = ttk.Frame(self.hint_editor_frame)
+        image_frame.pack(fill='x', pady=5)
+
+        self.image_listbox = tk.Listbox(image_frame, height=8, width=30, selectmode=tk.SINGLE, exportselection=False)
+        self.image_listbox.pack(side='left', padx=5)
+        self.image_listbox.bind('<<ListboxSelect>>', self.preview_selected_image)
+
+        self.image_preview_label = ttk.Label(image_frame)
+        self.image_preview_label.pack(side='left', padx=5)
+
         self.status_label = ttk.Label(self.hint_editor_frame, text="")
         self.status_label.pack(pady=5)
-        self.delete_button = ttk.Button(self.hint_editor_frame, text="Delete", command=self.delete_selected_hint)
+        self.delete_button = ttk.Button(self.hint_editor_frame, text="Delete Hint", command=self.delete_selected_hint)
         self.delete_button.pack(pady=5)
-        self.image_listbox.bind('<<ListboxSelect>>', self.preview_selected_image)
-        self.text_widget.bind("<<Modified>>", lambda event: self.autosave_hint())
 
+        self.text_widget.bind("<<Modified>>", lambda event: self.autosave_hint())
 
         self.load_hints()
 
@@ -163,15 +175,12 @@ class ManagerSettings:
         ttk.Label(password_frame, text="Password Management", font=('Arial', 12, 'bold')).pack(pady=(0, 20))
         change_pass_btn = ttk.Button(password_frame, text="Change Admin Password", command=self.change_password)
         change_pass_btn.pack(pady=10)
+
     def on_treeview_open(self, event):
-        """Handle TreeviewOpen event (item expanded)."""
-        #print("treeview opened") #debugging
-        pass  # Placeholder if needed
+        pass
 
     def on_treeview_close(self, event):
-        """Handle TreeviewClose event (item collapsed)."""
-        #print("treeview closed") #debugging
-        pass  # Placeholder if needed
+        pass
 
     def load_hints(self):
         for item in self.hint_tree.get_children():
@@ -211,20 +220,23 @@ class ManagerSettings:
       selected_item = selection[0]
 
       if selected_item not in self.tree_items:
-          parent_prop = self.hint_tree.parent(selected_item)
-          parent_room = self.hint_tree.parent(parent_prop)
+          parent_prop_item = self.hint_tree.parent(selected_item)
+          parent_room_item = self.hint_tree.parent(parent_prop_item)
 
-          room_id = self.tree_items[parent_room]["id"]
-          prop_name = self.tree_items[parent_prop]["prop_name"]
+          room_id = self.tree_items[parent_room_item]["id"]
+          # prop_name = self.tree_items[parent_prop_item]["prop_name"]  # Get original prop_name
           hint_name = self.hint_tree.item(selected_item, "text")
-          display_name = self.tree_items[parent_prop]['display_name']
+          display_name = self.tree_items[parent_prop_item]['display_name']  # Get display_name
 
-          hint_key = f"{room_id}-{prop_name}-{hint_name}"
-          #print(hint_key)
+          hint_key = f"{room_id}-{self.tree_items[parent_prop_item]['prop_name']}-{hint_name}" # use original prop name
           if hint_key in self.hint_map:
             room_id, prop_name_returned, hint_name_returned, hint_info = self.hint_map[hint_key]
-            #print (f"{room_id}, {display_name}, {hint_name}, {hint_info}") # debug
-            self.select_hint(room_id, display_name, hint_name, hint_info)
+            self.select_hint(room_id, display_name, hint_name, hint_info)  # Use display_name
+
+            # Update current_prop_name for image label
+            self.current_prop_name = display_name
+            self.image_label.config(text=f"Images available for {self.current_prop_name}:")
+
           else:
             print(f"could not find {hint_key} in hint map.")
             return
@@ -245,6 +257,8 @@ class ManagerSettings:
             self.image_listbox.delete(0, tk.END)
             self.image_preview_label.config(image=None)
             self.image_preview_label.image = None
+            self.image_label.config(text="") # clear image label
+            self.current_prop_name = "" # clear prop name
 
     def get_image_path(self, room_id, prop_display_name, image_filename):
         if not image_filename:
