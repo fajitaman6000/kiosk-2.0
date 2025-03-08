@@ -44,7 +44,7 @@ client.username_pw_set("indestroom", "indestroom")
 client.ws_set_options(path="/mqtt")
 
 # Connect to broker
-client.connect("192.168.0.12", 8080, 60)  # Use your Zombie room's IP
+client.connect("192.168.0.49", 8080, 60)  # Use your Zombie room's IP
 
 # Run until interrupted
 try:
