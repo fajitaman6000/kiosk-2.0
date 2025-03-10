@@ -16,7 +16,7 @@ import json
 import ctypes
 
 def show_error_and_wait():
-    print("[main]\nAn error occurred. Error details above.")
+    print("[main]An error occurred. Error details above.")
     input("Press Enter to exit...")
 
 try:
@@ -191,6 +191,6 @@ try:
         app.run()
 
 except Exception as e:
-    print("[main]\nERROR:")
+    print("[main]ERROR:")
     traceback.print_exc()
     show_error_and_wait()

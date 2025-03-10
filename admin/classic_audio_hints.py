@@ -17,7 +17,7 @@ class ClassicAudioHints:
     }
 
     def __init__(self, parent, room_change_callback, app):
-        #print("[classic audio hints]\n=== INITIALIZING CLASSIC AUDIO HINTS ===")
+        #print("[classic audio hints]=== INITIALIZING CLASSIC AUDIO HINTS ===")
         self.app = app
         self.parent = parent
         self.room_change_callback = room_change_callback
@@ -95,7 +95,7 @@ class ClassicAudioHints:
 
     def update_room(self, room_name):
         """Update the prop list for the selected room"""
-        #print(f"[classic audio hints]\n=== UPDATING AUDIO HINTS FOR {room_name} ===")
+        #print(f"[classic audio hints]=== UPDATING AUDIO HINTS FOR {room_name} ===")
         
         # Convert room_name to lowercase for consistent comparison
         room_name = room_name.lower() if room_name else None
@@ -236,7 +236,7 @@ class ClassicAudioHints:
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its name"""
-        print(f"[classic audio hints]\nTrying to select prop: {prop_name}")
+        print(f"[classic audio hints]Trying to select prop: {prop_name}")
         
         if not self.current_room:
             print("[classic audio hints]No current room")

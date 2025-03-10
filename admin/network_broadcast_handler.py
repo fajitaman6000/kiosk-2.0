@@ -134,7 +134,7 @@ class NetworkBroadcastHandler:
             room_number (int): The room number to send to
             hint_data (dict): Dictionary containing 'text' and optional 'image_path' keys
         """
-        print("[network broadcast handler]\n=== Sending Hint ===")
+        print("[network broadcast handler]=== Sending Hint ===")
         
         # Construct the message
         message = {

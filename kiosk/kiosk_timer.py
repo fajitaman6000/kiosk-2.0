@@ -80,7 +80,7 @@ class KioskTimer:
 
                 # If we crossed the 42-minute threshold (going down)
                 if old_minutes > 42 and new_minutes <= 42:
-                    print(f"[kiosk timer]\nTimer crossed 42-minute threshold (down)")
+                    print(f"[kiosk timer]Timer crossed 42-minute threshold (down)")
                     print(f"[kiosk timer]Old time: {old_minutes:.2f} minutes")
                     print(f"[kiosk timer]New time: {new_minutes:.2f} minutes")
                     # Use the kiosk_app reference to access UI

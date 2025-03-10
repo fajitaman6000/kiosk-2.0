@@ -46,7 +46,7 @@ class MessageHandler:
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
         if (msg['type'] != 'request_screenshot'):
-            print(f"[message handler]\nReceived message: {msg}")
+            print(f"[message handler]Received message: {msg}")
         try:
             if msg['type'] == SYNC_MESSAGE_TYPE:
                 # Only process sync message if it's meant for this kiosk or is a broadcast message
@@ -137,7 +137,7 @@ class MessageHandler:
                     self.kiosk_app.root.after(0, lambda d=hint_data: self.kiosk_app.show_hint(d))
 
             elif msg['type'] == 'timer_command' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Processing timer command")
+                print("[message handler][DEBUG] Processing timer command")
                 minutes = msg.get('minutes')
                 command = msg['command']
 
@@ -188,23 +188,23 @@ class MessageHandler:
                 print("[message handler]soundcheck command received")
 
             elif msg['type'] == 'clear_hints' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Processing clear hints command")
+                print("[message handler][DEBUG] Processing clear hints command")
                 self.kiosk_app.clear_hints()
 
             elif msg['type'] == 'play_sound' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Received play sound command")
+                print("[message handler][DEBUG] Received play sound command")
                 sound_name = msg.get('sound_name')
                 if sound_name:
                     self.kiosk_app.audio_manager.play_sound(sound_name)
 
             elif msg['type'] == 'audio_hint' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Received audio hint command")
+                print("[message handler][DEBUG] Received audio hint command")
                 audio_path = msg.get('audio_path')
                 if audio_path:
                     self.kiosk_app.audio_manager.play_hint_audio(audio_path)
 
             elif msg['type'] == 'solution_video' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Received solution video command")
+                print("[message handler][DEBUG] Received solution video command")
                 try:
                     room_folder = msg.get('room_folder')
                     video_filename = msg.get('video_filename')
@@ -237,7 +237,7 @@ class MessageHandler:
                     traceback.print_exc()
 
             elif msg['type'] == 'reset_kiosk' and msg['computer_name'] == self.kiosk_app.computer_name:
-                print("[message handler]\n[DEBUG] Processing kiosk reset")
+                print("[message handler][DEBUG] Processing kiosk reset")
 
                 # --- Use force_stop ---
                 self.video_manager.force_stop()
@@ -358,7 +358,7 @@ class MessageHandler:
                 #print("[message handler] Kiosk received screenshot request - will send on next stats update")
 
         except Exception as e:
-            print("[message handler]\n[CRITICAL ERROR] Critical error in handle_message:")
+            print("[message handler][CRITICAL ERROR] Critical error in handle_message:")
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
             print(f"[message handler][CRITICAL ERROR] Error message: {str(e)}")
             traceback.print_exc()

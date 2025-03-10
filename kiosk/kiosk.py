@@ -139,7 +139,7 @@ class KioskApp:
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
-            #print(f"[kiosk main]\nStats updated: {stats}")
+            #print(f"[kiosk main]Stats updated: {stats}")
             self._last_stats = stats.copy()
 
         # --- Add screenshot logic HERE ---
@@ -242,7 +242,7 @@ class KioskApp:
         self.ui.start_cooldown()
 
     def play_video(self, video_type, minutes):
-        print(f"[kiosk main]\n=== Video Playback Sequence Start ===")
+        print(f"[kiosk main]=== Video Playback Sequence Start ===")
         print(f"[kiosk main]Starting play_video with type: {video_type}")
         print(f"[kiosk main]Current room assignment: {self.assigned_room}")
         
@@ -260,7 +260,7 @@ class KioskApp:
 
         def finish_video_sequence():
             """Final callback after all videos are complete"""
-            print("[kiosk main]\n=== Video Sequence Completion ===")
+            print("[kiosk main]=== Video Sequence Completion ===")
             print("[kiosk main]Executing finish_video_sequence callback")
             print(f"[kiosk main]Setting timer to {minutes} minutes")
             
@@ -305,7 +305,7 @@ class KioskApp:
             print("[kiosk main]=== Video Sequence Complete ===\n")
         def play_game_video():
             """Helper to play game video if it exists"""
-            print("[kiosk main]\n=== Starting Game Video Sequence ===")
+            print("[kiosk main]=== Starting Game Video Sequence ===")
             print(f"[kiosk main]Game video path: {game_video}")
             if game_video and game_video.exists():
                 print(f"[kiosk main]Starting playback of game video: {game_video}")
@@ -319,7 +319,7 @@ class KioskApp:
 
         # Play video based on type
         if video_type != 'game':
-            print("[kiosk main]\n=== Starting Intro Video Sequence ===")
+            print("[kiosk main]=== Starting Intro Video Sequence ===")
             if video_file.exists():
                 print(f"[kiosk main]Found intro video at: {video_file}")
                 print("[kiosk main]Setting up completion callback to play_game_video")
@@ -329,7 +329,7 @@ class KioskApp:
                 print("[kiosk main]Skipping to game video")
                 play_game_video()  # Skip to game video if intro doesn't exist
         else:
-            print("[kiosk main]\n=== Skipping Intro, Playing Game Video ===")
+            print("[kiosk main]=== Skipping Intro, Playing Game Video ===")
             play_game_video()
         
     def on_closing(self):

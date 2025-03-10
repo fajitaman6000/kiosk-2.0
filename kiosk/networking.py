@@ -14,7 +14,7 @@ class KioskNetwork:
         self.last_message = {}  # Initialize the last_message cache here
         
     def setup_socket(self):
-        print("[networking.py]\n=== Setting up network socket ===")
+        print("[networking.py]=== Setting up network socket ===")
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.bind(('', 12346))
@@ -41,7 +41,7 @@ class KioskNetwork:
         try:
             encoded = json.dumps(message).encode()
             msg_size = len(encoded) / 1024  # Size in KB
-            #print(f"[networking.py]\nSending message: {message['type']}")
+            #print(f"[networking.py]Sending message: {message['type']}")
             #print(f"[networking.py]Message size: {msg_size:.2f}KB")
             
             if msg_size > 60000:  # UDP practical limit ~64KB
@@ -68,7 +68,7 @@ class KioskNetwork:
                 break
                 
     def listen_for_messages(self):
-        print("[networking.py]\n=== Starting message listener ===")
+        print("[networking.py]=== Starting message listener ===")
         while self.running:
             try:
                 # Use larger buffer for receiving
@@ -119,7 +119,7 @@ class KioskNetwork:
                     time.sleep(1)  # Brief pause before next iteration
                 
     def shutdown(self):
-        print("[networking.py]\nShutting down network...")
+        print("[networking.py]Shutting down network...")
         self.running = False
         try:
             message = {

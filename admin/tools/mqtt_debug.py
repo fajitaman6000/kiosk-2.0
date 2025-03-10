@@ -15,7 +15,7 @@ class MessageTracker:
 tracker = MessageTracker()
 
 def on_connect(client, userdata, flags, rc):
-    print("[mqtt debug]\nConnected to MQTT broker")
+    print("[mqtt debug]Connected to MQTT broker")
     client.subscribe("#")
     print("[mqtt debug]Listening for MQTT traffic (showing only unique messages)...\n")
 
@@ -50,7 +50,7 @@ client.connect("192.168.0.49", 8080, 60)  # Use your Zombie room's IP
 try:
     client.loop_forever()
 except KeyboardInterrupt:
-    print("[mqtt debug]\nSniffer stopped")
+    print("[mqtt debug]Sniffer stopped")
     client.disconnect()
 
 # =============================== END OF FILE ===============================

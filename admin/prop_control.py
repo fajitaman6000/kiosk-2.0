@@ -1437,7 +1437,7 @@ class PropControl:
     def send_special_command(self, prop_name, command):
         """Send command to special pneumatic props"""
         if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print(f"[prop control]\nNo active room selected")
+            print(f"[prop control]No active room selected")
             return
             
         # Map the friendly names to their actual MQTT topics
@@ -1450,14 +1450,14 @@ class PropControl:
         
         # Get the actual topic name for this prop
         if prop_name not in prop_map:
-            print(f"[prop control]\nUnknown prop: {prop_name}")
+            print(f"[prop control]Unknown prop: {prop_name}")
             return
             
         client = self.mqtt_clients[self.current_room]
         topic = f"/er/{prop_map[prop_name]}"
         
         try:
-            print(f"[prop control]\nSending pneumatic prop command:")
+            print(f"[prop control]Sending pneumatic prop command:")
             print(f"[prop control]Room: {self.current_room}")
             print(f"[prop control]Prop: {prop_name}")
             print(f"[prop control]Topic: {topic}")
@@ -1467,7 +1467,7 @@ class PropControl:
             print(f"[prop control]Command sent successfully to {prop_name}")
             
         except Exception as e:
-            print(f"[prop control]\nFailed to send command: {e}")
+            print(f"[prop control]Failed to send command: {e}")
 
     def on_frame_configure(self, event=None):
         """Reconfigure the canvas scrolling region"""

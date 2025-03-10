@@ -158,7 +158,7 @@ class SavedHintsPanel:
     def load_hints(self):
         """Load all hints from the JSON file"""
         try:
-            #print("[saved hints panel]\n=== LOADING SAVED HINTS ===")
+            #print("[saved hints panel]=== LOADING SAVED HINTS ===")
             hints_path = os.path.join(os.getcwd(), 'saved_hints.json')
             ##print(f"[saved hints panel]Looking for hints file at: {hints_path}")
             #print(f"[saved hints panel]File exists: {os.path.exists(hints_path)}")
@@ -309,7 +309,7 @@ class SavedHintsPanel:
 
     def update_room(self, room_number):
         """Update the prop dropdown for the selected room"""
-        #print(f"[saved hints panel]\n=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
+        #print(f"[saved hints panel]=== UPDATING SAVED HINTS FOR ROOM {room_number} ===")
         
         self.current_room = room_number
         self.clear_preview()

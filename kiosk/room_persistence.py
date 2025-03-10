@@ -7,7 +7,7 @@ class RoomPersistence:
         # Store data locally in the kiosk directory
         self.config_dir = Path(__file__).parent / "data"
         self.config_file = self.config_dir / "room_assignment.json"
-        print(f"[room persistence]\nRoom Persistence initialized")
+        print(f"[room persistence]Room Persistence initialized")
         #print(f"[room persistence]Config directory: {self.config_dir}")
         #print(f"[room persistence]Config file: {self.config_file}")
         self._ensure_config_dir()
@@ -24,7 +24,7 @@ class RoomPersistence:
         """Save room assignment to persistent storage"""
         try:
             config = {'assigned_room': room_number}
-            print(f"[room persistence]\nSaving room assignment: {room_number}")
+            print(f"[room persistence]Saving room assignment: {room_number}")
             print(f"[room persistence]To file: {self.config_file}")
             with open(self.config_file, 'w') as f:
                 json.dump(config, f)
@@ -38,9 +38,9 @@ class RoomPersistence:
         """Load room assignment from persistent storage"""
         try:
             if not self.config_file.exists():
-                print(f"[room persistence]\nNo saved room assignment found at: {self.config_file}")
+                print(f"[room persistence]No saved room assignment found at: {self.config_file}")
                 return None
-            #print(f"[room persistence]\nLoading room assignment from: {self.config_file}")
+            #print(f"[room persistence]Loading room assignment from: {self.config_file}")
             with open(self.config_file, 'r') as f:
                 config = json.load(f)
             room = config.get('assigned_room')
@@ -54,7 +54,7 @@ class RoomPersistence:
         """Clear saved room assignment"""
         try:
             if self.config_file.exists():
-                print(f"[room persistence]\nClearing room assignment: {self.config_file}")
+                print(f"[room persistence]Clearing room assignment: {self.config_file}")
                 self.config_file.unlink()
                 #print("[room persistence]Room assignment cleared")
             return True

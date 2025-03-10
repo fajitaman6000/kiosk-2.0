@@ -237,10 +237,10 @@ class AdminInterfaceBuilder:
 
     def setup_audio_hints(self):
         """Set up the Classic Audio Hints panel"""
-        #print("[interface builder]\n=== AUDIO HINTS SETUP START ===")
+        #print("[interface builder]=== AUDIO HINTS SETUP START ===")
         
         def on_room_change(room_name):
-            print(f"[interface builder]\n=== ROOM CHANGE CALLBACK ===")
+            print(f"[interface builder]=== ROOM CHANGE CALLBACK ===")
             print(f"[interface builder]Audio hints room change called for: {room_name}")
             print(f"[interface builder]Selected kiosk: {self.selected_kiosk}")
             print(f"[interface builder]Has assignments: {self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments}")
@@ -1100,7 +1100,7 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
         try:
-            #print(f"[interface builder]\n=== KIOSK SELECTION START: {computer_name} ===")
+            #print(f"[interface builder]=== KIOSK SELECTION START: {computer_name} ===")
             
             # Clean up existing audio/video streams before switching
             if hasattr(self, 'camera_active') and self.camera_active:

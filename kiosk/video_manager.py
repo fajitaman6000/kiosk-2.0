@@ -129,7 +129,7 @@ class VideoManager:
 
     def play_video(self, video_path, on_complete=None):
         """Play a video file in fullscreen with synchronized audio."""
-        print(f"[video manager]\nVideoManager: Starting video playback: {video_path}")
+        print(f"[video manager]VideoManager: Starting video playback: {video_path}")
 
         try:
             # Store completion callback
@@ -223,7 +223,7 @@ class VideoManager:
             self.video_thread.start()
 
         except Exception as e:
-            print("[video manager]\nVideoManager: Critical error in play_video:")
+            print("[video manager]VideoManager: Critical error in play_video:")
             traceback.print_exc()
             self._cleanup()
             if on_complete:
@@ -231,7 +231,7 @@ class VideoManager:
 
     def _play_video_thread(self, video_path, audio_path, on_complete):
         """Video playback thread with synchronized audio"""
-        print("[video manager]\nVideoManager: Video thread starting")
+        print("[video manager]VideoManager: Video thread starting")
         start_time = None
 
         try:
@@ -324,7 +324,7 @@ class VideoManager:
                     time.sleep(frame_time)
 
         except Exception as e:
-            print("[video manager]\nVideoManager: Error in video thread:")
+            print("[video manager]VideoManager: Error in video thread:")
             traceback.print_exc()
         finally:
             print("[video manager]VideoManager: Cleaning up video thread")
@@ -344,7 +344,7 @@ class VideoManager:
 
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""
-        print("[video manager]\n=== Video Manager Thread Cleanup ===")
+        print("[video manager]=== Video Manager Thread Cleanup ===")
 
         # Check if resetting is in progress.  If so, skip normal completion.
         if self.resetting:
@@ -426,7 +426,7 @@ class VideoManager:
 
     def stop_video(self):
         """Stop video and audio playback"""
-        print("[video manager]\nVideoManager: Stopping video and audio")
+        print("[video manager]VideoManager: Stopping video and audio")
         self.should_stop = True
         # Clear completion callback
         self.completion_callback = None
@@ -442,7 +442,7 @@ class VideoManager:
 
     def force_stop(self):
         """Force stop all video playback and cleanup for reset scenarios"""
-        print("[video manager]\nVideoManager: Force stopping all video playback")
+        print("[video manager]VideoManager: Force stopping all video playback")
 
         # Set resetting flag to True
         self.resetting = True
@@ -499,7 +499,7 @@ class VideoManager:
 
     def _force_cleanup(self):
         """Clean up resources without executing callbacks - used for resets"""
-        print("[video manager]\nVideoManager: Starting forced cleanup")
+        print("[video manager]VideoManager: Starting forced cleanup")
         try:
             self.is_playing = False
             self.should_stop = True
@@ -552,7 +552,7 @@ class VideoManager:
 
     def _cleanup(self):
         """Clean up resources and restore UI state"""
-        print("[video manager]\nVideoManager: Starting cleanup")
+        print("[video manager]VideoManager: Starting cleanup")
         try:
             self.is_playing = False
             self.should_stop = True
@@ -653,7 +653,7 @@ class VideoManager:
             print("[video manager]VideoManager: Cleanup complete")
 
         except Exception as e:
-            print("[video manager]\nVideoManager: Error during cleanup:")
+            print("[video manager]VideoManager: Error during cleanup:")
             traceback.print_exc()
         finally:
             # Ensure these are always reset

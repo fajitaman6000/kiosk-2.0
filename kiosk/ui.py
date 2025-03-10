@@ -358,7 +358,7 @@ class KioskUI:
             self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
 
         except Exception as e:
-            print("[ui.py]\nError displaying fullscreen image:")
+            print("[ui.py]Error displaying fullscreen image:")
             traceback.print_exc()
             if self.fullscreen_image:
                 self.fullscreen_image.create_text(
@@ -428,7 +428,7 @@ class KioskUI:
     def show_video_solution(self, room_folder, video_filename):
         """Shows a button to play the video solution, similar to image hints"""
         try:
-            print(f"[ui.py]\nShowing video solution for {room_folder}/{video_filename}")
+            print(f"[ui.py]Showing video solution for {room_folder}/{video_filename}")
             
             # Store video info first
             self.stored_video_info = {
@@ -478,7 +478,7 @@ class KioskUI:
             print("[ui.py]Successfully created video solution button")
             
         except Exception as e:
-            print(f"[ui.py]\nError creating video solution button:")
+            print(f"[ui.py]Error creating video solution button:")
             traceback.print_exc()
             self.stored_video_info = None
             self.video_solution_button = None
@@ -488,7 +488,7 @@ class KioskUI:
          # Wrap the logic in a thread-safe lock
          with self._lock:
             try:
-                print("[ui.py]\nToggling solution video")
+                print("[ui.py]Toggling solution video")
                 # If video is already playing, stop it
                 if hasattr(self, 'video_is_playing') and self.video_is_playing:
                     print("[ui.py]Stopping current video")
@@ -553,12 +553,12 @@ class KioskUI:
                         print("[ui.py]Error: No video info stored")
                         
             except Exception as e:
-                print(f"[ui.py]\nError in toggle_solution_video: {e}")
+                print(f"[ui.py]Error in toggle_solution_video: {e}")
                 traceback.print_exc()
 
     def handle_video_completion(self):
         """Handle cleanup after video finishes playing while maintaining cooldown state"""
-        print("[ui.py]\nHandling video completion")
+        print("[ui.py]Handling video completion")
         self.video_is_playing = False
 
         try:
@@ -621,5 +621,5 @@ class KioskUI:
                 self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
 
         except Exception as e:
-            print(f"[ui.py]\nError in handle_video_completion: {e}")
+            print(f"[ui.py]Error in handle_video_completion: {e}")
             traceback.print_exc()

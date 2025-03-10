@@ -1117,7 +1117,7 @@ class Overlay:
             return
                 
         if not hasattr(cls, '_timer'):
-            print("[qt overlay]\nInitializing timer components...")
+            print("[qt overlay]Initializing timer components...")
             cls._timer = TimerDisplay()
                 
             # Create a separate window for the timer
@@ -1217,7 +1217,7 @@ class Overlay:
     @classmethod
     def load_timer_background(cls, room_number):
         """Load the timer background for the specified room"""
-        print(f"[qt overlay]\nAttempting to load timer background for room {room_number}")
+        print(f"[qt overlay]Attempting to load timer background for room {room_number}")
 
         if not hasattr(cls, '_timer'):
             print("[qt overlay]Timer not initialized yet")
@@ -1271,7 +1271,7 @@ class Overlay:
             return
 
         if not hasattr(cls, '_button'):
-            print("[qt overlay]\nInitializing help button components...")
+            print("[qt overlay]Initializing help button components...")
             cls._button = {}
 
             # Create a separate window for the button
@@ -1309,7 +1309,7 @@ class Overlay:
             cls._button['scene'].setSceneRect(scene_rect)
 
             # Debug prints
-            #print(f"[qt overlay]\nView Setup Debug:")
+            #print(f"[qt overlay]View Setup Debug:")
             #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
             #print(f"[qt overlay]Scene rect: {scene_rect}")
             #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
@@ -1372,7 +1372,7 @@ class Overlay:
             cls._button['bg_image_item'].setTransformOriginPoint(button_pixmap.width() / 2, button_pixmap.height() / 2)
 
             # Debug info
-            #print(f"[qt overlay]\nImage Debug:")
+            #print(f"[qt overlay]Image Debug:")
             #print(f"[qt overlay]Button image format: {qimage.format()}")
             #print(f"[qt overlay]Button image size: {qimage.size()}")
             #print(f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
@@ -1424,7 +1424,7 @@ class Overlay:
             not timer.game_won # Don't show if game is wo
         )
 
-        #print(f"[qt overlay]\nHelp Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
+        #print(f"[qt overlay]Help Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
             if not cls.kiosk_app.video_manager.is_playing and not cls.kiosk_app.ui.image_is_fullscreen and show_button:
@@ -1469,7 +1469,7 @@ class Overlay:
                 cls._button['scene'].setSceneRect(scene_rect)
 
                 # Debug prints
-                #print(f"[qt overlay]\nView Setup Debug:")
+                #print(f"[qt overlay]View Setup Debug:")
                 #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
                 #print(f"[qt overlay]Scene rect: {scene_rect}")
                 #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
