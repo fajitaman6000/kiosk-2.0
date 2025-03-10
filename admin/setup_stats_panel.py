@@ -773,6 +773,7 @@ def setup_stats_panel(interface_builder, computer_name):
     
     # Define warning sounds
     warning_sounds = {
+        "No drinks on props": "drinks_props.mp3",
         "Be gentle": "be_gentle.mp3",
         "No photos": "no_photos.mp3",
         "Please stop": "please_stop.mp3"

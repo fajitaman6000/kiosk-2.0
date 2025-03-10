@@ -6,6 +6,8 @@ film video solutions, import/move over audio hints, add image hints as custom hi
 standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
     needs standby prop sound files, e.g time_standby.mp3
 
+drinks_props.mp3
+
 ##############################################################################################################################
 # priority bugs
 
