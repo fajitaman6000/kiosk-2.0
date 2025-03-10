@@ -3,10 +3,9 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
-standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster
-    needs standby prop sound files, e.g time_standby.mp3
+standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster (needs testing)
 
-drinks_props.mp3
+rebooter added to kiosk app
 
 ##############################################################################################################################
 # priority bugs
@@ -33,7 +32,6 @@ mqtt connections get crippled while running file sync
 periodic setting of casino/morning after according to room?
 
 reset props, reset room (runs reset all + reset kiosk)
-rebooter added to kiosk app
 
 ##############################################################################################################################
 # ambitious extra ideas:
