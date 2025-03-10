@@ -15,6 +15,7 @@ from audio_manager import AudioManager
 from kiosk_file_downloader import KioskFileDownloader
 from qt_overlay import Overlay
 from ctypes import windll
+import signal
 
 class KioskApp:
     def __init__(self):
@@ -29,6 +30,7 @@ class KioskApp:
         self.hints_received = 0
         self.assigned_room = None
         self.times_touched_screen = 0
+        self.is_closing = False
 
         self.root = tk.Tk()
         #self.root.title(f"Kiosk App: {self.computer_name}")\
@@ -119,6 +121,9 @@ class KioskApp:
             self.root.config(cursor="none")
 
     def get_stats(self):
+        if self.is_closing:
+            print("[kiosk get_stats] Prevented stats update and screenshot: Kiosk is closing.")
+            return {} # Return empty dict to avoid issues if stats are expected
         stats = {
             'computer_name': self.computer_name,
             'room': self.assigned_room,
@@ -146,6 +151,11 @@ class KioskApp:
     
     def send_screenshot(self):
         """Takes and sends a screenshot to the admin."""
+        if self.is_closing:
+            print("[kiosk]Screenshot send prevented: Kiosk is closing.")
+            return
+        else:
+            print(f"[kiosk] is_closing = {self.is_closing}")
         try:
             from PIL import ImageGrab, Image
             import io, base64
@@ -324,16 +334,19 @@ class KioskApp:
         
     def on_closing(self):
         print("[kiosk main]Shutting down kiosk...")
+        #self.is_closing = True
         if self.current_video_process:
             self.current_video_process.terminate()
         self.network.shutdown()
         self.video_server.stop()
         self.audio_server.stop()
+        self.file_downloader.stop()
+
+        if hasattr(self, 'take_screenshot_requested'):
+            self.take_screenshot_requested = False
         
-        # Stop the file downloader.
-        self.file_downloader.stop() # Add this line
         self.root.destroy()
-        sys.exit(0)
+        #sys.exit(0)
 
 
     def clear_hints(self):
@@ -360,9 +373,31 @@ class KioskApp:
         self._actual_help_button_update() # Update help button (which checks state)
         print("[kiosk main.clear_hints] 5")
 
+    def signal_handler(self, sig, frame):
+        print(f"[kiosk main]Signal {sig} received. Setting is_closing = True immediately.")
+        self.is_closing = True
+        self.root.after(0, self.on_closing) # Call on_closing in main thread
+
     def run(self):
-        self.root.mainloop()
+        signal.signal(signal.SIGINT, self.signal_handler) # REGISTER SIGNAL HANDLER HERE
+        try:
+            self.root.mainloop()
+        except KeyboardInterrupt: # Keep this for cleanup in case signal handler fails
+            print("[kiosk main]KeyboardInterrupt detected in mainloop (fallback).")
+            self.on_closing() # Explicitly call on_closing on Ctrl+C
+            print("[kiosk main]Kiosk shutdown initiated.")
 
 if __name__ == '__main__':
     app = KioskApp()
-    app.run()
+    try:
+        app.run()
+    except Exception as e: # Catch any other errors during startup too
+        print(f"[kiosk main]Unhandled exception during startup/runtime: {e}")
+        traceback.print_exc()
+    finally: # Ensure cleanup even if startup fails badly
+        print("[kiosk main]Ensuring kiosk cleanup after main loop (or error).")
+        # if hasattr(app, 'on_closing'): # Check if app and on_closing exist to avoid errors if init failed
+        #     app.on_closing()
+        # else:
+        #     print("[kiosk main]App or on_closing not properly initialized, basic cleanup only.")
+        sys.exit(1) # Indicate error exit if on_closing couldn't run

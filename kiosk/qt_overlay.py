@@ -1515,6 +1515,10 @@ class Overlay:
                 cls._button['bg_image_item'].setPos(button_x_offset, button_y_offset)
                 cls._button['shadow_item'].setPos(shadow_x_offset, shadow_y_offset)
 
+                # RE-APPLY PARENTING RIGHT BEFORE SHOWING
+                if cls._parent_hwnd:
+                    win32gui.SetParent(int(cls._button_window.winId()), cls._parent_hwnd)
+
                 # Show
                 cls._button_window.show()
                 cls._button_window.raise_()
