@@ -299,11 +299,11 @@ class VideoManager:
 
                 # Convert frame
                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                frame = cv2.resize(frame, (
-                    self.root.winfo_screenwidth(),
-                    self.root.winfo_screenheight()
-                ))
+                #frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+                #frame = cv2.resize(frame, (
+                    #self.root.winfo_screenwidth(),
+                    #self.root.winfo_screenheight()
+                #))
 
                 # Create PhotoImage
                 image = Image.fromarray(frame)

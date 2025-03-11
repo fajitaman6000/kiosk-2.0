@@ -163,11 +163,12 @@ class KioskApp:
             # Take screenshot
             screen = ImageGrab.grab()
 
-            # Resize for efficiency -  AGGRESSIVE reduction
-            max_width = 400  # Even smaller
-            ratio = max_width / screen.width
-            new_height = int(screen.height * ratio)
-            screen = screen.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            # Resize and rotate, fitting to admin interface
+            max_height = 300  # Example, adjust as needed based on your UI
+            screen = screen.rotate(90, expand=True)
+            ratio = max_height / screen.height
+            new_width = int(screen.width * ratio)
+            screen = screen.resize((new_width, max_height), Image.Resampling.LANCZOS)
 
             # Convert to JPEG and base64
             buf = io.BytesIO()
