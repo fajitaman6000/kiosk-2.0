@@ -3,14 +3,10 @@
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
-standby_prop, functioning similar to finishing_prop except solely to notify the gamemaster (needs testing)
-
 rebooter added to kiosk app
 
 ##############################################################################################################################
 # priority bugs
-
-standby audio plays infinitely
 
 video player performance abysmal
 
@@ -42,6 +38,7 @@ reset props, reset room (runs reset all + reset kiosk)
 ##############################################################################################################################
 # ambitious extra ideas:
 
+more specific standby audio
 log video solution usage to discourage excessive use
 make "reset kiosk" a reliable UI debugger somehow
 soundcheck logic kiosk side
@@ -53,7 +50,7 @@ hint count on THEIR side
 route sound to speaker placed in office instead of from headphones
 LLM translator call
 AI generated text hint based on room state
-walkie to lobby: room states for automatic standbys/room victory/out of time 
+announce to lobby: room states for automatic standbys/room victory/out of time 
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
 technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
