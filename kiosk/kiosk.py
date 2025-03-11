@@ -59,7 +59,7 @@ class KioskApp:
         
         self.start_time = None
         self.room_started = False
-        self.current_video_process = None  # Add this line
+        self.current_video_process = None
         self.time_exceeded_45 = False
         #print("[kiosk main]Initialized time_exceeded_45 flag to False")
         self.audio_manager = AudioManager(self)  # Pass the KioskApp instance

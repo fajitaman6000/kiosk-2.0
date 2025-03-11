@@ -912,7 +912,7 @@ def setup_stats_panel(interface_builder, computer_name):
         fg='black',
         bg='#E0E0E0',
         anchor='w',
-        justify='left'  # ADD THIS LINE
+        justify='left'
     )
     interface_builder.stats_elements['last_progress_label'].pack(side='top', pady=stats_panel_ypadding, fill='x')
 

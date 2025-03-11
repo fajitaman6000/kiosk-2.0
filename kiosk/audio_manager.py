@@ -1,6 +1,6 @@
 import pygame # type: ignore
 import os
-import time  # Add this import
+import time
 
 class AudioManager:
     def __init__(self, kiosk_app):

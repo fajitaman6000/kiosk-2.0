@@ -10,6 +10,8 @@ rebooter added to kiosk app
 ##############################################################################################################################
 # priority bugs
 
+standby audio plays infinitely
+
 video player performance abysmal
 
 hangup reliability: 
@@ -30,6 +32,8 @@ mqtt connections get crippled while running file sync
 
 ##############################################################################################################################
 # planned features: 
+
+kiosk relaunch after sync finish
 
 periodic setting of casino/morning after according to room?
 

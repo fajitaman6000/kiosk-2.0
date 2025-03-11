@@ -1253,7 +1253,7 @@ class AdminInterfaceBuilder:
         music_button = self.stats_elements.get('music_button')
         if music_button and music_button.winfo_exists():
             music_playing = stats.get('music_playing', False)
-            #print(f"[DEBUG] Raw stats music_playing value: {music_playing}")  # Add this debug line
+            #print(f"[DEBUG] Raw stats music_playing value: {music_playing}")
 
             if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
                 try:

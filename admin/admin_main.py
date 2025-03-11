@@ -3,7 +3,7 @@ from tkinter import ttk
 import traceback
 import sys
 from prop_control import PropControl
-import os  # Add this import
+import os
 
 from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
