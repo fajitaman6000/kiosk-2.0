@@ -181,7 +181,7 @@ class KioskApp:
                 'computer_name': self.computer_name,
                 'image_data': image_data
             })
-            print(f"[kiosk]Screenshot sent ({len(image_data)} bytes)")
+            #print(f"[kiosk]Screenshot sent ({len(image_data)} bytes)")
 
         except Exception as e:
             print(f"[kiosk]Error taking/sending screenshot: {e}")
