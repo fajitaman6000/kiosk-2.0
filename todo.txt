@@ -7,8 +7,6 @@ standby_prop, functioning similar to finishing_prop except solely to notify the 
 
 rebooter added to kiosk app
 
-rotate screenshot feed
-
 ##############################################################################################################################
 # priority bugs
 
