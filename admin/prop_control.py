@@ -83,6 +83,8 @@ class PropControl:
         self.last_prop_finished = {} # prop status strings
         self.flagged_props = {}  # room_number -> {prop_id: True/False}
         self.victory_sent = {}  # room_number -> bool
+        self.finish_sound_played = {}  # room_number -> bool ADDED FINISH TRACKING
+        self.standby_played = {} #standby tracking
 
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -537,6 +539,13 @@ class PropControl:
         self.victory_sent[room_number] = False
         print(f"[prop control] set victory sent false for room {room_number}")
 
+        # --- STANDBY STATE INITIALIZATION ---
+        if room_number not in self.standby_played:
+            self.standby_played[room_number] = False
+        # --- END STANDBY STATE INITIALIZATION ---
+        if room_number not in self.finish_sound_played:
+            self.finish_sound_played[room_number] = False
+
         if room_number in self.connection_states and hasattr(self, 'status_label'):
             try:
                 self.status_label.config(
@@ -643,9 +652,9 @@ class PropControl:
                 self.flagged_props[room_number][prop_id] = False
             
             # --- STANDBY PROP HANDLING ---
-            if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
-                    status == "Finished"):
-                self.play_standby_sound(room_number)
+            #if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
+                    #status == "Finished"):
+                #self.play_standby_sound(room_number)
             # --- END STANDBY PROP HANDLING ---
 
 
@@ -663,6 +672,7 @@ class PropControl:
 
     def play_standby_sound(self, room_number):
         """Plays the room-specific standby sound."""
+        print("[prop_control].play_standby_sound")
         if room_number not in self.ROOM_MAP:
             return
 
@@ -671,6 +681,11 @@ class PropControl:
         audio_manager = AdminAudioManager()  # Get the singleton instance
         audio_manager._load_sound(f"{room_name}_standby", sound_file)  # Ensure sound is loaded
         audio_manager.play_sound(f"{room_name}_standby")
+
+    def play_finish_sound(self, room_number):
+        """Plays the room-specific finish sound."""
+        audio_manager = AdminAudioManager()
+        audio_manager.play_sound("game_finish")
 
     def update_all_props_status(self, room_number):
         if room_number not in self.all_props:
@@ -683,6 +698,14 @@ class PropControl:
         timer_expired = False
         finishing_prop_offline = False # New flag
         is_standby = False
+        standby_prop_offline = False # flag for if a standby prop goes offline
+
+        # --- STANDBY STATE TRACKING ---
+        if room_number not in self.standby_played:
+            self.standby_played[room_number] = False
+        # --- END STANDBY STATE TRACKING ---
+        if room_number not in self.finish_sound_played:
+            self.finish_sound_played[room_number] = False
 
         for prop_id, prop_info in self.all_props[room_number].items():
             if 'info' not in prop_info:
@@ -696,6 +719,8 @@ class PropControl:
                 prop_info['info']['strStatus'] = "offline"
                 if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
                     finishing_prop_offline = True # Set the flag
+                if self.is_standby_prop(room_number, prop_info['info'].get('strName', '')):
+                    standby_prop_offline = True
 
 
             status = prop_info['info'].get('strStatus')
@@ -708,7 +733,7 @@ class PropControl:
                 is_finished = True
             
             # --- STANDBY PROP CHECK ---
-            if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
+            if (not standby_prop_offline and self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
                     status == "Finished"):
                 is_standby = True
             # --- END STANDBY PROP CHECK ---
@@ -716,7 +741,11 @@ class PropControl:
         # Handle finishing prop offline scenario
         if finishing_prop_offline:
             is_finished = False  # Ensure is_finished is False
-            self.reset_game_finish_state(room_number)
+            self.reset_game_finish_state(room_number) #now just handles prop control flag
+        
+        if standby_prop_offline:
+            is_standby = False
+            self.reset_standby_state(room_number) #now just resets the prop control flag
 
 
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
@@ -743,6 +772,18 @@ class PropControl:
                         print(f"[prop control.update_all_props_status]{room_name} timer expired")
                         self.app.interface_builder.start_auto_reset_timer(computer_name)
                 break  # Important: Only process for the assigned kiosk
+        
+        # --- MODIFIED STANDBY HANDLING ---
+        if is_standby and not self.standby_played[room_number]:
+            self.standby(room_number)
+            self.standby_played[room_number] = True  # Mark as played
+        # --- END MODIFIED STANDBY HANDLING ---
+
+        if is_finished and not self.finish_sound_played[room_number]:
+             self.play_finish_sound(room_number)
+             self.finish_sound_played[room_number] = True
+        elif not is_finished: # crucial to reset flag when appropriate
+             self.finish_sound_played[room_number] = False
 
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():
@@ -754,6 +795,19 @@ class PropControl:
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
             self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
+
+    def standby(self, room_number):
+        """Plays the room-specific standby sound."""
+        print(f"[prop control] standby for room {room_number}")
+        self.play_standby_sound(room_number)
+
+    def reset_standby_state(self, room_number):
+        """Reset the standby state for a room"""
+        #audio_manager = AdminAudioManager() #removed audio manager logic
+        #if room_number in audio_manager.sound_states:
+             #audio_manager.sound_states[room_number]['standby'] = False
+        if room_number in self.standby_played:
+            self.standby_played[room_number] = False
 
     def update_timer_status(self, room_number):
         """Update room status when timer changes"""
@@ -1355,11 +1409,14 @@ class PropControl:
         if room_number in self.victory_sent:
             self.victory_sent[room_number] = False
 
+        if room_number in self.finish_sound_played: #also reset prop control finish flag
+            self.finish_sound_played[room_number] = False
+
         # Kiosk highlight reset is now handled in update_all_props_status
 
-        audio_manager = AdminAudioManager()
-        if room_number in audio_manager.sound_states:
-            audio_manager.sound_states[room_number]['game_finish'] = False
+        #audio_manager = AdminAudioManager() #removed audio manager logic
+        #if room_number in audio_manager.sound_states:
+            #audio_manager.sound_states[room_number]['game_finish'] = False
 
     def update_kiosk_highlight(self, room_number, is_finished, is_activated, timer_expired=False):
         assigned_kiosk = None
@@ -1374,8 +1431,8 @@ class PropControl:
         try:
             kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
             audio_manager = AdminAudioManager()
-            audio_manager.handle_timer_expired(timer_expired, room_number)
-            audio_manager.handle_game_finish(is_finished, room_number)
+            #audio_manager.handle_timer_expired(timer_expired, room_number)
+            #audio_manager.handle_game_finish(is_finished, room_number)
 
             if timer_expired:
                 new_color = '#FFB6C1'
