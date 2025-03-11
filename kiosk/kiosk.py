@@ -154,8 +154,8 @@ class KioskApp:
         if self.is_closing:
             print("[kiosk]Screenshot send prevented: Kiosk is closing.")
             return
-        else:
-            print(f"[kiosk] is_closing = {self.is_closing}")
+        #else:
+            #print(f"[kiosk] is_closing = {self.is_closing}")
         try:
             from PIL import ImageGrab, Image
             import io, base64
@@ -164,14 +164,14 @@ class KioskApp:
             screen = ImageGrab.grab()
 
             # Resize for efficiency -  AGGRESSIVE reduction
-            max_width = 500  # Even smaller
+            max_width = 400  # Even smaller
             ratio = max_width / screen.width
             new_height = int(screen.height * ratio)
             screen = screen.resize((max_width, new_height), Image.Resampling.LANCZOS)
 
             # Convert to JPEG and base64
             buf = io.BytesIO()
-            screen.save(buf, format='JPEG', quality=50)  # Much lower quality
+            screen.save(buf, format='JPEG', quality=30)  # Much lower quality
             image_data = base64.b64encode(buf.getvalue()).decode()
 
             # Send message
