@@ -504,50 +504,39 @@ class AdminInterfaceBuilder:
         """
         Sends a command to play a sound on the specified kiosk
         Uses the app's network handler to broadcast the message
-        
+
         Args:
             computer_name (str): The target kiosk
             sound_name (str): The sound file to play, defaults to hint_received.mp3
         """
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'play_sound',
-                'computer_name': computer_name,
-                'sound_name': sound_name
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
+        self.app.network_handler.send_play_sound_command(computer_name, sound_name)
 
     def reset_kiosk(self, computer_name):
         """Reset all kiosk stats and state"""
         if computer_name not in self.app.kiosk_tracker.kiosk_stats:
             return
-            
+
         # Reset hints count locally
         self.app.kiosk_tracker.kiosk_stats[computer_name]['total_hints'] = 0
-        
-        # Reset and stop timer
+
+        # Reset and stop timer (local actions, combined with network command)
         self.app.network_handler.send_timer_command(computer_name, "set", 45)
         self.app.network_handler.send_timer_command(computer_name, "stop")
-        
+
+
         # Clear any pending help requests
         if computer_name in self.app.kiosk_tracker.help_requested:
             self.app.kiosk_tracker.help_requested.remove(computer_name)
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
-        
+
         # Stop GM assistance icon if it's blinking
         self.stop_gm_assistance_icon(computer_name)
-        
+
         # Send reset message through network handler
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'reset_kiosk',
-                'computer_name': computer_name
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
-        
+        self.app.network_handler.send_reset_kiosk_command(computer_name)
+
+
         # Force immediate UI update
         self.update_stats_display(computer_name)
 
@@ -558,7 +547,7 @@ class AdminInterfaceBuilder:
             minutes = int(self.stats_elements['time_entry'].get())
         except (ValueError, AttributeError):
             minutes = 45
-            
+
         self.app.network_handler.send_video_command(computer_name, video_type, minutes)
 
     def handle_intro_video_complete(self, computer_name):
@@ -575,14 +564,6 @@ class AdminInterfaceBuilder:
 
     def toggle_music(self, computer_name):
         """Sends a command to toggle music playback on the specified kiosk."""
-        # Send toggle music command through network handler
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'toggle_music_command',
-                'computer_name': computer_name
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
 
         # Assume music will be toggled on the kiosk - update icon immediately
         # (The actual state will be confirmed and corrected by the next broadcast message)
@@ -601,13 +582,15 @@ class AdminInterfaceBuilder:
                 except tk.TclError:
                     print("[interface builder]Music button was destroyed")
 
+        self.app.network_handler.send_toggle_music_command(computer_name)
+
     def toggle_timer(self, computer_name):
         if 'timer_button' not in self.stats_elements:
             return
-            
+
         timer_button = self.stats_elements['timer_button']
         is_running = timer_button.cget('text') == "Stop Room"
-        
+
         # Switch icons before sending command
         if hasattr(timer_button, 'play_icon') and hasattr(timer_button, 'stop_icon'):
             if is_running:
@@ -623,7 +606,7 @@ class AdminInterfaceBuilder:
         else:
             # Fallback to text-only if icons aren't available
             timer_button.config(text="Start Room" if is_running else "Stop Room")
-        
+
         command = "stop" if is_running else "start"
         self.app.network_handler.send_timer_command(computer_name, command)
 
@@ -662,14 +645,14 @@ class AdminInterfaceBuilder:
                 if computer_name in self.app.kiosk_tracker.kiosk_stats:
                     stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
                     current_seconds = stats.get('timer_time', 0)
-                    
+
                     # Calculate new time in seconds (convert minutes to seconds)
                     new_seconds = current_seconds - (minutes_to_reduce * 60)
-                    
+
                     # Prevent negative time
                     if new_seconds < 0:
                         new_seconds = 0
-                    
+
                     # Convert total seconds back to minutes for the command
                     new_minutes = new_seconds / 60
                     # Send set command with new total time, keeping decimal precision
@@ -789,14 +772,7 @@ class AdminInterfaceBuilder:
 
     def skip_video(self, computer_name):
         """Skip any currently playing videos on the specified kiosk"""
-        # Send stop video command to kiosk
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'stop_video_command',
-                'computer_name': computer_name
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
+        self.app.network_handler.send_stop_video_command(computer_name)
 
     def remove_kiosk(self, computer_name):
         """Remove a kiosk from the UI"""
@@ -1377,99 +1353,83 @@ class AdminInterfaceBuilder:
         save_manual_hint(self)
 
     def clear_kiosk_hints(self, computer_name):
-        """Send command to clear hints on specified kiosk"""
-        if computer_name in self.app.kiosk_tracker.kiosk_stats:
-            self.app.network_handler.socket.sendto(
-                json.dumps({
-                    'type': 'clear_hints',
-                    'computer_name': computer_name
-                }).encode(),
-                ('255.255.255.255', 12346)
-            )
+      self.app.network_handler.send_clear_hints_command(computer_name)
 
     def send_hint(self, computer_name, hint_data=None):
         """Send a hint to the selected kiosk."""
         # Validate kiosk assignment
         if not computer_name in self.app.kiosk_tracker.kiosk_assignments:
             return
-            
+
         if hint_data is None:
             # Using manual entry
             message_text = self.stats_elements['msg_entry'].get('1.0', 'end-1c') if self.stats_elements['msg_entry'] else ""
             if not message_text and not self.current_hint_image:
                 return
-            
+
             hint_data = {
                 'text': message_text,
                 'image_path': self.current_hint_image if self.current_hint_image else None
             }
-        
+
         # Get room number
         room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-        
+
         # Send the hint
         self.app.network_handler.send_hint(room_number, hint_data)
-        
+
         # Stop GM assistance icon if it's blinking
         self.stop_gm_assistance_icon(computer_name)
-        
+
         # Clear any pending help requests
         if computer_name in self.app.kiosk_tracker.help_requested:
             self.app.kiosk_tracker.help_requested.remove(computer_name)
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
-            
+
         # Clear ALL hint entry fields regardless of which method was used
         if self.stats_elements['msg_entry']:
             self.stats_elements['msg_entry'].delete('1.0', 'end')
-        
+
         if self.stats_elements['image_preview']:
             self.stats_elements['image_preview'].configure(image='')
             self.stats_elements['image_preview'].image = None
 
     def play_solution_video(self, computer_name):
-        """Play a solution video for the selected prop"""
-        if not self.stats_elements['solution_prop'].get():
-            return
-            
-        # Extract the display name from the dropdown value
-        # Format is "Display Name (original_name)"
-        display_name = self.stats_elements['solution_prop'].get().split('(')[0].strip()
-        
-        # Convert display name to lowercase and replace spaces with underscores
-        video_filename = display_name.lower().replace(' ', '_')
-        
-        # Get the room folder name based on room number
-        room_folders = {
-            3: "wizard",
-            1: "casino",
-            2: "ma",
-            5: "haunted",
-            4: "zombie",
-            6: "atlantis",
-            7: "time"
-        }
-        
-        room_num = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
-        if room_num and room_num in room_folders:
-            room_folder = room_folders[room_num]
-            
-            # Clear help request status if it exists
-            if computer_name in self.app.kiosk_tracker.help_requested:
-                self.app.kiosk_tracker.help_requested.remove(computer_name)
-                if computer_name in self.connected_kiosks:
-                    self.connected_kiosks[computer_name]['help_label'].config(text="")
-            
-            # Send video command to kiosk
-            self.app.network_handler.socket.sendto(
-                json.dumps({
-                    'type': 'solution_video',
-                    'computer_name': computer_name,
-                    'room_folder': room_folder,
-                    'video_filename': video_filename
-                }).encode(),
-                ('255.255.255.255', 12346)
-            )
+      """Play a solution video for the selected prop"""
+      if not self.stats_elements['solution_prop'].get():
+          return
+
+      # Extract the display name from the dropdown value
+      # Format is "Display Name (original_name)"
+      display_name = self.stats_elements['solution_prop'].get().split('(')[0].strip()
+
+      # Convert display name to lowercase and replace spaces with underscores
+      video_filename = display_name.lower().replace(' ', '_')
+
+      # Get the room folder name based on room number
+      room_folders = {
+          3: "wizard",
+          1: "casino",
+          2: "ma",
+          5: "haunted",
+          4: "zombie",
+          6: "atlantis",
+          7: "time"
+      }
+
+      room_num = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+      if room_num and room_num in room_folders:
+          room_folder = room_folders[room_num]
+
+          # Clear help request status if it exists
+          if computer_name in self.app.kiosk_tracker.help_requested:
+              self.app.kiosk_tracker.help_requested.remove(computer_name)
+              if computer_name in self.connected_kiosks:
+                  self.connected_kiosks[computer_name]['help_label'].config(text="")
+
+          # Send video command to kiosk
+          self.app.network_handler.send_solution_video_command(computer_name, room_folder, video_filename)
 
     def cleanup(self):
         """Clean up resources before closing"""
@@ -1536,14 +1496,6 @@ class AdminInterfaceBuilder:
 
     def toggle_auto_start(self, computer_name):
         """Sends a command to toggle auto-start on the specified kiosk."""
-        # Send toggle music command through network handler
-        self.app.network_handler.socket.sendto(
-            json.dumps({
-                'type': 'toggle_auto_start',
-                'computer_name': computer_name
-            }).encode(),
-            ('255.255.255.255', 12346)
-        )
 
         # Assume auto_start will be toggled on the kiosk - update state immediately
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
@@ -1552,6 +1504,8 @@ class AdminInterfaceBuilder:
 
             if 'auto_start_check' in self.stats_elements and self.stats_elements['auto_start_check']:
                 self.stats_elements['auto_start_check'].config(text="[✓] Auto-Start" if not current_status else "[  ] Auto-Start")
+
+        self.app.network_handler.send_toggle_auto_start_command(computer_name)
 
     def toggle_speaking(self, computer_name):
         """Toggle microphone for speaking to kiosk"""
