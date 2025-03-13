@@ -736,12 +736,20 @@ class PropControl:
             if (not standby_prop_offline and self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
                     status == "Finished"):
                 is_standby = True
-            # --- END STANDBY PROP CHECK ---
 
-        # Handle finishing prop offline scenario
+            # Handle prop entering non-finished status after finish
+            if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
+                and is_finished == True
+                and not finishing_prop_offline
+                and status != "Finished"):
+                    print("[prop_control] previously finished finishing prop entered state other than offline, resetting game finish status")
+                    self.reset_game_finish_state(room_number)
+
+        # Handle finishing prop offline
         if finishing_prop_offline:
             is_finished = False  # Ensure is_finished is False
             self.reset_game_finish_state(room_number) #now just handles prop control flag
+
         
         if standby_prop_offline:
             is_standby = False
@@ -1406,6 +1414,7 @@ class PropControl:
             pass
 
     def reset_game_finish_state(self, room_number):
+        print("[prop control]resetted game finish state")
         if room_number in self.victory_sent:
             self.victory_sent[room_number] = False
 
@@ -1463,17 +1472,9 @@ class PropControl:
     def _send_victory_message(self, room_number, computer_name):
         """Sends a victory message to the kiosk (internal use)."""
         if hasattr(self.app, 'network_handler') and self.app.network_handler:
-            message = {
-                'type': 'victory',
-                'room_number': room_number,
-                'computer_name': computer_name
-            }
-            try:
-                encoded_message = json.dumps(message).encode()
-                self.app.network_handler.socket.sendto(encoded_message, ('255.255.255.255', 12346))
-                print(f"[prop control]Victory message sent to room {room_number} ({computer_name})")
-            except Exception as e:
-                print(f"[prop control]Failed to send victory message: {e}")
+            # Use the network handler
+            self.app.network_handler.send_victory_message(room_number, computer_name) # now correctly handled
+            self.victory_sent[room_number] = True # set prop control flag
         else:
             print("[prop control]Network handler not available.")
 

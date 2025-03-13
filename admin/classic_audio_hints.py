@@ -216,22 +216,15 @@ class ClassicAudioHints:
         """Send the selected audio hint and return to list view"""
         if self.current_audio_file and os.path.exists(self.current_audio_file):
             print(f"[classic audio hints]Sending audio hint: {self.current_audio_file}")
-            
+
             # Construct relative audio path
             relative_path = os.path.relpath(self.current_audio_file, start=self.audio_root)
-            
-            # Construct audio_hint message
-            message = {
-                'type': 'audio_hint',
-                'computer_name': self.app.interface_builder.selected_kiosk,
-                'audio_path': relative_path  # Relative path from the hint_audio_files folder
-            }
-            
+
             # Send audio hint using the app's network handler
-            self.app.network_handler.socket.sendto(
-               json.dumps(message).encode(),
-               ('255.255.255.255', 12346)
-            )
+            computer_name = self.app.interface_builder.selected_kiosk
+            if computer_name: # check to make sure there is even a selected computer
+              self.app.network_handler.send_audio_hint_command(computer_name, relative_path)
+
             self.show_lists()
 
     def select_prop_by_name(self, prop_name):

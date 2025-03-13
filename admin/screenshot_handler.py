@@ -20,14 +20,8 @@ class ScreenshotHandler:
             return
 
         if self.app.interface_builder.selected_kiosk:
-            message = {
-                'type': 'request_screenshot',
-                'computer_name': self.app.interface_builder.selected_kiosk
-            }
-            self.app.network_handler.socket.sendto(
-                json.dumps(message).encode(),
-                ('255.255.255.255', 12346)
-            )
+            # Use the network handler's method
+            self.app.network_handler.send_request_screenshot_command(self.app.interface_builder.selected_kiosk)
             self.last_request_time = current_time
             #print(f"[screenshot handler] Requested screenshot from {self.app.interface_builder.selected_kiosk}")
 

@@ -162,7 +162,7 @@ class NetworkBroadcastHandler:
                     received_hash = msg.get('request_hash')
                     if received_hash in self.pending_acknowledgments:
                         del self.pending_acknowledgments[received_hash]
-                        print(f"[network broadcast handler]Acknowledgment received for hash: {received_hash}")
+                        #print(f"[network broadcast handler]Acknowledgment received for hash: {received_hash}")
                     else:
                         print(f"[network broadcast handler]Received ack for unknown hash: {received_hash} (likely delayed)")
 

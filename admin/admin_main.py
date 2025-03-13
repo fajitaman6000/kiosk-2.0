@@ -128,13 +128,7 @@ try:
             if self.interface_builder.selected_kiosk:
                 computer_name = self.interface_builder.selected_kiosk
                 # Send soundcheck command through network handler
-                self.network_handler.socket.sendto(
-                    json.dumps({
-                        'type': 'soundcheck',
-                        'computer_name': computer_name
-                    }).encode(),
-                    ('255.255.255.255', 12346)
-                )
+                self.network_handler.send_soundcheck_command(computer_name)  # Use handler
             else:
                 print("[main] No kiosk selected for soundcheck.")
 
