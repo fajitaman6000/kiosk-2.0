@@ -15,7 +15,6 @@ hangup reliability:
     kiosk doesn't retry/add itself back to queue after failed sync attempt
 
 time machine camera loading issue
-wizard not receiving sync messages(?) (issue non reproducible; perhaps all messages need to be "copied" to resolve this issue)
 
 ##############################################################################################################################
 # known low priority bugs
