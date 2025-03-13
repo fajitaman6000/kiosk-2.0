@@ -516,7 +516,7 @@ class Overlay:
                             cls.hide_gm_assistance()
                             break
                         elif item == cls._gm_assistance_overlay['no_rect'] or item == cls._gm_assistance_overlay['no_button']:
-                            print("[qt overlay] No button clicked - GM assistance declined")
+                            print("[qt overlay] Player clicked \"No\" - In-room assistance declined")
                             # Hide the overlay after declining
                             cls.hide_gm_assistance()
                             break

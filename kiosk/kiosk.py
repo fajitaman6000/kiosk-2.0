@@ -31,6 +31,7 @@ class KioskApp:
         self.assigned_room = None
         self.times_touched_screen = 0
         self.is_closing = False
+        self.needs_restart = False
 
         self.root = tk.Tk()
         #self.root.title(f"Kiosk App: {self.computer_name}")\

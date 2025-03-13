@@ -108,8 +108,19 @@ class NetworkBroadcastHandler:
                     sync_id = msg.get('sync_id')
                     status = msg.get('status')
                     print(f"[network broadcast handler] Received sync confirmation from {computer_name} - Status: {status}")
-                    if hasattr(self.app, 'sync_manager'):
-                        self.app.sync_manager.handle_sync_confirmation(computer_name, sync_id)
+                    # if hasattr(self.app, 'sync_manager'):  # sync_manager no longer handles confirmations
+                    #     self.app.sync_manager.handle_sync_confirmation(computer_name, sync_id)
+                elif msg['type'] == 'sync_complete':  # NEW: Handle sync completion
+                    computer_name = msg['computer_name']
+                    print(f"[network broadcast handler] Received sync_complete from {computer_name}")
+                    # You might want to log this, update UI, etc.  No need to remove
+                    # anything from pending_acknowledgments; the 'ack' already did that.
+
+                elif msg['type'] == 'sync_failed':  # NEW: Handle sync failure
+                    computer_name = msg.get('computer_name')
+                    reason = msg.get('reason', 'Unknown')
+                    print(f"[network broadcast handler] Received sync_failed from {computer_name}, reason: {reason}")
+                    # Log this, update UI to show an error, potentially retry, etc.
                 
                 elif msg['type'] == 'help_request':
                     computer_name = msg['computer_name']

@@ -70,7 +70,8 @@ class AdminInterfaceBuilder:
             self.reset_kiosk(computer_name)
             if computer_name in self.auto_reset_timer_ids:
                 del self.auto_reset_timer_ids[computer_name]
-            self.stats_elements['auto_reset_label'].config(text=" ")
+            if self.stats_elements['auto_reset_label']:
+                self.stats_elements['auto_reset_label'].config(text=" ")
 
         # Schedule the reset_kiosk call and store the after_id
         after_id = self.app.root.after(duration*1000, reset_and_clear)

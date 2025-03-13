@@ -138,7 +138,8 @@ class AdminSyncManager:
         """Send a sync message to a specific kiosk."""
         if computer_name not in self.kiosk_ips:
             print(f"[admin_sync_manager] Warning: No IP found for {computer_name}")
-            return False
+            #  Even without an IP, we can still use send_message_with_ack
+            #  It will use the broadcast address.
 
         local_ip = self._get_local_ip()
         if not local_ip:
@@ -151,7 +152,8 @@ class AdminSyncManager:
             'admin_ip': local_ip,
             'sync_id': str(time.time())  # Add unique sync ID
         }
-        self.app.network_handler.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        # Use send_message_with_ack for reliable delivery
+        self.app.network_handler.send_message_with_ack(message, computer_name)
         print(f"[admin_sync_manager] Message sent to kiosk: {computer_name} with admin IP: {local_ip}")
         return True
 
@@ -175,8 +177,8 @@ class AdminSyncManager:
 
     def handle_sync_button(self):
         """Handle the button click to start the sync process."""
-        if not self.sync_thread or not self.sync_thread.is_alive():
-            self.start()
+        # if not self.sync_thread or not self.sync_thread.is_alive(): # Removed
+        #     self.start() # Removed
         
         if not self._get_kiosk_ips():
             print("[admin_sync_manager] No kiosks found")
@@ -193,17 +195,17 @@ class AdminSyncManager:
             return
 
         # Initialize sync status for all connected kiosks, not just ones with IPs
-        self.sync_status = {name: {'sent': time.time(), 'confirmed': False} 
-                           for name in self.app.interface_builder.connected_kiosks.keys()}
+        # self.sync_status = {name: {'sent': time.time(), 'confirmed': False}  # Removed
+        #                    for name in self.app.interface_builder.connected_kiosks.keys()} # Removed
         self._send_message_to_kiosks()
 
-    def handle_sync_confirmation(self, computer_name, sync_id):
+    def handle_sync_confirmation(self, computer_name, sync_id): # Deprecated
         """Handle sync confirmation from a kiosk."""
         if computer_name in self.sync_status:
             self.sync_status[computer_name]['confirmed'] = True
             print(f"[admin_sync_manager] Sync confirmed for kiosk: {computer_name}")
 
-    def _background_sync_handler(self):
+    def _background_sync_handler(self): # Deprecated
         """Monitor sync status and resend if needed."""
         while self.running:
             current_time = time.time()

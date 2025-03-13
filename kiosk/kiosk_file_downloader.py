@@ -299,6 +299,30 @@ class KioskFileDownloader:
             return True
         return False
 
+    def handle_sync_complete(self):
+        """Handle successful file synchronization."""
+        print("[kiosk_file_downloader] File sync complete!")
+        if self.sync_success:
+            # Send message to admin indicating sync complete
+            complete_msg = {
+                'type': 'sync_complete', # new message type
+                'computer_name': self.kiosk_app.computer_name,
+            }
+            self.kiosk_app.network.send_message(complete_msg)
+            self.kiosk_app.needs_restart = True
+            print("[kiosk_file_downloader] Restart required after sync.")
+            #self.kiosk_app.restart_kiosk()
+        else:
+            # Potentially handle partial syncs or errors
+            print("[kiosk_file_downloader] Sync was not fully successful")
+            # Send a message for sync failure
+            complete_msg = {
+                'type': 'sync_failed', # new message type
+                'computer_name': self.kiosk_app.computer_name,
+                'reason': 'unknown' # TODO: get reason from internal state
+            }
+            self.kiosk_app.network.send_message(complete_msg)
+
     def _save_file(self, file_path, file_data):
         """Save a single file to disk."""
         try:
