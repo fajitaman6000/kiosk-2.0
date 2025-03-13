@@ -45,8 +45,14 @@ class MessageHandler:
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
+
         if (msg['type'] != 'request_screenshot'):
             print(f"[message handler]Received message: {msg}")
+
+        request_hash = msg.get('request_hash')
+        if request_hash:
+            self.send_acknowledgment(request_hash)
+
         try:
             if msg['type'] == SYNC_MESSAGE_TYPE:
                 # Only process sync message if it's meant for this kiosk or is a broadcast message
@@ -362,6 +368,15 @@ class MessageHandler:
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
             print(f"[message handler][CRITICAL ERROR] Error message: {str(e)}")
             traceback.print_exc()
+
+    def send_acknowledgment(self, request_hash):
+        """Sends an acknowledgment message."""
+        ack_message = {
+            'type': 'ack',
+            'request_hash': request_hash
+        }
+        self.kiosk_app.network.send_message(ack_message)  # Use the kiosk's network
+        print(f"[message handler]Sent acknowledgment for hash: {request_hash}")
 
     def handle_stop_video_command(self):
         """Handles the 'stop_video_command'."""

@@ -104,6 +104,14 @@ try:
             # Set up window close handler
             self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
+            self.root.after(1000, self.resend_check_timer)  # Check every second
+
+        def resend_check_timer(self):
+            """Timer callback to resend unacknowledged messages."""
+            if hasattr(self.network_handler, 'resend_unacknowledged_messages'):
+                self.network_handler.resend_unacknowledged_messages()
+            self.root.after(1000, self.resend_check_timer)  # Reschedule
+
         def handle_sync_button_click(self):
             """Handle sync button click with password protection"""
             def on_success():

@@ -2,12 +2,16 @@
 import socket
 import json
 from threading import Thread
+import uuid
+import time
 
 class NetworkBroadcastHandler:
     def __init__(self, app):
         self.app = app
         self.last_message = {}  # Initialize message cache
         self.running = True     # Add running flag
+        self.pending_acknowledgments = {}  # {request_hash: (message, timestamp, computer_name, message_type)}
+        self.ACK_TIMEOUT = 4  # seconds
         
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -42,6 +46,27 @@ class NetworkBroadcastHandler:
     def start(self):
         self.listen_thread = Thread(target=self.listen_for_messages, daemon=True)
         self.listen_thread.start()
+
+    def send_message_with_ack(self, message, computer_name):
+        """Sends a message and tracks its acknowledgment."""
+        request_hash = str(uuid.uuid4())
+        message['request_hash'] = request_hash
+        self.pending_acknowledgments[request_hash] = (message, time.time(), computer_name, message['type'])
+        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        print(f"[network broadcast handler]Sent message with hash {request_hash}: {message}")
+
+    def resend_unacknowledged_messages(self):
+        """Checks for and resends unacknowledged messages."""
+        now = time.time()
+        for request_hash, (original_message, timestamp, computer_name, message_type) in list(self.pending_acknowledgments.items()):
+            if now - timestamp > self.ACK_TIMEOUT:
+                print(f"[network broadcast handler]Resending message (type: {message_type}) to {computer_name} due to timeout. Original hash: {request_hash}")
+                # Generate a NEW request hash for the resent message
+                new_request_hash = str(uuid.uuid4())
+                original_message['request_hash'] = new_request_hash  # Update the message
+                self.pending_acknowledgments[new_request_hash] = (original_message, time.time(), computer_name, message_type)
+                del self.pending_acknowledgments[request_hash] # Remove the old entry
+                self.socket.sendto(json.dumps(original_message).encode(), ('255.255.255.255', 12346))
         
     def listen_for_messages(self):
         print("[network broadcast handler]Started listening for kiosks...")
@@ -121,22 +146,20 @@ class NetworkBroadcastHandler:
                         # Pass the screenshot to the handler
                         if hasattr(self.app, 'screenshot_handler'):
                             self.app.screenshot_handler.handle_screenshot(computer_name, image_data)
+
+                elif msg['type'] == 'ack':
+                    received_hash = msg.get('request_hash')
+                    if received_hash in self.pending_acknowledgments:
+                        del self.pending_acknowledgments[received_hash]
+                        print(f"[network broadcast handler]Acknowledgment received for hash: {received_hash}")
+                    else:
+                        print(f"[network broadcast handler]Received ack for unknown hash: {received_hash} (likely delayed)")
                             
             except Exception as e:
                 if self.running:
                     print(f"[network broadcast handler]Error in listen_for_messages: {e}")
-                
+
     def send_hint(self, room_number, hint_data):
-        """
-        Send a hint to a specific room.
-        
-        Args:
-            room_number (int): The room number to send to
-            hint_data (dict): Dictionary containing 'text' and optional 'image_path' keys
-        """
-        print("[network broadcast handler]=== Sending Hint ===")
-        
-        # Construct the message
         message = {
             'type': 'hint',
             'room': room_number,
@@ -144,30 +167,24 @@ class NetworkBroadcastHandler:
             'has_image': bool(hint_data.get('image_path')),
             'image_path': hint_data.get('image_path')
         }
-        
-        print(f"[network broadcast handler]Sending hint message with text: {message['text']}")
-        if message['has_image']:
-            print(f"[network broadcast handler]Including image path: {message['image_path']}")
-        
-        # Convert to JSON and send
-        try:
-            encoded_message = json.dumps(message).encode()
-            print("[network broadcast handler]Sending hint message...")
-            self.socket.sendto(encoded_message, ('255.255.255.255', 12346))
-            print(f"[network broadcast handler]Hint sent to room {room_number}")
-            
-        except Exception as e:
-            print(f"[network broadcast handler]Failed to send hint: {e}")
-            import traceback
-            traceback.print_exc()
-        
+        #Find the computer name to send to
+        computer_name = None
+        for k, v in self.app.kiosk_tracker.kiosk_assignments.items():
+            if v == room_number:
+                computer_name = k
+        if computer_name:
+            self.send_message_with_ack(message, computer_name)
+        else:
+            print(f"[network broadcast handler]Could not determine computer to send to (room {room_number}).")
+            #still send, just don't track
+                
     def send_room_assignment(self, computer_name, room_number):
         message = {
             'type': 'room_assignment',
             'room': room_number,
             'computer_name': computer_name
         }
-        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        self.send_message_with_ack(message, computer_name)
 
     def send_timer_command(self, computer_name, command, minutes=None):
         message = {
@@ -177,7 +194,7 @@ class NetworkBroadcastHandler:
         }
         if minutes is not None:
             message['minutes'] = minutes
-        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        self.send_message_with_ack(message, computer_name)
 
     def send_victory_message(self, room_number, computer_name):
         """Send a victory message."""
@@ -186,7 +203,7 @@ class NetworkBroadcastHandler:
             'room_number': room_number,
             'computer_name': computer_name
         }
-        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        self.send_message_with_ack(message, computer_name)
 
     def send_video_command(self, computer_name, video_type, minutes):
         message = {
@@ -195,7 +212,7 @@ class NetworkBroadcastHandler:
             'video_type': video_type,
             'minutes': minutes
         }
-        self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
+        self.send_message_with_ack(message, computer_name)
     
     def send_reboot_signal(self, computer_name):
         if computer_name not in self.app.kiosk_tracker.kiosk_assignments:
@@ -213,3 +230,84 @@ class NetworkBroadcastHandler:
             print(f"[network broadcast handler]Reboot signal sent to {computer_name} (Room {room_number}, IP: {target_ip})")
         except Exception as e:
             print(f"[network broadcast handler]Failed to send reboot signal: {e}")
+
+    def send_soundcheck_command(self, computer_name):
+        message = {
+                'type': 'soundcheck',
+                'computer_name': computer_name
+            }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_clear_hints_command(self, computer_name):
+        message = {
+            'type': 'clear_hints',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+
+    def send_play_sound_command(self, computer_name, sound_name):
+        message = {
+            'type': 'play_sound',
+            'computer_name': computer_name,
+            'sound_name': sound_name
+        }
+        self.send_message_with_ack(message, computer_name)
+
+    def send_audio_hint_command(self, computer_name, audio_path):
+        message = {
+            'type': 'audio_hint',
+            'computer_name': computer_name,
+            'audio_path': audio_path
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_solution_video_command(self, computer_name, room_folder, video_filename):
+        message = {
+            'type': 'solution_video',
+            'computer_name': computer_name,
+            'room_folder': room_folder,
+            'video_filename': video_filename
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_reset_kiosk_command(self, computer_name):
+        message = {
+            'type': 'reset_kiosk',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+
+    def send_toggle_music_command(self, computer_name):
+        message = {
+            'type': 'toggle_music_command',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_stop_video_command(self, computer_name):
+        message = {
+            'type': 'stop_video_command',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_toggle_auto_start_command(self, computer_name):
+        message = {
+            'type': 'toggle_auto_start',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_offer_assistance_command(self, computer_name):
+        message = {
+            'type': 'offer_assistance',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
+    
+    def send_request_screenshot_command(self, computer_name):
+        message = {
+            'type': 'request_screenshot',
+            'computer_name': computer_name
+        }
+        self.send_message_with_ack(message, computer_name)
