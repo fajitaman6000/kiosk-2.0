@@ -8,6 +8,9 @@ rebooter added to kiosk app
 ##############################################################################################################################
 # priority bugs
 
+seemingly a lack of "received no acknowledgement of xyz hash"
+current video player iteration has no audio sync
+
 video player performance abysmal
 
 hangup reliability: 
@@ -27,6 +30,8 @@ mqtt connections get crippled while running file sync
 
 ##############################################################################################################################
 # planned features: 
+
+xyz finished their game (instead of generic victory sound)
 
 kiosk relaunch after sync finish
 
