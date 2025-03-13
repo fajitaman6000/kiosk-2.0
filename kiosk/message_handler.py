@@ -376,7 +376,7 @@ class MessageHandler:
             'request_hash': request_hash
         }
         self.kiosk_app.network.send_message(ack_message)  # Use the kiosk's network
-        print(f"[message handler]Sent acknowledgment for hash: {request_hash}")
+        #print(f"[message handler]Sent acknowledgment for hash: {request_hash}")
 
     def handle_stop_video_command(self):
         """Handles the 'stop_video_command'."""

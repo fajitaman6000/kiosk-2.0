@@ -739,16 +739,17 @@ class PropControl:
 
             # Handle prop entering non-finished status after finish
             if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
-                and is_finished == True
                 and not finishing_prop_offline
                 and status != "Finished"):
+                if (room_number in self.victory_sent and self.victory_sent[room_number] == True) or (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
                     print("[prop_control] previously finished finishing prop entered state other than offline, resetting game finish status")
                     self.reset_game_finish_state(room_number)
 
         # Handle finishing prop offline
         if finishing_prop_offline:
             is_finished = False  # Ensure is_finished is False
-            self.reset_game_finish_state(room_number) #now just handles prop control flag
+            if (room_number in self.victory_sent and self.victory_sent[room_number] == True) or (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
+                    self.reset_game_finish_state(room_number)
 
         
         if standby_prop_offline:

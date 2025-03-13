@@ -53,7 +53,7 @@ class NetworkBroadcastHandler:
         message['request_hash'] = request_hash
         self.pending_acknowledgments[request_hash] = (message, time.time(), computer_name, message['type'])
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
-        print(f"[network broadcast handler]Sent message with hash {request_hash}: {message}")
+        #print(f"[network broadcast handler]Sent message with hash {request_hash}: {message}")
 
     def resend_unacknowledged_messages(self):
         """Checks for and resends unacknowledged messages."""
