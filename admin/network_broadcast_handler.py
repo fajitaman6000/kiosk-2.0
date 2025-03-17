@@ -10,7 +10,7 @@ class NetworkBroadcastHandler:
         self.app = app
         self.last_message = {}  # Initialize message cache
         self.running = True     # Add running flag
-        self.pending_acknowledgments = {}  # {request_hash: (message, timestamp, computer_name, message_type)}
+        self.pending_acknowledgments = {}  # {(computer_name, message_type): {'hashes': {hash1, ...}, 'message': message, 'timestamp': timestamp}}
         self.ACK_TIMEOUT = 4  # seconds
 
         try:
@@ -51,22 +51,33 @@ class NetworkBroadcastHandler:
         """Sends a message and tracks its acknowledgment."""
         request_hash = str(uuid.uuid4())
         message['request_hash'] = request_hash
-        self.pending_acknowledgments[request_hash] = (message, time.time(), computer_name, message['type'])
+        message_type = message['type']
+        key = (computer_name, message_type)
+
+        if key in self.pending_acknowledgments:
+            self.pending_acknowledgments[key]['hashes'].add(request_hash)
+        else:
+            self.pending_acknowledgments[key] = {
+                'hashes': {request_hash},
+                'message': message,
+                'timestamp': time.time()
+            }
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
-        #print(f"[network broadcast handler]Sent message with hash {request_hash}: {message}")
+        #print(f"[network broadcast handler]Sent message with hash {request_hash}: {message} to {computer_name}")
 
     def resend_unacknowledged_messages(self):
         """Checks for and resends unacknowledged messages."""
         now = time.time()
-        for request_hash, (original_message, timestamp, computer_name, message_type) in list(self.pending_acknowledgments.items()):
-            if now - timestamp > self.ACK_TIMEOUT:
-                print(f"[network broadcast handler]Resending message (type: {message_type}) to {computer_name} due to timeout. Original hash: {request_hash}")
+        for key, data in list(self.pending_acknowledgments.items()):  # Iterate through (computer_name, message_type)
+            computer_name, message_type = key
+            if now - data['timestamp'] > self.ACK_TIMEOUT:
+                print(f"[network broadcast handler]Resending message (type: {message_type}) to {computer_name} due to timeout.  Original hashes: {data['hashes']}")
                 # Generate a NEW request hash for the resent message
                 new_request_hash = str(uuid.uuid4())
-                original_message['request_hash'] = new_request_hash  # Update the message
-                self.pending_acknowledgments[new_request_hash] = (original_message, time.time(), computer_name, message_type)
-                del self.pending_acknowledgments[request_hash] # Remove the old entry
-                self.socket.sendto(json.dumps(original_message).encode(), ('255.255.255.255', 12346))
+                data['hashes'].add(new_request_hash)
+                data['message']['request_hash'] = new_request_hash  # Update the stored message
+                data['timestamp'] = now #update timestamp
+                self.socket.sendto(json.dumps(data['message']).encode(), ('255.255.255.255', 12346))
 
     def listen_for_messages(self):
         print("[network broadcast handler]Started listening for kiosks...")
@@ -160,10 +171,15 @@ class NetworkBroadcastHandler:
 
                 elif msg['type'] == 'ack':
                     received_hash = msg.get('request_hash')
-                    if received_hash in self.pending_acknowledgments:
-                        del self.pending_acknowledgments[received_hash]
-                        #print(f"[network broadcast handler]Acknowledgment received for hash: {received_hash}")
-                    else:
+                    # Iterate through ALL pending acknowledgments
+                    for key, data in list(self.pending_acknowledgments.items()):
+                        if received_hash in data['hashes']:
+                            data['hashes'].remove(received_hash)
+                            #print(f"[network broadcast handler]Acknowledgment received for hash: {received_hash} for {key}")
+                            if not data['hashes']:  # If the set is empty, remove the entry
+                                del self.pending_acknowledgments[key]
+                            break  # Important: Exit the inner loop once a match is found
+                    else: #for...else, runs if the inner loop never hit a 'break'
                         print(f"[network broadcast handler]Received ack for unknown hash: {received_hash} (likely delayed)")
 
             except Exception as e:

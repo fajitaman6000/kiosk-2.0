@@ -465,23 +465,27 @@ class PropControl:
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
         if room_number == self.current_room:
             return
-        
+
         # Special handling for 1<->2 switch (CASINO<->MA)
         if (self.current_room in [1, 2] and room_number in [1, 2]):
             print(f"[prop control]Switching between rooms 1 and 2; skipping connection refresh.")
             # View change only
             self.current_room = room_number
-            
+
             # Clear UI (except prop section)
             for widget in self.special_frame.winfo_children():
                 widget.destroy()
 
             self.setup_special_buttons(room_number)
-            
-            # Update the prop names/view based on room number
+
+            # Update the prop names/view based on room number AND re-sort
             if room_number in self.all_props:
-              for prop_id, prop_data in self.all_props[room_number].items():
-                  self.update_prop_ui_elements(prop_id, prop_data['info']) # Update only the UI elements
+                for prop_id, prop_data in self.all_props[room_number].items():
+                    self.update_prop_ui_elements(prop_id, prop_data['info'])  # Update only the UI elements
+
+                # Re-sort props after updating UI
+                self.sort_and_repack_props()
+
 
             if room_number in self.connection_states and hasattr(self, 'status_label'):
                 try:
@@ -493,21 +497,21 @@ class PropControl:
                     print("[prop control]Status label was destroyed, skipping update")
             else:
                 self.status_label.config(text="")  # Clear error messages, if any
-            
-            return # Early return
+
+            return  # Early return
 
         if self.current_room is not None:
-          # Store current props but preserve their last_status values
-          self.all_props[self.current_room] = {
-              prop_id: {
-                  'info': prop_data['info'].copy(),
-                  'last_status': prop_data.get('last_status'),
-                  'last_update': prop_data.get('last_update')
-              }
-              for prop_id, prop_data in self.props.items()
-          }
-          self.clean_up_room_props(self.current_room)
-          
+            # Store current props but preserve their last_status values
+            self.all_props[self.current_room] = {
+                prop_id: {
+                    'info': prop_data['info'].copy(),
+                    'last_status': prop_data.get('last_status'),
+                    'last_update': prop_data.get('last_update')
+                }
+                for prop_id, prop_data in self.props.items()
+            }
+            self.clean_up_room_props(self.current_room)
+
         old_room = self.current_room
         self.current_room = room_number
 
@@ -520,20 +524,20 @@ class PropControl:
 
         # Restore props for new room
         if room_number in self.all_props:
-          for prop_id, prop_data in self.all_props[room_number].items():
-              if 'last_status' not in prop_data:
-                  prop_data['last_status'] = None
-              self.handle_prop_update(prop_data['info'])
+            for prop_id, prop_data in self.all_props[room_number].items():
+                if 'last_status' not in prop_data:
+                    prop_data['last_status'] = None
+                self.handle_prop_update(prop_data['info'])
         else:
-          self.all_props[room_number] = {}
-        
+            self.all_props[room_number] = {}
+
         if room_number not in self.last_progress_times:
-          self.last_progress_times[room_number] = time.time()
+            self.last_progress_times[room_number] = time.time()
 
         self.setup_special_buttons(room_number)
 
         if old_room:
-          self.update_prop_tracking_interval(old_room, is_selected=False)
+            self.update_prop_tracking_interval(old_room, is_selected=False)
         self.update_prop_tracking_interval(room_number, is_selected=True)
 
         self.victory_sent[room_number] = False
@@ -555,7 +559,39 @@ class PropControl:
             except tk.TclError:
                 print("[prop control]Status label was destroyed, skipping update")
         else:
-          self.initialize_mqtt_client(room_number)
+            self.initialize_mqtt_client(room_number)
+
+    def sort_and_repack_props(self):
+        """Sorts props based on their 'order' for the *current* room and repacks them."""
+        if not self.current_room or not self.props:
+            return
+
+        # Sort props based on 'order' attribute, *using the current room number*
+        sorted_props = sorted(
+            self.props.items(),
+            key=lambda item: self.get_prop_order(item[1]['info']['strName'], self.current_room)
+        )
+
+        # Re-pack the prop frames in the sorted order
+        for prop_id, prop_data in sorted_props:
+            if 'frame' in prop_data and prop_data['frame'].winfo_exists():
+                prop_data['frame'].pack_forget()  # Remove from current position
+                prop_data['frame'].pack(fill='x', pady=1)  # Add back in sorted order
+
+    def get_prop_order(self, prop_name, room_number):
+        """Get the order for a prop for a specific room."""
+        if room_number not in self.ROOM_MAP:
+            return 999  # Default order
+
+        room_key = self.ROOM_MAP[room_number]
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+
+        if room_key not in self.prop_name_mappings:
+            return 999  # Default order
+
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        return prop_info.get('order', 999)
 
     def is_standby_prop(self, room_number, prop_name):
         """Check if a prop is marked as a standby prop"""
@@ -1055,13 +1091,8 @@ class PropControl:
                 print(f"[prop control]Error loading status icons: {e}")
                 self.status_icons = None
 
-        # Get order (Correct)
-        order = 999
-        if self.current_room in self.ROOM_MAP:
-            room_key = self.ROOM_MAP[self.current_room]
-            if room_key in self.prop_name_mappings:
-                prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_data["strName"], {})
-                order = prop_info.get('order', 999)
+        # Get order (CORRECTLY using current_room)
+        order = self.get_prop_order(prop_data["strName"], self.current_room)
 
         current_status = prop_data.get("strStatus", "")
 
@@ -1158,7 +1189,7 @@ class PropControl:
                     'status_label': status_label,
                     'info': prop_data,
                     'last_update': time.time(),
-                    'order': order,
+                    'order': order,  # Use the retrieved order
                     'name_label': name_label,
                 }
 
@@ -1171,11 +1202,8 @@ class PropControl:
                 self.all_props[self.current_room][prop_id]['last_status'] = current_status
 
                 # Sort and repack widgets (Correct)
-                sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
-                for _, prop_info in sorted_props:
-                    if 'frame' in prop_info and prop_info['frame'].winfo_exists():
-                        prop_info['frame'].pack_forget()
-                        prop_info['frame'].pack(fill='x', pady=1)
+                self.sort_and_repack_props() # call the modified sorting
+
 
             else:
                 # Update existing prop info (Correct)
@@ -1185,7 +1213,7 @@ class PropControl:
                         # Update values
                         self.props[prop_id]['info'] = prop_data
                         self.props[prop_id]['last_update'] = time.time()
-                        self.props[prop_id]['order'] = order
+                        self.props[prop_id]['order'] = order #use the order retrieved at the function top
 
                         # Get mapped name and set it here on update
                         mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)

@@ -141,20 +141,20 @@
                 "finishing_prop": false
             },
             "Cache in table": {
-                "display": "Table Cache",
+                "display": "Center Drawer",
                 "order": 7,
                 "finishing_prop": false,
                 "circuit": "desk"
             },
             "Painting cache": {
-                "display": "Painting Cache",
+                "display": "Topleft Drawer",
                 "order": 6,
                 "finishing_prop": false,
                 "circuit": "desk"
             },
             "Dildo": {
-                "display": "Dildo Game",
-                "order": 6,
+                "display": "[Dildo Game]",
+                "order": 99,
                 "finishing_prop": false,
                 "circuit": "desk"
             },
@@ -164,7 +164,7 @@
                 "finishing_prop": false
             },
             "Cameras": {
-                "display": "Cameras",
+                "display": "Computer",
                 "order": 11,
                 "finishing_prop": false,
                 "circuit": "desk"
@@ -231,19 +231,19 @@
                 "finishing_prop": false
             },
             "Painting 1": {
-                "display": "Painting 1",
-                "order": 5,
+                "display": "[Painting 1]",
+                "order": 99,
                 "finishing_prop": false
             },
             "Cache in table": {
-                "display": "Table Cache",
-                "order": 7,
+                "display": "[Center Drawer]",
+                "order": 99999,
                 "finishing_prop": false,
                 "circuit": "desk"
             },
             "Painting cache": {
-                "display": "Painting Cache",
-                "order": 6,
+                "display": "[Topleft Drawer]",
+                "order": 9999,
                 "finishing_prop": false,
                 "circuit": "desk"
             },
@@ -254,12 +254,12 @@
                 "circuit": "desk"
             },
             "Painting 2": {
-                "display": "Painting 2",
-                "order": 5,
+                "display": "[Painting 2]",
+                "order": 999,
                 "finishing_prop": false
             },
             "Cameras": {
-                "display": "Cameras",
+                "display": "Computer",
                 "order": 11,
                 "finishing_prop": false,
                 "circuit": "desk"
@@ -546,7 +546,7 @@
                 "circuit": "desk"
             },
             "Radium matrix": {
-                "display": "Desk Ball",
+                "display": "Wall Ball",
                 "order": 11,
                 "finishing_prop": false,
                 "circuit": "desk"
@@ -578,7 +578,7 @@
                 "finishing_prop": false
             },
             "Radium cog": {
-                "display": "Ball Course",
+                "display": "Desk Ball",
                 "order": 17,
                 "finishing_prop": false
             },

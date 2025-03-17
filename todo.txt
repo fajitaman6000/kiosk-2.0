@@ -9,9 +9,9 @@ rebooter added to kiosk app
 # priority bugs
 
 seemingly a lack of "received no acknowledgement of xyz hash"
-current video player iteration has no audio sync
 
-video player performance abysmal
+current video player iteration has no audio sync
+    video player performance abysmal
 
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
