@@ -12,6 +12,7 @@ seemingly a lack of "received no acknowledgement of xyz hash"
 
 current video player iteration has no audio sync
     video player performance abysmal
+    click to interrupt functionality currently absent
 
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
