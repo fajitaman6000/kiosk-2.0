@@ -1174,8 +1174,14 @@ class PropControl:
                     name_label.config(font=('Arial', 8, 'bold', 'italic'))  # Italic for standby
                 else:
                     name_label.config(font=('Arial', 8, 'bold'))
+
+                name_label.pack(side='left', padx=5)  # Pack name_label *first*
+
+                # Add a black line underneath if it's a finishing prop
+                if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                    line_label = tk.Frame(prop_frame, height=1, bg="black")
+                    line_label.pack(fill='x', padx=(5,0), pady=(0, 2), side='bottom')  # Pack *after* name label, adjust padx
                 # --- END MODIFIED NAME LABEL FORMATTING ---
-                name_label.pack(side='left', padx=5)
 
                 name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
                 name_label.config(cursor="hand2")
