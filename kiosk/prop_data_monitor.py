@@ -37,6 +37,7 @@ class PropMonitor:
 
         try:
             with self.lock:
+                print("[prop_data_monitor.read_data] thread lock here")
                 data = self.telnet.read_very_eager().decode('ascii', 'ignore').strip()
                 return data if data else None  # More concise way to return None if no data
         except EOFError:

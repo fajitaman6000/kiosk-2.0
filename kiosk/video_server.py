@@ -86,6 +86,7 @@ class VideoServer:
                 client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 
                 with self.clients_lock:
+                    print("[video_server.accept_connections] thread lock here")
                     self.clients[client] = addr  # Add client to the dictionary
                     if len(self.clients) == 1:  # First client - open the camera
                         self._open_camera()
@@ -156,6 +157,7 @@ class VideoServer:
                 pass
 
             with self.clients_lock:
+                print("[video_server.stream_video] thread lock here")
                 if client in self.clients:
                     del self.clients[client]
                     if not self.clients:  # Last client - close camera

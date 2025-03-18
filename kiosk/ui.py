@@ -487,6 +487,7 @@ class KioskUI:
          """Toggle video solution playback while preserving cooldown state"""
          # Wrap the logic in a thread-safe lock
          with self._lock:
+            print("[ui.toggle_solution_video] thread lock here")
             try:
                 print("[ui.py]Toggling solution video")
                 # If video is already playing, stop it
