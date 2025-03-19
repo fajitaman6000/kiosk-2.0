@@ -248,29 +248,37 @@ class KioskFileDownloader:
     def _check_sync_status(self):
         """Check if it's our turn to sync."""
         url = f"http://{self.admin_ip}:{ADMIN_SERVER_PORT}/sync_status"
-        response = self._make_request('GET', url, params={'kiosk_id': self.kiosk_id})
-        
-        if not response:
-            return None
-        
         try:
-            data = response.json()
+            response = self._make_request('GET', url, params={'kiosk_id': self.kiosk_id})
+
+            if not response:
+                print("[kiosk_file_downloader] No response from sync status check.")
+                return None  # Still return None, but handle it better below
+
+            data = response.json() # could still error out here.
             current_generation = data.get('generation')
-            
+
             # If queue generation changed, we need to re-request sync permission
             if self.queue_generation is not None and current_generation != self.queue_generation:
                 print(f"[kiosk_file_downloader] Queue generation changed from {self.queue_generation} to {current_generation}, re-requesting sync permission...")
                 self.is_syncing = False
                 self.queue_generation = None
                 return {'status': 'not_queued'}
-                
+
             # Update our generation number if we don't have one
             if self.queue_generation is None:
                 self.queue_generation = current_generation
-                
+
             return data
+
+        except requests.exceptions.RequestException as e:  # Catch specific request exceptions
+            print(f"[kiosk_file_downloader] Request error during sync status check: {e}")
+            return None
+        except json.JSONDecodeError as e:
+            print(f"[kiosk_file_downloader] JSON decoding error during sync status check: {e}")
+            return None
         except Exception as e:
-            print(f"[kiosk_file_downloader] Error parsing sync status response: {e}")
+            print(f"[kiosk_file_downloader] Unexpected error during sync status check: {e}")
             return None
 
     def _finish_sync(self):
@@ -682,12 +690,14 @@ class KioskFileDownloader:
         last_status_check = 0
         last_queue_message = 0  # Track when we last printed queue position
         status_check_interval = 2  # Check status every 2 seconds
-        
+        error_reset_delay = 10  # Seconds to wait before resetting error count
+
         while self.running:
             try:
                 current_time = time.time()
-                
-                # Check for stalled operations
+
+                # Check for stalled operations.  This logic *could* be refined
+                # further, but it's not the primary focus of the current fix.
                 if self.sync_requested:
                     # If we're queued but haven't printed position in a while, we're stalled
                     if last_queue_message > 0 and current_time - last_queue_message > self.stall_timeout:
@@ -695,30 +705,29 @@ class KioskFileDownloader:
                         self._reset_sync_state()
                         time.sleep(5)
                         continue
-                        
+
                     # General stall check
                     if self._is_stalled():
                         print("[kiosk_file_downloader] Operations appear to be stalled, resetting state...")
                         self._reset_sync_state()
                         time.sleep(5)
                         continue
-                
+
                 if not self.sync_requested:
                     time.sleep(1)
                     continue
-                    
+
                 # Rate limit sync attempts
                 if current_time - last_sync_attempt < 5:
                     time.sleep(1)
                     continue
-                    
+
                 # Rate limit status checks
                 if current_time - last_status_check < status_check_interval:
                     time.sleep(0.5)
                     continue
-                    
-                last_status_check = current_time
-                
+
+
                 # First check if we're already syncing
                 if not self.is_syncing:
                     try:
@@ -736,22 +745,28 @@ class KioskFileDownloader:
                         print(f"[kiosk_file_downloader] Error requesting sync permission: {e}")
                         time.sleep(2)
                         continue
-                
+
                 # Check queue status
                 try:
                     status = self._check_sync_status()
-                    if not status:
+                    if status is None:  # Explicitly check for None
                         consecutive_errors += 1
-                        if consecutive_errors >= 3 or self._is_stalled():
-                            print("[kiosk_file_downloader] Too many status check failures or stalled, resetting sync state...")
+                        print(f"[kiosk_file_downloader] Sync status check failed (attempt {consecutive_errors})")
+
+                        # Only reset if errors are consistent over a period
+                        if consecutive_errors >= 3 and (time.time() - last_status_check >= error_reset_delay):
+                            print("[kiosk_file_downloader] Too many consecutive status check failures, resetting sync state...")
                             self._reset_sync_state()
-                            consecutive_errors = 0
+                            consecutive_errors = 0  # Reset after reset
                         time.sleep(2)
                         continue
-                    
-                    consecutive_errors = 0  # Reset error counter on successful status check
+
+                    # Reset error count and update last_status_check on successful check
+                    consecutive_errors = 0
+                    last_status_check = time.time()
                     self._update_last_operation()  # Mark successful status check
-                    
+
+
                     if status.get('status') == 'active':
                         last_queue_message = 0  # Reset queue message timer when active
                         try:
@@ -770,26 +785,26 @@ class KioskFileDownloader:
                             if self._is_stalled():
                                 self._reset_sync_state()
                             time.sleep(2)
-                    
+
                     elif status.get('status') == 'queued':
                         position = status.get('position', 'unknown')
                         print(f"[kiosk_file_downloader] Waiting in queue position {position}")
                         last_queue_message = current_time  # Update last queue message time
-                        self._update_last_operation()  # Count queue position check as successful operation
-                    
+
+
                     elif status.get('status') == 'not_queued':
                         print("[kiosk_file_downloader] Not in queue, requesting sync permission...")
                         self.is_syncing = False  # Reset sync flag to trigger new request
                         last_queue_message = 0  # Reset queue message timer
                         time.sleep(2)
-                    
-                except Exception as e:
+
+                except Exception as e:  # General exception handling for status checks
                     print(f"[kiosk_file_downloader] Error checking sync status: {e}")
                     if self._is_stalled():
                         self._reset_sync_state()
                     time.sleep(2)
-                
-            except Exception as e:
+
+            except Exception as e:  # Top-level exception handling for the entire loop
                 print(f"[kiosk_file_downloader] Critical error in background handler: {e}")
                 traceback.print_exc()
                 self._reset_sync_state()
