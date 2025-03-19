@@ -22,6 +22,7 @@ class VideoServer:
         print("[video server]Checking camera availability...")
         try:
             with self.camera_lock:  # Acquire lock for camera operations
+                print("[video_server.check_camera] thread lock here")
                 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Try DirectShow first
                 if not cap.isOpened():
                     cap.release()
@@ -104,6 +105,7 @@ class VideoServer:
     def _open_camera(self):
         """Opens the camera resource, protected by a lock"""
         with self.camera_lock:
+            print("[video_server._open_camera] thread lock here")
             if self.camera is None or not self.camera.isOpened():
                 self.camera = cv2.VideoCapture(0, cv2.CAP_DSHOW)
                 if not self.camera.isOpened():
@@ -118,6 +120,7 @@ class VideoServer:
     def _release_camera(self):
         """Releases the camera resource, protected by a lock"""
         with self.camera_lock:
+            print("[video_server._release_camera] thread lock here")
             if self.camera is not None and self.camera.isOpened():
                 self.camera.release()
                 self.camera = None
@@ -129,6 +132,7 @@ class VideoServer:
         try:
             while self.running:
                 with self.camera_lock:
+                    print("[video_server.stream_video] thread lock here")
                     if self.camera is None or not self.camera.isOpened():
                         # Camera might be closed if all clients disconnected, reopen it
                         self._open_camera()
@@ -176,6 +180,7 @@ class VideoServer:
         self.running = False
 
         with self.clients_lock:
+            print("[video_server.stop] thread lock here")
             for client in self.clients:
                 try:
                     client.close()
