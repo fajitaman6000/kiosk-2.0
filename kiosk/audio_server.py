@@ -1,9 +1,11 @@
 # audio_server.py
+print("[audio server] Beginning imports ...")
 import pyaudio
 import socket
 import threading
 import struct
 import numpy as np
+print("[audio server] Ending imports ...")
 
 class AudioServer:
     def __init__(self, port=8090):

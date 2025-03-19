@@ -1,12 +1,16 @@
+print("[message_handler] Beginning imports ...")
 from video_manager import VideoManager
 from file_sync_config import SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 import traceback
 import time
 import os
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
 import pygame
 from qt_overlay import Overlay
 from kiosk_file_downloader import KioskFileDownloader
 import base64
+print("[message_handler] Ending imports ...")
 
 class MessageHandler:
     def __init__(self, kiosk_app, video_manager):

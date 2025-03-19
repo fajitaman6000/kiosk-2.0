@@ -1,4 +1,5 @@
 # kiosk_file_downloader.py
+print("[kiosk file downloader] Beginning imports ...")
 import time
 import requests
 import os
@@ -13,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed, wait
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 from pathlib import Path
 import traceback
+print("[kiosk file downloader] Ending imports ...")
 
 class KioskFileDownloader:
     def __init__(self, kiosk_app, admin_ip=None):

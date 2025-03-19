@@ -1,4 +1,5 @@
 # video_manager.py
+print("[video_manager] Beginning imports ...")
 import cv2
 import tkinter as tk
 from PIL import Image, ImageTk
@@ -6,6 +7,8 @@ import threading
 import time
 import traceback
 import os
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
 import pygame
 import subprocess
 import tempfile
@@ -13,6 +16,7 @@ import sys
 import imageio_ffmpeg
 from pygame import mixer
 from qt_overlay import Overlay  # Add this import at the top
+print("[video_manager] Ending imports ...")
 
 class VideoManager:
     def __init__(self, root):

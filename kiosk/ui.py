@@ -1,4 +1,5 @@
 # ui.py
+print("[ui] Beginning imports ...")
 import tkinter as tk
 from PIL import Image, ImageTk
 import os
@@ -7,6 +8,7 @@ import io
 import traceback
 from qt_overlay import Overlay
 import threading
+print("[ui] Ending imports ...")
 
 class KioskUI:
     def __init__(self, root, computer_name, room_config, message_handler):

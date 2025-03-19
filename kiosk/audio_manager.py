@@ -1,6 +1,10 @@
-import pygame # type: ignore
+print("[audio_manager] Beginning imports ...")
 import os
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
+import pygame # type: ignore
 import time
+print("[audio_manager] Ending imports ...")
 
 class AudioManager:
     def __init__(self, kiosk_app):

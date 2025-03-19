@@ -1,6 +1,7 @@
 # kiosk.py
+print("[kiosk main] Beginning imports ...")
 import tkinter as tk
-import socket, time, sys, os, subprocess, traceback, pygame, ctypes # type: ignore
+import socket, sys, os, traceback, ctypes # type: ignore
 from networking import KioskNetwork
 from ui import KioskUI
 from config import ROOM_CONFIG
@@ -17,6 +18,7 @@ from qt_overlay import Overlay
 from ctypes import windll
 import signal
 import threading
+print("[kiosk main] Ending imports ...")
 
 class KioskApp:
     def __init__(self):

@@ -1,10 +1,12 @@
 # kiosk_timer.py
+print("[kiosk timer] Beginning imports ...")
 import tkinter as tk
 import time
 from PIL import Image, ImageTk
 from qt_overlay import Overlay
 import os
 import traceback
+print("[kiosk timer] Ending imports ...")
 
 class KioskTimer:
     def __init__(self, root, kiosk_app):

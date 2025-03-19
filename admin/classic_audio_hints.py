@@ -1,4 +1,6 @@
 import os
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
 import pygame
 import tkinter as tk
 from tkinter import ttk

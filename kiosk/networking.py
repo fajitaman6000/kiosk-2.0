@@ -1,8 +1,10 @@
 # networking.py
+print("[networking] Beginning imports ...")
 import socket
 import json
 import time
 from threading import Thread
+print("[networking] Ending imports ...")
 
 class KioskNetwork:
     def __init__(self, computer_name, message_handler):

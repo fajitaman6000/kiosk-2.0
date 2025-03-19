@@ -1,4 +1,5 @@
 # qt_overlay.py
+print("[qt overlay] Beginning imports ...")
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem
@@ -10,6 +11,7 @@ import os
 import io
 import traceback
 from config import ROOM_CONFIG
+print("[qt overlay] Ending imports ...")
 
 class ClickableView(QGraphicsView):
     """Custom QGraphicsView that handles mouse clicks"""

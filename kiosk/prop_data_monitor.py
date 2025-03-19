@@ -1,8 +1,10 @@
 # prop_data_monitor.py
+print("[prop data monitor] Beginning imports ...")
 import telnetlib
 import time
 import threading
 import socket  # Import the socket module
+print("[prop data monitor] Ending imports ...")
 
 class PropMonitor:
     def __init__(self, ip):

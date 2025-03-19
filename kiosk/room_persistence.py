@@ -1,6 +1,8 @@
+print("[room persistence] Beginning imports ...")
 import json
 import os
 from pathlib import Path
+print("[room persistence] Ending imports ...")
 
 class RoomPersistence:
     def __init__(self):

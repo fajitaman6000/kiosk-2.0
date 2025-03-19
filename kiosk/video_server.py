@@ -1,9 +1,11 @@
+print("[video server] Beginning imports ...")
 import cv2
 import socket
 import struct
 import threading
 import numpy as np
 import time
+print("[video server] Ending imports ...")
 
 class VideoServer:
     def __init__(self, port=8089):
