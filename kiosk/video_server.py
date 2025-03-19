@@ -79,6 +79,7 @@ class VideoServer:
     def accept_connections(self):
         """Accepts client connections and spawns streaming threads"""
         print("[video server]Video server ready for connections")
+        self.server_socket.settimeout(1.0)  # Add a timeout to accept
         while self.running:
             try:
                 client, addr = self.server_socket.accept()
@@ -93,6 +94,8 @@ class VideoServer:
 
                 threading.Thread(target=self.stream_video, args=(client, addr), daemon=True).start()
 
+            except socket.timeout: # Catch the timeout
+                pass
             except Exception as e:
                 if self.running:
                     print(f"[video server]Connection error: {e}")
@@ -122,6 +125,7 @@ class VideoServer:
     def stream_video(self, client, addr):
         """Streams video to a single client"""
         print(f"[video server]Starting video stream to {addr}")
+        client.settimeout(2.0)  # Add a timeout to the client socket
         try:
             while self.running:
                 with self.camera_lock:
@@ -129,7 +133,7 @@ class VideoServer:
                         # Camera might be closed if all clients disconnected, reopen it
                         self._open_camera()
                         if self.camera is None or not self.camera.isOpened():  # Still failed to open.
-                            break #Exit this client's thread
+                            break  # Exit this client's thread
 
                     ret, frame = self.camera.read()
 
@@ -140,6 +144,9 @@ class VideoServer:
                     try:
                         client.sendall(struct.pack("Q", size))
                         client.sendall(buffer)
+                    except socket.timeout: # Catch Timeout
+                        print(f"[video server] Client {addr} sendall timeout")
+                        break
                     except socket.error as e: # Catch more specific exception.
                         print(f"[video server]Client {addr} disconnected: {e}")
                         break  # Exit the loop, client disconnected

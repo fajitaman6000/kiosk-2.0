@@ -41,15 +41,20 @@ class KioskNetwork:
         try:
             encoded = json.dumps(message).encode()
             msg_size = len(encoded) / 1024  # Size in KB
-            #print(f"[networking.py]Sending message: {message['type']}")
-            #print(f"[networking.py]Message size: {msg_size:.2f}KB")
-            
             if msg_size > 60000:  # UDP practical limit ~64KB
                 print("[networking.py]WARNING: Message exceeds UDP size limit!")
                 return
-                
-            self.socket.sendto(encoded, ('255.255.255.255', 12345))
-            
+
+            self.socket.settimeout(2.0)  # Add a 2-second timeout
+            try:
+                self.socket.sendto(encoded, ('255.255.255.255', 12345))
+            except socket.timeout:
+                print("[networking.py]sendto timed out!")
+            except socket.error as e:
+                print(f"[networking.py]Error sending message: {e}")
+            finally:
+                self.socket.settimeout(None) # Remove the timeout
+
         except Exception as e:
             print(f"[networking.py]Error sending message: {e}")
         
@@ -69,15 +74,16 @@ class KioskNetwork:
                 
     def listen_for_messages(self):
         print("[networking.py]=== Starting message listener ===")
+        self.socket.settimeout(1.0)  # Add a 1-second timeout
         while self.running:
             try:
                 # Use larger buffer for receiving
                 data, addr = self.socket.recvfrom(16 * 1024 * 1024)  # 16MB buffer
-                
+
                 try:
                     msg = json.loads(data.decode())
-                    
-                    # Special handling for hint messages
+
+                    # Special handling for hint messages (remains the same)
                     if msg.get('type') == 'hint':
                         print(f"[networking.py]Hint message received:")
                         print(f"[networking.py]Has text: {bool(msg.get('text'))}")
@@ -86,22 +92,24 @@ class KioskNetwork:
                             img_data = msg.get('image', '')
                             img_size = len(img_data) / 1024 if img_data else 0
                             print(f"[networking.py]Image data size: {img_size:.2f}KB")
-                    
+
                     self.message_handler.handle_message(msg)
-                    
+
                 except json.JSONDecodeError as e:
                     print(f"[networking.py]Failed to decode message: {e}")
                 except Exception as e:
                     print(f"[networking.py]Error processing message: {e}")
                     import traceback
                     traceback.print_exc()
-                    
+
+            except socket.timeout:  # Catch the timeout exception
+                pass  # Just continue the loop, no need to print on every timeout
             except socket.error as e:
                 if self.running:
                     print(f"[networking.py]Socket error in listen_for_messages: {e}")
                     import traceback
                     traceback.print_exc()
-                    # Try to recover the socket
+                    # Try to recover the socket (remains the same)
                     try:
                         self.socket.close()
                         time.sleep(1)  # Brief pause before reconnecting
@@ -110,13 +118,13 @@ class KioskNetwork:
                     except Exception as setup_error:
                         print(f"[networking.py]Failed to recover socket: {setup_error}")
                         if self.running:
-                            time.sleep(5)  # Wait longer before next attempt
+                            time.sleep(5)
             except Exception as e:
                 if self.running:
                     print(f"[networking.py]Unexpected error in listen_for_messages: {e}")
                     import traceback
                     traceback.print_exc()
-                    time.sleep(1)  # Brief pause before next iteration
+                    time.sleep(1)
                 
     def shutdown(self):
         print("[networking.py]Shutting down network...")

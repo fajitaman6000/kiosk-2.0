@@ -246,7 +246,7 @@ class VideoManager:
 
             print(f"[video manager]VideoManager: Video opened successfully. FPS: {fps}")
 
-            # Start audio playback if available
+            # Start audio playback if available (remains the same)
             if audio_path:
                 try:
                     # Load audio as a Sound object instead of using music
@@ -258,8 +258,7 @@ class VideoManager:
                     print(f"[video manager]VideoManager: Error starting audio: {e}")
                     audio_path = None
 
-            # Rest of the method remains exactly the same...
-            # Add click handler ONLY for solution videos (which contain 'video_solutions' in their path)
+            # Add click handler (remains the same)
             if 'video_solutions' in video_path:
                 def on_canvas_click(event):
                     print("[video manager]VideoManager: Video canvas clicked, stopping solution video playback")
@@ -272,12 +271,12 @@ class VideoManager:
 
             frame_count = 0
             while cap.isOpened() and self.is_playing and not self.should_stop:
-                # Added check for resetting flag:
+                # Added check for resetting flag (remains the same):
                 if self.resetting:
                     print("[video manager]Resetting flag is True, breaking out of video playback loop")
                     break
 
-                # Calculate desired frame position based on elapsed time
+                # Calculate desired frame position (remains the same)
                 if start_time is not None:
                     elapsed_time = time.time() - start_time
                     target_frame = int(elapsed_time * fps)
@@ -297,22 +296,10 @@ class VideoManager:
 
                 frame_count += 1
 
-                # Convert frame
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                #frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
-                #frame = cv2.resize(frame, (
-                    #self.root.winfo_screenwidth(),
-                    #self.root.winfo_screenheight()
-                #))
+                # --- MOVED FRAME PROCESSING TO A HELPER FUNCTION ---
+                self._process_frame_and_update(frame)
 
-                # Create PhotoImage
-                image = Image.fromarray(frame)
-                photo = ImageTk.PhotoImage(image=image)
-
-                # Update canvas in main thread
-                self.root.after(0, self._update_frame, photo)
-
-                # Calculate time until next frame
+                # Calculate time until next frame (remains the same)
                 if start_time is not None:
                     elapsed = time.time() - start_time
                     target_time = frame_count * frame_time
@@ -322,6 +309,7 @@ class VideoManager:
                         time.sleep(sleep_time)
                 else:
                     time.sleep(frame_time)
+
 
         except Exception as e:
             print("[video manager]VideoManager: Error in video thread:")
@@ -341,6 +329,28 @@ class VideoManager:
                 self.root.after(0, lambda: self._thread_cleanup(on_complete))
             else:
                 print("[video manager]Resetting is True, skipping _thread_cleanup")
+
+    def _process_frame_and_update(self, frame):
+        """Process the frame and schedule the UI update."""
+        try:
+            # Convert frame
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            #frame = cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+            #frame = cv2.resize(frame, (
+                #self.root.winfo_screenwidth(),
+                #self.root.winfo_screenheight()
+            #))
+
+            # Create PhotoImage
+            image = Image.fromarray(frame)
+            photo = ImageTk.PhotoImage(image=image)
+
+            # Schedule the UI update using after
+            self.root.after(0, self._update_frame, photo)
+
+        except Exception as e:
+            print(f"[video manager]Error processing frame: {e}")
+            traceback.print_exc()
 
     def _thread_cleanup(self, on_complete=None):
         """Handle cleanup and callbacks on the main thread"""

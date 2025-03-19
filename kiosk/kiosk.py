@@ -16,6 +16,7 @@ from kiosk_file_downloader import KioskFileDownloader
 from qt_overlay import Overlay
 from ctypes import windll
 import signal
+import threading
 
 class KioskApp:
     def __init__(self):
@@ -136,7 +137,7 @@ class KioskApp:
             'times_touched_screen': self.times_touched_screen,
             'music_playing': self.audio_manager.is_playing if hasattr(self.audio_manager, 'is_playing') else False,
             'auto_start': self.auto_start,
-            
+
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:
@@ -145,8 +146,10 @@ class KioskApp:
 
         # --- Add screenshot logic HERE ---
         if hasattr(self, 'take_screenshot_requested') and self.take_screenshot_requested:
-            self.send_screenshot()
+            # Start a new thread to handle the screenshot
+            threading.Thread(target=self.send_screenshot, daemon=True).start()
             self.take_screenshot_requested = False  # Reset flag after sending
+
 
         return stats
     

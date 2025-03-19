@@ -158,6 +158,7 @@ class KioskFileDownloader:
         hasher = hashlib.sha256()
         last_progress = time.time()
         bytes_read = 0
+        timeout = 30  # seconds
         try:
             file_size = os.path.getsize(file_path)
             with open(file_path, 'rb') as file:
@@ -167,16 +168,14 @@ class KioskFileDownloader:
                         break
                     bytes_read += len(chunk)
                     hasher.update(chunk)
-                    
-                    # Only consider it stalled if we haven't read ANY bytes in stall_timeout
-                    if time.time() - last_progress > self.stall_timeout:
-                        print(f"[kiosk_file_downloader] No progress on {file_path} for {self.stall_timeout}s")
-                        return None
-                    
-                    # Update progress timestamp if we've read a meaningful amount
-                    if bytes_read % (1024 * 1024) == 0:  # Every 1MB
+
+                    # Check for timeout every 1MB
+                    if bytes_read % (1024 * 1024) == 0:
+                        if time.time() - last_progress > timeout:
+                            print(f"[kiosk_file_downloader] Timeout calculating hash for {file_path}")
+                            return None
                         last_progress = time.time()
-                        
+
             return hasher.hexdigest()
         except Exception as e:
             print(f"[kiosk_file_downloader] Error calculating hash for {file_path}: {e}")
@@ -193,22 +192,22 @@ class KioskFileDownloader:
     def _make_request(self, method, url, **kwargs):
         """Make a network request with proper timeout and error handling."""
         try:
-            # Ensure we always have timeouts set
-            kwargs.setdefault('timeout', 10)
-            
+            # Ensure we always have timeouts set - Increased default timeout
+            kwargs.setdefault('timeout', 30)  # Increased default timeout
+
             # Create a session with retry capability
             session = requests.Session()
             session.mount('http://', requests.adapters.HTTPAdapter(
-                max_retries=1,  # Only retry once
+                max_retries=3,  # Increased retries
                 pool_connections=1,  # Limit connections
                 pool_maxsize=1
             ))
-            
+
             response = session.request(method, url, **kwargs)
             response.raise_for_status()
             self._update_last_operation()  # Mark successful network operation
             return response
-            
+
         except requests.exceptions.Timeout:
             print(f"[kiosk_file_downloader] Request timed out: {url}")
             return None

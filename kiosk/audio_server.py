@@ -41,6 +41,7 @@ class AudioServer:
     def accept_connections(self):
         """Accept and handle client connections"""
         print("[audio server]Audio server ready for connections")
+        self.server_socket.settimeout(1.0) # add timeout
         while self.running:
             try:
                 client, addr = self.server_socket.accept()
@@ -49,7 +50,7 @@ class AudioServer:
                     self.current_client.close()
                 self.current_client = client
                 client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-                
+
                 # Start input stream for microphone
                 self.input_stream = self.audio.open(
                     format=self.FORMAT,
@@ -58,14 +59,16 @@ class AudioServer:
                     input=True,
                     frames_per_buffer=self.CHUNK
                 )
-                
+
                 # Start sending thread
-                threading.Thread(target=self.stream_audio, 
-                               args=(client,), daemon=True).start()
-                               
+                threading.Thread(target=self.stream_audio,
+                                args=(client,), daemon=True).start()
+
                 # Start receiving thread
                 threading.Thread(target=self.receive_audio,
-                               args=(client,), daemon=True).start()
+                                args=(client,), daemon=True).start()
+            except socket.timeout: # catch timeout
+                pass
             except Exception as e:
                 if self.running:
                     print(f"[audio server]Audio connection error: {e}")
@@ -74,6 +77,7 @@ class AudioServer:
     def stream_audio(self, client):
         """Send audio from kiosk to admin"""
         print("[audio server]Starting audio streaming to admin")
+        client.settimeout(2.0) # Add timeout
         try:
             while self.running:  # Always stream while running
                 try:
@@ -83,6 +87,9 @@ class AudioServer:
                         try:
                             client.sendall(struct.pack("Q", size))
                             client.sendall(data)
+                        except socket.timeout: # Catch Timeout
+                            print(f"[audio server]Client sendall timeout")
+                            break
                         except Exception as e:
                             print(f"[audio server]Error sending audio packet: {e}")
                             break
@@ -154,12 +161,20 @@ class AudioServer:
                 
     def _recv_exactly(self, client, size):
         """Helper to receive exact number of bytes"""
+        client.settimeout(2.0) # add timeout
         data = bytearray()
         while len(data) < size:
-            packet = client.recv(min(size - len(data), 4096))
-            if not packet:
+            try:
+                packet = client.recv(min(size - len(data), 4096))
+                if not packet:
+                    return None
+                data.extend(packet)
+            except socket.timeout: # Catch timeout
+                print("[audio_server] Recv timeout in _recv_exactly")
                 return None
-            data.extend(packet)
+            except socket.error as e:
+                print(f"[audio_server] Socket error in _recv_exactly: {e}")
+                return None
         return data
             
     def stop(self):
