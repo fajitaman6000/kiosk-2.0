@@ -1,18 +1,31 @@
 # kiosk_file_downloader.py
 print("[kiosk file downloader] Beginning imports ...")
-import time
+import time 
+print("[kiosk file downloader] 1 ...")
 import requests
+print("[kiosk file downloader] 2 ...")
 import os
+print("[kiosk file downloader] 3 ...")
 import json
+print("[kiosk file downloader] 4 ...")
 from threading import Thread
+print("[kiosk file downloader] 5 ...")
 import hashlib
+print("[kiosk file downloader] 6 ...")
 import urllib.parse
+print("[kiosk file downloader] 7 ...")
 import socket
+print("[kiosk file downloader] 8 ...")
 import zlib
+print("[kiosk file downloader] 9 ...")
 import base64
+print("[kiosk file downloader] 10 ...")
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
+print("[kiosk file downloader] 11 ...")
 from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
+print("[kiosk file downloader] 12 ...")
 from pathlib import Path
+print("[kiosk file downloader] 13 ...")
 import traceback
 print("[kiosk file downloader] Ending imports ...")
 
