@@ -1,33 +1,88 @@
 # kiosk_file_downloader.py
 print("[kiosk file downloader] Beginning imports ...")
-import time 
+import time
 print("[kiosk file downloader] 1 ...")
-import requests
+
+import os  # Import os early
 print("[kiosk file downloader] 2 ...")
-import os
-print("[kiosk file downloader] 3 ...")
 import json
-print("[kiosk file downloader] 4 ...")
+print("[kiosk file downloader] 3 ...")
 from threading import Thread
-print("[kiosk file downloader] 5 ...")
+print("[kiosk file downloader] 4 ...")
 import hashlib
-print("[kiosk file downloader] 6 ...")
+print("[kiosk file downloader] 5 ...")
 import urllib.parse
-print("[kiosk file downloader] 7 ...")
+print("[kiosk file downloader] 6 ...")
 import socket
-print("[kiosk file downloader] 8 ...")
+print("[kiosk file downloader] 7 ...")
 import zlib
-print("[kiosk file downloader] 9 ...")
+print("[kiosk file downloader] 8 ...")
 import base64
-print("[kiosk file downloader] 10 ...")
+print("[kiosk file downloader] 9 ...")
 from concurrent.futures import ThreadPoolExecutor, as_completed, wait
+print("[kiosk file downloader] 10 ...")
+from file_sync_config import ADMIN_SERVER_PORT  # , SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
 print("[kiosk file downloader] 11 ...")
-from file_sync_config import ADMIN_SERVER_PORT #, SYNC_MESSAGE_TYPE, RESET_MESSAGE_TYPE
-print("[kiosk file downloader] 12 ...")
 from pathlib import Path
-print("[kiosk file downloader] 13 ...")
+print("[kiosk file downloader] 12 ...")
 import traceback
+def import_with_retry(module_name, timeout=30, retries=3):
+    """Attempts to import a module with a timeout and retries.
+
+    Args:
+        module_name: The name of the module to import (string).
+        timeout: The maximum time (in seconds) to wait for the import.
+        retries: The maximum number of retry attempts.
+
+    Returns:
+        The imported module object if successful, or None if all retries fail.
+    """
+    for attempt in range(retries):
+        print(f"[kiosk file downloader] Attempting to import {module_name} (attempt {attempt + 1}/{retries})...")
+        start_time = time.time()
+        try:
+            # Dynamically import the module using __import__
+            module = __import__(module_name)
+            print(f"[kiosk file downloader] Successfully imported {module_name}.")
+            return module  # Return the imported module
+        except ImportError:
+            elapsed_time = time.time() - start_time
+            print(f"[kiosk file downloader] ImportError: Failed to import {module_name}.")
+            if elapsed_time >= timeout:
+                print(f"[kiosk file downloader] Import timed out after {timeout} seconds.")
+            if attempt < retries - 1:
+                print(f"[kiosk file downloader] Retrying in 5 seconds...")
+                time.sleep(5)  # Wait before retrying
+            else:
+                print(f"[kiosk file downloader] All import attempts failed for {module_name}.")
+                return None  # Indicate failure
+        except Exception as e: # Catch any other exception.
+            elapsed_time = time.time() - start_time
+            print(f"[kiosk file downloader] Unexpected error while importing {module_name}: {e}")
+            if elapsed_time >= timeout:
+                print(f"[kiosk file downloader] Import timed out after {timeout} seconds.")
+            if attempt < retries - 1:
+                print(f"[kiosk file downloader] Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                print(f"[kiosk file downloader] All import attempts failed for {module_name}.")
+
+    return None
+
+# Use the function to import requests
+requests = import_with_retry("requests")
+
+if requests is None:
+    # Handle the case where requests could not be imported even after retries.
+    # You might:
+    # 1.  Exit the program with an error message.
+    # 2.  Try to use a fallback mechanism (if you have one).
+    # 3.  Display a message to the user and wait for manual intervention.
+    print("[kiosk file downloader] CRITICAL: Failed to import 'requests' after multiple retries.  Exiting.")
+    exit(1) # Exit with a non-zero exit code to indicate failure
 print("[kiosk file downloader] Ending imports ...")
+
+
 
 class KioskFileDownloader:
     def __init__(self, kiosk_app, admin_ip=None):

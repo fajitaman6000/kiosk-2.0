@@ -1,4 +1,16 @@
 ##############################################################################################################################
+# Freeze log
+
+[video server]Checking camera availability...
+[video_server.check_camera] thread lock here
+[qt overlay] Found kiosk_app on tkinter_root
+[qt overlay] Stored kiosk_app with computer_name: TIME-MACHINE-KIOSK
+
+
+
+
+
+##############################################################################################################################
 # important/immediate todo
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
