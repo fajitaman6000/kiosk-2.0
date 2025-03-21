@@ -37,6 +37,22 @@ Infinite Loops (Low Probability): Less likely, but still possible. If any of the
 
 time machine camera loading issue
 
+
+
+"  File "C:\Users\Vegas Manager\AppData\Local\Programs\Python\Python312\Lib\site-packages\PIL\ImageGrab.py", line 54, in grab
+    offset, size, data = Image.core.grabscreen_win32(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: screen grab failed
+[kiosk]Error taking/sending screenshot: screen grab failed
+Traceback (most recent call last):
+  File "c:\Users\Vegas Manager\Desktop\Kiosk 2.0\kiosk-2.0\kiosk\kiosk.py", line 170, in send_screenshot
+    screen = ImageGrab.grab()
+             ^^^^^^^^^^^^^^^^
+  File "C:\Users\Vegas Manager\AppData\Local\Programs\Python\Python312\Lib\site-packages\PIL\ImageGrab.py", line 54, in grab
+    offset, size, data = Image.core.grabscreen_win32(
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+OSError: screen grab failed"
+
 ##############################################################################################################################
 # known low priority bugs
 
