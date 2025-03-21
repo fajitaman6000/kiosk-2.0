@@ -1,3 +1,4 @@
+# audio_manager.py
 print("[audio_manager] Beginning imports ...")
 import os
 from os import environ
@@ -16,9 +17,20 @@ class AudioManager:
         self.MIN_REPLAY_DELAY = .05
         self.current_music = None
         self.is_playing = False
-        self.kiosk_app = kiosk_app
+        self.kiosk_app = kiosk_app  # Keep the reference to KioskApp
         self.hint_audio_dir = "hint_audio_files"
         self.loss_audio_dir = "loss_audio"
+
+        # Room to music mapping (moved INSIDE AudioManager)
+        self.room_music_map = {
+            1: "casino_heist.mp3",
+            2: "morning_after.mp3",
+            3: "wizard_trials.mp3",
+            4: "zombie_outbreak.mp3",
+            5: "haunted_manor.mp3",
+            6: "atlantis_rising.mp3",
+            7: "time_machine.mp3",
+        }
 
     def play_sound(self, sound_name):
         """
@@ -63,46 +75,30 @@ class AudioManager:
         except Exception as e:
             print(f"[audio manager]Error playing audio hint {audio_name}: {e}")
 
-    def play_background_music(self, room_name):
+    def play_background_music(self, room_number):
         """
-        Starts playing background music for the specified room.
-        Music will loop continuously until stopped.
+        Plays background music for the given room number.
         """
         try:
-            # Convert room name to match music file naming convention
-            music_name = room_name.lower().replace(" ", "_") + ".mp3"
-            music_path = os.path.join(self.music_dir, music_name)
-            
-            print(f"[audio manager]Attempting to play background music: {music_path}")
-            
-            if os.path.exists(music_path):
-                # Stop any currently playing music
-                self.stop_background_music()
-                
-                # Load and play the new music
-                pygame.mixer.music.load(music_path)
-                pygame.mixer.music.play(-1)  # -1 means loop indefinitely
-                self.current_music = music_name
-                self.is_playing = True
-                print(f"[audio manager]Started playing background music: {music_name}")
+            music_file = self.room_music_map.get(room_number)
+            if music_file:
+                music_path = os.path.join(self.music_dir, music_file)
+                print(f"[audio manager]Attempting to play background music: {music_path}")
+
+                if os.path.exists(music_path):
+                    self.stop_background_music()  # Stop any existing music
+                    pygame.mixer.music.load(music_path)
+                    pygame.mixer.music.play(-1)  # Loop indefinitely
+                    self.current_music = music_file
+                    self.is_playing = True
+                    print(f"[audio manager]Started playing background music: {music_file}")
+                else:
+                    print(f"[audio manager]Background music file not found: {music_path}")
             else:
-                print(f"[audio manager]Background music file not found: {music_path}")
-                
+                print(f"[audio manager]No music defined for room number: {room_number}")
+
         except Exception as e:
             print(f"[audio manager]Error playing background music: {e}")
-            
-    def get_room_music_name(self, room_number):
-        """Helper to map room number to music file name."""
-        room_names = {
-            2: "morning_after",
-            1: "casino_heist",
-            5: "haunted_manor",
-            4: "zombie_outbreak",
-            7: "time_machine",
-            6: "atlantis_rising",
-            3: "wizard_trials"
-        }
-        return room_names.get(room_number)
 
     def stop_background_music(self):
         """
@@ -117,35 +113,22 @@ class AudioManager:
                 print("[audio manager]Stopped background music")
         except Exception as e:
             print(f"[audio manager]Error stopping background music: {e}")
-
     def toggle_music(self):
-        """Toggles the music on or off. Loads the room's track if not already loaded."""
+        """
+        Toggles the music on or off.  If off, turns on based on assigned room.
+        """
         try:
-            if self.current_music:
-                if pygame.mixer.music.get_busy():
-                    pygame.mixer.music.stop()
-                    pygame.mixer.music.unload()
-                    self.is_playing = False
-                    print("[audio manager]Stopped background music")
-                else:
-                    music_path = os.path.join(self.music_dir, self.current_music)
-                    pygame.mixer.music.load(music_path)
-                    pygame.mixer.music.play(-1)
-                    self.is_playing = True
-                    print(f"[audio manager]Started playing background music: {self.current_music}")
+            if self.is_playing:
+                self.stop_background_music()
             else:
-                # No track loaded, so try to load it based on the assigned room
-                print("[audio manager]No music track loaded. Trying to load based on assigned room.")
+                # Try to play based on the assigned room
                 if self.kiosk_app.assigned_room:
-                    room_name = self.get_room_music_name(self.kiosk_app.assigned_room)
-                    if room_name:
-                        self.play_background_music(room_name)  # Use existing method to load and play
-                    else:
-                        print(f"[audio manager]Could not determine music for room: {self.kiosk_app.assigned_room}")
+                    self.play_background_music(self.kiosk_app.assigned_room)
                 else:
-                    print("[audio manager]No room assigned, cannot load music.")
+                    print("[audio manager]No room assigned, cannot start music.")
         except Exception as e:
             print(f"[audio manager]Error toggling music: {e}")
+
 
     def set_music_volume(self, volume):
         """
@@ -158,25 +141,26 @@ class AudioManager:
         except Exception as e:
             print(f"[audio manager]Error setting music volume: {e}")
 
-    def play_loss_audio(self, room_name):
+    def play_loss_audio(self, room_number):
         """Plays the loss audio for the given room."""
         try:
-            audio_name = room_name.lower().replace(" ", "_") + ".mp3"
-            audio_path = os.path.join(self.loss_audio_dir, audio_name)
-            if os.path.exists(audio_path):
-                # Stop any other audio
-                self.stop_all_audio()
-                # Use channel 3 for loss audio
-                sound = pygame.mixer.Sound(audio_path)
-                sound_channel = pygame.mixer.Channel(3)
-                sound_channel.play(sound)
-                print(f"[audio manager] Playing loss audio {audio_name} on channel 3")
+            # Use the same mapping for loss audio (assuming same filenames)
+            audio_file = self.room_music_map.get(room_number)
+            if audio_file:
+                audio_path = os.path.join(self.loss_audio_dir, audio_file)
+                if os.path.exists(audio_path):
+                    self.stop_all_audio()
+                    sound = pygame.mixer.Sound(audio_path)
+                    sound_channel = pygame.mixer.Channel(3)  # Dedicated channel
+                    sound_channel.play(sound)
+                    print(f"[audio manager]Playing loss audio {audio_file} on channel 3")
+                else:
+                    print(f"[audio manager]Loss audio not found: {audio_path}")
             else:
-                print(f"[audio manager] Loss audio not found: {audio_path}")
-
+                print(f"[audio manager]No loss audio defined for room number: {room_number}")
         except Exception as e:
-            print(f"[audio manager] Error playing loss audio: {e}")
-    
+            print(f"[audio manager]Error playing loss audio: {e}")
+
     def stop_all_audio(self):
         """Stops all currently playing audio, including music and sound effects."""
         try:

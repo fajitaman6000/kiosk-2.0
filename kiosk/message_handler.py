@@ -100,24 +100,8 @@ class MessageHandler:
                 self.kiosk_app.ui.clear_all_labels()
 
                 # --- MUSIC RELOADING LOGIC ---
-                if self.kiosk_app.assigned_room:
-                    room_name = self.kiosk_app.audio_manager.get_room_music_name(self.kiosk_app.assigned_room)
-                    if room_name:
-                        music_name = room_name.lower().replace(" ", "_") + ".mp3"
-                        music_path = os.path.join(self.kiosk_app.audio_manager.music_dir, music_name)
-                        if os.path.exists(music_path):
-                            self.kiosk_app.audio_manager.current_music = music_name
-                            print(f"[message handler] Updated current_music to: {music_name}")
-                        else:
-                            print(f"[message handler] Music file not found: {music_path}")
-                            self.kiosk_app.audio_manager.current_music = None  # Clear if not found
-                    else:
-                        print(f"[message handler] Could not determine music for room: {self.kiosk_app.assigned_room}")
-                        self.kiosk_app.audio_manager.current_music = None #Clear if not found
-                else:
-                    print("[message handler] No room assigned, cannot load music.")
-                    self.kiosk_app.audio_manager.current_music = None #Clear if not found
-
+                # Simplified:  Just set current_music to None.  AudioManager handles lookup.
+                self.kiosk_app.audio_manager.current_music = None
                 self.kiosk_app.root.after(0, lambda: self.kiosk_app.ui.setup_room_interface(msg['room']))
 
             elif msg['type'] == 'hint' and self.kiosk_app.assigned_room:
@@ -160,25 +144,13 @@ class MessageHandler:
                         self.kiosk_app.time_exceeded_45 = True
 
                 # Start background music when timer starts
-                room_names = {
-                    2: "morning_after",
-                    1: "casino_heist",
-                    5: "haunted_manor",
-                    4: "zombie_outbreak",
-                    6: "time_machine",
-                    5: "atlantis_rising",
-                    3: "wizard_trials"
-                }
-
-                # Start playing background music when timer starts, only if room has NOT started
-                if command == "start" and not self.kiosk_app.room_started:  # Correctly check if room is NOT started
-                    self.kiosk_app.room_started = True  # Set the flag to true immediately when the room starts
+                # Simplified: Pass the ROOM NUMBER directly.
+                if command == "start" and not self.kiosk_app.room_started:
+                    self.kiosk_app.room_started = True
                     print(f"[message handler][Kiosk] handle_message: Timer started, setting room_started to True for room {self.kiosk_app.assigned_room}")
-                    if self.kiosk_app.assigned_room and isinstance(self.kiosk_app.assigned_room, int):
-                        room_name = room_names.get(self.kiosk_app.assigned_room)
-                        if room_name:
-                            print(f"[message handler][DEBUG] Timer starting - playing background music for room: {room_name}")
-                            self.kiosk_app.audio_manager.play_background_music(room_name)
+                    if self.kiosk_app.assigned_room:  # Check if assigned_room is valid
+                        print(f"[message handler][DEBUG] Timer starting - playing background music for room: {self.kiosk_app.assigned_room}")
+                        self.kiosk_app.audio_manager.play_background_music(self.kiosk_app.assigned_room)
 
                 # Handle the timer command
                 self.kiosk_app.timer.handle_command(command, minutes)

@@ -288,7 +288,7 @@ class KioskApp:
             # Start playing background music for the assigned room
             if self.assigned_room:
                 print(f"[kiosk main]Starting background music for room: {self.assigned_room}")
-                self.audio_manager.play_background_music(self.assigned_room)
+                self.audio_manager.play_background_music(self.assigned_room)  # Pass the room NUMBER
             
             print("[kiosk main]Resetting UI state...")
             self.ui.hint_cooldown = False

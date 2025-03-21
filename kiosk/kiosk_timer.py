@@ -96,11 +96,8 @@ class KioskTimer:
                     self.kiosk_app.audio_manager.stop_background_music() # Stop current music
 
                     if self.kiosk_app.assigned_room:
-                        room_name = self.kiosk_app.audio_manager.get_room_music_name(self.kiosk_app.assigned_room)
-                        if room_name:
-                            self.kiosk_app.audio_manager.play_loss_audio(room_name)
-                        else:
-                            print(f"[kiosk timer] Could not determine loss audio for room: {self.kiosk_app.assigned_room}")
+                        #  Pass the room NUMBER directly to play_loss_audio
+                        self.kiosk_app.audio_manager.play_loss_audio(self.kiosk_app.assigned_room)
                     else:
                         print("[kiosk timer] No room assigned, cannot play loss audio.")
 
