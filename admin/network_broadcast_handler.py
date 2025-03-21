@@ -11,7 +11,7 @@ class NetworkBroadcastHandler:
         self.last_message = {}  # Initialize message cache
         self.running = True     # Add running flag
         self.pending_acknowledgments = {}  # {(computer_name, message_type): {'hashes': {hash1, ...}, 'message': message, 'timestamp': timestamp}}
-        self.ACK_TIMEOUT = 4  # seconds
+        self.ACK_TIMEOUT = 6  # seconds
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
