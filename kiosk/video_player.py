@@ -193,10 +193,10 @@ class VideoPlayer:
             return None
     def play_video(self, video_path, audio_path, on_complete):
         """Start the video playback."""
-        print(f"[video player]Starting video playback: {video_path}")
+        print(f"[video player] play_video: Starting video playback: {video_path}, audio_path: {audio_path}, on_complete: {on_complete}")
         try:
             # Create video canvas and ensure it covers the full window
-            print("[video player]Creating video canvas")
+            print("[video player] play_video: Creating video canvas")
             self.video_canvas = tk.Canvas(
                 self.root,
                 width=self.root.winfo_screenwidth(),
@@ -213,8 +213,9 @@ class VideoPlayer:
             # Reset State Flags
             self.should_stop = False
             self.is_playing = True
+            print(f"[video_player] play_video: is_playing and should_stop flags set.")
 
-            print("[video player]Starting playback thread")
+            print("[video player] play_video: Starting playback thread")
             self.video_thread = threading.Thread(
                 target=self._play_video_thread,
                 args=(video_path, audio_path, on_complete),
@@ -223,15 +224,15 @@ class VideoPlayer:
             self.video_thread.start()
 
         except Exception as e:
-            print("[video player]Critical error in play_video:")
+            print("[video player] play_video: Critical error:")
             traceback.print_exc()
             self.root.after(0, on_complete)  # Ensure callback is called on error
 
     def stop_video(self):
         """Stop video and audio playback"""
-        print("[video player]Stopping video and audio")
+        print(f"[video player] stop_video: Called. is_playing: {self.is_playing}, should_stop: {self.should_stop}")
         self.should_stop = True
-        self.is_playing = False # Setting it to False as it is no longer playing.
+        self.is_playing = False  # Set immediately
 
         # Stop video audio channel
         if self.video_sound_channel.get_busy():
@@ -239,7 +240,10 @@ class VideoPlayer:
 
         # Force stop any ongoing playback
         if hasattr(self, 'video_thread') and self.video_thread.is_alive():
-            self.video_thread.join(timeout=0.5)  # Wait briefly for thread to end
+            print(f"[video player] stop_video: Joining video_thread")
+            self.video_thread.join(timeout=0.5)
+        else:
+            print(f"[video player] stop_video: No active video_thread")
 
     def force_stop(self):
         """Force stop all video playback and cleanup for reset scenarios"""

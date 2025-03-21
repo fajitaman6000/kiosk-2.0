@@ -86,27 +86,28 @@ class VideoManager:
 
     def play_video(self, video_path, on_complete=None):
         """Play a video file - manages UI and creates VideoPlayer."""
-        print(f"[video manager]Starting video playback: {video_path}")
+        print(f"[video manager] play_video: Starting video playback: {video_path}, on_complete: {on_complete}")
 
         try:
             self.completion_callback = on_complete
+            print(f"[video manager] play_video: Set completion_callback to {self.completion_callback}")
 
             if self.is_playing:
-                print("[video manager]Stopping existing playback")
+                print("[video manager] play_video: Stopping existing playback")
                 self.stop_video()  # Call VideoManager.stop_video
 
-            print("[video manager]Hiding Qt overlays before video start")
+            print("[video manager] play_video: Hiding Qt overlays")
             self.root.after(0, Overlay.hide_all_overlays)
-
 
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.set_volume(1.0)
                 time.sleep(0.1)
 
             self._fade_background_music(0.3)
-            print(f"[video manager]Background music volume after fade: {pygame.mixer.music.get_volume() if pygame.mixer.music.get_busy() else 'No music'}")
+            print(f"[video manager] play_video: Background music faded")
 
-            print("[video manager]Storing current window state")
+            print("[video manager] play_video: Storing current window state")
+            # ... (widget storing logic - same as before) ...
             self.original_widgets = []
             self.original_widget_info = []
             for widget in self.root.winfo_children():
@@ -136,23 +137,26 @@ class VideoManager:
 
 
             self.should_stop = False
-            self.is_playing = True
+            self.is_playing = True  # Set is_playing to True *before* creating the VideoPlayer
+            print(f"[video manager] play_video: is_playing set to {self.is_playing}")
 
             # Instantiate the VideoPlayer
             self.video_player = VideoPlayer(self.root, self.ffmpeg_path)
             # Extract audio (using VideoPlayer's method)
             audio_path = self.video_player.extract_audio(video_path)
-            self.current_audio_path = audio_path
+            self.current_audio_path = audio_path  # Keep this in VideoManager
             if audio_path:
-                print(f"[video manager]Successfully extracted audio to: {audio_path}")
+                print(f"[video manager] play_video: Successfully extracted audio to: {audio_path}")
             else:
-                print("[video manager]Failed to extract audio")
-            # Start playback (using VideoPlayer's method)
+                print("[video manager] play_video: Failed to extract audio")
 
+            # Start playback (using VideoPlayer's method)
+            print(f"[video manager] play_video: Calling video_player.play_video with on_complete={self._on_player_complete}")
             self.video_player.play_video(video_path, audio_path, self._on_player_complete)
 
+
         except Exception as e:
-            print("[video manager]Critical error in play_video:")
+            print("[video manager] play_video: Critical error:")
             traceback.print_exc()
             self._cleanup()
             if on_complete:
@@ -161,16 +165,19 @@ class VideoManager:
 
     def _on_player_complete(self):
         """Callback when VideoPlayer finishes (or is stopped)."""
-        self._thread_cleanup(self.completion_callback)
+        print(f"[video manager] _on_player_complete: Called. is_playing: {self.is_playing}, should_stop: {self.should_stop}, completion_callback: {self.completion_callback}")
+        self._thread_cleanup(self.completion_callback) # Always call with stored
 
     def _thread_cleanup(self, on_complete=None):
-        """Handle cleanup and callbacks on the main thread"""
-        print("[video manager]=== Video Manager Thread Cleanup ===")
+        """Handle cleanup and callbacks on the main thread."""
+        print(f"[video manager] _thread_cleanup: Starting. on_complete argument: {on_complete}, is_playing: {self.is_playing}, should_stop: {self.should_stop}, completion_callback: {self.completion_callback}")
 
         if self.resetting:
-            print("[video manager]Resetting in progress, skipping normal thread cleanup")
+            print("[video manager] _thread_cleanup: Resetting in progress, skipping")
             return
+
         try:
+            # ... (Overlay, music restoration, UI cleanup - same as before) ...
             Overlay.show_all_overlays()
 
             was_stopped_manually = self.should_stop
@@ -189,7 +196,6 @@ class VideoManager:
             print("[video manager]Starting UI cleanup...")
             self._cleanup()
             print("[video manager]UI cleanup complete")
-
             # Clean up temporary audio file. Delegate to video player as current audio path is now in there.
             if self.video_player.current_audio_path and os.path.exists(self.video_player.current_audio_path):
                 for attempt in range(3):
@@ -199,31 +205,39 @@ class VideoManager:
                         print(f"[video_manager]Removed temporary audio file on attempt {attempt+1}")
                         break;
                     except Exception as e:
-                        print(f"[video_manager]Attempt to remove temp file (attempt {attempt+1}): {e}")
+                        print(f"[video manager]Attempt to remove temp file (attempt {attempt+1}): {e}")
                 self.video_player.current_audio_path = None
 
-            if on_complete:
-                print("[video manager]Executing passed on_complete")
-                self.root.after(0, on_complete)
-            elif self.completion_callback:
-                print("[video manager]Executing stored completion_callback")
-                self.root.after(0, self.completion_callback)
 
-            print("[video manager]=== Thread Cleanup Complete ===\n")
+            # --- Callback Logic ---
+            if on_complete: # Always should have something to call.
+                print(f"[video manager] _thread_cleanup: Executing on_complete: {on_complete}")
+                self.root.after(0, on_complete)
+
+            print("[video manager] _thread_cleanup: Complete")
+
 
         except Exception as e:
-            print(f"[video manager]Error in thread cleanup: {e}")
+            print("[video manager] _thread_cleanup: Error")
             traceback.print_exc()
 
 
     def stop_video(self):
         """Stop video playback - manages UI and stops VideoPlayer."""
-        print("[video manager]Stopping video and audio")
+        print(f"[video manager] stop_video: Called. is_playing: {self.is_playing}, should_stop: {self.should_stop}, completion_callback: {self.completion_callback}")
         self.should_stop = True
-        self.completion_callback = None # Clearing callback.
+        # DO NOT clear completion_callback here.  _thread_cleanup needs it.
+        # Instead, set it to None *only* if it's not already None.
+        #if self.completion_callback is not None:
+        #    self.completion_callback = None  # Clear ONLY if set
+        #print(f"[video manager] stop_video: completion_callback set to {self.completion_callback}")
+
 
         if self.video_player:
-            self.video_player.stop_video() # Delegate to VideoPlayer
+            print(f"[video manager] stop_video: Calling video_player.stop_video()")
+            self.video_player.stop_video()
+        else:
+            print(f"[video manager] stop_video: No video_player instance")
 
 
     def force_stop(self):
@@ -257,9 +271,13 @@ class VideoManager:
 
     def _cleanup(self):
         """Clean up video resources and restore UI state."""
-        print("[video manager]Starting cleanup")
+        print("[video manager] _cleanup: Starting")
+        # --- CRITICAL: Set is_playing to False HERE, before restoring widgets ---
         self.is_playing = False
-        self.should_stop = True
+        print(f"[video manager] _cleanup: is_playing set to {self.is_playing}")
+        self.should_stop = True # Redundant, good for debug clarity.
+
+        # ... (Widget restoration logic - same as before) ...
 
         # Restore original widgets with their original geometry management
         restored_widgets = []
@@ -301,7 +319,7 @@ class VideoManager:
         except tk.TclError:
             pass
 
-        print("[video manager]Cleanup complete")
+        print("[video manager] _cleanup: Complete")
 
 
     def _force_cleanup(self):
