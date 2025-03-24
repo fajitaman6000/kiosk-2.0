@@ -18,6 +18,7 @@ from qt_overlay import Overlay
 from ctypes import windll
 import signal
 import threading
+import time
 print("[kiosk main] Ending imports ...")
 
 class KioskApp:
@@ -160,12 +161,18 @@ class KioskApp:
         if self.is_closing:
             print("[kiosk]Screenshot send prevented: Kiosk is closing.")
             return
-        #else:
-            #print(f"[kiosk] is_closing = {self.is_closing}")
+
         try:
             from PIL import ImageGrab, Image
             import io, base64
 
+            # Add a small delay.  This is the most important change.
+            time.sleep(0.1)  # Wait 100ms.  Adjust as needed.
+
+            if self.is_closing:  # Re-check after the delay.
+                print("[kiosk]Screenshot send prevented after delay: Kiosk is closing.")
+                return
+            
             # Take screenshot
             screen = ImageGrab.grab()
 
@@ -189,7 +196,13 @@ class KioskApp:
             })
             #print(f"[kiosk]Screenshot sent ({len(image_data)} bytes)")
 
-        except Exception as e:
+        except OSError as e:  # Catch OSError specifically
+            if "screen grab failed" in str(e):
+                print(f"[kiosk]OSError: Screen grab failed.  Likely a race condition during shutdown.  Ignoring.")
+            else:
+                print(f"[kiosk]Unexpected OSError during screenshot: {e}")
+                traceback.print_exc()
+        except Exception as e:  # Catch other exceptions generally
             print(f"[kiosk]Error taking/sending screenshot: {e}")
             traceback.print_exc()
         
