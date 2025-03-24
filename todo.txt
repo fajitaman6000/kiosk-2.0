@@ -13,6 +13,8 @@
 ##############################################################################################################################
 # important/immediate todo
 
+give up on resending signals after a certain time, give indication of freezing on admin visual side
+
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
 rebooter added to kiosk app

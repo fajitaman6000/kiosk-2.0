@@ -198,6 +198,7 @@ class VideoPlayer:
             print(f"[video player]Audio extraction error: {e}")
             traceback.print_exc()
             return None
+        
     def play_video(self, video_path, audio_path, on_complete):
         """Start video playback (creates canvas and thread)."""
         print(f"[video player]play_video: Starting: {video_path}, audio: {audio_path}")

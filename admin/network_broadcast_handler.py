@@ -10,8 +10,9 @@ class NetworkBroadcastHandler:
         self.app = app
         self.last_message = {}  # Initialize message cache
         self.running = True     # Add running flag
-        self.pending_acknowledgments = {}  # {(computer_name, message_type): {'hashes': {hash1, ...}, 'message': message, 'timestamp': timestamp}}
+        self.pending_acknowledgments = {}  # {(computer_name, message_type): {'hashes': {hash1, ...}, 'message': message, 'timestamp': timestamp, 'resend_count': count}}
         self.ACK_TIMEOUT = 6  # seconds
+        self.MAX_RESEND_ATTEMPTS = 3
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -60,7 +61,8 @@ class NetworkBroadcastHandler:
             self.pending_acknowledgments[key] = {
                 'hashes': {request_hash},
                 'message': message,
-                'timestamp': time.time()
+                'timestamp': time.time(),
+                'resend_count': 0  # Initialize resend counter
             }
         self.socket.sendto(json.dumps(message).encode(), ('255.255.255.255', 12346))
         #print(f"[network broadcast handler]Sent message with hash {request_hash}: {message} to {computer_name}")
@@ -71,13 +73,21 @@ class NetworkBroadcastHandler:
         for key, data in list(self.pending_acknowledgments.items()):  # Iterate through (computer_name, message_type)
             computer_name, message_type = key
             if now - data['timestamp'] > self.ACK_TIMEOUT:
-                print(f"[network broadcast handler]Resending message (type: {message_type}) to {computer_name} due to timeout.  Original hashes: {data['hashes']}")
-                # Generate a NEW request hash for the resent message
-                new_request_hash = str(uuid.uuid4())
-                data['hashes'].add(new_request_hash)
-                data['message']['request_hash'] = new_request_hash  # Update the stored message
-                data['timestamp'] = now #update timestamp
-                self.socket.sendto(json.dumps(data['message']).encode(), ('255.255.255.255', 12346))
+                if data['resend_count'] < self.MAX_RESEND_ATTEMPTS:
+                    data['resend_count'] += 1 # Increment resend counter
+                    print(f"[network broadcast handler]Resending message (type: {message_type}, attempt {data['resend_count']}/{self.MAX_RESEND_ATTEMPTS}) to {computer_name} due to timeout.  Original hashes: {data['hashes']}")
+                    # Generate a NEW request hash for the resent message
+                    new_request_hash = str(uuid.uuid4())
+                    data['hashes'].add(new_request_hash)
+                    data['message']['request_hash'] = new_request_hash  # Update the stored message
+                    data['timestamp'] = now #update timestamp
+                    self.socket.sendto(json.dumps(data['message']).encode(), ('255.255.255.255', 12346))
+                else:
+                    print(f"[network broadcast handler]Giving up on resending message (type: {message_type}) to {computer_name} after {self.MAX_RESEND_ATTEMPTS} attempts. Original hashes: {data['hashes']}")
+                    del self.pending_acknowledgments[key] # Give up and remove from pending
+                    # Optionally, you could add some error handling or logging here,
+                    # e.g., notify the UI or log to a file that a message failed to send.
+
 
     def listen_for_messages(self):
         print("[network broadcast handler]Started listening for kiosks...")
