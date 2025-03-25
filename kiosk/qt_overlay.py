@@ -1,6 +1,6 @@
 # qt_overlay.py
 print("[qt overlay] Beginning imports ...")
-from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF
+from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem
 from PIL import Image
@@ -11,28 +11,28 @@ import os
 import io
 import traceback
 from config import ROOM_CONFIG
+import cv2
 print("[qt overlay] Ending imports ...")
 
-class ClickableView(QGraphicsView):
-    """Custom QGraphicsView that handles mouse clicks"""
+class ClickableVideoView(QGraphicsView):
+    """Custom QGraphicsView for video display that handles clicks"""
+    clicked = pyqtSignal() # Signal emitted on click
+
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
-        self._click_callback = None
-        
+        self._is_skippable = False
+
     def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self._click_callback:
-            # Get the scene position
-            scene_pos = self.mapToScene(event.pos())
-            # Check if click is within button bounds
-            items = self.scene().items(scene_pos)
-            for item in items:
-                if isinstance(item, QGraphicsPixmapItem):
-                    self._click_callback()
-                    break
+        print("[qt overlay] Video view clicked.")
+        if event.button() == Qt.LeftButton and self._is_skippable:
+            print("[qt overlay] Video is skippable, emitting clicked signal.")
+            self.clicked.emit()
+        # Pass the event up if not handled or not skippable
         super().mousePressEvent(event)
-        
-    def set_click_callback(self, callback):
-        self._click_callback = callback
+
+    def set_skippable(self, skippable):
+        print(f"[qt overlay] Setting video skippable: {skippable}")
+        self._is_skippable = skippable
 
 class TimerThread(QThread):
     """Dedicated thread for timer updates"""
@@ -109,6 +109,60 @@ class HintRequestTextThread(QThread):
     def update_text(self, text):
         self.update_signal.emit(text)
 
+
+def convert_cv_qt(cv_img):
+    """Convert from an opencv image to QPixmap"""
+    rgb_image = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    h, w, ch = rgb_image.shape
+    bytes_per_line = ch * w
+    convert_to_Qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
+    # Scale if needed, but maybe do it in OpenCV thread
+    # p = convert_to_Qt_format.scaled(display_width, display_height, Qt.KeepAspectRatio)
+    return QPixmap.fromImage(convert_to_Qt_format)
+
+class OverlayBridge(QObject):
+    """Receives invocations from other threads and calls Overlay class methods."""
+
+    @pyqtSlot(bool, object) # For is_skippable (bool), click_callback (Python object)
+    def prepare_video_display_slot(self, is_skippable, click_callback):
+        # print("[Bridge] prepare_video_display_slot called")
+        try:
+            Overlay.prepare_video_display(is_skippable, click_callback)
+            # Note: Returning success via BlockingQueuedConnection is complex.
+            # We assume success if no exception occurs during the call.
+        except Exception as e:
+            print(f"[Bridge] Error in prepare_video_display_slot: {e}")
+            traceback.print_exc()
+
+    @pyqtSlot()
+    def show_video_display_slot(self):
+        # print("[Bridge] show_video_display_slot called")
+        Overlay.show_video_display()
+
+    @pyqtSlot()
+    def hide_video_display_slot(self):
+        # print("[Bridge] hide_video_display_slot called")
+        Overlay.hide_video_display()
+
+    @pyqtSlot()
+    def destroy_video_display_slot(self):
+        # print("[Bridge] destroy_video_display_slot called")
+        Overlay.destroy_video_display()
+
+    @pyqtSlot(object) # Frame data is a numpy array (object)
+    def update_video_frame_slot(self, frame_data):
+        # print("[Bridge] update_video_frame_slot called") # Very noisy
+        Overlay.update_video_frame(frame_data)
+
+    @pyqtSlot()
+    def hide_all_overlays_slot(self):
+        Overlay.hide_all_overlays()
+
+    @pyqtSlot()
+    def show_all_overlays_slot(self):
+        Overlay.show_all_overlays()
+
+
 class Overlay:
     _app = None
     _window = None
@@ -123,12 +177,26 @@ class Overlay:
     _gm_assistance_overlay = None  # Add GM assistance overlay variable
     _victory_screen = None  # Victory screen data
     _game_won = False       # Flag for game won status
+        # --- new class variables for video display ---
+    _video_window = None
+    _video_view = None
+    _video_scene = None
+    _video_pixmap_item = None
+    _video_click_callback = None # To store callback from video_manager
+    _video_is_initialized = False
+    _bridge = None
 
     @classmethod
     def init(cls, tkinter_root=None):
         """Initialize Qt application and base window"""
         if not cls._app:
-            cls._app = QApplication(sys.argv)
+            # --- Ensure QApplication is created FIRST ---
+            cls._app = QApplication.instance() # Check if it already exists
+            if cls._app is None:
+                print("[qt overlay] Creating QApplication...")
+                cls._app = QApplication(sys.argv)
+            else:
+                print("[qt overlay] Using existing QApplication instance.")
             
         # Store Tkinter window handle and kiosk_app reference first
         if tkinter_root:
@@ -147,6 +215,12 @@ class Overlay:
             print("[qt overlay] Warning: No tkinter_root provided")
             cls.kiosk_app = None
             cls._parent_hwnd = None
+            
+        if not cls._bridge:
+            print("[qt overlay] Creating OverlayBridge...")
+            cls._bridge = OverlayBridge()
+            # You might need to ensure this bridge isn't garbage collected if nothing
+            # else holds a reference. Assigning to cls._bridge should be sufficient.
             
         # Create single persistent window if not already created
         if not cls._window:
@@ -193,19 +267,242 @@ class Overlay:
             cls._scene.addItem(cls._text_item)
 
         cls._initialized = True
-        
-        # Initialize all overlays after kiosk_app is stored
+
+        # Initialize all overlays after kiosk_app is stored AND bridge exists
         cls._init_hint_text_overlay()
         cls._init_hint_request_text_overlay()
         cls._init_gm_assistance_overlay()
-        
+        cls._init_video_display() # Keep video init here
+
         # Initialize timer and help button
         cls.init_timer()
         cls.init_help_button()
 
         # Hide GM assistance overlay
         cls.hide_gm_assistance()
+
+        # --- Initialize video display components (but don't show yet) ---
+        cls._init_video_display() # Call the new init method
         
+
+    @classmethod
+    def _init_video_display(cls):
+        """Initialize video display components (window, scene, view, item)."""
+        if cls._video_is_initialized:
+            return # Already initialized
+
+        print("[qt overlay] Initializing video display components...")
+        try:
+            # Create video window
+            cls._video_window = QWidget() # No parent initially, will cover screen
+            cls._video_window.setAttribute(Qt.WA_TranslucentBackground) # Or WA_OpaquePaintEvent if using solid bg
+            cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
+            cls._video_window.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool # Tool flag helps prevent stealing focus
+                # Qt.WindowDoesNotAcceptFocus # Keep this if clicks handled by view only
+            )
+            cls._video_window.setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Create scene and view
+            cls._video_scene = QGraphicsScene(cls._video_window)
+            cls._video_view = ClickableVideoView(cls._video_scene, cls._video_window) # Use custom view
+            cls._video_view.setStyleSheet("background: transparent; border: none;")
+            cls._video_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._video_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            # Use BasicRender for potentially faster raw pixel updates? Test performance.
+            # Or stick with Antialiasing for smoother scaling if frames are smaller than screen.
+            cls._video_view.setRenderHint(QPainter.SmoothPixmapTransform) # Keep for now
+            cls._video_view.setCacheMode(QGraphicsView.CacheNone) # Disable caching for video
+            cls._video_view.setViewportUpdateMode(QGraphicsView.NoViewportUpdate) # Manual updates
+
+            # Create pixmap item to display frames
+            cls._video_pixmap_item = QGraphicsPixmapItem()
+            cls._video_scene.addItem(cls._video_pixmap_item)
+
+            # Initial setup (full screen) - get screen dimensions
+            screen_geometry = QApplication.desktop().screenGeometry()
+            width = screen_geometry.width()
+            height = screen_geometry.height()
+
+            cls._video_window.setGeometry(0, 0, width, height)
+            cls._video_view.setGeometry(0, 0, width, height)
+            cls._video_scene.setSceneRect(0, 0, width, height)
+            cls._video_pixmap_item.setPos(0, 0) # Top-left corner
+
+            # Set NOACTIVATE flag using win32gui if on Windows and parent exists
+            # (Though for full screen video, parenting might not be desired/needed)
+            # if cls._parent_hwnd: # Re-evaluate if parenting is needed for full screen
+            #     try:
+            #         # win32gui.SetParent(int(cls._video_window.winId()), cls._parent_hwnd) # Optional
+            #         style = win32gui.GetWindowLong(int(cls._video_window.winId()), win32con.GWL_EXSTYLE)
+            #         win32gui.SetWindowLong(
+            #             int(cls._video_window.winId()),
+            #             win32con.GWL_EXSTYLE,
+            #             style | win32con.WS_EX_NOACTIVATE
+            #         )
+            #     except Exception as e:
+            #         print(f"[qt overlay] Error setting window style for video: {e}")
+
+            cls._video_is_initialized = True
+            print("[qt overlay] Video display components initialized.")
+
+        except Exception as e:
+            print(f"[qt overlay] Error initializing video display: {e}")
+            traceback.print_exc()
+            cls._video_is_initialized = False # Mark as failed
+
+    @classmethod
+    def prepare_video_display(cls, is_skippable, click_callback):
+        """Prepare the video display, set skippable state and connect callback."""
+        if not cls._video_is_initialized:
+            print("[qt overlay] Video display not initialized, attempting now.")
+            cls._init_video_display()
+            if not cls._video_is_initialized:
+                print("[qt overlay] Failed to initialize video display.")
+                return False
+
+        if not cls._video_window or not cls._video_view:
+             print("[qt overlay] Error: Video window or view is missing.")
+             return False
+
+        print(f"[qt overlay] Preparing video display. Skippable: {is_skippable}")
+        cls._video_click_callback = click_callback
+        cls._video_view.set_skippable(is_skippable)
+
+        # Disconnect previous connection if any, then connect
+        try:
+            cls._video_view.clicked.disconnect()
+            print("[qt overlay] Disconnected previous video click signal.")
+        except TypeError:
+            print("[qt overlay] No previous video click signal connection found.")
+            pass # No connection existed
+        except Exception as e:
+            print(f"[qt overlay] Error disconnecting video click signal: {e}")
+
+
+        if click_callback:
+            try:
+                cls._video_view.clicked.connect(cls._video_click_callback)
+                print("[qt overlay] Connected video click signal.")
+            except Exception as e:
+                 print(f"[qt overlay] Error connecting video click signal: {e}")
+        else:
+             print("[qt overlay] No click callback provided for video.")
+
+        # Ensure window is sized correctly (might be redundant if init did it)
+        screen_geometry = QApplication.desktop().screenGeometry()
+        cls._video_window.setGeometry(screen_geometry)
+        cls._video_view.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height())
+        cls._video_scene.setSceneRect(0, 0, screen_geometry.width(), screen_geometry.height())
+
+        # Clear any previous frame
+        cls._video_pixmap_item.setPixmap(QPixmap())
+
+        return True
+
+    @classmethod
+    def show_video_display(cls):
+        """Show the video display window."""
+        if cls._video_window and cls._video_is_initialized:
+            print("[qt overlay] Showing video display.")
+            # Ensure it's on top
+            cls._video_window.show()
+            cls._video_window.raise_()
+            cls._video_window.activateWindow() # Try to ensure it gets focus for clicks
+            QApplication.processEvents() # Process events immediately
+        else:
+            print("[qt overlay] Cannot show video display: not initialized or window missing.")
+
+    @classmethod
+    def hide_video_display(cls):
+        """Hide the video display window."""
+        if cls._video_window and cls._video_is_initialized:
+            print("[qt overlay] Hiding video display.")
+            # Check if it exists before hiding
+            if cls._video_window.isVisible():
+                 cls._video_window.hide()
+            # Clear pixmap to free memory
+            cls._video_pixmap_item.setPixmap(QPixmap())
+        else:
+            print("[qt overlay] Cannot hide video display: not initialized or window missing.")
+
+    @classmethod
+    def destroy_video_display(cls):
+        """Hide and clean up video display resources."""
+        if cls._video_window and cls._video_is_initialized:
+            print("[qt overlay] Destroying video display.")
+            if cls._video_window.isVisible():
+                cls._video_window.hide()
+
+            # Disconnect signal
+            try:
+                cls._video_view.clicked.disconnect()
+            except TypeError:
+                pass # No connection existed
+            except Exception as e:
+                print(f"[qt overlay] Error disconnecting video signal during destroy: {e}")
+
+
+            # Explicitly delete items/scene/view if needed, though parent deletion should handle it
+            if cls._video_pixmap_item in cls._video_scene.items():
+                cls._video_scene.removeItem(cls._video_pixmap_item)
+            # cls._video_view.deleteLater() # Let window deletion handle child view
+            # cls._video_scene.deleteLater() # Let window deletion handle child scene
+            cls._video_window.deleteLater() # Schedule window for deletion
+
+            # Reset state
+            cls._video_window = None
+            cls._video_view = None
+            cls._video_scene = None
+            cls._video_pixmap_item = None
+            cls._video_click_callback = None
+            cls._video_is_initialized = False # Mark as uninitialized
+        else:
+             print("[qt overlay] Video display already destroyed or never initialized.")
+
+    @classmethod
+    def update_video_frame(cls, frame_data):
+        """
+        Receives raw frame data (NumPy array BGR) and updates the display.
+        MUST be called from the main GUI thread or use invokeMethod/signals.
+        """
+        if not cls._video_window or not cls._video_pixmap_item or not cls._video_window.isVisible():
+            # print("[qt overlay] Video display not ready or not visible, skipping frame update.")
+            return # Don't process if not ready or hidden
+
+        try:
+            # Convert numpy array (BGR) to QImage (RGB)
+            height, width, channel = frame_data.shape
+            bytes_per_line = 3 * width
+            # Create QImage directly from buffer, specifying RGB888 format after conversion
+            # Note: OpenCV uses BGR, QImage often expects RGB. Convert!
+            rgb_frame = cv2.cvtColor(frame_data, cv2.COLOR_BGR2RGB)
+            q_image = QImage(rgb_frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+
+            # Create QPixmap from QImage
+            pixmap = QPixmap.fromImage(q_image)
+
+            # Scale pixmap to fit the view/window size if necessary
+            # This assumes the view covers the whole window.
+            # Scaling here might be slow; resizing in OpenCV thread might be better.
+            # Let's assume OpenCV frame is already screen size for now based on video_player logic.
+            # if pixmap.size() != cls._video_view.size():
+            #     pixmap = pixmap.scaled(cls._video_view.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+            # Update the QGraphicsPixmapItem
+            cls._video_pixmap_item.setPixmap(pixmap)
+
+            # Force an update of the relevant part of the viewport
+            # cls._video_view.viewport().update() # Update the whole viewport - maybe overkill?
+            # OR update just the scene rect area
+            cls._video_scene.update(cls._video_scene.sceneRect())
+
+
+        except Exception as e:
+            print(f"[qt overlay] Error updating video frame: {e}")
+            # traceback.print_exc() # Reduce noise if this happens often
 
     @classmethod
     def _init_hint_text_overlay(cls):
@@ -1289,7 +1586,7 @@ class Overlay:
 
             # Set up button scene and view using ClickableView instead of QGraphicsView
             cls._button['scene'] = QGraphicsScene()
-            cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
+            cls._button_view = ClickableVideoView(cls._button['scene'], cls._button_window)
 
             # Define view dimensions (increased to accommodate shadow)
             width = 440  # Increased width
@@ -1449,7 +1746,7 @@ class Overlay:
 
                 # Set up button scene and view using ClickableView instead of QGraphicsView
                 cls._button['scene'] = QGraphicsScene()
-                cls._button_view = ClickableView(cls._button['scene'], cls._button_window)
+                cls._button_view = ClickableVideoView(cls._button['scene'], cls._button_window)
 
                 # Define view dimensions (increased to accommodate shadow)
                 width = 440  # Increased width
@@ -1571,90 +1868,101 @@ class Overlay:
 
     @classmethod
     def hide_all_overlays(cls):
-        """Hide all Qt overlay UI elements temporarily"""
-        print("[qt overlay]Hiding all overlay UI elements for video")
+        """Hide all Qt overlay UI elements temporarily (EXCEPT video)."""
+        print("[qt overlay] Hiding non-video overlay UI elements")
         try:
+            # --- HIDE ALL OTHER OVERLAYS ---
             if hasattr(cls, '_timer_window') and cls._timer_window:
-                print("[qt overlay]Hiding timer window")
-                cls._timer_window.hide()
+                if cls._timer_window.isVisible(): cls._timer_window.hide()
             if hasattr(cls, '_button_window') and cls._button_window:
-                print("[qt overlay]Hiding button window")
-                cls._button_window.hide()
+                 if cls._button_window.isVisible(): cls._button_window.hide()
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-                print("[qt overlay]Hiding hint text window")
-                cls._hint_text['window'].hide()
+                if cls._hint_text['window'].isVisible(): cls._hint_text['window'].hide()
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
-                print("[qt overlay]Hiding hint request text window")
-                cls._hint_request_text['window'].hide()
+                 if cls._hint_request_text['window'].isVisible(): cls._hint_request_text['window'].hide()
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
-                print("[qt overlay]Hiding GM assistance window")
-                # Store visibility BEFORE hiding
-                cls._gm_assistance_overlay['_was_visible'] = cls._gm_assistance_overlay['window'].isVisible()
-                cls._gm_assistance_overlay['window'].hide()
-            if cls._window:
-                print("[qt overlay]Hiding main window")
-                cls._window.hide()
-            cls.hide_victory_screen() # Hide victory screen too
-            print("[qt overlay]All overlay UI elements hidden")
+                # Store visibility BEFORE hiding if the overlay exists
+                if cls._gm_assistance_overlay['window']:
+                    cls._gm_assistance_overlay['_was_visible'] = cls._gm_assistance_overlay['window'].isVisible()
+                    if cls._gm_assistance_overlay['_was_visible']:
+                         cls._gm_assistance_overlay['window'].hide()
+            if cls._window: # Cooldown window
+                if cls._window.isVisible(): cls._window.hide()
+
+            # --- HIDE SCREENS ---
+            cls.hide_victory_screen()
+            cls.hide_loss_screen()
+
+            print("[qt overlay] Non-video overlay UI elements hidden.")
         except Exception as e:
-            print(f"[qt overlay]Error hiding overlays: {e}")
+            print(f"[qt overlay] Error hiding non-video overlays: {e}")
             traceback.print_exc()
 
     @classmethod
     def show_all_overlays(cls):
-        """Restore visibility of all Qt overlay UI elements"""
-        print("[qt overlay]Restoring all overlay UI elements")
+        """Restore visibility of all Qt overlay UI elements (EXCEPT video)."""
+        print("[qt overlay] Restoring non-video overlay UI elements.")
 
-        if cls.kiosk_app.timer.game_lost:
-            # Game is lost, ONLY show the loss screen, nothing else
+        # --- CHECK GAME STATE FIRST ---
+        game_lost = cls.kiosk_app and cls.kiosk_app.timer and cls.kiosk_app.timer.game_lost
+        game_won = cls.kiosk_app and cls.kiosk_app.timer and cls.kiosk_app.timer.game_won
+
+        if game_lost:
             cls.show_loss_screen()
-            return  # IMPORTANT: Exit early
-        if cls.kiosk_app.timer.game_won:
+            print("[qt overlay] Game lost, only showing loss screen.")
+            return # IMPORTANT: Exit early
+
+        if game_won:
             cls.show_victory_screen()
-            return
+            print("[qt overlay] Game won, only showing victory screen.")
+            return # IMPORTANT: Exit early
 
+        # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
         try:
+            # Timer (check if has text)
             if hasattr(cls, '_timer_window') and cls._timer_window:
-                print("[qt overlay]Showing timer window")
-                # Check if the timer display needs to be updated before showing
-                if hasattr(cls, '_timer') and cls._timer.text_item:
-                    current_time_str = cls._timer.text_item.toPlainText()
-                    if current_time_str:  # Only show if there's a time to display
-                        cls._timer_window.show()
-                        cls._timer_window.raise_()
+                if hasattr(cls, '_timer') and cls._timer.text_item and cls._timer.text_item.toPlainText():
+                     cls._timer_window.show()
+                     cls._timer_window.raise_()
 
-            if hasattr(cls, '_button_window') and cls._button_window:
-                print("[qt overlay]Showing button window")
-                cls._button_window.show()
-                cls._button_window.raise_()
+            # Button (check visibility conditions within update_help_button called elsewhere)
+            # The button visibility is complex, rely on update_help_button to show/hide it.
+            # If we force-show it here, it might bypass cooldown logic etc.
+            # We *could* check if cls._button_window exists and call show(), but prefer letting
+            # update_help_button handle its own state based on game logic.
+            # if hasattr(cls, '_button_window') and cls._button_window:
+            #     cls._button_window.show() # Reconsider this
+            #     cls._button_window.raise_()
+
+            # Hint Text (show if has text)
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-                print("[qt overlay]Showing hint text window")
-                cls._hint_text['window'].show()
-                cls._hint_text['window'].raise_()
-            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
-                print("[qt overlay]Showing hint request text window")
-                cls._hint_request_text['window'].show()
-                cls._hint_request_text['window'].raise_()
-            # Added condition to show cooldown window
-            if cls._window:
-                if hasattr(cls._text_item, 'toPlainText'):
-                  current_cooldown_text = cls._text_item.toPlainText()
-                  if current_cooldown_text:
-                      cls._window.show()
-                      cls._window.raise_()
+                 if hasattr(cls._hint_text, 'text_item') and cls._hint_text['text_item'] and cls._hint_text['text_item'].toPlainText().strip():
+                     cls._hint_text['window'].show()
+                     cls._hint_text['window'].raise_()
 
-            # ONLY show GM assistance if it was previously visible
+            # Hint Request Text (show if has text)
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
+                if hasattr(cls._hint_request_text, 'text_item') and cls._hint_request_text['text_item'] and cls._hint_request_text['text_item'].toPlainText().strip():
+                    cls._hint_request_text['window'].show()
+                    cls._hint_request_text['window'].raise_()
+
+            # Cooldown (show if has text)
+            if cls._window:
+                if hasattr(cls._text_item, 'toPlainText') and cls._text_item.toPlainText().strip():
+                    cls._window.show()
+                    cls._window.raise_()
+
+            # GM Assistance (only if was previously visible)
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
-                if hasattr(cls._gm_assistance_overlay, '_was_visible') and cls._gm_assistance_overlay['_was_visible']:  # Check the flag
-                    print("[qt overlay]Showing GM assistance window (previously visible)")
+                was_visible_flag = cls._gm_assistance_overlay.get('_was_visible', False)
+                if was_visible_flag:
                     cls._gm_assistance_overlay['window'].show()
                     cls._gm_assistance_overlay['window'].raise_()
-                    cls._gm_assistance_overlay['_was_visible'] = False  # Reset flag after showing
-                else:
-                    print("[qt overlay]GM assistance window was NOT previously visible, not showing")
-            print("[qt overlay]All overlay UI elements restored")
+                    cls._gm_assistance_overlay['_was_visible'] = False # Reset flag
+
+            print("[qt overlay] Non-video overlay UI elements restored.")
         except Exception as e:
-            print(f"[qt overlay]Error showing overlays: {e}")
+            print(f"[qt overlay] Error showing non-video overlays: {e}")
             traceback.print_exc()
 
     @classmethod
