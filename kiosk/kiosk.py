@@ -19,6 +19,7 @@ from ctypes import windll
 import signal
 import threading
 import time
+from PyQt5.QtCore import QMetaObject, Qt
 print("[kiosk main] Ending imports ...")
 
 class KioskApp:
@@ -70,6 +71,9 @@ class KioskApp:
         self.audio_manager = AudioManager(self)  # Pass the KioskApp instance
         self.video_manager = VideoManager(self.root) # Initialize video manager
         self.message_handler = MessageHandler(self, self.video_manager)
+
+        self.root.bind("<FocusIn>", self.handle_app_focus_in)
+        print("[kiosk main] Bound <FocusIn> event.")
         
         # Initialize components as before
         self.network = KioskNetwork(self.computer_name, self)
@@ -115,6 +119,25 @@ class KioskApp:
             Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
         except Exception as e:
             traceback.print_exc()
+
+    def handle_app_focus_in(self, event=None):
+        """Called when the Tkinter root window (application) regains focus."""
+        # Check if the event is for the root window itself, not a child widget
+        # (Though binding directly to root usually means it is)
+        # print(f"[kiosk main] <FocusIn> event detected. Video playing: {self.video_manager.is_playing}")
+
+        if hasattr(self, 'video_manager') and self.video_manager.is_playing:
+            print("[kiosk main] App regained focus while video is playing. Re-raising Qt video window.")
+            # We need to tell the Qt window to show and raise itself again.
+            # Use the existing show_video_display_slot via the bridge.
+            if Overlay._bridge:
+                QMetaObject.invokeMethod(
+                    Overlay._bridge,
+                    "show_video_display_slot", # This slot calls show() and raise_()
+                    Qt.QueuedConnection
+                )
+            else:
+                print("[kiosk main] Error: Overlay bridge not found during FocusIn.")
 
     def toggle_fullscreen(self):
         """Development helper to toggle fullscreen"""

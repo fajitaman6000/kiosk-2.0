@@ -289,39 +289,38 @@ class Overlay:
     def _init_video_display(cls):
         """Initialize video display components (window, scene, view, item)."""
         if cls._video_is_initialized:
-            return # Already initialized
+            return
 
         print("[qt overlay] Initializing video display components...")
         try:
-            # Create video window
-            cls._video_window = QWidget() # No parent initially, will cover screen
-            cls._video_window.setAttribute(Qt.WA_TranslucentBackground) # Or WA_OpaquePaintEvent if using solid bg
-            cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
+            cls._video_window = QWidget()
+            cls._video_window.setAttribute(Qt.WA_TranslucentBackground, False) # Use opaque bg
+            cls._video_window.setStyleSheet("background-color: black;")
             cls._video_window.setWindowFlags(
-                Qt.FramelessWindowHint |
-                Qt.WindowStaysOnTopHint |
-                Qt.Tool # Tool flag helps prevent stealing focus
-                # Qt.WindowDoesNotAcceptFocus # Keep this if clicks handled by view only
+                Qt.FramelessWindowHint | # Keep: For fullscreen look
+                # Qt.WindowStaysOnTopHint | # <<< REMOVE THIS - Likely culprit
+                Qt.Tool                 # Keep or remove for testing, but less likely the main issue
             )
+            # Explicitly allow accepting focus if clicks needed, otherwise it might interfere too
+            # cls._video_window.setAttribute(Qt.WindowDoesNotAcceptFocus, False) # Explicitly allow focus
+
+            # Still prevent activation on initial showing
             cls._video_window.setAttribute(Qt.WA_ShowWithoutActivating)
 
-            # Create scene and view
+            # ... (rest of scene, view, pixmap item setup) ...
             cls._video_scene = QGraphicsScene(cls._video_window)
-            cls._video_view = ClickableVideoView(cls._video_scene, cls._video_window) # Use custom view
+            # Use ClickableVideoView for potential skipping later
+            cls._video_view = ClickableVideoView(cls._video_scene, cls._video_window)
             cls._video_view.setStyleSheet("background: transparent; border: none;")
             cls._video_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._video_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            # Use BasicRender for potentially faster raw pixel updates? Test performance.
-            # Or stick with Antialiasing for smoother scaling if frames are smaller than screen.
-            cls._video_view.setRenderHint(QPainter.SmoothPixmapTransform) # Keep for now
-            cls._video_view.setCacheMode(QGraphicsView.CacheNone) # Disable caching for video
+            cls._video_view.setRenderHint(QPainter.SmoothPixmapTransform)
+            cls._video_view.setCacheMode(QGraphicsView.CacheNone)
             cls._video_view.setViewportUpdateMode(QGraphicsView.NoViewportUpdate) # Manual updates
 
-            # Create pixmap item to display frames
             cls._video_pixmap_item = QGraphicsPixmapItem()
             cls._video_scene.addItem(cls._video_pixmap_item)
 
-            # Initial setup (full screen) - get screen dimensions
             screen_geometry = QApplication.desktop().screenGeometry()
             width = screen_geometry.width()
             height = screen_geometry.height()
@@ -329,21 +328,9 @@ class Overlay:
             cls._video_window.setGeometry(0, 0, width, height)
             cls._video_view.setGeometry(0, 0, width, height)
             cls._video_scene.setSceneRect(0, 0, width, height)
-            cls._video_pixmap_item.setPos(0, 0) # Top-left corner
+            cls._video_pixmap_item.setPos(0, 0)
 
-            # Set NOACTIVATE flag using win32gui if on Windows and parent exists
-            # (Though for full screen video, parenting might not be desired/needed)
-            # if cls._parent_hwnd: # Re-evaluate if parenting is needed for full screen
-            #     try:
-            #         # win32gui.SetParent(int(cls._video_window.winId()), cls._parent_hwnd) # Optional
-            #         style = win32gui.GetWindowLong(int(cls._video_window.winId()), win32con.GWL_EXSTYLE)
-            #         win32gui.SetWindowLong(
-            #             int(cls._video_window.winId()),
-            #             win32con.GWL_EXSTYLE,
-            #             style | win32con.WS_EX_NOACTIVATE
-            #         )
-            #     except Exception as e:
-            #         print(f"[qt overlay] Error setting window style for video: {e}")
+            # No win32gui parenting/styling needed for a primary fullscreen window
 
             cls._video_is_initialized = True
             print("[qt overlay] Video display components initialized.")
@@ -351,7 +338,7 @@ class Overlay:
         except Exception as e:
             print(f"[qt overlay] Error initializing video display: {e}")
             traceback.print_exc()
-            cls._video_is_initialized = False # Mark as failed
+            cls._video_is_initialized = False
 
     @classmethod
     def prepare_video_display(cls, is_skippable, click_callback):
@@ -407,11 +394,10 @@ class Overlay:
         """Show the video display window."""
         if cls._video_window and cls._video_is_initialized:
             print("[qt overlay] Showing video display.")
-            # Ensure it's on top
             cls._video_window.show()
             cls._video_window.raise_()
-            cls._video_window.activateWindow() # Try to ensure it gets focus for clicks
-            QApplication.processEvents() # Process events immediately
+            # cls._video_window.activateWindow() # <<< REMOVE THIS - Too aggressive
+            QApplication.processEvents() # Process show/raise immediately
         else:
             print("[qt overlay] Cannot show video display: not initialized or window missing.")
 
