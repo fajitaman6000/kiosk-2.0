@@ -285,8 +285,8 @@ class MessageHandler:
                     self.kiosk_app.ui.hide_status_frame()
                 self.kiosk_app.ui.clear_all_labels()
 
-                # Schedule timer reset on main thread
-                self.kiosk_app.root.after(0, lambda: self.kiosk_app.timer._delayed_init())
+                # Schedule timer reset on main thread using the CORRECT method name
+                self.kiosk_app.root.after(0, lambda: self.kiosk_app.timer._delayed_qt_init()) # <<< CORRECTED LINE
 
                 # Reset room started state
                 self.kiosk_app.room_started = False
@@ -333,7 +333,7 @@ class MessageHandler:
                 print("[message handler]Victory detected")
                 self.kiosk_app.timer.game_won = True # set the flag
                 self.kiosk_app.handle_game_win()  # Call handle_game_win
-            
+
             # Kiosk side of screenshot request
             elif msg['type'] == 'request_screenshot' and msg['computer_name'] == self.kiosk_app.computer_name:
                 self.kiosk_app.take_screenshot_requested = True
