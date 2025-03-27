@@ -180,7 +180,7 @@ class Overlay:
     _gm_assistance_overlay = None  # Add GM assistance overlay variable
     _victory_screen = None  # Victory screen data
     _game_won = False       # Flag for game won status
-    _kiosk_app_ref = None # Store kiosk_app reference explicitly
+    _kiosk_app = None # Store kiosk_app reference explicitly
         # --- new class variables for video display ---
     _video_window = None
     _video_view = None
@@ -207,11 +207,11 @@ class Overlay:
 
         # --- Store kiosk_app reference early ---
         if tkinter_root and hasattr(tkinter_root, 'kiosk_app'):
-             cls._kiosk_app_ref = tkinter_root.kiosk_app
-             print(f"[qt overlay] Stored kiosk_app reference: {cls._kiosk_app_ref}")
+             cls._kiosk_app = tkinter_root.kiosk_app
+             print(f"[qt overlay] Stored kiosk_app reference: {cls._kiosk_app}")
         else:
              print("[qt overlay] Warning: No kiosk_app reference found on tkinter_root.")
-             cls._kiosk_app_ref = None # Important for checks later
+             cls._kiosk_app = None # Important for checks later
 
 
         # --- Rest of init ---
@@ -671,8 +671,8 @@ class Overlay:
         """Initialize game master assistance overlay components."""
         print("[qt overlay] Initializing GM assistance overlay...")
         print(f"[qt overlay] Has kiosk_app: {hasattr(cls, 'kiosk_app')}")
-        if hasattr(cls, 'kiosk_app') and cls.kiosk_app is not None:
-            print(f"[qt overlay] Using kiosk_app with computer_name: {cls.kiosk_app.computer_name}")
+        if hasattr(cls, 'kiosk_app') and cls._kiosk_app is not None:
+            print(f"[qt overlay] Using kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
         else:
             print("[qt overlay] No kiosk_app available")
             
@@ -840,12 +840,12 @@ class Overlay:
                         if item == cls._gm_assistance_overlay['yes_rect'] or item == cls._gm_assistance_overlay['yes_button']:
                             print("[qt overlay] Yes button clicked - GM assistance accepted")
                             # Send message to admin using the kiosk app's network
-                            if hasattr(cls, 'kiosk_app') and cls.kiosk_app is not None:
-                                print(f"[qt overlay] Found kiosk_app with computer_name: {cls.kiosk_app.computer_name}")
+                            if hasattr(cls, 'kiosk_app') and cls._kiosk_app is not None:
+                                print(f"[qt overlay] Found kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
                                 try:
-                                    cls.kiosk_app.network.send_message({
+                                    cls._kiosk_app.network.send_message({
                                         'type': 'gm_assistance_accepted',
-                                        'computer_name': cls.kiosk_app.computer_name
+                                        'computer_name': cls._kiosk_app.computer_name
                                     })
                                     print("[qt overlay] Message sent successfully")
                                 except Exception as e:
@@ -855,7 +855,7 @@ class Overlay:
                                 print("[qt overlay] Error: kiosk_app not found or is None")
                                 print(f"[qt overlay] Has kiosk_app attribute: {hasattr(cls, 'kiosk_app')}")
                                 if hasattr(cls, 'kiosk_app'):
-                                    print(f"[qt overlay] kiosk_app value: {cls.kiosk_app}")
+                                    print(f"[qt overlay] kiosk_app value: {cls._kiosk_app}")
                             # Hide the overlay after accepting
                             cls.hide_gm_assistance()
                             break
@@ -1287,7 +1287,7 @@ class Overlay:
             
             
             # ADDED CHECK: Only show if no video is playing.
-            if not cls.kiosk_app.video_manager.is_playing:
+            if not cls._kiosk_app.video_manager.is_playing:
                 cls._hint_text['window'].show()
                 cls._hint_text['window'].raise_()
         except Exception as e:
@@ -1534,9 +1534,9 @@ class Overlay:
         """Update timer display, but NOT if game is lost."""
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
             return
-        if cls.kiosk_app.timer.game_lost:  # Don't update if game is lost
+        if cls._kiosk_app.timer.game_lost:  # Don't update if game is lost
             return
-        if cls.kiosk_app.timer.game_won: # Don't update if game is won.
+        if cls._kiosk_app.timer.game_won: # Don't update if game is won.
             return
             
         # Initialize timer thread if needed
@@ -1771,7 +1771,7 @@ class Overlay:
         #print(f"[qt overlay]Help Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
 
         try:
-            if not cls.kiosk_app.video_manager.is_playing and not cls.kiosk_app.ui.image_is_fullscreen and show_button:
+            if not cls._kiosk_app.video_manager.is_playing and not cls._kiosk_app.ui.image_is_fullscreen and show_button:
                 # Rebuild the button window to make sure everything is clean
                 if hasattr(cls, '_button_window') and cls._button_window:
                    cls._button_window.hide()
@@ -1949,9 +1949,9 @@ class Overlay:
         game_lost = False
         game_won = False
         # Use the stored kiosk_app reference safely
-        if cls._kiosk_app_ref and hasattr(cls._kiosk_app_ref, 'timer'):
-             game_lost = getattr(cls._kiosk_app_ref.timer, 'game_lost', False)
-             game_won = getattr(cls._kiosk_app_ref.timer, 'game_won', False)
+        if cls._kiosk_app and hasattr(cls._kiosk_app, 'timer'):
+             game_lost = getattr(cls._kiosk_app.timer, 'game_lost', False)
+             game_won = getattr(cls._kiosk_app.timer, 'game_won', False)
 
         if game_lost:
             # print("[qt overlay] Game lost, showing loss screen only.") # Reduce noise

@@ -1,6 +1,5 @@
 # video_manager.py
 print("[video_manager] Beginning imports ...")
-import tkinter as tk # Still needed for root.after (unless fully switching event loop)
 import threading
 import time
 import traceback
