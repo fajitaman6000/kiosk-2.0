@@ -514,7 +514,7 @@ class Overlay:
                  frame_data = np.ascontiguousarray(frame_data)
 
             # --- This is often the fastest way if lifetimes are managed ---
-            q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_BGR888)
             # --- If the above causes crashes (due to buffer reuse), use copy: ---
             # q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_RGB888).copy()
 

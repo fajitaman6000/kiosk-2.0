@@ -126,18 +126,27 @@ class VideoPlayer:
                 # (We already read 'frame' successfully before the skip logic)
                 if self.is_playing and not self.should_stop and not self.resetting:
                     try:
-                        # Resize frame using OpenCV
-                        resized_frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=cv2.INTER_LINEAR)
+                        # Check dimensions (optional but recommended)
+                        frame_h, frame_w = frame.shape[:2]
+                        if frame_w == self.target_width and frame_h == self.target_height:
+                            # Dimensions match - USE FRAME DIRECTLY (frame is BGR)
+                            processed_frame = frame
+                        else:
+                            # Fallback: Dimensions differ (unexpected), so resize
+                            print(f"[video player] Warning: Frame size {frame_w}x{frame_h} differs from target {self.target_width}x{self.target_height}. Resizing.")
+                            # NOTE: If resizing is needed, the output is STILL BGR
+                            processed_frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=cv2.INTER_NEAREST)
 
-                        # Convert to RGB format
-                        rgb_frame = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2RGB)
+                        # NO cv2.cvtColor HERE ANYMORE!
+                        # The frame being sent is now BGR.
 
-                        # Send frame data via callback
+                        # Send frame data (BGR) via callback
                         if self.frame_update_callback:
-                            self.frame_update_callback(rgb_frame)
+                            # Send the BGR frame directly
+                            self.frame_update_callback(processed_frame) # Sending BGR
                         else:
                             print("[video player] Error: frame_update_callback missing!")
-                            self.should_stop = True # Stop if callback invalid
+                            self.should_stop = True
                     except Exception as frame_err:
                          print(f"[video player] Error processing/sending frame {frame_count}: {frame_err}")
                          # self.should_stop = True # Optionally stop on frame errors
