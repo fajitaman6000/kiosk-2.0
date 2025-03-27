@@ -231,13 +231,15 @@ class VideoManager:
         try:
             # 1. Destroy Qt video display (Invoke slot on bridge)
             print("[video manager] Destroying Qt video display...")
+            # Use QueuedConnection to avoid blocking the Tkinter thread and causing deadlocks.
+            # The Qt window will be destroyed asynchronously by the Qt event loop.
             QMetaObject.invokeMethod(
-                Overlay._bridge, # +++ Target the bridge instance +++
-                "destroy_video_display_slot", # +++ Call the slot +++
-                Qt.BlockingQueuedConnection # Wait for it to be destroyed
+                Overlay._bridge, # Target the bridge instance
+                "destroy_video_display_slot", # Call the slot
+                Qt.QueuedConnection # <<< CHANGED FROM BlockingQueuedConnection
             )
-            print("[video manager] Qt video display destroyed.")
-
+            # Don't print "destroyed" here, as it happens asynchronously now.
+            # print("[video manager] Qt video display destruction queued.") # Optional log
 
             # 2. Restore background music volume (can run here)
             print("[video manager] Restoring background music volume...")
