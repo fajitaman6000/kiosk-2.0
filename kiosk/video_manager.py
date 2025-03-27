@@ -131,22 +131,20 @@ class VideoManager:
             is_skippable = "video_solutions" in video_path.lower().replace("\\", "/")
             print(f"[video manager] Video skippable: {is_skippable}")
 
-            # Use BlockingQueuedConnection to ensure preparation is done before proceeding
-            # Note: We removed the 'success' return value handling for simplicity.
-            # Blocking ensures the call finishes or Qt detects an issue.
+            # Use QueuedConnection for asynchronous preparation. This avoids deadlocks.
+            # The update_video_frame_slot has checks to handle frames arriving before
+            # preparation is fully complete in the Qt thread.
             QMetaObject.invokeMethod(
-                Overlay._bridge, # +++ Target the bridge instance +++
-                "prepare_video_display_slot", # +++ Call the slot +++
-                Qt.BlockingQueuedConnection, # Wait for completion
+                Overlay._bridge, # Target the bridge instance
+                "prepare_video_display_slot", # Call the slot
+                Qt.QueuedConnection, # <<< CHANGED FROM BlockingQueuedConnection
                 # Arguments passed to the slot
                 Q_ARG(bool, is_skippable),
                 Q_ARG(object, self._handle_video_skip_request) # Pass method reference
             )
-            # If invokeMethod failed catastrophically (e.g., wrong args), it might raise
-            # If the slot itself had an error, it's printed by the bridge
+            # invokeMethod now returns immediately.
 
-
-            # 4. Show Qt video display (Invoke slot on bridge)
+            # 4. Show Qt video display (Invoke slot on bridge) - Keep as Queued
             QMetaObject.invokeMethod(Overlay._bridge, "show_video_display_slot", Qt.QueuedConnection)
 
 
