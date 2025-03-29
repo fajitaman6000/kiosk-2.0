@@ -21,13 +21,13 @@
 [kiosk_file_downloader] Processed 50/73 files...
 [kiosk_file_downloader] Processing batch of 10 files (44.7MB)
 [kiosk_file_downloader] Processed 60/73 files...
-[kiosk_file_downloader] Processing batch of 10 files (
+[kiosk_file_downloader] Processing batch of 10 files
 
 
 ##############################################################################################################################
 # important/immediate todo
 
-"failed to download files"?
+"failed to download files"? seems specific and not size related
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
@@ -60,8 +60,6 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
-xyz finished their game (instead of generic victory sound)
-
 kiosk relaunch after sync finish
 
 periodic setting of casino/morning after according to room?
@@ -71,6 +69,7 @@ reset props, reset room (runs reset all + reset kiosk)
 ##############################################################################################################################
 # ambitious extra ideas:
 
+xyz finished their game (instead of generic victory sound)
 "wave back" button
 more specific standby audio
 log video solution usage to discourage excessive use

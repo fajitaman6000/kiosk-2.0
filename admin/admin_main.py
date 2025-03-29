@@ -4,6 +4,7 @@ import traceback
 import sys
 from prop_control import PropControl
 import os
+#import sv_ttk
 
 from network_broadcast_handler import NetworkBroadcastHandler
 from kiosk_state_tracker import KioskStateTracker
@@ -55,6 +56,9 @@ try:
             # Set window geometry with manual adjustments
             self.root.geometry(f"{window_width}x{window_height}+{x_position}+{y_position}")
             
+            # Set dark theme
+            #sv_ttk.set_theme("dark")
+
             # Room definitions
             self.rooms = {
                 1: "Casino Heist",
