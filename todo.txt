@@ -27,6 +27,8 @@
 ##############################################################################################################################
 # important/immediate todo
 
+pre-transcode the video??? How: Convert to MJPEG (Motion JPEG) or an intra-frame codec like ProRes (if disk space isn't a major issue).
+
 "failed to download files"?
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
