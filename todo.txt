@@ -7,11 +7,27 @@
 [qt overlay] Stored kiosk_app with computer_name: TIME-MACHINE-KIOSK
 
 
+...
 
+[message handler] Creating new file downloader for admin IP: 192.168.0.110
+[message handler] Initiating sync with admin at 192.168.0.110
+[kiosk_file_downloader] Sync requested
+[kiosk_file_downloader] Operations appear to be stalled, resetting state...
+[kiosk_file_downloader] Reset sync state
+
+...
+
+[kiosk_file_downloader] Processing batch of 10 files (19.3MB)
+[kiosk_file_downloader] Processed 50/73 files...
+[kiosk_file_downloader] Processing batch of 10 files (44.7MB)
+[kiosk_file_downloader] Processed 60/73 files...
+[kiosk_file_downloader] Processing batch of 10 files
 
 
 ##############################################################################################################################
 # important/immediate todo
+
+"failed to download files"?
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
@@ -21,8 +37,7 @@ video player performance abysmal
   identify and ensure all "video finish" logic exists in video MANAGER, then proceed with player rewrite
 
 ##############################################################################################################################
-# priority bugs
-
+# known priority bugs
 
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
@@ -32,8 +47,6 @@ hangup reliability:
     Long-running operations in the main Tkinter thread (Medium Probability): Blocking calls in the Tkinter main thread will freeze the GUI and can lead to this behavior. While the code tries to offload to threads, some operations still might occur within after callbacks or event handlers.
     Pygame Mixer Issues (Low Probability): While less likely than network issues, improper use of pygame.mixer can sometimes cause hangs, especially if there are errors loading or playing audio files.
     Infinite Loops (Low Probability): Less likely, but still possible. If any of the while self.running: loops have a subtle bug that prevents them from exiting, this could occur."
-
-time machine camera loading issue
 
 ##############################################################################################################################
 # known low priority bugs

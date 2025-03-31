@@ -460,7 +460,7 @@ class KioskFileDownloader:
                             progress = (bytes_downloaded / total_size) * 100 if total_size else 0
                             speed = bytes_downloaded / (1024 * 1024 * (current_time - start_time))
                             print(f"[kiosk_file_downloader] {file_path}: {progress:.1f}% "
-                                  f"({bytes_downloaded}/{total_size} bytes) {speed:.2f} MB/s")
+                                  f"({bytes_downloaded/1024}/{total_size/1024} kb) {speed:.2f} MB/s")
                             last_update = current_time
 
             # Verify download is complete
