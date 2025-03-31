@@ -13,7 +13,6 @@ import traceback
 import numpy as np # Needed for type hints / checks potentially
 from config import ROOM_CONFIG
 import cv2
-import time
 print("[qt overlay] Ending imports ...")
 
 class ClickableVideoView(QGraphicsView):
@@ -190,15 +189,6 @@ class Overlay:
     _video_click_callback = None # To store callback from video_manager
     _video_is_initialized = False
     _bridge = None
-
-    _perf_update_frame_count = 0
-    _perf_accumulated_qimage_time = 0
-    _perf_accumulated_pixmap_time = 0
-    _perf_accumulated_setpixmap_time = 0
-    _perf_accumulated_viewport_update_time = 0
-    _perf_accumulated_total_update_time = 0
-    _perf_PRINT_INTERVAL = 60 # Print averages every N frames
-    
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -485,12 +475,13 @@ class Overlay:
         #      print("[qt overlay] Video display already destroyed or never initialized.") # Reduce noise
 
     @classmethod
-    def update_video_frame(cls, frame_data): # frame_data is now BGR
+    def update_video_frame(cls, frame_data):
         """
-        Receives raw frame data (NumPy array BGR) and updates the display.
+        Receives raw frame data (NumPy array RGB) and updates the display.
         MUST be called from the main GUI thread (via bridge slot).
         """
-        slot_entry_time = time.perf_counter()
+        # --- Performance Critical Section ---
+        # start_time = time.perf_counter() # Optional: for timing this function
 
         # Basic checks first
         if not cls._video_window or not cls._video_pixmap_item or not cls._video_is_initialized or not cls._video_window.isVisible():
@@ -503,90 +494,60 @@ class Overlay:
              return
 
         try:
-            # frame_data is BGR from video_player
+            # Assuming frame_data is already RGB from video_player's cvtColor
             height, width, channel = frame_data.shape
 
-            # --- Check channel count; should be 3 for BGR ---
+            # --- Efficient QImage Creation ---
+            # Check channel count; should be 3 for RGB
             if channel != 3:
                 print(f"[qt overlay] Unexpected frame channel count: {channel}")
                 return
 
             bytes_per_line = channel * width
+            # Create QImage wrapper around the existing NumPy buffer.
+            # QImage.Format_RGB888 expects RGB byte order.
+            # Use copy=False if possible, but needs care with lifetimes.
+            # Making a copy is safer if frame_data buffer might be reused/freed.
+            # Let's try without copy first for performance.
             # Ensure the NumPy array is contiguous in memory for safety.
             if not frame_data.flags['C_CONTIGUOUS']:
                  frame_data = np.ascontiguousarray(frame_data)
 
-            # === Time QImage Creation ===
-            qimage_start = time.perf_counter()
-            # Tell QImage to expect BGR data directly
+            # --- This is often the fastest way if lifetimes are managed ---
             q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_BGR888)
-            qimage_duration = time.perf_counter() - qimage_start
-            cls._perf_accumulated_qimage_time += qimage_duration
-            # ===========================
+            # --- If the above causes crashes (due to buffer reuse), use copy: ---
+            # q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_RGB888).copy()
 
-            # === Time QPixmap Conversion ===
-            pixmap_start = time.perf_counter()
+
+            # --- Create QPixmap from QImage ---
             # This step *does* involve a copy internally, potentially expensive.
             pixmap = QPixmap.fromImage(q_image)
-            pixmap_duration = time.perf_counter() - pixmap_start
-            cls._perf_accumulated_pixmap_time += pixmap_duration
-            # =============================
 
-            # === Time Setting Pixmap ===
-            setpixmap_start = time.perf_counter()
-            # Update the QGraphicsPixmapItem
+            # --- NO SCALING HERE --- Assume frame_data is already screen size ---
+
+            # --- Update the QGraphicsPixmapItem ---
             cls._video_pixmap_item.setPixmap(pixmap)
-            setpixmap_duration = time.perf_counter() - setpixmap_start
-            cls._perf_accumulated_setpixmap_time += setpixmap_duration
-            # =========================
 
             # --- Store reference to prevent premature garbage collection ---
+            # Important if q_image was wrapping the numpy buffer without copy
             cls._last_frame = q_image # Store QImage reference
+            # cls._last_frame = pixmap # Or store pixmap reference
 
-            # === Time Viewport Update ===
-            viewport_update_start = time.perf_counter()
-            # Trigger Viewport Update
+
+            # --- Trigger Viewport Update ---
+            # Updating the whole viewport might be efficient enough if the whole frame changes.
             if cls._video_view:
                  cls._video_view.viewport().update()
-                 # Alternative to test: cls._video_scene.update(cls._video_pixmap_item.boundingRect())
-            viewport_update_duration = time.perf_counter() - viewport_update_start
-            cls._perf_accumulated_viewport_update_time += viewport_update_duration
-            # ==========================
+            # Alternative: Update only the item's area (might save GPU fillrate)
+            # cls._video_scene.update(cls._video_pixmap_item.boundingRect())
 
-            # --- Calculate total time and accumulate ---
-            total_update_duration = time.perf_counter() - slot_entry_time
-            cls._perf_accumulated_total_update_time += total_update_duration
-            cls._perf_update_frame_count += 1
 
-            # --- Periodic Performance Report ---
-            if cls._perf_update_frame_count >= cls._perf_PRINT_INTERVAL:
-                avg_qimage = (cls._perf_accumulated_qimage_time / cls._perf_update_frame_count) * 1000
-                avg_pixmap = (cls._perf_accumulated_pixmap_time / cls._perf_update_frame_count) * 1000
-                avg_setpixmap = (cls._perf_accumulated_setpixmap_time / cls._perf_update_frame_count) * 1000
-                avg_viewport = (cls._perf_accumulated_viewport_update_time / cls._perf_update_frame_count) * 1000
-                avg_total = (cls._perf_accumulated_total_update_time / cls._perf_update_frame_count) * 1000
-                render_fps = cls._perf_update_frame_count / cls._perf_accumulated_total_update_time if cls._perf_accumulated_total_update_time > 0 else 0
-
-                print(f"[PERF Qt UpdateFrame (avg over {cls._perf_update_frame_count} frames)]")
-                print(f"  - Avg QImage Create: {avg_qimage:.2f} ms")
-                print(f"  - Avg QPixmap Convert: {avg_pixmap:.2f} ms")
-                print(f"  - Avg setPixmap:     {avg_setpixmap:.2f} ms")
-                print(f"  - Avg ViewportUpdate:{avg_viewport:.2f} ms")
-                print(f"  - Avg Total Slot:    {avg_total:.2f} ms")
-                print(f"  - Est. Render FPS:   {render_fps:.2f} (based on slot time)")
-
-                # Reset accumulators
-                cls._perf_accumulated_qimage_time = 0
-                cls._perf_accumulated_pixmap_time = 0
-                cls._perf_accumulated_setpixmap_time = 0
-                cls._perf_accumulated_viewport_update_time = 0
-                cls._perf_accumulated_total_update_time = 0
-                cls._perf_update_frame_count = 0
-
+            # end_time = time.perf_counter()
+            # print(f"Frame update time: {(end_time - start_time)*1000:.2f} ms") # Optional timing
 
         except Exception as e:
             print(f"[qt overlay] Error updating video frame: {e}")
-            traceback.print_exc()
+            traceback.print_exc() # Show full traceback for errors here
 
     @classmethod
     def _init_hint_text_overlay(cls):

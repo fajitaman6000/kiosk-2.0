@@ -52,16 +52,6 @@ class VideoPlayer:
         cap = None # Initialize cap to None
         ret = False # Initialize ret to False
 
-        # --- Timing accumulation variables ---
-        accumulated_read_time = 0
-        accumulated_processing_time = 0
-        accumulated_callback_time = 0
-        accumulated_wait_time = 0
-        accumulated_sleep_time = 0
-        accumulated_loop_time = 0
-        timing_frame_count = 0
-        PRINT_INTERVAL = 60 # Print average timings every 60 frames
-
         try:
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
@@ -86,22 +76,20 @@ class VideoPlayer:
                     if not mixer.get_init(): mixer.init(frequency=44100)
                     video_sound = mixer.Sound(audio_path)
                     self.video_sound_channel.play(video_sound)
-                    playback_start_perf_counter = time.perf_counter() # Reset start time after potential mixer init delay
+                    playback_start_perf_counter = time.perf_counter()
                     print("[video player] Started audio playback.")
                     audio_started = True
                 except Exception as e:
                     print(f"[video player] Error starting audio: {e}")
                     traceback.print_exc()
-                    playback_start_perf_counter = time.perf_counter() # Reset start time
+                    playback_start_perf_counter = time.perf_counter()
             else:
                 print("[video player] No valid audio path or file missing.")
-                playback_start_perf_counter = time.perf_counter() # Reset start time
+                playback_start_perf_counter = time.perf_counter()
 
 
             # --- Frame Loop ---
             frame_count = 0
-            loop_start_time = time.perf_counter() # For loop duration measurement
-
             while True: # Loop until break
                 # --- Check Flags First ---
                 if self.should_stop or self.resetting:
@@ -112,43 +100,31 @@ class VideoPlayer:
                 current_time = time.perf_counter()
                 expected_time = playback_start_perf_counter + frame_count * frame_time
                 wait_time = expected_time - current_time
-                accumulated_wait_time += wait_time # Can be negative
 
                 # --- Read Frame *BEFORE* Skipping Logic ---
-                read_start = time.perf_counter()
                 ret, frame = cap.read()
-                read_duration = time.perf_counter() - read_start
-                accumulated_read_time += read_duration
-
                 if not ret:
                     print("[video player] End of video stream reached.")
                     break # Exit loop normally if read fails
 
                 # --- Frame Skipping (Simplified) ---
+                # If lagging, just continue to next iteration's read without processing/sleeping
+                # This effectively skips rendering the current 'frame' if behind schedule.
+                # We read the *next* frame instead of sleeping/processing.
                 if wait_time < -frame_time * 1.5 and self.is_playing:
                     # print(f"Skipping frame {frame_count} due to lag ({wait_time:.3f}s)") # Debug noise
                     frame_count += 1
-                    # Measure loop time even for skipped frames
-                    loop_end_time = time.perf_counter()
-                    accumulated_loop_time += loop_end_time - loop_start_time
-                    loop_start_time = loop_end_time
-                    timing_frame_count += 1
                     continue # Go straight to next loop iteration (reads next frame)
 
+
                 # --- Wait if ahead ---
-                actual_sleep_duration = 0
                 if wait_time > 0.001:
-                    sleep_start = time.perf_counter()
-                    # Use a slightly more robust sleep target
-                    sleep_target = max(0, wait_time - 0.001)
-                    time.sleep(sleep_target)
-                    actual_sleep_duration = time.perf_counter() - sleep_start
-                accumulated_sleep_time += actual_sleep_duration
+                    time.sleep(max(0, wait_time - 0.001)) # Fine-tuned sleep
+
 
                 # --- Process and Send Frame ---
-                # (Only if not skipped)
+                # (We already read 'frame' successfully before the skip logic)
                 if self.is_playing and not self.should_stop and not self.resetting:
-                    processing_start = time.perf_counter()
                     try:
                         # Check dimensions (optional but recommended)
                         frame_h, frame_w = frame.shape[:2]
@@ -156,72 +132,33 @@ class VideoPlayer:
                             # Dimensions match - USE FRAME DIRECTLY (frame is BGR)
                             processed_frame = frame
                         else:
-                            # Fallback: Dimensions differ (unexpected), so resize (still BGR)
+                            # Fallback: Dimensions differ (unexpected), so resize
                             print(f"[video player] Warning: Frame size {frame_w}x{frame_h} differs from target {self.target_width}x{self.target_height}. Resizing.")
+                            # NOTE: If resizing is needed, the output is STILL BGR
                             processed_frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=cv2.INTER_NEAREST)
 
-                        # *** NO cv2.cvtColor HERE *** - We send BGR
-
-                        processing_duration = time.perf_counter() - processing_start
-                        accumulated_processing_time += processing_duration
+                        # NO cv2.cvtColor HERE ANYMORE!
+                        # The frame being sent is now BGR.
 
                         # Send frame data (BGR) via callback
-                        callback_start = time.perf_counter()
                         if self.frame_update_callback:
-                            self.frame_update_callback(processed_frame) # Sending BGR frame
+                            # Send the BGR frame directly
+                            self.frame_update_callback(processed_frame) # Sending BGR
                         else:
                             print("[video player] Error: frame_update_callback missing!")
-                            self.should_stop = True # Stop if callback invalid
-                        callback_duration = time.perf_counter() - callback_start
-                        accumulated_callback_time += callback_duration
-
+                            self.should_stop = True
                     except Exception as frame_err:
                          print(f"[video player] Error processing/sending frame {frame_count}: {frame_err}")
                          # self.should_stop = True # Optionally stop on frame errors
-                         accumulated_processing_time += time.perf_counter() - processing_start # Add time even if error
-                         accumulated_callback_time += 0 # No callback happened
 
                 frame_count += 1
-                timing_frame_count += 1 # Increment counter for averaging
-
-                # --- Periodic Timing Report ---
-                if timing_frame_count >= PRINT_INTERVAL:
-                    avg_read = (accumulated_read_time / timing_frame_count) * 1000
-                    avg_processing = (accumulated_processing_time / timing_frame_count) * 1000
-                    avg_callback = (accumulated_callback_time / timing_frame_count) * 1000
-                    avg_wait = (accumulated_wait_time / timing_frame_count) * 1000
-                    avg_sleep = (accumulated_sleep_time / timing_frame_count) * 1000
-                    avg_loop = (accumulated_loop_time / timing_frame_count) * 1000
-                    actual_fps = timing_frame_count / accumulated_loop_time if accumulated_loop_time > 0 else 0
-
-                    print(f"[PERF Player Loop (avg over {timing_frame_count} frames)]")
-                    print(f"  - Avg Read:      {avg_read:.2f} ms")
-                    print(f"  - Avg Process:   {avg_processing:.2f} ms (Resize/Prep)")
-                    print(f"  - Avg Callback:  {avg_callback:.2f} ms (Signal Emit)")
-                    print(f"  - Avg Wait Time: {avg_wait:.2f} ms (Target sleep/lag)")
-                    print(f"  - Avg Sleep:     {avg_sleep:.2f} ms (Actual sleep)")
-                    print(f"  - Avg Total Loop:{avg_loop:.2f} ms")
-                    print(f"  - Actual FPS:    {actual_fps:.2f}")
-
-                    # Reset accumulators
-                    accumulated_read_time = 0
-                    accumulated_processing_time = 0
-                    accumulated_callback_time = 0
-                    accumulated_wait_time = 0
-                    accumulated_sleep_time = 0
-                    accumulated_loop_time = 0
-                    timing_frame_count = 0
-
-                # Measure loop time for the next iteration
-                loop_end_time = time.perf_counter()
-                accumulated_loop_time += loop_end_time - loop_start_time
-                loop_start_time = loop_end_time
 
                 # End loop check (redundant?)
                 if not self.is_playing:
                     print("[video player] is_playing became False. Breaking loop.")
                     break
 
+        # --- finally block remains the same ---
         except Exception as e:
             print("[video player] Unexpected error in video thread:")
             traceback.print_exc()
@@ -248,6 +185,7 @@ class VideoPlayer:
 
             print("[video player] Video thread finished.")
 
+    # --- extract_audio method remains the same as previous correct version ---
     def extract_audio(self, video_path):
         """Extract audio using ffmpeg."""
         print(f"[video player] Attempting to extract audio from: {video_path}")
@@ -292,6 +230,7 @@ class VideoPlayer:
                     except OSError as rm_err: print(f"[video player] Could not remove failed temp audio {temp_audio}: {rm_err}")
                 return None
             else:
+                # print("[video player] ffmpeg audio extraction successful.") # Reduce noise
                 if os.path.exists(temp_audio) and os.path.getsize(temp_audio) > 1024: # Check size > 1KB
                     self.current_audio_path = temp_audio
                     return temp_audio
@@ -311,6 +250,7 @@ class VideoPlayer:
                  except OSError as rm_err: print(f"[video player] Could not remove failed temp audio {temp_audio}: {rm_err}")
             return None
 
+    # --- play_video method remains the same as previous correct version ---
     def play_video(self, video_path, audio_path, frame_update_cb, on_complete_cb):
         """Start video playback in a separate thread."""
         print(f"[video player] play_video called for: {video_path}")
@@ -336,6 +276,7 @@ class VideoPlayer:
         print("[video player] Starting video thread...")
         self.video_thread.start()
 
+    # --- stop_video method remains the same as previous correct version ---
     def stop_video(self):
         """Stop video and audio playback gracefully."""
         print("[video player] stop_video called.")
@@ -345,19 +286,27 @@ class VideoPlayer:
 
         self.should_stop = True # Signal the thread to stop
 
+        # Note: is_playing is set to False *by the thread itself* or *force_stop*
+        # Setting it False here can cause race conditions if thread checks it immediately after
+
         # Stop audio channel directly
         if self.video_sound_channel.get_busy():
+            # print("[video player] Stopping audio channel.") # Reduce noise
             self.video_sound_channel.stop()
 
         # Wait briefly for the thread to potentially exit on its own
         if self.video_thread and self.video_thread.is_alive():
+             # print("[video player] Waiting for video thread to join (timeout 0.5s)...") # Reduce noise
              self.video_thread.join(timeout=0.5)
              if self.video_thread.is_alive():
                   print("[video player] Warning: Video thread did not exit cleanly after stop request.")
 
+        # Cleanup is handled when the thread actually exits and calls on_complete_callback
+        # OR by force_stop. Don't call _cleanup_resources here directly.
         print("[video player] stop_video finished signaling.")
 
 
+    # --- force_stop method remains the same as previous correct version ---
     def force_stop(self):
         """Force stop playback immediately, intended for reset scenarios."""
         print("[video player] Force stopping playback.")
@@ -372,11 +321,13 @@ class VideoPlayer:
 
         if self.video_thread and self.video_thread.is_alive():
             print("[video player] Video thread still alive during force_stop (expected).")
+            # self.video_thread.join(timeout=0.1) # Don't wait long
 
         self._cleanup_resources() # Clean up resources *now* in force stop
         self.reset_state() # Reset internal state variables
         print("[video player] Force stop complete.")
 
+    # --- reset_state method remains the same as previous correct version ---
     def reset_state(self):
         """Reset state variables, typically after a force_stop."""
         print("[video player] Resetting internal state.")
@@ -388,30 +339,47 @@ class VideoPlayer:
         self.frame_update_callback = None
 
 
+    # --- _cleanup_resources method remains the same as previous correct version ---
     def _cleanup_resources(self):
         """Clean up temporary files and potentially other resources."""
+        # print("[video player] Cleaning up resources...") # Reduce noise
         audio_to_remove = self.current_audio_path
+        # Clear path immediately to prevent multiple cleanup attempts
         self.current_audio_path = None
 
         if audio_to_remove and os.path.exists(audio_to_remove):
+            # print(f"[video player] Attempting to remove temp audio file: {audio_to_remove}") # Reduce noise
             try:
-                for attempt in range(2):
+                # Retry mechanism
+                for attempt in range(2): # Reduce retries
                     try:
                         os.remove(audio_to_remove)
+                        # print(f"[video player] Removed temp audio file on attempt {attempt+1}.") # Reduce noise
                         break
-                    except PermissionError:
+                    except PermissionError: # If file still locked, wait briefly
                         if attempt == 0: time.sleep(0.2)
-                    except FileNotFoundError:
+                    except FileNotFoundError: # Already gone
                          break
                 else:
                     print(f"[video player] Warning: Failed to remove temp audio file after retries: {audio_to_remove}")
             except Exception as e:
                 print(f"[video player] Error removing temp audio file {audio_to_remove}: {e}")
+        # else:
+            # print("[video player] No current audio file path to clean up or file already gone.") # Reduce noise
 
+    # --- __del__ method remains the same as previous correct version ---
     def __del__(self):
         """Destructor: Ensure cleanup of the temporary directory."""
+        # print(f"[video player] Destructor called for {id(self)}.") # Reduce noise
+        # Ensure player is stopped, resources cleaned
+        # self.force_stop() # Calling force_stop in __del__ can be problematic if threads are involved
+
+        # Just try to clean the directory directly
         temp_dir_to_remove = getattr(self, 'temp_dir', None)
-        if temp_dir_to_remove and os.path.isdir(temp_dir_to_remove):
+        if temp_dir_to_remove and os.path.isdir(temp_dir_to_remove): # Check if it's a directory
+            # print(f"[video player] Cleaning up temporary directory in destructor: {temp_dir_to_remove}") # Reduce noise
             import shutil
             shutil.rmtree(temp_dir_to_remove, ignore_errors=True)
+            # print(f"[video player] Removed temporary directory (ignore errors): {temp_dir_to_remove}") # Reduce noise
+
         self.temp_dir = None
