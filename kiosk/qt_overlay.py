@@ -2,7 +2,7 @@
 print("[qt overlay] Beginning imports ...")
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsItem
 from PIL import Image
 import sys
 import win32gui
@@ -66,7 +66,44 @@ class TimerDisplay:
             6: "atlantis_rising.png",
             7: "time_machine.png"
         }
-        
+
+class VideoFrameItem(QGraphicsItem):
+    """A QGraphicsItem that paints a QImage directly, avoiding QPixmap conversion."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._image = QImage() # Initialize with an empty QImage
+
+    def setImage(self, image):
+        """Sets the QImage to be displayed."""
+        if isinstance(image, QImage) and not image.isNull():
+            # PrepareGeometryChange is necessary if the image size changes
+            if self._image.size() != image.size():
+                self.prepareGeometryChange()
+            self._image = image # Keep the QImage reference
+            # No need to call update() here explicitly,
+            # the view/scene update in Overlay.update_video_frame triggers the repaint
+        elif image is None or (isinstance(image, QImage) and image.isNull()):
+             # Handle setting an empty image (e.g., on stop)
+             if not self._image.isNull():
+                 self.prepareGeometryChange()
+                 self._image = QImage() # Reset to empty
+             # No update needed if already empty
+
+    def boundingRect(self):
+        """Return the bounding rectangle of the image."""
+        # Crucial: Must return the correct size for proper redraws
+        if not self._image.isNull():
+            return QRectF(0, 0, self._image.width(), self._image.height())
+        else:
+            return QRectF() # Return empty rect if no image
+
+    def paint(self, painter, option, widget=None):
+        """Paint the stored QImage directly onto the painter."""
+        if not self._image.isNull():
+            # Draw the image at the item's local origin (0,0)
+            painter.drawImage(0, 0, self._image)
+        # else: draw nothing if no image
+  
 class HelpButtonThread(QThread):
     """Dedicated thread for button updates"""
     update_signal = pyqtSignal(dict)
@@ -185,10 +222,11 @@ class Overlay:
     _video_window = None
     _video_view = None
     _video_scene = None
-    _video_pixmap_item = None
+    _video_frame_item = None # Custom item to draw QImage directly
     _video_click_callback = None # To store callback from video_manager
     _video_is_initialized = False
     _bridge = None
+    _last_frame = None
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -272,7 +310,6 @@ class Overlay:
         # Hide video display initially
         cls.hide_video_display()
         
-
     @classmethod
     def _init_video_display(cls):
         """Initialize video display components (window, scene, view, item)."""
@@ -290,7 +327,6 @@ class Overlay:
                 Qt.Tool
             )
             cls._video_window.setAttribute(Qt.WA_ShowWithoutActivating)
-            # WA_OpaquePaintEvent might improve performance on some systems if no transparency needed
             cls._video_window.setAttribute(Qt.WA_OpaquePaintEvent, True)
 
             # Create scene and view
@@ -299,22 +335,18 @@ class Overlay:
             cls._video_view.setStyleSheet("background: transparent; border: none;") # View transparent, window black
             cls._video_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             cls._video_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-            # --- Performance Tuning ---
-            # Remove SmoothPixmapTransform for potential speedup
-            cls._video_view.setRenderHint(QPainter.Antialiasing, False) # Turn off AA for pixmap if possible
-            # Use CacheNone for video - essential
+            cls._video_view.setRenderHint(QPainter.Antialiasing, False)
             cls._video_view.setCacheMode(QGraphicsView.CacheNone)
-            # Use FullViewportUpdate - might be faster if entire frame changes anyway
             cls._video_view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
-            # Optimization flags (may or may not help, platform dependent)
-            # cls._video_view.setOptimizationFlag(QGraphicsView.DontSavePainterState, True)
-            # cls._video_view.setOptimizationFlag(QGraphicsView.DontAdjustForAntialiasing, True)
 
-
-            # Create pixmap item to display frames
-            cls._video_pixmap_item = QGraphicsPixmapItem()
-            cls._video_scene.addItem(cls._video_pixmap_item)
+            # --- Create and add the CUSTOM VideoFrameItem ---
+            # --- REMOVE ---
+            # cls._video_pixmap_item = QGraphicsPixmapItem()
+            # cls._video_scene.addItem(cls._video_pixmap_item)
+            # +++ ADD +++
+            cls._video_frame_item = VideoFrameItem() # Use the new custom item
+            cls._video_scene.addItem(cls._video_frame_item)
+            # --- END CHANGE ---
 
             # Full screen setup
             screen_geometry = QApplication.desktop().screenGeometry()
@@ -323,22 +355,8 @@ class Overlay:
 
             cls._video_window.setGeometry(0, 0, width, height)
             cls._video_view.setGeometry(0, 0, width, height)
-            # Ensure scene rect matches exactly if view covers whole window
             cls._video_scene.setSceneRect(0, 0, width, height)
-            cls._video_pixmap_item.setPos(0, 0) # Place item at top-left
-
-            # Optional: Set NOACTIVATE flag on Windows (might not be needed for fullscreen)
-            # if os.name == 'nt' and cls._parent_hwnd: # Check OS
-            #     try:
-            #         # No SetParent for fullscreen window
-            #         style = win32gui.GetWindowLong(int(cls._video_window.winId()), win32con.GWL_EXSTYLE)
-            #         win32gui.SetWindowLong(
-            #             int(cls._video_window.winId()),
-            #             win32con.GWL_EXSTYLE,
-            #             style | win32con.WS_EX_NOACTIVATE
-            #         )
-            #     except Exception as e:
-            #         print(f"[qt overlay] Error setting window style for video: {e}")
+            cls._video_frame_item.setPos(0, 0) # Place item at top-left
 
             cls._video_is_initialized = True
             print("[qt overlay] Video display components initialized.")
@@ -346,7 +364,7 @@ class Overlay:
         except Exception as e:
             print(f"[qt overlay] Error initializing video display: {e}")
             traceback.print_exc()
-            cls._video_is_initialized = False # Mark as failed
+            cls._video_is_initialized = False
 
     @classmethod
     def prepare_video_display(cls, is_skippable, click_callback):
@@ -356,52 +374,47 @@ class Overlay:
             cls._init_video_display()
             if not cls._video_is_initialized:
                 print("[qt overlay] Failed to initialize video display during prepare.")
-                return # Cannot return success/fail via invokeMethod easily
+                return
 
-        if not cls._video_window or not cls._video_view:
-             print("[qt overlay] Error: Video window or view is missing during prepare.")
-             return
+        if not cls._video_window or not cls._video_view or not cls._video_frame_item: # Check for frame item
+            print("[qt overlay] Error: Video window, view, or frame item is missing during prepare.")
+            return
 
         print(f"[qt overlay] Preparing video display. Skippable: {is_skippable}")
         cls._video_click_callback = click_callback
         cls._video_view.set_skippable(is_skippable)
 
-        # Disconnect previous signal connection before connecting new one
         try:
-            # Check if connected before disconnecting
             if cls._video_view.receivers(cls._video_view.clicked) > 0:
                 cls._video_view.clicked.disconnect()
-                # print("[qt overlay] Disconnected previous video click signal.")
         except TypeError:
-             # print("[qt overlay] No previous video click signal connection found or error disconnecting.")
-             pass # Ignore if not connected or other issue
+            pass
         except Exception as e:
-             print(f"[qt overlay] Error disconnecting video click signal: {e}")
+            print(f"[qt overlay] Error disconnecting video click signal: {e}")
 
-        # Connect the new callback if provided
         if click_callback:
             try:
                 cls._video_view.clicked.connect(cls._video_click_callback)
                 print("[qt overlay] Connected video click signal.")
             except Exception as e:
-                 print(f"[qt overlay] Error connecting video click signal: {e}")
+                print(f"[qt overlay] Error connecting video click signal: {e}")
         else:
-             print("[qt overlay] No click callback provided for video.")
+            print("[qt overlay] No click callback provided for video.")
 
-        # Ensure window is sized correctly (fullscreen)
         screen_geometry = QApplication.desktop().screenGeometry()
         cls._video_window.setGeometry(screen_geometry)
         cls._video_view.setGeometry(0, 0, screen_geometry.width(), screen_geometry.height())
         cls._video_scene.setSceneRect(0, 0, screen_geometry.width(), screen_geometry.height())
 
-        # Clear any previous frame by setting an empty pixmap
-        cls._video_pixmap_item.setPixmap(QPixmap())
-        cls._last_frame = None # Clear reference
+        # --- Clear previous frame using the custom item's method ---
+        # --- REMOVE ---
+        # cls._video_pixmap_item.setPixmap(QPixmap())
+        # +++ ADD +++
+        cls._video_frame_item.setImage(None) # Set empty image in the custom item
+        # --- END CHANGE ---
+        cls._last_frame = None
 
-        # Ensure item is at 0,0
-        cls._video_pixmap_item.setPos(0,0)
-
-        # No explicit return needed for slots usually
+        cls._video_frame_item.setPos(0,0)
 
     @classmethod
     def show_video_display(cls):
@@ -420,15 +433,12 @@ class Overlay:
     def hide_video_display(cls):
         """Hide the video display window."""
         if cls._video_window and cls._video_is_initialized:
-            # print("[qt overlay] Hiding video display.") # Reduce noise
             if cls._video_window.isVisible():
-                 cls._video_window.hide()
-            # Clear pixmap immediately to free memory
-            if cls._video_pixmap_item:
-                 cls._video_pixmap_item.setPixmap(QPixmap())
+                cls._video_window.hide()
+            # Clear frame in custom item
+            if cls._video_frame_item:
+                cls._video_frame_item.setImage(None) # Clear the image
             cls._last_frame = None
-        # else:
-            # print("[qt overlay] Cannot hide video display: not initialized or window missing.") # Reduce noise
 
     @classmethod
     def destroy_video_display(cls):
@@ -438,116 +448,87 @@ class Overlay:
             if cls._video_window.isVisible():
                 cls._video_window.hide()
 
-            # Disconnect signal
             try:
                 if cls._video_view and cls._video_view.receivers(cls._video_view.clicked) > 0:
                     cls._video_view.clicked.disconnect()
             except TypeError:
-                pass # No connection existed or error
+                pass
             except Exception as e:
                 print(f"[qt overlay] Error disconnecting video signal during destroy: {e}")
 
 
-            # Explicitly delete items/scene/view if needed.
-            # Using deleteLater is safer as it schedules deletion within the Qt event loop.
-            if cls._video_pixmap_item and cls._video_scene and cls._video_pixmap_item in cls._video_scene.items():
-                cls._video_scene.removeItem(cls._video_pixmap_item)
-                # deleteLater might be safer if item has complex ownership/signals
-                # cls._video_pixmap_item.deleteLater()
+            # --- Schedule custom item for deletion ---
+            if cls._video_frame_item and cls._video_scene:
+                # Check if item is still in the scene before removing
+                if cls._video_frame_item in cls._video_scene.items():
+                    cls._video_scene.removeItem(cls._video_frame_item)
+                cls._video_frame_item.deleteLater() # Schedule custom item deletion
+            # --- END CHANGE ---
 
-            # Schedule children for deletion first, then parent window
             if cls._video_view:
                 cls._video_view.deleteLater()
             if cls._video_scene:
                 cls._video_scene.deleteLater()
-            cls._video_window.deleteLater() # Schedule window for deletion
+            cls._video_window.deleteLater()
 
-            # Reset state
+            # --- Reset state ---
             cls._video_window = None
             cls._video_view = None
             cls._video_scene = None
-            cls._video_pixmap_item = None
+            # --- REMOVE ---
+            # cls._video_pixmap_item = None
+            # +++ ADD +++
+            cls._video_frame_item = None # Reset custom item reference
+            # --- END CHANGE ---
             cls._video_click_callback = None
             cls._last_frame = None
-            # Keep _video_is_initialized = False until _init is called again
-            cls._video_is_initialized = False # Mark as uninitialized
-        # else:
-        #      print("[qt overlay] Video display already destroyed or never initialized.") # Reduce noise
+            cls._video_is_initialized = False
 
     @classmethod
     def update_video_frame(cls, frame_data):
         """
-        Receives raw frame data (NumPy array RGB) and updates the display.
+        Receives raw frame data (NumPy array BGR) and updates the display.
         MUST be called from the main GUI thread (via bridge slot).
         """
-        # --- Performance Critical Section ---
-        # start_time = time.perf_counter() # Optional: for timing this function
+        if not cls._video_window or not cls._video_frame_item or not cls._video_is_initialized or not cls._video_window.isVisible():
+            return
 
-        # Basic checks first
-        if not cls._video_window or not cls._video_pixmap_item or not cls._video_is_initialized or not cls._video_window.isVisible():
-            # print("[qt overlay] Video display not ready/visible, skipping frame.") # Reduce noise
-            return # Don't process if not ready or hidden
-
-        # Check if frame_data is valid
         if frame_data is None or not isinstance(frame_data, np.ndarray):
-             print("[qt overlay] Invalid frame data received.")
-             return
+            print("[qt overlay] Invalid frame data received.")
+            return
 
         try:
-            # Assuming frame_data is already RGB from video_player's cvtColor
             height, width, channel = frame_data.shape
-
-            # --- Efficient QImage Creation ---
-            # Check channel count; should be 3 for RGB
             if channel != 3:
                 print(f"[qt overlay] Unexpected frame channel count: {channel}")
                 return
 
             bytes_per_line = channel * width
-            # Create QImage wrapper around the existing NumPy buffer.
-            # QImage.Format_RGB888 expects RGB byte order.
-            # Use copy=False if possible, but needs care with lifetimes.
-            # Making a copy is safer if frame_data buffer might be reused/freed.
-            # Let's try without copy first for performance.
-            # Ensure the NumPy array is contiguous in memory for safety.
             if not frame_data.flags['C_CONTIGUOUS']:
-                 frame_data = np.ascontiguousarray(frame_data)
+                frame_data = np.ascontiguousarray(frame_data)
 
-            # --- This is often the fastest way if lifetimes are managed ---
+            # --- Create QImage wrapper (NO QPixmap!) ---
+            # Assuming BGR input from OpenCV's cap.read()
             q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_BGR888)
-            # --- If the above causes crashes (due to buffer reuse), use copy: ---
-            # q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_RGB888).copy()
 
+            # --- REMOVE QPixmap creation and setting ---
+            # pixmap = QPixmap.fromImage(q_image)
+            # cls._video_pixmap_item.setPixmap(pixmap)
 
-            # --- Create QPixmap from QImage ---
-            # This step *does* involve a copy internally, potentially expensive.
-            pixmap = QPixmap.fromImage(q_image)
+            # +++ Set the QImage on the custom item +++
+            cls._video_frame_item.setImage(q_image)
+            # +++ END CHANGE +++
 
-            # --- NO SCALING HERE --- Assume frame_data is already screen size ---
+            # Keep the QImage reference alive
+            cls._last_frame = q_image
 
-            # --- Update the QGraphicsPixmapItem ---
-            cls._video_pixmap_item.setPixmap(pixmap)
-
-            # --- Store reference to prevent premature garbage collection ---
-            # Important if q_image was wrapping the numpy buffer without copy
-            cls._last_frame = q_image # Store QImage reference
-            # cls._last_frame = pixmap # Or store pixmap reference
-
-
-            # --- Trigger Viewport Update ---
-            # Updating the whole viewport might be efficient enough if the whole frame changes.
+            # Trigger Viewport Update (still necessary)
             if cls._video_view:
-                 cls._video_view.viewport().update()
-            # Alternative: Update only the item's area (might save GPU fillrate)
-            # cls._video_scene.update(cls._video_pixmap_item.boundingRect())
-
-
-            # end_time = time.perf_counter()
-            # print(f"Frame update time: {(end_time - start_time)*1000:.2f} ms") # Optional timing
+                cls._video_view.viewport().update()
 
         except Exception as e:
             print(f"[qt overlay] Error updating video frame: {e}")
-            traceback.print_exc() # Show full traceback for errors here
+            traceback.print_exc()
 
     @classmethod
     def _init_hint_text_overlay(cls):
