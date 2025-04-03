@@ -27,22 +27,6 @@
 ##############################################################################################################################
 # important/immediate todo
 
-
-audio sync
-
-
-[video player] Force stop complete.
-[video manager] Force destroying Qt video display...
-[qt overlay] Destroying video display.
-Traceback (most recent call last):
-  File "C:\Users\PanIQ\Desktop\kiosk2.0\kiosk-2.0\kiosk\qt_overlay.py", line 190, in destroy_video_display_slot
-    Overlay.destroy_video_display()
-  File "C:\Users\PanIQ\Desktop\kiosk2.0\kiosk-2.0\kiosk\qt_overlay.py", line 465, in destroy_video_display
-    cls._video_frame_item.deleteLater() # Schedule custom item deletion
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'VideoFrameItem' object has no attribute 'deleteLater'
-
-
 pre-transcode the video??? How: Convert to MJPEG (Motion JPEG) or an intra-frame codec like ProRes (if disk space isn't a major issue).
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library

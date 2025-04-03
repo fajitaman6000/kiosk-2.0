@@ -462,7 +462,7 @@ class Overlay:
                 # Check if item is still in the scene before removing
                 if cls._video_frame_item in cls._video_scene.items():
                     cls._video_scene.removeItem(cls._video_frame_item)
-                #cls._video_frame_item.deleteLater() # Schedule custom item deletion
+                cls._video_frame_item.deleteLater() # Schedule custom item deletion
             # --- END CHANGE ---
 
             if cls._video_view:
