@@ -108,7 +108,6 @@ class VideoManager:
             if self.is_playing:
                 print("[video manager] Warning: Playback already in progress. Stopping previous.")
                 self.stop_video() # Signal stop
-                # Consider adding a short wait here if needed for transitions
                 time.sleep(0.3) # Give stop a moment
 
             print(f"[video manager] Starting video playback process for: {video_path}")
@@ -131,18 +130,14 @@ class VideoManager:
             is_skippable = "video_solutions" in video_path.lower().replace("\\", "/")
             print(f"[video manager] Video skippable: {is_skippable}")
 
-            # Use QueuedConnection for asynchronous preparation. This avoids deadlocks.
-            # The update_video_frame_slot has checks to handle frames arriving before
-            # preparation is fully complete in the Qt thread.
+            # Use QueuedConnection for asynchronous preparation.
             QMetaObject.invokeMethod(
-                Overlay._bridge, # Target the bridge instance
-                "prepare_video_display_slot", # Call the slot
-                Qt.QueuedConnection, # <<< CHANGED FROM BlockingQueuedConnection
-                # Arguments passed to the slot
+                Overlay._bridge,
+                "prepare_video_display_slot",
+                Qt.QueuedConnection,
                 Q_ARG(bool, is_skippable),
-                Q_ARG(object, self._handle_video_skip_request) # Pass method reference
+                Q_ARG(object, self._handle_video_skip_request)
             )
-            # invokeMethod now returns immediately.
 
             # 4. Show Qt video display (Invoke slot on bridge) - Keep as Queued
             QMetaObject.invokeMethod(Overlay._bridge, "show_video_display_slot", Qt.QueuedConnection)
@@ -150,26 +145,25 @@ class VideoManager:
 
             # 5. Instantiate VideoPlayer
             print("[video manager] Instantiating VideoPlayer...")
-            # --- Ensure player is created only if bridge calls succeed ---
             self.video_player = VideoPlayer(self.ffmpeg_path)
 
-            # 6. Extract audio (can run in this thread)
-            print("[video manager] Extracting audio...")
-            audio_path = self.video_player.extract_audio(video_path)
-            if audio_path:
-                print(f"[video manager] Audio extracted successfully: {audio_path}")
-            else:
-                print("[video manager] Audio extraction failed or no audio track.")
+            # 6. Extract audio (REMOVED - VideoPlayer handles this internally)
+            # print("[video manager] Extracting audio...") # No longer happens here
+            # audio_path = self.video_player.extract_audio(video_path) # <<< REMOVE THIS LINE
+            # if audio_path:
+            #     print(f"[video manager] Audio extracted successfully: {audio_path}")
+            # else:
+            #     print("[video manager] Audio extraction failed or no audio track.")
 
-            # 7. Start VideoPlayer playback (runs its own thread)
+            # 7. Start VideoPlayer playback (runs its own threads for reading, playing, and audio extraction)
             print("[video manager] Starting video player...")
             self.video_player.play_video(
                 video_path,
-                audio_path,
+                # audio_path, # <<< REMOVE THIS ARGUMENT
                 frame_update_cb=self._handle_frame_update,
                 on_complete_cb=self._on_player_complete
             )
-            print("[video manager] Video player started.")
+            print("[video manager] Video player started (audio extraction running concurrently).") # Added note
 
 
         except Exception as e:
