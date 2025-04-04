@@ -27,14 +27,11 @@
 ##############################################################################################################################
 # important/immediate todo
 
-pre-transcode the video??? How: Convert to MJPEG (Motion JPEG) or an intra-frame codec like ProRes (if disk space isn't a major issue).
+reintroduce screenshot functionality, either optimized or just not during videos (or send "watching video" image)
 
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
 rebooter added to kiosk app
-
-video player performance abysmal
-  identify and ensure all "video finish" logic exists in video MANAGER, then proceed with player rewrite
 
 ##############################################################################################################################
 # known priority bugs
