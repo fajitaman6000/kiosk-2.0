@@ -489,12 +489,19 @@ class Overlay:
         """
         Receives raw frame data (NumPy array BGR) and updates the display.
         MUST be called from the main GUI thread (via bridge slot).
+        Scales the frame to fit the view while maintaining aspect ratio.
         """
         if not cls._video_window or not cls._video_frame_item or not cls._video_is_initialized or not cls._video_window.isVisible():
             return
 
         if frame_data is None or not isinstance(frame_data, np.ndarray):
-            print("[qt overlay] Invalid frame data received.")
+            # print("[qt overlay] Invalid or null frame data received.") # Can be noisy if video ends
+            # If frame is None (e.g., end of video), ensure the last frame is cleared
+            if frame_data is None and cls._video_frame_item:
+                 cls._video_frame_item.setImage(None)
+                 cls._last_frame = None
+                 if cls._video_view:
+                     cls._video_view.viewport().update()
             return
 
         try:
@@ -507,28 +514,38 @@ class Overlay:
             if not frame_data.flags['C_CONTIGUOUS']:
                 frame_data = np.ascontiguousarray(frame_data)
 
-            # --- Create QImage wrapper (NO QPixmap!) ---
+            # Create QImage wrapper (NO QPixmap!)
             # Assuming BGR input from OpenCV's cap.read()
             q_image = QImage(frame_data.data, width, height, bytes_per_line, QImage.Format_BGR888)
 
-            # --- REMOVE QPixmap creation and setting ---
-            # pixmap = QPixmap.fromImage(q_image)
-            # cls._video_pixmap_item.setPixmap(pixmap)
-
-            # +++ Set the QImage on the custom item +++
+            # Set the QImage on the custom item
             cls._video_frame_item.setImage(q_image)
-            # +++ END CHANGE +++
 
-            # Keep the QImage reference alive
+            # Keep the QImage reference alive (important!)
             cls._last_frame = q_image
 
-            # Trigger Viewport Update (still necessary)
+            # --- SCALING LOGIC ---
+            # Get the item and view references
+            item = cls._video_frame_item
+            view = cls._video_view
+
+            if item and view:
+                # Get the current bounding rectangle of the item (based on the new q_image)
+                item_rect = item.boundingRect()
+                if not item_rect.isEmpty():
+                    # Tell the view to scale the item's rectangle to fit within the view,
+                    # maintaining the aspect ratio. This handles both upscaling and downscaling
+                    # for display purposes.
+                    view.fitInView(item_rect, Qt.KeepAspectRatio)
+
+            # Trigger Viewport Update (might be redundant after fitInView, but safe)
             if cls._video_view:
                 cls._video_view.viewport().update()
 
         except Exception as e:
             print(f"[qt overlay] Error updating video frame: {e}")
             traceback.print_exc()
+# --- END SNIPPET ---
 
     @classmethod
     def _init_hint_text_overlay(cls):
