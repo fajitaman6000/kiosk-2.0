@@ -3,6 +3,8 @@
 **/*.mp4
 videos/
 **/videos/
+*.avi
+*.wav
 
 # Ignore videos regardless of case
 *.MP4
@@ -40,3 +42,4 @@ kiosk/file_hashes.json
 kiosk/music/
 kiosk/loss_audio/**
 kiosk/other_files/**
+kiosk/intro_videos/transcoder.py
