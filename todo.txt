@@ -38,8 +38,6 @@ finish tk to qt transition
 ##############################################################################################################################
 # known priority bugs
 
-resend behavior resulting in erroneous delayed actions
-
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check
     kiosk doesn't retry/add itself back to queue after failed sync attempt

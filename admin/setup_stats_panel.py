@@ -12,24 +12,24 @@ def setup_stats_panel(interface_builder, computer_name):
     # Clear existing widgets
     for widget in interface_builder.stats_frame.winfo_children():
         widget.destroy()
-    
+
     # Main container with grid layout
     stats_container = tk.Frame(interface_builder.stats_frame)
     stats_container.pack(fill='both', expand=True, padx=10, pady=5)
-    
+
     # Left side panel for stats and controls
     left_panel = tk.Frame(stats_container, width=350)  # Reduced from ~500px default
     left_panel = tk.Frame(stats_container)
     left_panel.pack(side='left', fill='y', padx=(0, 10))
-    
+
     # Stats frame for hints
     stats_frame = tk.Frame(left_panel)
     stats_frame.pack(fill='x', pady=(0, 2))
-    
+
     # Create a frame for hints and reset button
     hints_frame = tk.Frame(stats_frame)
     hints_frame.pack(fill='x')
-    
+
     # Add reset button next to hints label with confirmation behavior
     reset_btn = tk.Button(
         hints_frame,
@@ -49,7 +49,7 @@ def setup_stats_panel(interface_builder, computer_name):
         reset_btn.confirmation_pending = False
         reset_btn.config(text="Reset Kiosk")
         reset_btn.after_id = None
-        
+
     def handle_reset_click():
         """Handle reset button clicks with confirmation"""
         if reset_btn.confirmation_pending:
@@ -61,17 +61,19 @@ def setup_stats_panel(interface_builder, computer_name):
             if computer_name in interface_builder.auto_reset_timer_ids:
                 interface_builder.app.root.after_cancel(interface_builder.auto_reset_timer_ids[computer_name])
                 del interface_builder.auto_reset_timer_ids[computer_name]
-            interface_builder.stats_elements['auto_reset_label'].config(text=" ")
+            if 'auto_reset_label' in interface_builder.stats_elements and interface_builder.stats_elements['auto_reset_label']:
+                 interface_builder.stats_elements['auto_reset_label'].config(text=" ")
+
 
         else:
             # First click - show confirmation
             reset_btn.confirmation_pending = True
             reset_btn.config(text="Confirm")
-            
+
             # Cancel any existing timer
             if reset_btn.after_id:
                 reset_btn.after_cancel(reset_btn.after_id)
-                
+
             # Set timer to reset button after 2 seconds
             reset_btn.after_id = reset_btn.after(2000, reset_reset_button)
 
@@ -105,22 +107,22 @@ def setup_stats_panel(interface_builder, computer_name):
         pady=3,
     )
     interface_builder.stats_elements['current_time'].pack(side='left', padx=5)
-    
+
     # Load all required icons
     icon_dir = os.path.join("admin_icons")
     try:
         play_icon = Image.open(os.path.join(icon_dir, "play.png"))
         play_icon = play_icon.resize((24, 24), Image.Resampling.LANCZOS)
         play_icon = ImageTk.PhotoImage(play_icon)
-        
+
         stop_icon = Image.open(os.path.join(icon_dir, "stop.png"))
         stop_icon = stop_icon.resize((24, 24), Image.Resampling.LANCZOS)
         stop_icon = ImageTk.PhotoImage(stop_icon)
-        
+
         video_icon = Image.open(os.path.join(icon_dir, "video.png"))
         video_icon = video_icon.resize((24, 24), Image.Resampling.LANCZOS)
         video_icon = ImageTk.PhotoImage(video_icon)
-        
+
         clock_icon = Image.open(os.path.join(icon_dir, "clock.png"))
         clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
         clock_icon = ImageTk.PhotoImage(clock_icon)
@@ -135,11 +137,11 @@ def setup_stats_panel(interface_builder, computer_name):
     except Exception as e:
         print(f"[stats panel]Error loading icons: {e}")
         play_icon = stop_icon = video_icon = clock_icon = music_on_icon = music_off_icon = None
-    
+
     # Timer button frame
     button_frame = tk.Frame(control_buttons_frame)
     button_frame.pack(side='left', padx=5)
-    
+
     # Music button frame
     music_button_frame = tk.Frame(control_buttons_frame)
     music_button_frame.pack(side='left', padx=5)
@@ -191,7 +193,7 @@ def setup_stats_panel(interface_builder, computer_name):
    # Video frame with icon button and dropdown
     video_frame = tk.Frame(control_buttons_frame)
     video_frame.pack(side='left', padx=(0,2))
-    
+
     try:
         skip_icon = Image.open(os.path.join(icon_dir, "skip.png"))
         skip_icon = skip_icon.resize((24, 24), Image.Resampling.LANCZOS)
@@ -408,7 +410,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Now add the manual hint text box and buttons below the Attach Image section
     interface_builder.stats_elements['msg_entry'] = tk.Text(
-        hint_frame, 
+        hint_frame,
         width=30,  # Width in characters
         height=4,  # Height in lines
         wrap=tk.WORD  # Word wrapping
@@ -419,7 +421,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['hint_buttons_frame'].pack(pady=5)
 
     interface_builder.stats_elements['send_btn'] = tk.Button(
-        interface_builder.stats_elements['hint_buttons_frame'], 
+        interface_builder.stats_elements['hint_buttons_frame'],
         text="Send",
         command=lambda: interface_builder.send_hint(computer_name),
         cursor="hand2"
@@ -447,7 +449,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Store the currently selected image
     interface_builder.current_hint_image = None
-    
+
     # Update the dropdown with available props
     interface_builder.update_image_props()
 
@@ -485,7 +487,7 @@ def setup_stats_panel(interface_builder, computer_name):
         anchor='n'      # Anchor to top
     )
     video_frame.pack_propagate(False)  # Prevent frame from shrinking
-    
+
     # Video display label fills video frame
     interface_builder.stats_elements['video_label'] = tk.Label(
         video_frame,
@@ -495,7 +497,7 @@ def setup_stats_panel(interface_builder, computer_name):
         fill='both',
         expand=True
     )
-    
+
     # Control frame for camera and audio buttons
     # Place this BEFORE the video frame code to ensure it appears above
     control_frame = tk.Frame(
@@ -517,23 +519,23 @@ def setup_stats_panel(interface_builder, computer_name):
         camera_icon = Image.open(os.path.join(icon_dir, "start_camera.png"))
         camera_icon = camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
         camera_icon = ImageTk.PhotoImage(camera_icon)
-        
+
         stop_camera_icon = Image.open(os.path.join(icon_dir, "stop_camera.png"))
         stop_camera_icon = stop_camera_icon.resize((24, 24), Image.Resampling.LANCZOS)
         stop_camera_icon = ImageTk.PhotoImage(stop_camera_icon)
-        
+
         listen_icon = Image.open(os.path.join(icon_dir, "start_listening.png"))
         listen_icon = listen_icon.resize((24, 24), Image.Resampling.LANCZOS)
         listen_icon = ImageTk.PhotoImage(listen_icon)
-        
+
         stop_listening_icon = Image.open(os.path.join(icon_dir, "stop_listening.png"))
         stop_listening_icon = stop_listening_icon.resize((24, 24), Image.Resampling.LANCZOS)
         stop_listening_icon = ImageTk.PhotoImage(stop_listening_icon)
-        
+
         enable_mic_icon = Image.open(os.path.join(icon_dir, "enable_microphone.png"))
         enable_mic_icon = enable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
         enable_mic_icon = ImageTk.PhotoImage(enable_mic_icon)
-        
+
         disable_mic_icon = Image.open(os.path.join(icon_dir, "disable_microphone.png"))
         disable_mic_icon = disable_mic_icon.resize((24, 24), Image.Resampling.LANCZOS)
         disable_mic_icon = ImageTk.PhotoImage(disable_mic_icon)
@@ -621,7 +623,7 @@ def setup_stats_panel(interface_builder, computer_name):
     except Exception as e:
         print(f"[stats panel]Error loading prop mappings: {e}")
         prop_mappings = {}
-        
+
     # Get room-specific props if room is assigned
     props_list = []
     if computer_name in interface_builder.app.kiosk_tracker.kiosk_assignments:
@@ -635,7 +637,7 @@ def setup_stats_panel(interface_builder, computer_name):
             6: "atlantis",
             7: "time"
         }
-        
+
         if room_num in room_map:
             room_key = room_map[room_num]
             if room_key in prop_mappings:
@@ -675,13 +677,13 @@ def setup_stats_panel(interface_builder, computer_name):
         if not dropdown:
             print("[stats panel]Warning: Dropdown no longer exists")
             return
-            
+
         # Get current values
         current_values = dropdown.cget('values')
         if not current_values:
             print("[stats panel]Warning: No values in dropdown")
             return
-            
+
         # Find matching prop in dropdown
         for prop_item in current_values:
             if f"({prop_name})" in prop_item:
@@ -702,25 +704,25 @@ def setup_stats_panel(interface_builder, computer_name):
     other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
     other_controls_frame.pack(fill='x', pady=10)
 
-    # Create container for horizontal button layout
-    button_container = tk.Frame(other_controls_frame)
-    button_container.pack(fill='x', padx=5, pady=5)
-    
+    # Container for the FIRST row of horizontal buttons
+    button_container_row1 = tk.Frame(other_controls_frame)
+    button_container_row1.pack(fill='x', padx=5, pady=(5, 0)) # Pad bottom 0
+
     # Add clear hints button
     clear_hints_btn = tk.Button(
-        button_container,  # Note: Parent changed to button_container
+        button_container_row1, # Parent is now row 1
         text="Clear Hints",
         command=lambda: interface_builder.clear_kiosk_hints(computer_name),
         cursor="hand2"
     )
-    clear_hints_btn.pack(side='left', padx=5)  # Added side='left'
+    clear_hints_btn.pack(side='left', padx=5)
 
     # Load hint sound and assistance icons
     try:
         hint_sound_icon = Image.open(os.path.join(icon_dir, "activate.png"))
         hint_sound_icon = hint_sound_icon.resize((10, 20), Image.Resampling.LANCZOS)
         hint_sound_icon = ImageTk.PhotoImage(hint_sound_icon)
-        
+
         assistance_icon = Image.open(os.path.join(icon_dir, "assistance_requested.png"))
         assistance_icon = assistance_icon.resize((15, 15), Image.Resampling.LANCZOS)
         assistance_icon = ImageTk.PhotoImage(assistance_icon)
@@ -730,23 +732,23 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Add play sound button with icon
     play_sound_btn = tk.Button(
-        button_container,
-        text="Play Hint Sound ",  # Added space after text for icon padding
+        button_container_row1, # Parent is now row 1
+        text="Play Hint Sound ",
         image=hint_sound_icon if hint_sound_icon else None,
-        compound=tk.RIGHT,  # Place icon to the right of text
+        compound=tk.RIGHT,
         command=lambda: interface_builder.play_hint_sound(computer_name),
         cursor="hand2"
     )
     if hint_sound_icon:
-        play_sound_btn.image = hint_sound_icon  # Keep reference
+        play_sound_btn.image = hint_sound_icon
     play_sound_btn.pack(side='left', padx=5)
 
     # Add offer assistance button with icon
     offer_assistance_btn = tk.Button(
-        button_container,
-        text="Offer Assistance ",  # Added space after text for icon padding
+        button_container_row1, # Parent is now row 1
+        text="Offer Assistance ",
         image=assistance_icon if assistance_icon else None,
-        compound=tk.RIGHT,  # Place icon to the right of text
+        compound=tk.RIGHT,
         command=lambda: interface_builder.app.network_handler.socket.sendto(
             json.dumps({
                 'type': 'offer_assistance',
@@ -757,20 +759,35 @@ def setup_stats_panel(interface_builder, computer_name):
         cursor="hand2"
     )
     if assistance_icon:
-        offer_assistance_btn.image = assistance_icon  # Keep reference
+        offer_assistance_btn.image = assistance_icon
     offer_assistance_btn.pack(side='left', padx=5)
 
-    # Sound controls container
+    # --- START: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
+    # Create container for the SECOND row (just Check Screen button)
+    button_container_row2 = tk.Frame(other_controls_frame)
+    button_container_row2.pack(fill='x', padx=5, pady=(2, 5)) # Adjust padding
+
+    # Add check screen button
+    check_screen_btn = tk.Button(
+        button_container_row2, # Parent is now row 2
+        text="Check Screen",
+        # command=lambda: interface_builder.check_kiosk_screen(computer_name), # Future function
+        cursor="hand2"
+    )
+    check_screen_btn.pack(side='left', padx=0, pady=(10,0)) # Pack left, remove side padding if needed
+    # --- END: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
+
+    # Sound controls container (Now packed below the second button row)
     sound_container = tk.Frame(other_controls_frame)
     sound_container.pack(fill='x', padx=5, pady=5)
-    
+
     # Add "Issue Warning:" label
     tk.Label(
         sound_container,
         text="Issue Warning:",
         anchor='e'
     ).pack(side='left', padx=(0, 5))
-    
+
     # Define warning sounds
     warning_sounds = {
         "No drinks on props": "drinks_props.mp3",
@@ -778,10 +795,10 @@ def setup_stats_panel(interface_builder, computer_name):
         "No photos": "no_photos.mp3",
         "Please stop": "please_stop.mp3"
     }
-    
+
     # Create variable for dropdown
     interface_builder.stats_elements['warning_sound'] = tk.StringVar()
-    
+
     # Create and configure dropdown
     warning_dropdown = ttk.Combobox(
         sound_container,
@@ -791,19 +808,19 @@ def setup_stats_panel(interface_builder, computer_name):
         width=15
     )
     warning_dropdown.pack(side='left')
-    
+
     # Add automatic trigger on selection
     def on_warning_select(event):
         selected = interface_builder.stats_elements['warning_sound'].get()
         if selected:  # Only trigger if something is actually selected
             interface_builder.play_hint_sound(
-                computer_name, 
+                computer_name,
                 warning_sounds[selected]
             )
             warning_dropdown.set('')  # Reset dropdown after playing
-    
+
     warning_dropdown.bind('<<ComboboxSelected>>', on_warning_select)
-    
+
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name
 
@@ -887,12 +904,12 @@ def setup_stats_panel(interface_builder, computer_name):
         justify='left'
     )
     interface_builder.stats_elements['hints_label_below'].pack(side='top', pady=stats_panel_ypadding, fill='x') # Fill 'x'
-    
+
     # Hints received label
     current_hints_received = 0
     if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
         current_hints_received = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('hints_received', 0)
-        
+
     interface_builder.stats_elements['hints_received_label'] = tk.Label(
         stats_vertical_frame,
         text=f"Hints received:\n{current_hints_received}",
