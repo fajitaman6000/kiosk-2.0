@@ -21,8 +21,6 @@ except ImportError:
 
 class VideoPlayer:
     # --- Constants ---
-    # Increased queue size allows more buffering, potentially smoothing over
-    # temporary hiccups in decoding speed, at the cost of memory.
     FRAME_QUEUE_SIZE = 30 # Number of frames to buffer ahead
 
     def __init__(self, ffmpeg_path):
@@ -48,7 +46,7 @@ class VideoPlayer:
         self.on_complete_callback = None
         self.frame_update_callback = None
 
-        # Target dimensions
+        # Target dimensions (screen size)
         self.target_width = 1920
         self.target_height = 1080
         self._update_target_dimensions() # Get screen size on init
@@ -56,14 +54,13 @@ class VideoPlayer:
         # State for resizing check
         self.source_width = 0
         self.source_height = 0
-        self.needs_resizing = False
+        self.needs_resizing = False # Will be True only if source > target
 
     def _update_target_dimensions(self):
         """Attempts to get screen size, falls back to default."""
         if PYAUTOGUI_AVAILABLE:
             try:
                 width, height = pyautogui.size()
-                # Basic sanity check for screen dimensions
                 if width > 100 and height > 100:
                      self.target_width, self.target_height = width, height
                      print(f"[video player] Detected screen size: {self.target_width}x{self.target_height}")
@@ -76,8 +73,8 @@ class VideoPlayer:
 
     def _reader_thread_func(self, video_path):
         """
-        Reads frames from video, resizes if needed, puts them in the queue.
-        Runs independently to decouple reading/decoding from playback timing.
+        Reads frames from video, resizes IF SOURCE IS LARGER than target,
+        puts them in the queue.
         """
         print(f"[video player] Reader thread starting for: {video_path}")
         cap = None
@@ -85,29 +82,22 @@ class VideoPlayer:
         read_successful = False
 
         try:
-            # Try opening with preferred backends for potential hardware acceleration
-            # Note: Availability & effectiveness depend heavily on OpenCV build & system config
-            # cap = cv2.VideoCapture(video_path, cv2.CAP_FFMPEG) # Default/often robust
-            # cap = cv2.VideoCapture(video_path, cv2.CAP_MSMF) # Windows Media Foundation
-            # cap = cv2.VideoCapture(video_path, cv2.CAP_DSHOW) # DirectShow (older Windows)
-            cap = cv2.VideoCapture(video_path) # Stick to default if unsure
+            cap = cv2.VideoCapture(video_path) # Stick to default
 
             if not cap.isOpened():
                 print(f"[video player] CRITICAL: Failed to open video in reader thread: {video_path}")
-                # Signal player thread to stop by putting None in the queue
                 if self.frame_queue:
                     try: self.frame_queue.put(None, timeout=0.5)
-                    except queue.Full: pass # Player might already be stopping
-                return # Exit thread
+                    except queue.Full: pass
+                return
 
-            read_successful = True # Mark that cap was opened
+            read_successful = True
 
             # --- Get Video Properties ---
             self.source_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.source_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             _fps = cap.get(cv2.CAP_PROP_FPS)
 
-            # Validate FPS
             if _fps is None or not (0.1 < _fps < 121.0):
                 print(f"[video player] Warning: Invalid/unreliable FPS ({_fps}) from video. Using default 30.")
                 self.frame_rate = 30.0
@@ -117,15 +107,21 @@ class VideoPlayer:
 
             print(f"[video player] Video properties: {self.source_width}x{self.source_height} @ {self.frame_rate:.2f} FPS (Frame Time: {self.frame_time:.4f}s)")
 
-            # --- Determine if resizing is needed ONCE ---
-            self.needs_resizing = not (self.source_width == self.target_width and self.source_height == self.target_height)
+            # --- Determine if resizing (downscaling) is needed ONCE ---
+            # Resize *only* if the source dimensions are *larger* than the target dimensions.
+            self.needs_resizing = (self.source_width > self.target_width or
+                                   self.source_height > self.target_height)
+
             if self.needs_resizing:
-                print(f"[video player] Resizing needed: Source {self.source_width}x{self.source_height} -> Target {self.target_width}x{self.target_height}")
-                # Using INTER_LINEAR is a balance between speed and quality.
-                # INTER_NEAREST is fastest but looks blocky. INTER_CUBIC is slower but better quality.
+                print(f"[video player] Downscaling needed: Source {self.source_width}x{self.source_height} -> Target {self.target_width}x{self.target_height}")
+                # Using INTER_LINEAR is a balance between speed and quality for downscaling.
                 resize_interpolation = cv2.INTER_LINEAR
+            elif self.source_width == self.target_width and self.source_height == self.target_height:
+                 print("[video player] No resizing needed (source matches target).")
             else:
-                 print("[video player] No resizing needed.")
+                 # Source is smaller or equal in both dimensions (but not exact match)
+                 print(f"[video player] No resizing needed (source {self.source_width}x{self.source_height} <= target {self.target_width}x{self.target_height}).")
+                 # The frame_update_callback receiver will need to handle scaling if fullscreen display is desired.
 
 
             # --- Frame Reading Loop ---
@@ -133,31 +129,24 @@ class VideoPlayer:
                 ret, frame = cap.read()
 
                 if not ret:
-                    # End of video stream
                     print("[video player] Reader: End of video stream reached.")
-                    break # Exit loop naturally
+                    break
 
-                # --- Process Frame (Resizing if needed) ---
-                # This is where the CPU work for resizing happens, offloaded
-                # from the player timing thread.
+                # --- Process Frame (Downscaling if needed) ---
                 if self.needs_resizing:
+                    # Only resize (downscale) if source is larger than target
                     processed_frame = cv2.resize(frame, (self.target_width, self.target_height), interpolation=resize_interpolation)
                 else:
-                    processed_frame = frame # Use frame directly (it's BGR)
+                    # Use frame directly (BGR) at its original resolution
+                    processed_frame = frame
 
                 # --- Put Frame in Queue ---
-                # This will block if the queue is full, acting as backpressure
-                # to prevent the reader from consuming too much memory if the
-                # player thread falls behind.
                 try:
-                    # We send the BGR frame directly
-                    self.frame_queue.put(processed_frame, block=True, timeout=1.0) # Wait up to 1 sec if full
+                    # Send the processed (or original) BGR frame
+                    self.frame_queue.put(processed_frame, block=True, timeout=1.0)
                     processed_frame_count += 1
                 except queue.Full:
-                    # This happens if the player thread is significantly delayed
-                    # or stopped. Log it and check the stop flag again.
                     print("[video player] Reader: Frame queue full. Player might be lagging or stopped.")
-                    # No 'continue' needed, the main loop condition self.should_stop handles exit
                 except Exception as q_err:
                      print(f"[video player] Reader: Error putting frame in queue: {q_err}")
                      self.should_stop = True # Signal stop on queue error
@@ -168,18 +157,15 @@ class VideoPlayer:
         except Exception as e:
             print("[video player] CRITICAL: Error in reader thread:")
             traceback.print_exc()
-            self.should_stop = True # Ensure player thread stops if reader crashes
+            self.should_stop = True
         finally:
             print("[video player] Reader thread cleaning up...")
             if cap and cap.isOpened():
                 cap.release()
                 print("[video player] Reader: Released video capture.")
 
-            # Signal player thread that reading is finished (normally or abnormally)
-            # Put 'None' sentinel value in the queue.
             if self.frame_queue:
                  try:
-                     # Non-blocking put is safer here in finally, player might be dead
                      self.frame_queue.put(None, block=False)
                      print("[video player] Reader: Put None sentinel in queue.")
                  except queue.Full:
@@ -189,8 +175,8 @@ class VideoPlayer:
 
             if not read_successful:
                 print("[video player] Reader: Setting playback_complete to True as video never opened.")
-                self.playback_complete = True # Ensure completion callback runs if start failed
-                self.is_playing = False # Ensure state reflects failure
+                self.playback_complete = True
+                self.is_playing = False
 
             print("[video player] Reader thread finished.")
 
@@ -199,6 +185,8 @@ class VideoPlayer:
         """
         Takes frames from the queue, handles timing/sync, plays audio,
         and calls the frame update callback.
+        NOTE: Frames received might be smaller than target dimensions and may
+              need scaling by the callback receiver for fullscreen display.
         """
         print("[video player] Player thread starting.")
         frame_count = 0
@@ -208,32 +196,45 @@ class VideoPlayer:
 
         try:
             # --- Wait for the first frame ---
-            # This ensures the reader has initialized and determined frame rate etc.
-            # It also introduces the intended startup delay for buffering.
             print("[video player] Player: Waiting for first frame from reader...")
-            first_frame = self.frame_queue.get(block=True, timeout=10.0) # Wait up to 10s for reader startup
+            first_frame = self.frame_queue.get(block=True, timeout=10.0)
             if first_frame is None:
                 print("[video player] Player: Received None sentinel immediately. Reader likely failed.")
                 self.is_playing = False
-                self.playback_complete = True # Assume completion on immediate fail
-                # No callback needed here, handled in finally
+                self.playback_complete = True
                 return
 
-            print(f"[video player] Player: Received first frame. Frame Time: {self.frame_time:.4f}s")
+            print(f"[video player] Player: Received first frame (resolution: {first_frame.shape[1]}x{first_frame.shape[0]}). Frame Time: {self.frame_time:.4f}s")
             got_first_frame = True
 
             # --- Audio Playback ---
             if audio_path and os.path.exists(audio_path):
                 try:
-                    if not mixer.get_init(): mixer.init(frequency=44100)
+                    # Initialize mixer here to ensure it's ready before use
+                    desired_freq = 44100
+                    init_params = mixer.get_init() # Check current status
+
+                    if not init_params:
+                        print(f"[video player] Player: Initializing Pygame mixer (Freq: {desired_freq})...")
+                        mixer.init(frequency=desired_freq) # Initialize if not already
+                    elif init_params[0] != desired_freq: # Check frequency if already initialized
+                        # init_params is a tuple (frequency, format, channels)
+                        print(f"[video player] Player: Re-initializing Pygame mixer. Current freq: {init_params[0]}, Target: {desired_freq}")
+                        mixer.quit()
+                        mixer.init(frequency=desired_freq)
+                    # else: # Already initialized with the correct frequency
+                    #    print(f"[video player] Player: Mixer already initialized with correct frequency ({desired_freq}).")
+
+
                     video_sound = mixer.Sound(audio_path)
                     self.video_sound_channel.play(video_sound)
                     audio_started = True
                     print("[video player] Player: Started audio playback.")
                 except Exception as e:
-                    print(f"[video player] Player: Error starting audio: {e}")
+                    print(f"[video player] Player: Error starting or initializing audio: {e}")
                     traceback.print_exc()
-                    # Continue without audio
+                    # Decide if playback should continue without audio or stop
+                    # For now, let it continue without audio if init fails
             else:
                 print("[video player] Player: No valid audio path or file missing.")
 
@@ -248,24 +249,36 @@ class VideoPlayer:
                     break
 
                 # --- Process Current Frame ---
-                # We already have 'current_frame' (either first_frame or from previous loop end)
-                if current_frame is not None: # Should always be true unless queue error
+                if current_frame is not None:
                     try:
-                        # Frame is already processed (resized if needed) BGR numpy array
+                        # Frame is BGR numpy array (potentially original size if < target)
                         if self.frame_update_callback:
+                            # The callback function is responsible for any necessary
+                            # display scaling if current_frame dimensions != screen dimensions
                             self.frame_update_callback(current_frame)
                         else:
-                            print("[video player] Player: Error: frame_update_callback missing!")
-                            self.should_stop = True # Stop if we can't display
+                            # This check might be redundant if play_video ensures it's set, but good safeguard
+                            if frame_count == 0: # Only warn once if callback missing
+                                print("[video player] Player: Error: frame_update_callback missing!")
+                            # Optionally stop if callback is essential: self.should_stop = True
                         frame_count += 1
                     except Exception as frame_err:
-                         print(f"[video player] Player: Error processing/sending frame {frame_count}: {frame_err}")
-                         # Consider stopping if callback fails repeatedly
-                         # self.should_stop = True
+                         # Check for the specific Qt object deleted error during shutdown
+                         # This often happens if the main GUI closes while the thread is still sending frames
+                         err_str = str(frame_err).lower()
+                         if "c++ object" in err_str and "deleted" in err_str:
+                             if not self.should_stop: # Only log if not already stopping
+                                 print(f"[video player] Player: GUI object likely deleted during shutdown. Stopping. (Error: {frame_err})")
+                             self.should_stop = True # Ensure loop terminates
+                             break # Exit loop immediately
+                         else:
+                            print(f"[video player] Player: Error processing/sending frame {frame_count}: {frame_err}")
+                            # Decide if we should stop on other frame errors too
+                            # self.should_stop = True
+
 
                 # --- Timing Calculation ---
                 current_time = time.perf_counter()
-                # Expected time for the *next* frame's display deadline
                 expected_display_time = playback_start_perf_counter + frame_count * self.frame_time
                 time_until_next_frame = expected_display_time - current_time
 
@@ -273,108 +286,122 @@ class VideoPlayer:
                 next_frame = None
                 try:
                     if time_until_next_frame > 0.002: # If we have time, wait
-                        # Wait, but wake up slightly early to fetch the next frame
                         sleep_duration = max(0, time_until_next_frame - 0.002)
-                        time.sleep(sleep_duration)
+                        # Adjust sleep if queue is getting empty to prevent unnecessary waiting
+                        # q_size = self.frame_queue.qsize()
+                        # if q_size < 5 : sleep_duration *= 0.5 # Example heuristic
 
-                        # Try to get the next frame without blocking excessively
-                        # If frame isn't ready exactly on time, we might skip it below
-                        next_frame = self.frame_queue.get(block=True, timeout=max(0.001, self.frame_time * 0.5))
+                        time.sleep(sleep_duration)
+                        # Reduce timeout slightly if we slept, maybe half the remaining wait time
+                        get_timeout = max(0.001, (time_until_next_frame - sleep_duration) * 1.5)
+                        next_frame = self.frame_queue.get(block=True, timeout=min(get_timeout, self.frame_time * 0.8)) # Don't wait too long
                     else:
-                        # We are on time or slightly behind schedule
-                        # Try to get the next frame immediately, non-blocking if possible
-                        next_frame = self.frame_queue.get(block=False) # Non-blocking fetch
+                        # On time or slightly behind, try non-blocking get first
+                        try:
+                            next_frame = self.frame_queue.get(block=False)
+                        except queue.Empty:
+                            # Queue empty when we expected a frame - reader is lagging
+                            lag_time = -time_until_next_frame
+                            # print(f"[video player] Player: Frame queue empty (lag: {lag_time:.3f}s). Waiting briefly...") # Can be noisy
+                            # Block briefly - if reader is really stuck, we'll timeout later
+                            try:
+                                next_frame = self.frame_queue.get(block=True, timeout=self.frame_time * 1.5) # Wait a bit longer than one frame time
+                            except queue.Empty:
+                                print("[video player] Player: Timed out waiting for frame after lag. Reader may be stuck/slow.")
+                                # Don't 'continue' here, let the loop timing naturally adjust
+                                # or potentially receive the None sentinel next iteration.
+                                # If we skip frames, timing gets worse. Let timing logic handle it.
+                                pass # next_frame is still None, process below
 
                 except queue.Empty:
-                     # Reader hasn't produced the next frame in time.
-                     # This indicates the reader is the bottleneck.
-                     lag_time = -time_until_next_frame # How much we are behind
-                     # print(f"[video player] Player: Frame queue empty (lag: {lag_time:.3f}s). Waiting...")
-                     # We simply loop back and try getting the frame again, effectively pausing playback
-                     # until the reader catches up. We use the *blocking* get below.
-                     # Alternative: Could implement frame skipping here if preferred.
-                     try:
-                         next_frame = self.frame_queue.get(block=True, timeout=self.frame_time * 2.0) # Wait longer
-                     except queue.Empty:
-                          print("[video player] Player: Timed out waiting for frame after lag. Reader may be stuck/slow.")
-                          # If still empty after waiting, maybe stop?
-                          # self.should_stop = True
-                          # break # Or just continue trying? Continue is safer for now.
-                          continue # Go back to start of loop and try get again
+                     # This catch is mainly for the timeout cases
+                     #print(f"[video player] Player: Timed out waiting for next frame ({get_timeout:.3f}s).") # Can be noisy
+                     pass # next_frame is still None, process below
                 except Exception as q_err:
                      print(f"[video player] Player: Error getting frame from queue: {q_err}")
                      self.should_stop = True # Signal stop on queue error
 
                 # --- Check for End Sentinel ---
-                if next_frame is None:
-                    print("[video player] Player: Received None sentinel. End of stream.")
-                    self.playback_complete = True # Normal completion
-                    break # Exit loop
+                if next_frame is None and self.frame_queue.empty():
+                    # Check if the reader thread is still alive; if so, it might just be slow
+                    reader_alive = self.video_reader_thread and self.video_reader_thread.is_alive()
+                    # Only consider it the end if we got None AND the reader isn't alive OR the queue remains empty for a bit
+                    if not reader_alive:
+                        print("[video player] Player: Received None sentinel or queue empty and reader dead. End of stream.")
+                        self.playback_complete = True # Normal completion
+                        break # Exit loop
+                    else:
+                        # Got None, but reader is alive, might be transient issue or real end sentinel
+                        # Let's wait very briefly and check again
+                        try:
+                            next_frame = self.frame_queue.get(block=True, timeout=0.1)
+                            if next_frame is None:
+                                print("[video player] Player: Confirmed None sentinel. End of stream.")
+                                self.playback_complete = True
+                                break
+                            # else: got a real frame, continue processing it
+                        except queue.Empty:
+                            print("[video player] Player: Queue still empty after brief wait, assuming end of stream.")
+                            self.playback_complete = True
+                            break
+
 
                 # Prepare for next iteration
-                current_frame = next_frame
-
-                # --- Frame Skipping (Optional - if player itself is slow) ---
-                # If, after getting the frame, we are *still* significantly behind
-                # the *next* frame's deadline, we might skip processing/displaying
-                # the 'current_frame' we just fetched. This is less common if the
-                # callback is fast, as the bottleneck is usually reading or queue empty.
-                # current_time = time.perf_counter()
-                # time_until_next_frame = expected_display_time - current_time
-                # if time_until_next_frame < -self.frame_time * 1.5: # Example: More than 1.5 frames behind
-                #     print(f"[video player] Player: Skipping display of frame {frame_count} due to significant lag ({time_until_next_frame:.3f}s)")
-                #     # Don't call callback, just loop to get the *next* frame immediately
-                #     continue
-
+                # Only update current_frame if we actually got a new one
+                if next_frame is not None:
+                    current_frame = next_frame
+                # If next_frame was None (due to timeout/lag), current_frame remains the same,
+                # effectively displaying the previous frame again while waiting.
 
         except queue.Empty:
              print("[video player] Player: Timed out waiting for the first frame. Aborting.")
              self.is_playing = False
-             self.playback_complete = True # Treat as complete if couldn't start
+             self.playback_complete = True # Treat as completed (abnormally)
         except Exception as e:
             print("[video player] CRITICAL: Error in player thread:")
             traceback.print_exc()
-            self.playback_complete = False # Indicate abnormal termination
+            self.playback_complete = False # Mark as abnormal completion
         finally:
-            print(f"[video player] Player thread cleaning up... (Played approx {frame_count} frames)")
+            print(f"[video player] Player thread cleaning up... (Processed approx {frame_count} frames)")
             if not got_first_frame:
                  print("[video player] Player: Never received the first frame.")
-                 self.playback_complete = True # Ensure completion runs if we never started
+                 # Ensure state reflects this wasn't a normal completion if we expected playback
+                 if not self.should_stop: # If stop wasn't explicitly called
+                     self.playback_complete = False
 
-            # Ensure audio stops if it was playing and the thread exits
             if audio_started and self.video_sound_channel.get_busy():
                 self.video_sound_channel.stop()
                 print("[video player] Player: Stopped video audio channel.")
-                # Give mixer a moment
-                time.sleep(0.05)
+                time.sleep(0.05) # Short pause to allow sound system to react
 
-            # --- Final State Update & Callback ---
-            # This logic runs regardless of how the thread exited (normal, stopped, error)
-            was_playing = self.is_playing # Store state before modifying
-            self.is_playing = False # Mark as not playing *before* callback
+            was_playing = self.is_playing # Capture state before setting false
+            self.is_playing = False # Mark as no longer playing *before* callback
 
-            # If playback finished normally (got None sentinel) or was stopped externally
-            # *and* a callback is registered, call it.
-            # We check 'was_playing' to avoid calling completion if it failed to even start.
-            if was_playing and self.on_complete_callback:
-                 if self.playback_complete:
-                     print("[video player] Player: Triggering on_complete_callback (Normal Completion or Stop).")
-                 else:
+            # Determine if completion callback should run
+            # Run if playback started (got first frame) OR if stop was explicitly called
+            should_run_callback = got_first_frame or self.should_stop
+
+            if should_run_callback and self.on_complete_callback:
+                 if self.playback_complete and not self.should_stop:
+                     print("[video player] Player: Triggering on_complete_callback (Normal Completion).")
+                 elif self.should_stop:
+                     print("[video player] Player: Triggering on_complete_callback (Playback Stopped).")
+                 else: # playback_complete is False and not should_stop -> abnormal termination
                      print("[video player] Player: Triggering on_complete_callback (Abnormal Termination).")
 
                  try:
-                      # Run callback in a separate thread to avoid blocking cleanup? Usually not necessary.
-                      # threading.Timer(0.01, self.on_complete_callback).start()
+                      # Run callback in a separate thread to avoid blocking player cleanup?
+                      # For simplicity now, run directly. If callbacks are long, consider threading.
                       self.on_complete_callback()
                  except Exception as cb_err:
                       print(f"[video player] Player: Error executing on_complete_callback: {cb_err}")
-            elif not was_playing:
-                 print("[video player] Player: Playback did not start or was already stopped, skipping final on_complete_callback.")
+            elif not should_run_callback:
+                 print("[video player] Player: Playback did not effectively start or stop wasn't called, skipping final on_complete_callback.")
 
 
             print("[video player] Player thread finished.")
 
-    # --- extract_audio: Remains largely the same, ensure temp dir handling is robust ---
+    # --- extract_audio --- (No changes needed here)
     def extract_audio(self, video_path):
         """Extract audio using ffmpeg."""
         print(f"[video player] Attempting to extract audio from: {video_path}")
@@ -383,7 +410,6 @@ class VideoPlayer:
              return None
         if not self.ffmpeg_path or not os.path.exists(self.ffmpeg_path):
             print("[video player] Error: ffmpeg path not configured or invalid.")
-            # Try finding ffmpeg using imageio as a fallback
             try:
                 ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
                 if ffmpeg_exe and os.path.exists(ffmpeg_exe):
@@ -396,7 +422,6 @@ class VideoPlayer:
                  print(f"[video player] Error trying to find ffmpeg via imageio_ffmpeg: {ff_find_err}")
                  return None
 
-        # Ensure temp dir exists
         try:
              if not os.path.exists(self.temp_dir):
                  os.makedirs(self.temp_dir)
@@ -405,10 +430,9 @@ class VideoPlayer:
              print(f"[video player] Error creating temp directory {self.temp_dir}: {dir_err}")
              return None
 
-        # Generate temp file path
         try:
-             # Use a more unique name, less likely to clash if cleanup fails
              safe_basename = "".join(c if c.isalnum() else "_" for c in os.path.basename(video_path))
+             # Adding timestamp to prevent potential reuse issues if cleanup fails and same video is played again
              temp_audio = os.path.join(self.temp_dir, f"audio_{safe_basename}_{int(time.time()*1000)}.wav")
         except Exception as temp_err:
              print(f"[video player] Error creating temp file path: {temp_err}")
@@ -433,23 +457,22 @@ class VideoPlayer:
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
                 startupinfo.wShowWindow = subprocess.SW_HIDE
 
-            result = subprocess.run(command, capture_output=True, text=True, check=False, startupinfo=startupinfo, encoding='utf-8', errors='ignore') # Added errors='ignore' for weird ffmpeg output
+            result = subprocess.run(command, capture_output=True, text=True, check=False, startupinfo=startupinfo, encoding='utf-8', errors='ignore')
 
             if result.returncode != 0:
                 print(f"[video player] ffmpeg error (code {result.returncode}): {result.stderr}")
                 self._safe_remove(temp_audio)
                 return None
             else:
-                # Check if file exists and has a reasonable size (e.g., > 1KB)
-                if os.path.exists(temp_audio) and os.path.getsize(temp_audio) > 1024:
+                if os.path.exists(temp_audio) and os.path.getsize(temp_audio) > 1024: # Basic sanity check
                     print("[video player] Audio extraction successful.")
-                    # Clean up previous audio if any
+                    # Clean up previous audio *before* setting the new path
                     self._cleanup_resources()
                     self.current_audio_path = temp_audio
                     return temp_audio
                 else:
                      print(f"[video player] Error: Temp audio file missing, empty, or too small after ffmpeg success: {temp_audio}")
-                     self._safe_remove(temp_audio) # Clean up invalid file
+                     self._safe_remove(temp_audio)
                      return None
 
         except FileNotFoundError:
@@ -461,169 +484,152 @@ class VideoPlayer:
             self._safe_remove(temp_audio)
             return None
 
+    # --- play_video --- (No changes needed here)
     def play_video(self, video_path, audio_path, frame_update_cb, on_complete_cb):
         """Start video playback using reader and player threads."""
         print(f"[video player] play_video called for: {video_path}")
 
         if self.is_playing:
             print("[video player] Warning: Already playing, stopping previous video first...")
-            self.stop_video(wait=True) # Wait for previous stop to complete
+            self.stop_video(wait=True)
             print("[video player] Previous video stopped.")
-            time.sleep(0.1) # Brief pause after stop
+            time.sleep(0.1)
 
         # --- Reset State ---
         self.should_stop = False
-        self.playback_complete = False # Reset completion status
+        self.playback_complete = False
         self.needs_resizing = False # Reset resize flag
         self.source_width = 0
         self.source_height = 0
         self.frame_queue = queue.Queue(maxsize=self.FRAME_QUEUE_SIZE)
 
-        # --- Set Callbacks ---
         self.frame_update_callback = frame_update_cb
         self.on_complete_callback = on_complete_cb
 
-        # --- Set Playing Flag (Crucial: Before starting threads) ---
         self.is_playing = True # Signal that playback is intended to start
 
         # --- Start Threads ---
-        # 1. Reader Thread
         self.video_reader_thread = threading.Thread(
             target=self._reader_thread_func,
             args=(video_path,),
             daemon=True,
             name=f"VideoReader-{os.path.basename(video_path)}"
         )
-
-        # 2. Player Thread
         self.video_player_thread = threading.Thread(
             target=self._player_thread_func,
-            args=(audio_path,), # Player handles audio start
+            args=(audio_path,),
             daemon=True,
             name=f"VideoPlayer-{os.path.basename(video_path)}"
         )
 
         print("[video player] Starting reader thread...")
         self.video_reader_thread.start()
-
         print("[video player] Starting player thread...")
         self.video_player_thread.start()
-
         print("[video player] Playback initiated.")
 
 
+    # --- stop_video --- (No changes needed here)
     def stop_video(self, wait=False):
         """Stop video playback gracefully."""
         print(f"[video player] stop_video called (wait={wait}). is_playing={self.is_playing}")
 
         if not self.is_playing and self.should_stop:
-             # Already stopping or stopped
-             # print("[video player] Already stopping/stopped.")
              return
 
         if not self.is_playing and not self.should_stop:
-             # Was not playing and not trying to stop, maybe cleanup stale resources?
              print("[video player] stop_video called but not playing. Cleaning up resources just in case.")
              self._cleanup_resources()
              return
 
-        # --- Signal Threads to Stop ---
         self.should_stop = True
-        # is_playing will be set to False by the player thread itself upon exit
 
         print("[video player] Stop signal sent to threads.")
 
-        # --- Stop Audio Immediately ---
         if self.video_sound_channel.get_busy():
             print("[video player] Stopping audio channel.")
             self.video_sound_channel.stop()
-            time.sleep(0.05) # Give mixer a moment
+            time.sleep(0.05)
 
-        # --- Unblock Queue (Optional but helpful) ---
-        # If threads are blocked on queue put/get, putting None helps them exit faster.
         if self.frame_queue:
             try:
-                # Clear the queue to potentially unblock reader faster if queue was full
                 while not self.frame_queue.empty():
                     try: self.frame_queue.get_nowait()
                     except queue.Empty: break
-                # Put sentinel to ensure player thread unblocks from get()
                 self.frame_queue.put(None, block=False)
             except queue.Full:
                  print("[video player] Warning: Queue full when trying to clear/put None during stop.")
             except Exception as e:
                  print(f"[video player] Error interacting with queue during stop: {e}")
 
-        # --- Wait for Threads to Join (if requested) ---
         if wait:
             join_timeout = 2.0 # Max wait time for threads
             print(f"[video player] Waiting for threads to join (timeout {join_timeout}s)...")
-            if self.video_reader_thread and self.video_reader_thread.is_alive():
-                self.video_reader_thread.join(timeout=join_timeout/2)
-                if self.video_reader_thread.is_alive():
+            current_thread = threading.current_thread() # Don't join self
+
+            reader_thread = self.video_reader_thread
+            player_thread = self.video_player_thread
+
+            if reader_thread and reader_thread.is_alive() and reader_thread != current_thread:
+                reader_thread.join(timeout=join_timeout/2)
+                if reader_thread.is_alive():
                      print("[video player] Warning: Reader thread did not exit cleanly after stop request.")
 
-            if self.video_player_thread and self.video_player_thread.is_alive():
-                 # Player thread should exit after getting None or seeing should_stop
-                 self.video_player_thread.join(timeout=join_timeout/2)
-                 if self.video_player_thread.is_alive():
+            if player_thread and player_thread.is_alive() and player_thread != current_thread:
+                 player_thread.join(timeout=join_timeout/2)
+                 if player_thread.is_alive():
                       print("[video player] Warning: Player thread did not exit cleanly after stop request.")
 
-            # Final check after waiting
             self.is_playing = False # Force state if threads didn't exit cleanly
             print("[video player] Thread join finished.")
+        # If not waiting, is_playing will be set False by the player thread's finally block
 
-        # Resource cleanup happens via the player thread's finally block and on_complete callback
-        # Or via _cleanup_resources if called explicitly or by __del__
         print("[video player] stop_video finished signaling.")
 
+    # --- force_stop --- (No changes needed here)
     def force_stop(self):
         """Force stop playback immediately, cleanup resources NOW."""
         print("[video player] Force stopping playback.")
-
-        # Signal threads immediately
         self.should_stop = True
-        self.is_playing = False # Set state immediately
+        self.is_playing = False
 
-        # Stop audio
         if self.video_sound_channel.get_busy():
             self.video_sound_channel.stop()
             print("[video player] Force stopped audio channel.")
             time.sleep(0.05)
 
-        # Help threads exit queue waits
         if self.frame_queue:
             try:
-                # Clear queue
                 while not self.frame_queue.empty():
                     try: self.frame_queue.get_nowait()
                     except queue.Empty: break
-                self.frame_queue.put(None, block=False) # Unblock player
-            except Exception: pass # Ignore errors during force stop queue interaction
+                self.frame_queue.put(None, block=False)
+            except Exception: pass
 
-        # Don't wait long for threads in force_stop
         join_timeout = 0.2
-        if self.video_reader_thread and self.video_reader_thread.is_alive():
-             self.video_reader_thread.join(timeout=join_timeout)
-        if self.video_player_thread and self.video_player_thread.is_alive():
-             self.video_player_thread.join(timeout=join_timeout)
+        reader_thread = self.video_reader_thread
+        player_thread = self.video_player_thread
+        current_thread = threading.current_thread()
 
-        # Clean up resources immediately in force stop scenario
+        if reader_thread and reader_thread.is_alive() and reader_thread != current_thread:
+             reader_thread.join(timeout=join_timeout)
+        if player_thread and player_thread.is_alive() and player_thread != current_thread:
+             player_thread.join(timeout=join_timeout)
+
         self._cleanup_resources()
-
-        # Reset internal state completely
         self.reset_state()
         print("[video player] Force stop complete.")
 
+    # --- reset_state --- (No changes needed here)
     def reset_state(self):
         """Reset state variables, typically after a force_stop or for reuse."""
         print("[video player] Resetting internal state.")
         self.should_stop = False
         self.is_playing = False
-        self.playback_complete = True # Default to true when reset
+        self.playback_complete = True
         self.video_reader_thread = None
         self.video_player_thread = None
-        self.frame_queue = None # Ensure queue is gone
+        self.frame_queue = None
         self.on_complete_callback = None
         self.frame_update_callback = None
         self.needs_resizing = False
@@ -631,52 +637,52 @@ class VideoPlayer:
         self.source_height = 0
 
 
+    # --- _safe_remove --- (No changes needed here)
     def _safe_remove(self, filepath):
         """Attempts to remove a file, ignoring errors if it doesn't exist."""
         if filepath and os.path.exists(filepath):
             try:
                 os.remove(filepath)
-                # print(f"[video player] Removed file: {filepath}") # Debug noise
             except OSError as e:
+                # Common issue on Windows is file lock, log as warning
                 print(f"[video player] Warning: Could not remove file {filepath}: {e}")
             except Exception as e:
                  print(f"[video player] Error removing file {filepath}: {e}")
 
+    # --- _cleanup_resources --- (No changes needed here)
     def _cleanup_resources(self):
         """Clean up temporary audio files."""
-        # print("[video player] Cleaning up resources...") # Reduce noise
         audio_to_remove = self.current_audio_path
-        self.current_audio_path = None # Clear path immediately
-
+        self.current_audio_path = None
         self._safe_remove(audio_to_remove)
 
 
+    # --- __del__ --- (No changes needed here)
     def __del__(self):
         """Destructor: Ensure cleanup of temporary files and directory."""
         print(f"[video player] Destructor called for {id(self)}.")
         try:
-            # Ensure playback is stopped (use non-waiting stop)
-            if self.is_playing:
-                 print("[video player] Destructor: Stopping active playback...")
-                 self.stop_video(wait=False) # Signal stop, don't block destructor
+            # Signal threads to stop without waiting in destructor
+            if self.is_playing or self.should_stop:
+                 print("[video player] Destructor: Signaling stop to any active threads...")
+                 self.should_stop = True
+                 self.is_playing = False # Assume stopped immediately for cleanup logic
+                 # Don't join threads in __del__
 
-            # Cleanup any lingering temp audio
             self._cleanup_resources()
 
-            # Remove the temporary directory
             temp_dir_to_remove = getattr(self, 'temp_dir', None)
             if temp_dir_to_remove and os.path.isdir(temp_dir_to_remove):
                 print(f"[video player] Destructor: Cleaning up temporary directory: {temp_dir_to_remove}")
                 import shutil
-                # Use ignore_errors=True as files might still be locked briefly
                 shutil.rmtree(temp_dir_to_remove, ignore_errors=True)
                 print(f"[video player] Destructor: Removed temporary directory (ignore_errors=True).")
+                self.temp_dir = None # Mark as removed
 
         except Exception as e:
-             # Catch errors during __del__ as they can be problematic
              print(f"[video player] Error during __del__: {e}")
         finally:
-             # Ensure base class __del__ is called if necessary (though not needed here)
-             # super().__del__()
-             pass
-        self.temp_dir = None
+            # Make sure mixer is quit *if* this instance initialized it and nothing else needs it
+            # This is tricky - safer to leave mixer management outside the player instance
+            # Or use a shared initialization counter. For now, leave it.
+            pass

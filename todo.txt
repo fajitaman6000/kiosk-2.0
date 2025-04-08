@@ -27,6 +27,8 @@
 ##############################################################################################################################
 # important/immediate todo
 
+reintroduce screenshot functionality, either optimized or just not during videos (or send "watching video" image)
+
 film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
 
 rebooter added to kiosk app
@@ -35,6 +37,8 @@ finish tk to qt transition
 
 ##############################################################################################################################
 # known priority bugs
+
+resend behavior resulting in erroneous delayed actions
 
 hangup reliability: 
     kiosks don't always launch successfully, especially after the video feed check

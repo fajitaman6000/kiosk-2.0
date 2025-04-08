@@ -95,7 +95,7 @@ try:
             # Set up update timers
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
-            self.root.after(2000, self.screenshot_handler.request_screenshot) # Request screenshots
+            #self.root.after(2000, self.screenshot_handler.request_screenshot) # Request screenshots
 
             # Start the sync manager
             self.sync_manager.start()
