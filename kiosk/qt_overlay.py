@@ -1840,8 +1840,23 @@ class Overlay:
                 button_rect = cls._button['bg_image_item'].boundingRect()
                 cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
 
-                # Set up click handling
-                cls._button_view.set_click_callback(ui.message_handler.request_help)
+                # Make the button view "skippable" (which means clickable in this context)
+                cls._button_view.set_skippable(True)
+
+                # Set up click handling using Qt signals/slots
+                try:
+                    # Disconnect any previous connections first to avoid duplicates
+                    cls._button_view.clicked.disconnect()
+                except TypeError:
+                    # No connections existed, which is fine
+                    pass
+                except Exception as e:
+                    # Catch potential errors during disconnection
+                    print(f"[qt overlay] Error disconnecting previous button click signal: {e}")
+
+                # Connect the request_help function to the clicked signal
+                cls._button_view.clicked.connect(ui.message_handler.request_help)
+                print("[qt overlay] Connected help button click signal.")
 
                 # Rotate the button image item 90 degrees clockwise
                 cls._button['bg_image_item'].setRotation(360)
