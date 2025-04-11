@@ -375,7 +375,7 @@ class PropControl:
         def connect_async():
             try:
                 client.ws_set_options(path="/mqtt")
-                client.connect_async(config['ip'], self.MQTT_PORT, keepalive=5)
+                client.connect_async(config['ip'], self.MQTT_PORT, keepalive=10)
                 client.loop_start()
                 self.mqtt_clients[room_number] = client
                 
