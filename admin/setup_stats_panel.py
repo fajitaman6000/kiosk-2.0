@@ -771,7 +771,8 @@ def setup_stats_panel(interface_builder, computer_name):
     check_screen_btn = tk.Button(
         button_container_row2, # Parent is now row 2
         text="Check Screen",
-        # command=lambda: interface_builder.check_kiosk_screen(computer_name), # Future function
+        # UPDATE THE COMMAND HERE:
+        command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn),
         cursor="hand2"
     )
     check_screen_btn.pack(side='left', padx=0, pady=(10,0)) # Pack left, remove side padding if needed
