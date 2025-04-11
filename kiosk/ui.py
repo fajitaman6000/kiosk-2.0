@@ -19,7 +19,6 @@ class KioskUI:
         self.parent_app = message_handler
         
         self.background_image = None
-        self.status_frame = None
         self.cooldown_label = None
         self.request_pending_label = None
         self.hint_label = None
@@ -36,7 +35,6 @@ class KioskUI:
         self.image_is_fullscreen = False
 
         self.setup_root()
-        self.create_status_frame()
 
         # Pass the Tkinter root window to Overlay.init()
         Overlay.init(tkinter_root=self.root)
@@ -45,29 +43,6 @@ class KioskUI:
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg='black')
         #self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
-
-    def create_status_frame(self):
-        """Creates a fixed canvas for status messages at coordinates (510,0) to (610,1079)"""
-        # Create the status canvas
-        self.status_frame = tk.Canvas(
-            self.root,
-            width=100,  # 610 - 510 = 100
-            height=1079,
-            bg='black',
-            highlightthickness=0
-        )
-        # Initially hide the status frame
-        self.status_frame.place_forget()
-    
-    def show_status_frame(self):
-        """Shows the status frame and positions it correctly"""
-        if self.status_frame:
-            self.status_frame.place(x=510, y=0)
-
-    def hide_status_frame(self):
-        """Hides the status frame from view"""
-        if self.status_frame:
-            self.status_frame.place_forget()
 
     def load_background(self, room_number):
         if room_number not in self.room_config['backgrounds']:
@@ -103,9 +78,6 @@ class KioskUI:
             
         self.hint_cooldown = False
         
-        if self.status_frame:
-            self.status_frame.delete('all')
-            
         for widget in [self.hint_label]: # Removed self.help_button from here
             if widget:
                 widget.destroy()
@@ -116,11 +88,6 @@ class KioskUI:
         """Clears Tkinter-related UI elements associated with hints."""
         print("[ui.py] Clearing Tkinter hint UI elements")
 
-        # Clear any status frame content.
-        if self.status_frame:
-            self.status_frame.delete('all')
-            self.hide_status_frame()
-        print("[ui.clear_hint_ui] 1")
         # Clear image button.
         if hasattr(self, 'image_button') and self.image_button:
             self.image_button.destroy()
@@ -143,9 +110,6 @@ class KioskUI:
         for widget in self.root.winfo_children():
             # Skip destroying widgets marked as persistent
             if hasattr(widget, 'is_persistent'):
-                continue
-            # Skip status frame if it exists
-            if widget is self.status_frame:
                 continue
             widget.destroy()
 
@@ -192,22 +156,6 @@ class KioskUI:
             
             # Remove help button if it exists
             Overlay.hide_help_button() # Replaced with this
-            
-            # Show status frame and clear any existing text
-            self.show_status_frame()
-            self.status_frame.delete('pending_text')
-            
-            # Add rotated text to the canvas # DEPRECATED
-            self.status_frame.create_text(
-                50,  # center of width (100/2)
-                540,  # center of height (1079/2)
-                text="HINT REQUESTED\nPlease wait for your game master to evaluate your game",
-                fill='yellow',
-                font=('Arial', 24),
-                angle=90,
-                tags='pending_text',
-                justify='center'
-            )
             
             # Send help request
             self.message_handler.network.send_message({
@@ -304,51 +252,22 @@ class KioskUI:
             return
 
         try:
-            # --- Remove Tkinter Canvas Creation ---
-            # if self.fullscreen_image:
-            #     self.fullscreen_image.destroy()
-            #     self.fullscreen_image = None
-            # ---
-
             # Hide Tkinter hint button if it exists (assuming it might still be tk)
             if self.image_button:
                  self.image_button.place_forget()
 
-            # --- Call the Qt Overlay to handle display ---
+            # Call the Qt Overlay to handle display
             Overlay.show_fullscreen_hint(self.stored_image_data, self) # Pass self
-
-            # --- Remove Tkinter Image Loading, Scaling, Rotating, Display ---
-            # screen_width = self.root.winfo_screenwidth()
-            # screen_height = self.root.winfo_screenheight()
-            # margin = 50
-            # self.fullscreen_image = tk.Canvas(...)
-            # self.fullscreen_image.place(x=margin, y=0)
-            # image_bytes = base64.b64decode(self.stored_image_data)
-            # image = Image.open(io.BytesIO(image_bytes))
-            # ... (ratio calculation, resize, rotate) ...
-            # photo = ImageTk.PhotoImage(image)
-            # self.fullscreen_image.photo = photo
-            # self.fullscreen_image.create_image(...)
-            # self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
-            # --- End Removed Tkinter Code ---
 
         except Exception as e:
             print("[ui.py]Error requesting fullscreen image overlay:")
             traceback.print_exc()
             self.image_is_fullscreen = False # Reset flag on error
-            # Optionally try to restore view if overlay call failed badly
-            # self.restore_hint_view()
         
     def restore_hint_view(self):
         """Restores the normal hint view after fullscreen Qt hint is closed."""
         print("[ui.py] Restoring hint view after Qt fullscreen hint.")
         self.image_is_fullscreen = False # Reset flag
-
-        # --- Remove Tkinter Canvas Destruction ---
-        # if self.fullscreen_image:
-        #     self.fullscreen_image.destroy()
-        #     self.fullscreen_image = None
-        # ---
 
         # --- Determine Hint Text (Keep this logic) ---
         hint_text = ""
@@ -359,8 +278,6 @@ class KioskUI:
             # Check if it was an image-only hint
             if self.current_hint.get('image') and not hint_text and self.stored_image_data:
                 hint_text = "Image hint received" # Restore placeholder text
-        # else: # Handle unexpected types if necessary
-        #    hint_text = str(self.current_hint) if self.current_hint else ""
 
         # --- Restore Qt Hint Text Overlay ---
         # Make sure Overlay.show_all_overlays() called by hide_fullscreen_hint
@@ -395,12 +312,6 @@ class KioskUI:
         # update ensures the help button state is correct.
         print("[ui.py] Triggering help button update.")
         self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update()) # Use small delay
-
-        # Timer visibility check (redundant if show_all_overlays works, but safe)
-        # if hasattr(Overlay, '_timer_window') and Overlay._timer_window:
-        #    if not self.message_handler.video_manager.is_playing:
-        #        print("[ui.py] Showing timer window.")
-        #        Overlay._timer_window.show()
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
@@ -511,19 +422,17 @@ class KioskUI:
 
                     # Restore cooldown display if still in cooldown
                     if self.hint_cooldown:
-                        print("[ui.py]Restoring cooldown display")
-                        self.show_status_frame()
+                        #No longer need status frame.
+                        #print("[ui.py]Restoring cooldown display")
+                        #self.show_status_frame()
+                        # ^^^ this will cause an error
+                        #The Qt logic should be handling this correctly.
+                        pass
                         
                 # If video is not playing, start it
                 else:
                     print("[ui.py]Starting video playback")
                     if hasattr(self, 'stored_video_info'):
-                        # Store cooldown state before hiding UI
-                        cooldown_items = self.status_frame.find_withtag('cooldown_text')
-                        if cooldown_items:
-                            self.stored_cooldown_text = self.status_frame.itemcget(cooldown_items[0], 'text')
-                        else:
-                            self.stored_cooldown_text = None
                         
                         # Only hide UI elements that exist
                         Overlay.hide_hint_text()
@@ -532,9 +441,7 @@ class KioskUI:
                             print("[ui.py]Hiding solution button")
                             self.video_solution_button.place_forget()
                             
-                        if self.hint_cooldown:
-                            self.status_frame.place_forget()
-                            
+                        
                         # Construct video path
                         video_path = os.path.join(
                             "video_solutions",
@@ -603,22 +510,13 @@ class KioskUI:
                     )
             # Restore cooldown state if it was active
             if was_in_cooldown:
-                print("[ui.py]Restoring cooldown state")
+                #print("[ui.py]Restoring cooldown state")
                 self.hint_cooldown = True
                 self.cooldown_after_id = cooldown_after_id
-                self.show_status_frame()
-                if hasattr(self, 'stored_cooldown_text') and self.stored_cooldown_text:
-                    self.status_frame.create_text(
-                        50,
-                        540,
-                        text=self.stored_cooldown_text,
-                        fill='yellow',
-                        font=('Arial', 24),
-                        angle=270,
-                        tags='cooldown_text',
-                        justify='center',
-                        width=1000
-                    )
+                #No longer need status frame.
+                #self.show_status_frame()
+                #The Qt logic should be handling this correctly.
+                pass
             else:
                 # Only refresh help button if not in cooldown
                 self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
