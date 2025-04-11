@@ -85,24 +85,29 @@ class KioskUI:
         self.hint_label = None
         
     def clear_hint_ui(self):
-        """Clears Tkinter-related UI elements associated with hints."""
-        print("[ui.py] Clearing Tkinter hint UI elements")
+        """Clears Tkinter elements AND hides corresponding Qt elements."""
+        print("[ui.py] Clearing Tkinter hint UI elements and hiding Qt counterparts")
 
-        # Clear image button.
-        if hasattr(self, 'image_button') and self.image_button:
-            self.image_button.destroy()
-            self.image_button = None
-        print("[ui.clear_hint_ui] 2")
-        # Clear video solution button
-        if hasattr(self, 'video_solution_button') and self.video_solution_button:
-            self.video_solution_button.destroy()
-            self.video_solution_button = None
-        print("[ui.clear_hint_ui] 3")
-        # Clear fullscreen image if shown
+        # Hide Qt Hint Text/Buttons first
+        Overlay.hide_hint_text()
+        Overlay.hide_view_image_button()
+        Overlay.hide_view_solution_button()
+
+        # --- Remove Tkinter button destruction ---
+        # if hasattr(self, 'image_button') and self.image_button:
+        #     try: self.image_button.destroy()
+        #     except tk.TclError: pass
+        #     self.image_button = None
+        # if hasattr(self, 'video_solution_button') and self.video_solution_button:
+        #     try: self.video_solution_button.destroy()
+        #     except tk.TclError: pass
+        #     self.video_solution_button = None
+
+        # Clear Tkinter fullscreen image (if it somehow still exists)
         if hasattr(self, 'fullscreen_image') and self.fullscreen_image:
-            self.fullscreen_image.destroy()
+            try: self.fullscreen_image.destroy()
+            except tk.TclError: pass
             self.fullscreen_image = None
-        print("[ui.clear_hint_ui] 4")
 
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
@@ -165,81 +170,79 @@ class KioskUI:
 
     def show_hint(self, text_or_data, start_cooldown=True):
         try:
-            Overlay.hide_help_button()
+            print("[ui.py show_hint] Showing hint...")
+            Overlay.hide_help_button() # Hide main help button
 
+            # Cleanup previous hint UI elements
             if self.fullscreen_image:
                 self.fullscreen_image.destroy()
                 self.fullscreen_image = None
 
-            if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                self.video_solution_button.destroy()
-                self.video_solution_button = None
+            # --- Remove Tkinter solution button cleanup ---
+            # if hasattr(self, 'video_solution_button') and self.video_solution_button:
+            #     self.video_solution_button.destroy()
+            #     self.video_solution_button = None
+            # --- Hide Qt solution button instead ---
+            Overlay.hide_view_solution_button()
 
-            if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                self.message_handler.video_manager.stop_video()
-                self.video_is_playing = False
+            # If video was playing, stop it (This logic seems less relevant here, maybe belongs elsewhere?)
+            if hasattr(self.message_handler.video_manager, 'is_playing') and self.message_handler.video_manager.is_playing:
+                 print("[ui.py show_hint] Warning: Stopping video playback because new hint arrived.")
+                 self.message_handler.video_manager.stop_video()
+                 # self.video_is_playing should be managed by video_manager callbacks
 
-            if hasattr(self, 'stored_video_info'):
-                self.stored_video_info = None
+            # Clear stored video info if a new hint arrives
+            self.stored_video_info = None
 
             if start_cooldown:
-                self.start_cooldown()
+                self.start_cooldown() # Starts Qt cooldown overlay via Overlay.show_hint_cooldown
 
-            self.current_hint = text_or_data
+            self.current_hint = text_or_data # Store the new hint data
 
-            if self.request_pending_label:
-                self.request_pending_label.destroy()
-                self.request_pending_label = None
+            # --- Remove Tkinter pending label cleanup ---
+            # if self.request_pending_label:
+            #     self.request_pending_label.destroy()
+            #     self.request_pending_label = None
+            # --- Hide Qt pending label instead ---
+            Overlay.hide_hint_request_text() # Already handled by kiosk.py usually, but safe to call
 
-            if self.image_button:
-                self.image_button.destroy()
-                self.image_button = None
+            # --- Remove Tkinter image button cleanup ---
+            # if self.image_button:
+            #     self.image_button.destroy()
+            #     self.image_button = None
+            # --- Hide Qt image button instead ---
+            Overlay.hide_view_image_button()
 
+            # Process hint data
             hint_text = ""
-            self.stored_image_data = None
+            self.stored_image_data = None # Reset stored image data
 
             if isinstance(text_or_data, str):
                 hint_text = text_or_data
             elif isinstance(text_or_data, dict):
                 hint_text = text_or_data.get('text', '')
-                self.stored_image_data = text_or_data.get('image')
+                self.stored_image_data = text_or_data.get('image') # Store potential image data
             else:
+                # Fallback if unexpected data type
                 hint_text = str(text_or_data)
+                print(f"[ui.py show_hint] Warning: Received hint data of unexpected type: {type(text_or_data)}")
 
+            # Use placeholder if only image exists
             if self.stored_image_data and not hint_text:
-                hint_text = "Image hint received"
+                hint_text = "Image hint received" # Placeholder text
 
+            # Show hint text via Qt Overlay
+            print(f"[ui.py show_hint] Showing hint text: '{hint_text}'")
             Overlay.show_hint_text(hint_text, self.current_room)
 
+            # --- Show Qt image button if image data exists ---
             if self.stored_image_data:
-                button_width = 100
-                button_height = 300
-
-                self.image_button = tk.Canvas(
-                    self.root,
-                    width=button_width,
-                    height=button_height,
-                    bg='blue',
-                    highlightthickness=0
-                )
-
-                self.image_button.place(
-                    x=750,
-                    y= (1015-64)/2 - button_height/2 + 64
-                )
-
-                self.image_button.create_text(
-                    button_width/2,
-                    button_height/2,
-                    text="VIEW IMAGE HINT",
-                    fill='white',
-                    font=('Arial', 24),
-                    angle=270
-                )
-                self.image_button.bind('<Button-1>', lambda e: self.show_fullscreen_image())
+                print("[ui.py show_hint] Stored image data found, showing View Image button.")
+                Overlay.show_view_image_button(self) # Pass self (ui_instance)
+            # --- End Qt image button logic ---
 
         except Exception as e:
-            print(f"[ui.py]Critical error in show_hint: {e}")
+            print(f"[ui.py] Critical error in show_hint: {e}")
             traceback.print_exc()
             
     def show_fullscreen_image(self):
@@ -269,49 +272,48 @@ class KioskUI:
         print("[ui.py] Restoring hint view after Qt fullscreen hint.")
         self.image_is_fullscreen = False # Reset flag
 
-        # --- Determine Hint Text (Keep this logic) ---
+        # Determine Hint Text (Keep this logic)
         hint_text = ""
+        image_data_exists = False
+        video_info_exists = False # Check if video info exists
+
         if isinstance(self.current_hint, str):
             hint_text = self.current_hint
         elif isinstance(self.current_hint, dict):
             hint_text = self.current_hint.get('text', '')
-            # Check if it was an image-only hint
-            if self.current_hint.get('image') and not hint_text and self.stored_image_data:
+            image_data_exists = bool(self.current_hint.get('image')) # Check if image key exists
+            if image_data_exists and not hint_text:
                 hint_text = "Image hint received" # Restore placeholder text
 
-        # --- Restore Qt Hint Text Overlay ---
-        # Make sure Overlay.show_all_overlays() called by hide_fullscreen_hint
-        # handles showing the hint text if applicable.
-        # We might still need to explicitly show it here if show_all_overlays isn't enough
-        # or if the text needs re-setting. Let's assume show_all_overlays is sufficient for now.
-        # If issues arise, uncomment and test this:
-        if hint_text:
-            print(f"[ui.py restore_hint_view] Showing hint text: '{hint_text}'")
-            Overlay.show_hint_text(hint_text, self.current_room)
-        else:
-            print("[ui.py restore_hint_view] No hint text to restore, hiding hint overlay.")
-            Overlay.hide_hint_text() # Explicitly hide if no text
+        # Also check separately if video solution info is stored
+        video_info_exists = bool(self.stored_video_info)
 
-        # --- Restore Tkinter Image Button (if it exists and belongs here) ---
-        # This button might also become a Qt element later
-        if self.image_button and self.stored_image_data: # Check if there *was* an image
-             print("[ui.py] Restoring Tkinter image button.")
-             button_height = 300 # Or get from original creation logic
-             self.image_button.place(
-                 x=750,
-                 y= (1015-64)/2 - button_height/2 + 64 # Adjust coords as needed
-             )
-        elif self.image_button:
-             # Destroy button if there's no image data to view anymore
-             print("[ui.py] Destroying image button as there's no image data.")
-             self.image_button.destroy()
-             self.image_button = None
+        # --- Restore Qt Hint Text Overlay and Side Buttons ---
+        # Overlay.show_all_overlays() is called by hide_fullscreen_hint.
+        # That method *should* now handle showing the hint text and the appropriate side buttons
+        # based on stored_image_data and stored_video_info.
+        # We might only need to trigger a general UI update here.
 
-        # --- Restore Qt Help Button / Timer ---
-        # These should be handled by Overlay.show_all_overlays(), but an explicit
-        # update ensures the help button state is correct.
-        print("[ui.py] Triggering help button update.")
-        self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update()) # Use small delay
+        # --- Remove Tkinter Button Placement ---
+        # if self.image_button and self.stored_image_data:
+        #      print("[ui.py] Restoring Tkinter image button.") # REMOVE
+        #      ... place logic ... REMOVE
+        # elif self.image_button:
+        #      self.image_button.destroy() # REMOVE
+        #      self.image_button = None # REMOVE
+        # Similar removal for video solution button if it was Tkinter
+
+        # --- Trigger General UI Update ---
+        # This ensures overlays (including side buttons) are shown/hidden correctly
+        # based on the current state after the fullscreen hint is gone.
+        print("[ui.py restore_hint_view] Triggering show_all_overlays.")
+        # It's better if hide_fullscreen_hint calls show_all_overlays directly.
+        # If not, call it here:
+        # Overlay.show_all_overlays() # Ensure this gets called
+
+        # Update help button state as well
+        print("[ui.py restore_hint_view] Triggering help button update.")
+        self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update())
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
@@ -339,188 +341,140 @@ class KioskUI:
             self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
 
     def show_video_solution(self, room_folder, video_filename):
-        """Shows a button to play the video solution, similar to image hints"""
+        """Stores video info and shows the Qt 'View Solution' button."""
         try:
-            print(f"[ui.py]Showing video solution for {room_folder}/{video_filename}")
-            
+            print(f"[ui.py] Preparing video solution for {room_folder}/{video_filename}")
+
             # Store video info first
             self.stored_video_info = {
                 'room_folder': room_folder,
                 'video_filename': video_filename
             }
-            
-            # Safely remove existing button if it exists
-            if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                try:
-                    self.video_solution_button.destroy()
-                except:
-                    pass
-                self.video_solution_button = None
-                
-            # Create video solution button
-            button_width = 100
-            button_height = 400
-            
-            self.video_solution_button = tk.Canvas(
-                self.root,
-                width=button_width,
-                height=button_height,
-                bg='blue',
-                highlightthickness=0
-            )
-            
-            # Position button
-            hint_height = 1015 - 64
-            self.video_solution_button.place(
-                x=750,
-                y=hint_height/2 - button_height/2 + 64
-            )
-            
-            # Add button text
-            self.video_solution_button.create_text(
-                button_width/2,
-                button_height/2,
-                text="VIEW SOLUTION",
-                fill='white',
-                font=('Arial', 24),
-                angle=270
-            )
-            
-            # Bind click event
-            self.video_solution_button.bind('<Button-1>', lambda e: self.toggle_solution_video())
-            print("[ui.py]Successfully created video solution button")
-            
+
+            # --- Remove Tkinter button creation/placement ---
+            # if hasattr(self, 'video_solution_button') and self.video_solution_button:
+            #     try:
+            #         self.video_solution_button.destroy()
+            #     except tk.TclError: pass # Ignore if already destroyed
+            #     self.video_solution_button = None
+            #
+            # button_width = 100
+            # button_height = 400
+            # self.video_solution_button = tk.Canvas(...) # Remove all this block
+            # self.video_solution_button.place(...)
+            # self.video_solution_button.create_text(...)
+            # self.video_solution_button.bind(...)
+
+            # --- Show the Qt button instead ---
+            Overlay.show_view_solution_button(self) # Pass self (ui_instance)
+            print("[ui.py] Successfully requested Qt video solution button")
+
         except Exception as e:
-            print(f"[ui.py]Error creating video solution button:")
+            print(f"[ui.py] Error preparing video solution button:")
             traceback.print_exc()
-            self.stored_video_info = None
-            self.video_solution_button = None
+            self.stored_video_info = None # Clear info on error
+            Overlay.hide_view_solution_button() # Ensure button is hidden on error
 
     def toggle_solution_video(self):
-         """Toggle video solution playback while preserving cooldown state"""
-         # Wrap the logic in a thread-safe lock
+         """Toggle video solution playback using Qt overlays"""
          with self._lock:
-            print("[ui.toggle_solution_video] thread lock here")
+            print("[ui.toggle_solution_video] thread lock acquired")
             try:
-                print("[ui.py]Toggling solution video")
-                # If video is already playing, stop it
-                if hasattr(self, 'video_is_playing') and self.video_is_playing:
-                    print("[ui.py]Stopping current video")
-                    self.message_handler.video_manager.stop_video()
-                    self.video_is_playing = False
-                    
-                    # Restore the button
-                    if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                        print("[ui.py]Restoring solution button")
-                        self.video_solution_button.place(
-                            x=750,
-                            y=(1015 - 64)/2 - 100 + 64
-                        )
-                    
-                    # Restore the text overlay
-                    Overlay.show_hint_text(self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', ''), self.current_room)
+                is_currently_playing = self.message_handler.video_manager.is_playing
+                print(f"[ui.py] Toggling solution video. Currently playing: {is_currently_playing}")
 
-                    # Restore cooldown display if still in cooldown
-                    if self.hint_cooldown:
-                        #No longer need status frame.
-                        #print("[ui.py]Restoring cooldown display")
-                        #self.show_status_frame()
-                        # ^^^ this will cause an error
-                        #The Qt logic should be handling this correctly.
-                        pass
-                        
-                # If video is not playing, start it
+                if is_currently_playing:
+                    print("[ui.py] Stopping current video")
+                    self.message_handler.video_manager.stop_video() # Should trigger on_complete if needed
+
+                    # VideoManager's on_complete (handle_video_completion) should restore UI.
+                    # We don't need to manually restore buttons/text here anymore.
+
                 else:
-                    print("[ui.py]Starting video playback")
-                    if hasattr(self, 'stored_video_info'):
-                        
-                        # Only hide UI elements that exist
+                    print("[ui.py] Starting video playback")
+                    if hasattr(self, 'stored_video_info') and self.stored_video_info:
+
+                        # Hide hint text and the solution button itself via Overlay
                         Overlay.hide_hint_text()
-                        
-                        if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                            print("[ui.py]Hiding solution button")
-                            self.video_solution_button.place_forget()
-                            
-                        
+                        Overlay.hide_view_solution_button()
+                        # Also hide image button if present
+                        Overlay.hide_view_image_button()
+
+                        # --- Remove Tkinter button hiding ---
+                        # if hasattr(self, 'video_solution_button') and self.video_solution_button:
+                        #     print("[ui.py] Hiding Tkinter solution button") # REMOVE
+                        #     self.video_solution_button.place_forget() # REMOVE
+
                         # Construct video path
                         video_path = os.path.join(
                             "video_solutions",
                             self.stored_video_info['room_folder'],
                             f"{self.stored_video_info['video_filename']}.mp4"
                         )
-                        
-                        print(f"[ui.py]Video path: {video_path}")
+
+                        print(f"[ui.py] Video path: {video_path}")
                         if os.path.exists(video_path):
-                            print("[ui.py]Playing video")
-                            self.video_is_playing = True
+                            print("[ui.py] Playing video via VideoManager")
+                            # self.video_is_playing = True # Let VideoManager handle state
                             self.message_handler.video_manager.play_video(
                                 video_path,
-                                on_complete=self.handle_video_completion
+                                on_complete=self.handle_video_completion # Keep existing completion handler
                             )
                         else:
-                            print(f"[ui.py]Error: Video file not found at {video_path}")
+                            print(f"[ui.py] Error: Video file not found at {video_path}")
+                            # If video fails to start, restore the UI immediately
+                            Overlay.show_all_overlays() # Restore relevant overlays
                     else:
-                        print("[ui.py]Error: No video info stored")
-                        
+                        print("[ui.py] Error: No video info stored")
+
             except Exception as e:
-                print(f"[ui.py]Error in toggle_solution_video: {e}")
+                print(f"[ui.py] Error in toggle_solution_video: {e}")
                 traceback.print_exc()
+            finally:
+                 print("[ui.toggle_solution_video] thread lock released")
 
     def handle_video_completion(self):
-        """Handle cleanup after video finishes playing while maintaining cooldown state"""
-        print("[ui.py]Handling video completion")
-        self.video_is_playing = False
+        """Handle cleanup after video finishes, restoring Qt overlays"""
+        print("[ui.py] Handling video completion (Qt version)")
+        # self.video_is_playing = False # State managed by VideoManager
 
         try:
-            # Store video info before cleanup
-            stored_video_info = None
-            if hasattr(self, 'stored_video_info') and self.stored_video_info:
-                stored_video_info = self.stored_video_info.copy()
+            # --- Minimal cleanup needed here ---
+            # The VideoManager hide/show should handle overlay visibility mostly.
 
-            # Store cooldown state
-            was_in_cooldown = self.hint_cooldown
-            cooldown_after_id = self.cooldown_after_id
+            # --- Remove Tkinter button destruction/restoration ---
+            # if hasattr(self, 'video_solution_button') and self.video_solution_button:
+            #     self.video_solution_button.destroy() # REMOVE
+            #     self.video_solution_button = None # REMOVE
+            # ...
+            # Restore room interface (Maybe not needed if show_all_overlays is robust)
+            # if self.message_handler.assigned_room:
+            #     print("[ui.py] Restoring room interface (consider if needed)")
+            #     # self.setup_room_interface(self.message_handler.assigned_room) # Might cause flicker
 
-            # Clear UI state without affecting cooldown
-            print("[ui.py]Clearing UI state...")
-            # Don't call clear_all_labels() as it would reset cooldown
-            Overlay.hide_hint_text()
-            Overlay.hide_help_button()  # Replaced help button removal with this
-            if hasattr(self, 'video_solution_button') and self.video_solution_button:
-                self.video_solution_button.destroy()
-                self.video_solution_button = None
+            # --- Rely on show_all_overlays to restore correct state ---
+            print("[ui.py handle_video_completion] Triggering show_all_overlays")
+            # This should show hint text, appropriate side buttons (image/video), timer, help button etc.
+            # Ensure show_all_overlays correctly checks stored_image_data and stored_video_info
+            Overlay.show_all_overlays()
 
-            # Restore room interface - this will properly recreate the hint display area
-            if self.message_handler.assigned_room:
-                print("[ui.py]Restoring room interface")
-                self.setup_room_interface(self.message_handler.assigned_room)
+            # --- Remove manual hint text restoration ---
+            # if self.current_hint:
+            #     hint_text = ... # REMOVE
+            #     Overlay.show_hint_text(...) # REMOVE (Handled by show_all_overlays)
 
-                # Restore hint text *after* setup_room_interface
-                if self.current_hint:
-                    print("[ui.py]Restoring hint text")
-                    hint_text = self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', '')
-                    Overlay.show_hint_text(hint_text, self.message_handler.assigned_room)
+            # --- Remove manual video button creation ---
+            # if stored_video_info:
+            #     self.show_video_solution(...) # REMOVE (Handled by show_all_overlays)
 
-                # If we had a video solution, create a fresh button
-                if stored_video_info:
-                    print("[ui.py]Creating fresh video solution button")
-                    self.show_video_solution(
-                        stored_video_info['room_folder'],
-                        stored_video_info['video_filename']
-                    )
-            # Restore cooldown state if it was active
-            if was_in_cooldown:
-                #print("[ui.py]Restoring cooldown state")
-                self.hint_cooldown = True
-                self.cooldown_after_id = cooldown_after_id
-                #No longer need status frame.
-                #self.show_status_frame()
-                #The Qt logic should be handling this correctly.
-                pass
-            else:
-                # Only refresh help button if not in cooldown
-                self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
+            # --- Remove cooldown restoration (handled by show_all_overlays) ---
+            # if was_in_cooldown:
+            #    ... # REMOVE
+
+            # Ensure help button state is correct (show_all_overlays might call update_help_button)
+            # If not, trigger it explicitly AFTER show_all_overlays has potentially run
+            self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update())
 
         except Exception as e:
-            print(f"[ui.py]Error in handle_video_completion: {e}")
+            print(f"[ui.py] Error in handle_video_completion: {e}")
             traceback.print_exc()

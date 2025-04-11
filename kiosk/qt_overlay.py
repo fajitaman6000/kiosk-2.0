@@ -242,7 +242,7 @@ class Overlay:
     _video_is_initialized = False
     _bridge = None
     _last_frame = None
-     # --- Additions for Fullscreen Hint ---
+     # --- Fullscreen Hint ---
     _fullscreen_hint_window = None
     _fullscreen_hint_scene = None
     _fullscreen_hint_view = None
@@ -250,6 +250,14 @@ class Overlay:
     _fullscreen_hint_pixmap = None # To store the loaded/scaled pixmap
     _fullscreen_hint_ui_instance = None # To call restore_hint_view
     _fullscreen_hint_initialized = False
+    # --- image/video buttons ---
+    _view_image_button = None # Dictionary to hold window, scene, view, rect, text
+    _view_image_button_initialized = False
+    _view_image_button_ui_instance = None # To store ui instance for click
+
+    _view_solution_button = None # Dictionary to hold window, scene, view, rect, text
+    _view_solution_button_initialized = False
+    _view_solution_button_ui_instance = None # To store ui instance for click
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -554,6 +562,330 @@ class Overlay:
 
         # else:
             # print("[qt overlay] Fullscreen hint window not visible or not initialized.") # Debug
+
+    @classmethod
+    def _init_view_image_button(cls):
+        """Initialize the 'View Image Hint' button components."""
+        if cls._view_image_button_initialized:
+            return
+        print("[qt overlay] Initializing View Image Hint button components...")
+        try:
+            cls._view_image_button = {
+                'window': QWidget(cls._window), # Parent to main overlay window
+                'scene': QGraphicsScene(),
+                'view': None,
+                'rect': None,
+                'text_item': None
+            }
+
+            # Window setup
+            win = cls._view_image_button['window']
+            win.setAttribute(Qt.WA_TranslucentBackground)
+            win.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            win.setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Scene setup (already created)
+            scene = cls._view_image_button['scene']
+
+            # View setup (Using ClickableHintView for click signal)
+            view = ClickableHintView(scene, win) # Reusing ClickableHintView
+            view.setStyleSheet("background: transparent; border: none;")
+            view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+            cls._view_image_button['view'] = view
+
+            # Button dimensions (from ui.py)
+            button_width = 100
+            button_height = 300
+
+            # Rectangle (background)
+            rect = QGraphicsRectItem(0, 0, button_width, button_height)
+            rect.setBrush(QBrush(QColor(0, 0, 255, 200))) # Blue, semi-transparent
+            rect.setPen(QPen(Qt.NoPen)) # No border
+            scene.addItem(rect)
+            cls._view_image_button['rect'] = rect
+
+            # Text Item
+            text_item = QGraphicsTextItem("VIEW IMAGE HINT")
+            text_item.setDefaultTextColor(Qt.white)
+            text_item.setFont(QFont('Arial', 24)) # Match ui.py
+            scene.addItem(text_item)
+            cls._view_image_button['text_item'] = text_item
+
+            # Rotate and Center Text within Rectangle
+            text_item.setTransformOriginPoint(text_item.boundingRect().center())
+            text_item.setRotation(270) # Match ui.py
+            # After rotation, center it
+            rotated_text_width = text_item.boundingRect().height() # Width becomes height after 270 deg rot
+            rotated_text_height = text_item.boundingRect().width() # Height becomes width
+            text_x = (button_width - rotated_text_width) / 2
+            text_y = (button_height - rotated_text_height) / 2
+            # Need to adjust y slightly because rotation origin isn't perfect top-left
+            text_item.setPos(text_x, text_y + rotated_text_height) # Adjust based on bottom-left corner after rotation
+
+
+            # Set geometry for view and scene rect
+            view.setGeometry(0, 0, button_width, button_height)
+            scene.setSceneRect(0, 0, button_width, button_height)
+
+            # Win32 parent/style
+            if cls._parent_hwnd:
+                style = win32gui.GetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE, style | win32con.WS_EX_NOACTIVATE)
+
+            cls._view_image_button_initialized = True
+            print("[qt overlay] View Image Hint button initialized.")
+        except Exception as e:
+            print(f"[qt overlay] Error initializing View Image Hint button: {e}")
+            traceback.print_exc()
+            cls._view_image_button_initialized = False
+
+    @classmethod
+    def _init_view_solution_button(cls):
+        """Initialize the 'View Solution' button components."""
+        if cls._view_solution_button_initialized:
+            return
+        print("[qt overlay] Initializing View Solution button components...")
+        try:
+            cls._view_solution_button = {
+                'window': QWidget(cls._window), # Parent to main overlay window
+                'scene': QGraphicsScene(),
+                'view': None,
+                'rect': None,
+                'text_item': None
+            }
+
+            # Window setup
+            win = cls._view_solution_button['window']
+            win.setAttribute(Qt.WA_TranslucentBackground)
+            win.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool |
+                Qt.WindowDoesNotAcceptFocus
+            )
+            win.setAttribute(Qt.WA_ShowWithoutActivating)
+
+            # Scene setup (already created)
+            scene = cls._view_solution_button['scene']
+
+            # View setup (Using ClickableHintView for click signal)
+            view = ClickableHintView(scene, win) # Reusing ClickableHintView
+            view.setStyleSheet("background: transparent; border: none;")
+            view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+            cls._view_solution_button['view'] = view
+
+            # Button dimensions (from ui.py)
+            button_width = 100
+            button_height = 400 # Note: Taller than image button
+
+            # Rectangle (background)
+            rect = QGraphicsRectItem(0, 0, button_width, button_height)
+            rect.setBrush(QBrush(QColor(0, 0, 255, 200))) # Blue, semi-transparent
+            rect.setPen(QPen(Qt.NoPen)) # No border
+            scene.addItem(rect)
+            cls._view_solution_button['rect'] = rect
+
+            # Text Item
+            text_item = QGraphicsTextItem("VIEW SOLUTION") # Different text
+            text_item.setDefaultTextColor(Qt.white)
+            text_item.setFont(QFont('Arial', 24)) # Match ui.py
+            scene.addItem(text_item)
+            cls._view_solution_button['text_item'] = text_item
+
+            # Rotate and Center Text within Rectangle
+            text_item.setTransformOriginPoint(text_item.boundingRect().center())
+            text_item.setRotation(270) # Match ui.py
+            # After rotation, center it
+            rotated_text_width = text_item.boundingRect().height()
+            rotated_text_height = text_item.boundingRect().width()
+            text_x = (button_width - rotated_text_width) / 2
+            text_y = (button_height - rotated_text_height) / 2
+            text_item.setPos(text_x, text_y + rotated_text_height) # Adjust based on bottom-left corner
+
+            # Set geometry for view and scene rect
+            view.setGeometry(0, 0, button_width, button_height)
+            scene.setSceneRect(0, 0, button_width, button_height)
+
+            # Win32 parent/style
+            if cls._parent_hwnd:
+                style = win32gui.GetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE)
+                win32gui.SetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE, style | win32con.WS_EX_NOACTIVATE)
+
+            cls._view_solution_button_initialized = True
+            print("[qt overlay] View Solution button initialized.")
+        except Exception as e:
+            print(f"[qt overlay] Error initializing View Solution button: {e}")
+            traceback.print_exc()
+            cls._view_solution_button_initialized = False
+
+    @classmethod
+    def _on_view_image_button_clicked(cls):
+        """Callback when the Qt 'View Image Hint' button is clicked."""
+        print("[qt overlay] View Image Hint button clicked.")
+        if cls._view_image_button_ui_instance and hasattr(cls._view_image_button_ui_instance, 'stored_image_data'):
+            if cls._view_image_button_ui_instance.stored_image_data:
+                # Directly call the method that shows the fullscreen hint overlay
+                Overlay.show_fullscreen_hint(
+                    cls._view_image_button_ui_instance.stored_image_data,
+                    cls._view_image_button_ui_instance # Pass ui instance back
+                )
+            else:
+                print("[qt overlay] Warning: Clicked View Image Hint, but no stored_image_data found.")
+        else:
+            print("[qt overlay] Error: No UI instance available for View Image Hint click.")
+
+    @classmethod
+    def _on_view_solution_button_clicked(cls):
+        """Callback when the Qt 'View Solution' button is clicked."""
+        print("[qt overlay] View Solution button clicked.")
+        if cls._view_solution_button_ui_instance and hasattr(cls._view_solution_button_ui_instance, 'toggle_solution_video'):
+            # Call the existing toggle method in ui.py
+            # Ensure this call happens in the main thread if ui.py methods aren't thread-safe
+            # Since the click event happens in the main Qt thread, a direct call should be okay.
+            cls._view_solution_button_ui_instance.toggle_solution_video()
+        else:
+            print("[qt overlay] Error: No UI instance or toggle_solution_video method available for View Solution click.")
+
+    @classmethod
+    def show_view_image_button(cls, ui_instance):
+        """Shows the 'View Image Hint' button overlay."""
+        if not ui_instance:
+            print("[qt overlay] Error: ui_instance required to show view image button.")
+            return
+        if not cls._initialized:
+            print("[qt overlay] Overlay not initialized.")
+            return
+
+        if not cls._view_image_button_initialized:
+            cls._init_view_image_button()
+        if not cls._view_image_button_initialized: # Check again if init failed
+            print("[qt overlay] View Image Hint button failed to initialize.")
+            return
+
+        try:
+            print("[qt overlay] Showing View Image Hint button.")
+            cls._view_image_button_ui_instance = ui_instance # Store instance for click
+
+            button_info = cls._view_image_button
+            win = button_info['window']
+            view = button_info['view']
+
+            # Dimensions (from ui.py)
+            button_width = 100
+            button_height = 300
+            hint_window_x = 850 # Known position of the main hint text window
+            hint_window_height = 951 # Known height of main hint text window
+            hint_window_y = 80 # Known Y of main hint text window
+
+            # Calculate position (Place it to the left of the hint text)
+            button_x = hint_window_x - button_width - 10 # 10px gap
+            # Center vertically relative to the hint text window
+            button_y = hint_window_y + (hint_window_height - button_height) // 2
+
+            # Set window geometry
+            win.setGeometry(button_x, button_y, button_width, button_height)
+
+            # Connect click signal (disconnect first to avoid duplicates)
+            try:
+                view.clicked.disconnect()
+            except TypeError:
+                pass # No connection existed
+            view.clicked.connect(cls._on_view_image_button_clicked)
+
+            # Show
+            win.show()
+            win.raise_()
+
+        except Exception as e:
+            print(f"[qt overlay] Error showing View Image Hint button: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def show_view_solution_button(cls, ui_instance):
+        """Shows the 'View Solution' button overlay."""
+        if not ui_instance:
+            print("[qt overlay] Error: ui_instance required to show view solution button.")
+            return
+        if not cls._initialized:
+            print("[qt overlay] Overlay not initialized.")
+            return
+
+        if not cls._view_solution_button_initialized:
+            cls._init_view_solution_button()
+        if not cls._view_solution_button_initialized: # Check again
+            print("[qt overlay] View Solution button failed to initialize.")
+            return
+
+        try:
+            print("[qt overlay] Showing View Solution button.")
+            cls._view_solution_button_ui_instance = ui_instance # Store instance
+
+            button_info = cls._view_solution_button
+            win = button_info['window']
+            view = button_info['view']
+
+            # Dimensions (from ui.py)
+            button_width = 100
+            button_height = 400 # Taller
+            hint_window_x = 850
+            hint_window_height = 951
+            hint_window_y = 80
+
+            # Calculate position (Place it to the left of the hint text)
+            button_x = hint_window_x - button_width - 10
+            # Center vertically relative to the hint text window
+            button_y = hint_window_y + (hint_window_height - button_height) // 2
+
+            # Set window geometry
+            win.setGeometry(button_x, button_y, button_width, button_height)
+
+            # Connect click signal
+            try:
+                view.clicked.disconnect()
+            except TypeError:
+                pass
+            view.clicked.connect(cls._on_view_solution_button_clicked)
+
+            # Show
+            win.show()
+            win.raise_()
+
+        except Exception as e:
+            print(f"[qt overlay] Error showing View Solution button: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def hide_view_image_button(cls):
+        """Hides the 'View Image Hint' button overlay."""
+        if cls._view_image_button_initialized and cls._view_image_button and cls._view_image_button['window']:
+            if cls._view_image_button['window'].isVisible():
+                # print("[qt overlay] Hiding View Image Hint button.") # Debug
+                cls._view_image_button['window'].hide()
+                # Optionally disconnect signal here if needed
+                # cls._view_image_button_ui_instance = None # Clear instance ref
+        # else:
+            # print("[qt overlay] View Image Hint button not initialized or window missing.") # Debug
+
+    @classmethod
+    def hide_view_solution_button(cls):
+        """Hides the 'View Solution' button overlay."""
+        if cls._view_solution_button_initialized and cls._view_solution_button and cls._view_solution_button['window']:
+            if cls._view_solution_button['window'].isVisible():
+                # print("[qt overlay] Hiding View Solution button.") # Debug
+                cls._view_solution_button['window'].hide()
+                # Optionally disconnect signal here if needed
+                # cls._view_solution_button_ui_instance = None # Clear instance ref
+        # else:
+            # print("[qt overlay] View Solution button not initialized or window missing.") # Debug
 
     @classmethod
     def _init_video_display(cls):
@@ -2174,6 +2506,7 @@ class Overlay:
         """Hide all Qt overlay UI elements temporarily (EXCEPT video)."""
         # print("[qt overlay] Hiding non-video overlay UI elements") # Reduce noise
         try:
+            # Existing hides...
             if hasattr(cls, '_timer_window') and cls._timer_window and cls._timer_window.isVisible():
                 cls._timer_window.hide()
             if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
@@ -2184,14 +2517,24 @@ class Overlay:
                  cls._hint_request_text['window'].hide()
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
                 gm_window = cls._gm_assistance_overlay['window']
-                cls._gm_assistance_overlay['_was_visible'] = gm_window.isVisible()
-                if cls._gm_assistance_overlay['_was_visible']:
-                     gm_window.hide()
+                # Store visibility state ONLY if window exists and might be visible
+                if gm_window:
+                   cls._gm_assistance_overlay['_was_visible'] = gm_window.isVisible()
+                   if cls._gm_assistance_overlay['_was_visible']:
+                       gm_window.hide()
+                else:
+                   cls._gm_assistance_overlay['_was_visible'] = False # Ensure flag exists
+
             if hasattr(cls, '_window') and cls._window and cls._window.isVisible(): # Cooldown window
                 cls._window.hide()
 
             cls.hide_victory_screen()
             cls.hide_loss_screen()
+
+            # --- ADD HIDES FOR NEW BUTTONS ---
+            cls.hide_view_image_button()
+            cls.hide_view_solution_button()
+            # --- END ADD HIDES ---
 
             # print("[qt overlay] Non-video overlay UI elements hidden.") # Reduce noise
         except Exception as e:
@@ -2231,6 +2574,7 @@ class Overlay:
 
         # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
         try:
+            # --- Existing restores ---
             # Timer (only if text exists)
             if hasattr(cls, '_timer_window') and cls._timer_window:
                 if hasattr(cls, '_timer') and cls._timer.text_item and cls._timer.text_item.toPlainText():
@@ -2238,15 +2582,10 @@ class Overlay:
                      cls._timer_window.raise_()
 
             # Button - Rely on update_help_button to manage its visibility based on game state.
-            # Triggering an update here ensures it appears correctly if needed.
-            if ui_instance and hasattr(cls._kiosk_app, '_actual_help_button_update'):
-                # print("[qt overlay show_all] Triggering help button update.") # Debug
-                # We might need a slight delay if things aren't ready immediately
-                # QTimer.singleShot(10, cls._kiosk_app._actual_help_button_update) # Requires QTimer import
-                # Or use the existing Tkinter after mechanism if safer for now:
-                if hasattr(cls._kiosk_app, 'root'):
-                     cls._kiosk_app.root.after(10, cls._kiosk_app._actual_help_button_update)
-
+            if ui_instance and hasattr(ui_instance.parent_app, '_actual_help_button_update'): # Check parent_app reference exists
+                if hasattr(ui_instance.parent_app, 'root') and ui_instance.parent_app.root: # Check root exists
+                    # print("[qt overlay show_all] Triggering help button update.") # Debug
+                    ui_instance.parent_app.root.after(10, ui_instance.parent_app._actual_help_button_update) # Use parent_app reference
 
             # Hint Text (only if text exists)
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window'):
@@ -2255,6 +2594,16 @@ class Overlay:
                  if '_text_item' in cls._hint_text and cls._hint_text['_text_item'] and cls._hint_text['_text_item'].toPlainText().strip():
                      if not hint_window.isVisible(): hint_window.show()
                      hint_window.raise_()
+                     # --- ADD LOGIC TO SHOW SIDE BUTTONS IF HINT TEXT IS VISIBLE ---
+                     if ui_instance:
+                         if hasattr(ui_instance, 'stored_image_data') and ui_instance.stored_image_data:
+                             print("[qt overlay show_all] Hint text visible, showing View Image button.")
+                             cls.show_view_image_button(ui_instance)
+                         if hasattr(ui_instance, 'stored_video_info') and ui_instance.stored_video_info:
+                             print("[qt overlay show_all] Hint text visible, showing View Solution button.")
+                             cls.show_view_solution_button(ui_instance)
+                     # --- END ADDED LOGIC ---
+
 
             # Hint Request Text (only if text exists)
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window'):
@@ -2286,11 +2635,13 @@ class Overlay:
             # GM Assistance (only if was previously visible)
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
                 gm_window = cls._gm_assistance_overlay['window']
+                # Use get method with default False to avoid KeyError if _was_visible doesn't exist yet
                 was_visible_flag = cls._gm_assistance_overlay.get('_was_visible', False)
                 if was_visible_flag:
                     if not gm_window.isVisible(): gm_window.show()
                     gm_window.raise_()
                     cls._gm_assistance_overlay['_was_visible'] = False # Reset flag
+
 
             # print("[qt overlay] Non-video overlay UI elements restored.") # Reduce noise
         except Exception as e:
