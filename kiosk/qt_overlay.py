@@ -2200,16 +2200,24 @@ class Overlay:
 
     @classmethod
     def show_all_overlays(cls):
-        """Restore visibility of all Qt overlay UI elements (EXCEPT video)."""
+        """Restore visibility of all Qt overlay UI elements (EXCEPT video and fullscreen hint)."""
         # print("[qt overlay] Restoring non-video overlay UI elements.") # Reduce noise
 
         # --- CHECK GAME STATE FIRST ---
         game_lost = False
         game_won = False
+        ui_instance = None # <-- Get ui instance
+
         # Use the stored kiosk_app reference safely
-        if cls._kiosk_app and hasattr(cls._kiosk_app, 'timer'):
-             game_lost = getattr(cls._kiosk_app.timer, 'game_lost', False)
-             game_won = getattr(cls._kiosk_app.timer, 'game_won', False)
+        if cls._kiosk_app: # Check if kiosk_app exists
+             if hasattr(cls._kiosk_app, 'timer'):
+                 game_lost = getattr(cls._kiosk_app.timer, 'game_lost', False)
+                 game_won = getattr(cls._kiosk_app.timer, 'game_won', False)
+             if hasattr(cls._kiosk_app, 'ui'): # Check if ui exists
+                 ui_instance = cls._kiosk_app.ui
+        else:
+            print("[qt overlay] Warning: _kiosk_app not available in show_all_overlays.")
+
 
         if game_lost:
             # print("[qt overlay] Game lost, showing loss screen only.") # Reduce noise
@@ -2230,27 +2238,50 @@ class Overlay:
                      cls._timer_window.raise_()
 
             # Button - Rely on update_help_button to manage its visibility based on game state.
-            # Explicitly showing it here might bypass logic.
+            # Triggering an update here ensures it appears correctly if needed.
+            if ui_instance and hasattr(cls._kiosk_app, '_actual_help_button_update'):
+                # print("[qt overlay show_all] Triggering help button update.") # Debug
+                # We might need a slight delay if things aren't ready immediately
+                # QTimer.singleShot(10, cls._kiosk_app._actual_help_button_update) # Requires QTimer import
+                # Or use the existing Tkinter after mechanism if safer for now:
+                if hasattr(cls._kiosk_app, 'root'):
+                     cls._kiosk_app.root.after(10, cls._kiosk_app._actual_help_button_update)
+
 
             # Hint Text (only if text exists)
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window'):
                  hint_window = cls._hint_text['window']
-                 if hasattr(cls._hint_text, 'text_item') and cls._hint_text['text_item'] and cls._hint_text['text_item'].toPlainText().strip():
+                 # Check if the text item exists AND has actual text content
+                 if '_text_item' in cls._hint_text and cls._hint_text['_text_item'] and cls._hint_text['_text_item'].toPlainText().strip():
                      if not hint_window.isVisible(): hint_window.show()
                      hint_window.raise_()
 
             # Hint Request Text (only if text exists)
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window'):
                  req_window = cls._hint_request_text['window']
-                 if hasattr(cls._hint_request_text, 'text_item') and cls._hint_request_text['text_item'] and cls._hint_request_text['text_item'].toPlainText().strip():
+                 if '_text_item' in cls._hint_request_text and cls._hint_request_text['_text_item'] and cls._hint_request_text['_text_item'].toPlainText().strip():
                      if not req_window.isVisible(): req_window.show()
                      req_window.raise_()
 
-            # Cooldown (only if text exists)
+            # --- MODIFIED COOLDOWN VISIBILITY CHECK ---
             if hasattr(cls, '_window') and cls._window: # Main window used for cooldown
-                if hasattr(cls, '_text_item') and cls._text_item.toPlainText().strip():
-                    if not cls._window.isVisible(): cls._window.show()
-                    cls._window.raise_()
+                 should_show_cooldown = False
+                 if ui_instance:
+                     # Check the actual cooldown state *AND* if the text item has content
+                     if ui_instance.hint_cooldown and hasattr(cls, '_text_item') and cls._text_item.toPlainText().strip():
+                         should_show_cooldown = True
+                         # print("[qt overlay show_all] Cooldown should be visible.") # Debug
+
+                 if should_show_cooldown:
+                     if not cls._window.isVisible(): cls._window.show()
+                     cls._window.raise_()
+                 else:
+                     # Explicitly hide if it shouldn't be shown
+                     if cls._window.isVisible():
+                         # print("[qt overlay show_all] Hiding cooldown overlay.") # Debug
+                         cls._window.hide()
+            # --- END MODIFIED CHECK ---
+
 
             # GM Assistance (only if was previously visible)
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
