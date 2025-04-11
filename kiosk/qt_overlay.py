@@ -13,6 +13,7 @@ import traceback
 import numpy as np # Needed for type hints / checks potentially
 from config import ROOM_CONFIG
 import cv2
+import base64
 print("[qt overlay] Ending imports ...")
 
 class ClickableVideoView(QGraphicsView):
@@ -33,6 +34,20 @@ class ClickableVideoView(QGraphicsView):
     def set_skippable(self, skippable):
         print(f"[qt overlay] Setting video skippable: {skippable}")
         self._is_skippable = skippable
+
+# qt_overlay.py (add this class near ClickableVideoView)
+class ClickableHintView(QGraphicsView):
+    """Custom QGraphicsView for fullscreen hint display that handles clicks"""
+    clicked = pyqtSignal() # Signal emitted on click
+
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+
+    def mousePressEvent(self, event):
+        # print("[qt overlay] Fullscreen hint view clicked.") # Debug
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
 
 class TimerThread(QThread):
     """Dedicated thread for timer updates"""
@@ -227,6 +242,14 @@ class Overlay:
     _video_is_initialized = False
     _bridge = None
     _last_frame = None
+     # --- Additions for Fullscreen Hint ---
+    _fullscreen_hint_window = None
+    _fullscreen_hint_scene = None
+    _fullscreen_hint_view = None
+    _fullscreen_hint_pixmap_item = None
+    _fullscreen_hint_pixmap = None # To store the loaded/scaled pixmap
+    _fullscreen_hint_ui_instance = None # To call restore_hint_view
+    _fullscreen_hint_initialized = False
 
     @classmethod
     def init(cls, tkinter_root=None):
@@ -300,6 +323,7 @@ class Overlay:
         cls._init_hint_request_text_overlay()
         cls._init_gm_assistance_overlay()
         cls._init_video_display() # Initialize video components
+        cls._init_fullscreen_hint()
 
         # Initialize timer and help button
         cls.init_timer()
@@ -309,7 +333,228 @@ class Overlay:
         cls.hide_gm_assistance()
         # Hide video display initially
         cls.hide_video_display()
+        # Hide fullscreen hint initially
+        cls.hide_fullscreen_hint()
         
+    @classmethod
+    def _init_fullscreen_hint(cls):
+        """Initialize fullscreen hint display components."""
+        if cls._fullscreen_hint_initialized:
+            return
+
+        print("[qt overlay] Initializing fullscreen hint components...")
+        try:
+            # Create window
+            cls._fullscreen_hint_window = QWidget() # No parent initially needed for fullscreen
+            cls._fullscreen_hint_window.setStyleSheet("background-color: black;") # Black background
+            cls._fullscreen_hint_window.setWindowFlags(
+                Qt.FramelessWindowHint |
+                Qt.WindowStaysOnTopHint |
+                Qt.Tool
+            )
+            cls._fullscreen_hint_window.setAttribute(Qt.WA_ShowWithoutActivating)
+            cls._fullscreen_hint_window.setAttribute(Qt.WA_OpaquePaintEvent, True) # Optimization
+
+            # Create scene and view using the new clickable view
+            cls._fullscreen_hint_scene = QGraphicsScene(cls._fullscreen_hint_window)
+            cls._fullscreen_hint_view = ClickableHintView(cls._fullscreen_hint_scene, cls._fullscreen_hint_window) # Use ClickableHintView
+            cls._fullscreen_hint_view.setStyleSheet("background: transparent; border: none;")
+            cls._fullscreen_hint_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._fullscreen_hint_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+            # --- FIX: Call setRenderHint separately for each flag ---
+            cls._fullscreen_hint_view.setRenderHint(QPainter.Antialiasing, True)
+            cls._fullscreen_hint_view.setRenderHint(QPainter.SmoothPixmapTransform, True)
+            # --- END FIX ---
+
+            cls._fullscreen_hint_view.setCacheMode(QGraphicsView.CacheNone)
+            cls._fullscreen_hint_view.setViewportUpdateMode(QGraphicsView.BoundingRectViewportUpdate) # Usually better for static images
+
+            # Create and add pixmap item
+            cls._fullscreen_hint_pixmap_item = QGraphicsPixmapItem()
+            cls._fullscreen_hint_scene.addItem(cls._fullscreen_hint_pixmap_item)
+
+            # Initial full screen setup (will be refined when image is shown)
+            screen_geometry = QApplication.desktop().screenGeometry()
+            width = screen_geometry.width()
+            height = screen_geometry.height()
+
+            cls._fullscreen_hint_window.setGeometry(0, 0, width, height)
+            cls._fullscreen_hint_view.setGeometry(0, 0, width, height)
+            cls._fullscreen_hint_scene.setSceneRect(0, 0, width, height)
+            cls._fullscreen_hint_pixmap_item.setPos(0, 0) # Place item at top-left
+
+            cls._fullscreen_hint_initialized = True
+            print("[qt overlay] Fullscreen hint components initialized.")
+
+        except Exception as e:
+            print(f"[qt overlay] Error initializing fullscreen hint display: {e}")
+            traceback.print_exc()
+            cls._fullscreen_hint_initialized = False
+    
+    @classmethod
+    def show_fullscreen_hint(cls, image_data_base64, ui_instance):
+        """Displays the base64 image data in a fullscreen Qt overlay."""
+        if not cls._initialized:
+            print("[qt overlay] Overlay not initialized.")
+            return
+        if not image_data_base64:
+            print("[qt overlay] No image data provided for fullscreen hint.")
+            return
+        if not ui_instance:
+            print("[qt overlay] UI instance not provided for fullscreen hint.")
+            return
+
+        try:
+            # Ensure initialized
+            if not cls._fullscreen_hint_initialized:
+                cls._init_fullscreen_hint()
+            if not cls._fullscreen_hint_initialized: # Check again if init failed
+                print("[qt overlay] Fullscreen hint failed to initialize.")
+                return
+
+            # Store UI instance for callback
+            cls._fullscreen_hint_ui_instance = ui_instance
+
+            print("[qt overlay] Showing fullscreen hint.")
+            # 1. Hide other non-video overlays
+            cls.hide_all_overlays() # Make sure this hides timer, buttons, text hints etc.
+
+            # 2. Decode and load image
+            image_bytes = base64.b64decode(image_data_base64)
+            q_image = QImage()
+            q_image.loadFromData(image_bytes)
+            if q_image.isNull():
+                print("[qt overlay] Failed to load image data into QImage.")
+                cls._fullscreen_hint_ui_instance = None # Clear instance if failed
+                cls.show_all_overlays() # Restore UI on failure
+                return
+            pixmap = QPixmap.fromImage(q_image)
+
+            # 3. Get screen dimensions and calculate scaling/positioning (reuse ui.py logic)
+            screen_width = QApplication.desktop().screenGeometry().width()
+            screen_height = QApplication.desktop().screenGeometry().height()
+            margin = 50 # Same margin as tk version
+
+            # Calculate resize ratio maintaining aspect ratio (rotated logic)
+            # Note: We use the original pixmap dimensions for calculation
+            img_width = pixmap.width()
+            img_height = pixmap.height()
+
+            # Ratios considering the final rotated orientation within screen bounds
+            width_ratio = (screen_height - 80) / img_width # Target width is screen height after rotation
+            height_ratio = (screen_width - (2 * margin) - 80) / img_height # Target height is screen width after rotation
+            ratio = min(width_ratio, height_ratio)
+
+            scaled_width = int(img_width * ratio)
+            scaled_height = int(img_height * ratio)
+
+            # Scale pixmap smoothly
+            scaled_pixmap = pixmap.scaled(scaled_width, scaled_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            cls._fullscreen_hint_pixmap = scaled_pixmap # Store reference
+
+            # 4. Apply pixmap, rotation, and position
+            cls._fullscreen_hint_pixmap_item.setPixmap(cls._fullscreen_hint_pixmap)
+            cls._fullscreen_hint_pixmap_item.setTransformOriginPoint(cls._fullscreen_hint_pixmap.width() / 2, cls._fullscreen_hint_pixmap.height() / 2)
+            cls._fullscreen_hint_pixmap_item.setRotation(90) # Rotate
+
+            # Calculate position for centered *rotated* image
+            # Center point of the screen area (considering margins)
+            center_x_screen = (screen_width - (2 * margin)) / 2 + margin
+            center_y_screen = screen_height / 2
+
+            # The item's top-left corner after rotation needs to be calculated
+            # Rotated width is scaled_height, rotated height is scaled_width
+            rotated_width = scaled_height
+            rotated_height = scaled_width
+            pos_x = center_x_screen - (rotated_width / 2)
+            pos_y = center_y_screen - (rotated_height / 2)
+
+            # Adjust position because rotation happens around the top-left by default before origin change
+            # Need to translate to center *then* rotate effectively.
+            # Easier way: Set position *after* rotation, considering the bounding box change.
+            # The final top-left corner for the rotated item to be centered:
+            final_pos_x = (screen_width + rotated_width) / 2 - rotated_width + margin # Complicated - let's try centering the view contents instead
+            final_pos_y = (screen_height - rotated_height) / 2
+
+            # Let's try centering using the item's bounding rect after transform
+            cls._fullscreen_hint_pixmap_item.setPos(0,0) # Reset position first
+            rotated_bounding_rect = cls._fullscreen_hint_pixmap_item.mapToScene(cls._fullscreen_hint_pixmap_item.boundingRect()).boundingRect()
+
+            final_pos_x_new = (screen_width - rotated_bounding_rect.width()) / 2
+            final_pos_y_new = (screen_height - rotated_bounding_rect.height()) / 2
+            cls._fullscreen_hint_pixmap_item.setPos(final_pos_x_new, final_pos_y_new)
+
+
+            # --- Alternative: FitInView (Easier) ---
+            # Reset transform before fitting
+            # cls._fullscreen_hint_pixmap_item.setTransform(QTransform())
+            # cls._fullscreen_hint_pixmap_item.setPixmap(cls._fullscreen_hint_pixmap) # Set unrotated pixmap
+            # cls._fullscreen_hint_view.resetTransform()
+            # cls._fullscreen_hint_view.setSceneRect(cls._fullscreen_hint_pixmap_item.boundingRect()) # Set scene rect to pixmap size
+            # cls._fullscreen_hint_view.fitInView(cls._fullscreen_hint_pixmap_item, Qt.KeepAspectRatio)
+            # cls._fullscreen_hint_view.rotate(90) # Rotate the entire view
+
+
+            # 5. Connect click handler
+            try:
+                cls._fullscreen_hint_view.clicked.disconnect() # Disconnect previous
+            except TypeError:
+                pass # No connection existed
+            cls._fullscreen_hint_view.clicked.connect(cls.hide_fullscreen_hint)
+
+            # 6. Show window
+            cls._fullscreen_hint_window.setGeometry(QApplication.desktop().screenGeometry()) # Ensure fullscreen
+            cls._fullscreen_hint_view.setGeometry(0, 0, screen_width, screen_height) # View covers window
+            cls._fullscreen_hint_scene.setSceneRect(0,0, screen_width, screen_height) # Scene covers view
+
+            cls._fullscreen_hint_window.show()
+            cls._fullscreen_hint_window.raise_()
+            QApplication.processEvents() # Process pending events
+
+        except Exception as e:
+            print(f"[qt overlay] Error showing fullscreen hint: {e}")
+            traceback.print_exc()
+            # Attempt to restore UI if error occurs
+            if cls._fullscreen_hint_ui_instance:
+                cls._fullscreen_hint_ui_instance = None
+            cls.hide_fullscreen_hint() # Try to hide potentially broken overlay
+            cls.show_all_overlays()    # Try to restore other overlays
+
+    @classmethod
+    def hide_fullscreen_hint(cls):
+        """Hides the fullscreen hint overlay and restores the normal UI."""
+        # print("[qt overlay] Hiding fullscreen hint.") # Debug
+        if cls._fullscreen_hint_window and cls._fullscreen_hint_initialized:
+            if cls._fullscreen_hint_window.isVisible():
+                cls._fullscreen_hint_window.hide()
+                # Clear the pixmap item to free memory
+                cls._fullscreen_hint_pixmap_item.setPixmap(QPixmap())
+                cls._fullscreen_hint_pixmap = None # Clear stored pixmap
+
+
+            # Restore other overlays *first*
+            cls.show_all_overlays()
+
+            # Call the UI restoration logic *after* hiding and showing others
+            if cls._fullscreen_hint_ui_instance:
+                # Use invokeMethod or after(0) if direct call causes issues
+                # Direct call likely okay as hide is triggered by user click in main thread
+                try:
+                    print("[qt overlay] Calling restore_hint_view...")
+                    cls._fullscreen_hint_ui_instance.restore_hint_view()
+                except Exception as e:
+                    print(f"[qt overlay] Error calling restore_hint_view: {e}")
+                    traceback.print_exc()
+                finally:
+                    # Clear reference once called
+                    cls._fullscreen_hint_ui_instance = None
+            else:
+                 print("[qt overlay] Warning: No UI instance found to call restore_hint_view.")
+
+        # else:
+            # print("[qt overlay] Fullscreen hint window not visible or not initialized.") # Debug
+
     @classmethod
     def _init_video_display(cls):
         """Initialize video display components (window, scene, view, item)."""

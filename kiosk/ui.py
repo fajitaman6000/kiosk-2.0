@@ -295,112 +295,112 @@ class KioskUI:
             traceback.print_exc()
             
     def show_fullscreen_image(self):
-        """Display the image in nearly fullscreen with margins"""
+        """Display the image in nearly fullscreen using Qt Overlay"""
+        print("[ui.py] Requesting Qt Overlay for fullscreen image.")
         self.image_is_fullscreen = True  # Set the flag FIRST
         if not self.stored_image_data:
+            print("[ui.py] No stored image data to show.")
+            self.image_is_fullscreen = False # Reset if no data
             return
 
         try:
-            # Hide hint interface and button
-            Overlay.hide_hint_text()
-            Overlay.hide_help_button()
-            Overlay.hide_cooldown()
-            if hasattr(Overlay, '_timer_window') and Overlay._timer_window: #check for existance before hiding it
-                Overlay._timer_window.hide()
+            # --- Remove Tkinter Canvas Creation ---
+            # if self.fullscreen_image:
+            #     self.fullscreen_image.destroy()
+            #     self.fullscreen_image = None
+            # ---
 
+            # Hide Tkinter hint button if it exists (assuming it might still be tk)
             if self.image_button:
-                self.image_button.place_forget()
+                 self.image_button.place_forget()
 
-            # Calculate dimensions (full screen minus margins)
-            screen_width = self.root.winfo_screenwidth()
-            screen_height = self.root.winfo_screenheight()
-            margin = 50  # pixels on each side
+            # --- Call the Qt Overlay to handle display ---
+            Overlay.show_fullscreen_hint(self.stored_image_data, self) # Pass self
 
-            # Create fullscreen canvas
-            self.fullscreen_image = tk.Canvas(
-                self.root,
-                width=screen_width - (2 * margin),
-                height=screen_height,
-                bg='black',
-                highlightthickness=0
-            )
-            self.fullscreen_image.place(x=margin, y=0)
-
-            # Decode and process image
-            image_bytes = base64.b64decode(self.stored_image_data)
-            image = Image.open(io.BytesIO(image_bytes))
-
-            # Calculate resize ratio maintaining aspect ratio
-            width_ratio = (screen_height - 80) / image.width  # Leave margin for height
-            height_ratio = (screen_width - (2 * margin) - 80) / image.height  # Leave margin for width
-            ratio = min(width_ratio, height_ratio)
-
-            new_size = (
-                int(image.width * ratio),
-                int(image.height * ratio)
-            )
-
-            # Resize and rotate image
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-            image = image.rotate(90, expand=True)
-
-            # Convert to PhotoImage and display
-            photo = ImageTk.PhotoImage(image)
-            self.fullscreen_image.photo = photo
-
-            # Center image in canvas
-            self.fullscreen_image.create_image(
-                (screen_width - (2 * margin)) / 2,
-                screen_height / 2,
-                image=photo,
-                anchor='center'
-            )
-
-            # Add click handler to return to hint view
-            self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
+            # --- Remove Tkinter Image Loading, Scaling, Rotating, Display ---
+            # screen_width = self.root.winfo_screenwidth()
+            # screen_height = self.root.winfo_screenheight()
+            # margin = 50
+            # self.fullscreen_image = tk.Canvas(...)
+            # self.fullscreen_image.place(x=margin, y=0)
+            # image_bytes = base64.b64decode(self.stored_image_data)
+            # image = Image.open(io.BytesIO(image_bytes))
+            # ... (ratio calculation, resize, rotate) ...
+            # photo = ImageTk.PhotoImage(image)
+            # self.fullscreen_image.photo = photo
+            # self.fullscreen_image.create_image(...)
+            # self.fullscreen_image.bind('<Button-1>', lambda e: self.restore_hint_view())
+            # --- End Removed Tkinter Code ---
 
         except Exception as e:
-            print("[ui.py]Error displaying fullscreen image:")
+            print("[ui.py]Error requesting fullscreen image overlay:")
             traceback.print_exc()
-            if self.fullscreen_image:
-                self.fullscreen_image.create_text(
-                    screen_width/2,
-                    screen_height/2,
-                    text=f"Error displaying image: {str(e)}",
-                    fill='red',
-                    font=('Arial', 16),
-                    angle=270
-                )
+            self.image_is_fullscreen = False # Reset flag on error
+            # Optionally try to restore view if overlay call failed badly
+            # self.restore_hint_view()
         
     def restore_hint_view(self):
-        self.image_is_fullscreen = False
-        if self.fullscreen_image:
-            self.fullscreen_image.destroy()
-            self.fullscreen_image = None
+        """Restores the normal hint view after fullscreen Qt hint is closed."""
+        print("[ui.py] Restoring hint view after Qt fullscreen hint.")
+        self.image_is_fullscreen = False # Reset flag
 
+        # --- Remove Tkinter Canvas Destruction ---
+        # if self.fullscreen_image:
+        #     self.fullscreen_image.destroy()
+        #     self.fullscreen_image = None
+        # ---
+
+        # --- Determine Hint Text (Keep this logic) ---
         hint_text = ""
         if isinstance(self.current_hint, str):
             hint_text = self.current_hint
         elif isinstance(self.current_hint, dict):
             hint_text = self.current_hint.get('text', '')
-            if self.current_hint.get('image') and not hint_text:
-                hint_text = "Image hint received"
+            # Check if it was an image-only hint
+            if self.current_hint.get('image') and not hint_text and self.stored_image_data:
+                hint_text = "Image hint received" # Restore placeholder text
+        # else: # Handle unexpected types if necessary
+        #    hint_text = str(self.current_hint) if self.current_hint else ""
+
+        # --- Restore Qt Hint Text Overlay ---
+        # Make sure Overlay.show_all_overlays() called by hide_fullscreen_hint
+        # handles showing the hint text if applicable.
+        # We might still need to explicitly show it here if show_all_overlays isn't enough
+        # or if the text needs re-setting. Let's assume show_all_overlays is sufficient for now.
+        # If issues arise, uncomment and test this:
+        if hint_text:
+            print(f"[ui.py restore_hint_view] Showing hint text: '{hint_text}'")
+            Overlay.show_hint_text(hint_text, self.current_room)
         else:
-            hint_text = str(self.current_hint)
+            print("[ui.py restore_hint_view] No hint text to restore, hiding hint overlay.")
+            Overlay.hide_hint_text() # Explicitly hide if no text
 
-        Overlay.show_hint_text(hint_text, self.current_room)
+        # --- Restore Tkinter Image Button (if it exists and belongs here) ---
+        # This button might also become a Qt element later
+        if self.image_button and self.stored_image_data: # Check if there *was* an image
+             print("[ui.py] Restoring Tkinter image button.")
+             button_height = 300 # Or get from original creation logic
+             self.image_button.place(
+                 x=750,
+                 y= (1015-64)/2 - button_height/2 + 64 # Adjust coords as needed
+             )
+        elif self.image_button:
+             # Destroy button if there's no image data to view anymore
+             print("[ui.py] Destroying image button as there's no image data.")
+             self.image_button.destroy()
+             self.image_button = None
 
-        if self.image_button:
-            button_height = 200
-            self.image_button.place(
-                x=750,
-                y= (1015-64)/2 - button_height/2 + 64
-            )
+        # --- Restore Qt Help Button / Timer ---
+        # These should be handled by Overlay.show_all_overlays(), but an explicit
+        # update ensures the help button state is correct.
+        print("[ui.py] Triggering help button update.")
+        self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update()) # Use small delay
 
-        self.message_handler.root.after(0, lambda: self.message_handler._actual_help_button_update())
-        if hasattr(Overlay, '_timer_window') and Overlay._timer_window:
-            if not self.message_handler.video_manager.is_playing:
-                Overlay._timer_window.show()
+        # Timer visibility check (redundant if show_all_overlays works, but safe)
+        # if hasattr(Overlay, '_timer_window') and Overlay._timer_window:
+        #    if not self.message_handler.video_manager.is_playing:
+        #        print("[ui.py] Showing timer window.")
+        #        Overlay._timer_window.show()
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
