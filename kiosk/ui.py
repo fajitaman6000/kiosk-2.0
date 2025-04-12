@@ -53,11 +53,7 @@ class KioskUI:
         
         try:
             if os.path.exists(path):
-                image = Image.open(path)
-                screen_width = self.root.winfo_screenwidth()
-                screen_height = self.root.winfo_screenheight()
-                image = image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
-                return ImageTk.PhotoImage(image)
+                return path
         except Exception as e:
             print(f"[ui.py]Error loading background: {str(e)}")
         return None
@@ -124,10 +120,12 @@ class KioskUI:
         # Configure the room-specific elements
         if room_number > 0:
             self.current_room = room_number
-            self.background_image = self.load_background(room_number)
-            if self.background_image:
-                bg_label = tk.Label(self.root, image=self.background_image)
-                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+            
+            # Get background path and set background using Qt overlay
+            background_path = self.load_background(room_number)
+            if background_path:
+                # Use Qt to render the background instead of tkinter Label
+                Overlay.set_background_image(background_path)
 
             # Load room-specific timer background
             self.message_handler.timer.load_room_background(room_number)

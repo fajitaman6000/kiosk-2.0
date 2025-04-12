@@ -261,7 +261,14 @@ class Overlay:
     # --- Waiting Screen ---
     _waiting_label = None # Dictionary: {'window': QWidget, 'view': QGraphicsView, 'scene': QGraphicsScene, 'text_item': QGraphicsTextItem}
     _waiting_label_initialized = False
-
+    
+    # --- Background image ---
+    _background_window = None
+    _background_scene = None
+    _background_view = None
+    _background_pixmap_item = None
+    _background_initialized = False
+    
     @classmethod
     def init(cls, tkinter_root=None):
         """Initialize Qt application and base window"""
@@ -284,8 +291,7 @@ class Overlay:
         else:
              print("[qt overlay] Warning: No kiosk_app reference found on tkinter_root.")
              cls._kiosk_app = None # Important for checks later
-
-
+            
         # --- Rest of init ---
         if tkinter_root:
             cls._parent_hwnd = tkinter_root.winfo_id()
@@ -335,6 +341,7 @@ class Overlay:
         cls._init_gm_assistance_overlay()
         cls._init_video_display() # Initialize video components
         cls._init_fullscreen_hint()
+        cls._init_background()  # Initialize background component
 
         # Initialize timer and help button
         cls.init_timer()
@@ -349,6 +356,7 @@ class Overlay:
         
         cls.hide_view_image_button()
         cls.hide_view_solution_button()
+        cls._init_waiting_label() # Initialize waiting label
         cls.hide_waiting_screen_label() # Hide waiting label on init
 
         print("[qt overlay] Initialization complete.")
@@ -1479,9 +1487,9 @@ class Overlay:
             old_view.deleteLater()
 
             # Show the window immediately
-            cls._gm_assistance_overlay['window'].show()
-            cls._gm_assistance_overlay['view'].show()
-            cls._gm_assistance_overlay['window'].raise_()
+            #cls._gm_assistance_overlay['window'].show()
+            #cls._gm_assistance_overlay['view'].show()
+            #cls._gm_assistance_overlay['window'].raise_()
 
     @classmethod
     def show_hint_text(cls, text, room_number=None):
@@ -2536,7 +2544,7 @@ class Overlay:
             if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
                  cls._button_window.hide()
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window') and cls._hint_text['window'].isVisible():
-                cls._hint_text['window'].hide()
+                 cls._hint_text['window'].hide()
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window') and cls._hint_request_text['window'].isVisible():
                  cls._hint_request_text['window'].hide()
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
@@ -2565,7 +2573,7 @@ class Overlay:
         except Exception as e:
             print(f"[qt overlay] Error hiding non-video overlays: {e}")
             traceback.print_exc()
-
+            
     @classmethod
     def show_all_overlays(cls):
         """Restore visibility of all Qt overlay UI elements (EXCEPT video and fullscreen hint)."""
@@ -2601,6 +2609,11 @@ class Overlay:
 
         # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
         try:
+            # --- Make sure background is visible if initialized ---
+            if hasattr(cls, '_background_initialized') and cls._background_initialized and cls._background_window:
+                cls._background_window.show()
+                cls._background_window.lower()  # Keep at the bottom of the z-order
+            
             # --- Restore Timer ---
             # Timer (only if text exists and window is available)
             if hasattr(cls, '_timer_window') and cls._timer_window:
@@ -2632,7 +2645,7 @@ class Overlay:
                     if hint_window.isVisible():
                          hint_window.hide()
                     # print("[qt overlay.show_all_overlays] Hint text item has no content, ensuring hint window is hidden.")
-
+                 
             # --- Restore Side Buttons (View Image/Solution) ---
             # **** MOVED OUTSIDE HINT TEXT CHECK ****
             # These depend only on whether the corresponding data exists in the ui_instance
@@ -2674,7 +2687,7 @@ class Overlay:
                      # Explicitly hide if no text content
                      if req_window.isVisible():
                         req_window.hide()
-
+                 
             # --- Restore Cooldown Overlay ---
             # Uses the main overlay window (cls._window)
             if hasattr(cls, '_window') and cls._window:
@@ -2719,102 +2732,130 @@ class Overlay:
             traceback.print_exc()
 
     @classmethod
-    def show_gm_assistance(cls):
-        """Show the game master assistance overlay."""
-        if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
-            try:
-                # Reset window and view geometry first
-                window_width = 400
-                window_height = 600
-                screen_width = 1920
-                screen_height = 1080
-                x_pos = (screen_width - window_width) // 2
-                y_pos = (screen_height - window_height) // 2
-
-                # Reset window geometry
-                cls._gm_assistance_overlay['window'].setGeometry(x_pos, y_pos, window_width, window_height)
-                cls._gm_assistance_overlay['view'].setGeometry(0, 0, window_width, window_height)
-                cls._gm_assistance_overlay['scene'].setSceneRect(0, 0, window_width, window_height)
-
-                # Reset all rotations and positions first
-                cls._gm_assistance_overlay['text_item'].setRotation(0)
-                cls._gm_assistance_overlay['yes_button'].setRotation(0)
-                cls._gm_assistance_overlay['no_button'].setRotation(0)
-                cls._gm_assistance_overlay['yes_rect'].setRotation(0)
-                cls._gm_assistance_overlay['no_rect'].setRotation(0)
-
-                # Get the text dimensions before rotation
-                text_rect = cls._gm_assistance_overlay['text_item'].boundingRect()
-                text_width = text_rect.width()
-                text_height = text_rect.height()
-
-                # Calculate positions
-                x_center = (window_width - text_height) / 2 + 140
-                y_center = (window_height + text_width) / 2
-
-                # Apply rotations
-                cls._gm_assistance_overlay['text_item'].setRotation(90)
-                cls._gm_assistance_overlay['yes_button'].setRotation(90)
-                cls._gm_assistance_overlay['no_button'].setRotation(90)
-                cls._gm_assistance_overlay['yes_rect'].setRotation(90)
-                cls._gm_assistance_overlay['no_rect'].setRotation(90)
-
-                # Position text
-                cls._gm_assistance_overlay['text_item'].setPos(x_center, y_center - text_width)
-
-                # Button positioning
-                button_spacing = 270
-                button_width = 170
-                button_height = 60
-                base_x = x_center - 150
-                base_y = y_center - text_width/2 + 30
-
-                # Position Yes button and its components
-                cls._gm_assistance_overlay['yes_rect'].setPos(base_x, base_y)
-                yes_text_width = cls._gm_assistance_overlay['yes_button'].boundingRect().width()
-                yes_text_height = cls._gm_assistance_overlay['yes_button'].boundingRect().height()
-                yes_rect_center_x = base_x + button_height/2
-                yes_rect_center_y = base_y + button_width/2
-                cls._gm_assistance_overlay['yes_button'].setPos(
-                    yes_rect_center_x - yes_text_height/2,
-                    yes_rect_center_y - yes_text_width/2
-                )
-
-                # Position No button and its components
-                cls._gm_assistance_overlay['no_rect'].setPos(base_x, base_y - button_spacing)
-                no_text_width = cls._gm_assistance_overlay['no_button'].boundingRect().width()
-                no_text_height = cls._gm_assistance_overlay['no_button'].boundingRect().height()
-                no_rect_center_x = base_x + button_height/2
-                no_rect_center_y = (base_y - button_spacing) + button_width/2
-                cls._gm_assistance_overlay['no_button'].setPos(
-                    no_rect_center_x - no_text_height/2,
-                    no_rect_center_y - no_text_width/2
-                )
-
-                # Set visibility flag BEFORE showing
-                cls._gm_assistance_overlay['_was_visible'] = True
-
-                # Show and raise the window
-                cls._gm_assistance_overlay['window'].show()
-                cls._gm_assistance_overlay['window'].raise_()
-                cls._gm_assistance_overlay['view'].viewport().update()
-
-            except Exception as e:
-                print(f"[qt overlay] Error showing GM assistance overlay: {e}")
-                traceback.print_exc()
+    def set_background_image(cls, image_path):
+        """
+        Display the room background image using Qt.
+        
+        Args:
+            image_path: Path to the background image file
+        """
+        if not cls._initialized:
+            print("[qt_overlay] Cannot set background image - Qt overlay not initialized")
+            return
+        
+        try:
+            # Initialize background components if needed
+            if not cls._background_initialized:
+                cls._init_background()
+            
+            # Load and scale image
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                print(f"[qt_overlay] Failed to load background image: {image_path}")
+                return
+                
+            # Get screen dimensions
+            screen_size = cls._app.primaryScreen().size()
+            screen_width = screen_size.width()
+            screen_height = screen_size.height()
+            
+            # Scale pixmap to fit screen
+            scaled_pixmap = pixmap.scaled(screen_width, screen_height, 
+                                         Qt.KeepAspectRatioByExpanding, 
+                                         Qt.SmoothTransformation)
+            
+            # Update pixmap item
+            if cls._background_pixmap_item:
+                cls._background_pixmap_item.setPixmap(scaled_pixmap)
+                
+                # Center pixmap if it's larger than the screen
+                if scaled_pixmap.width() > screen_width or scaled_pixmap.height() > screen_height:
+                    x_offset = max(0, (scaled_pixmap.width() - screen_width) // 2)
+                    y_offset = max(0, (scaled_pixmap.height() - screen_height) // 2)
+                    cls._background_pixmap_item.setOffset(-x_offset, -y_offset)
+                
+                # Make sure window is visible and at the bottom of the z-order
+                cls._background_window.show()
+                cls._background_window.lower()
+                
+                print(f"[qt_overlay] Background set to: {image_path}")
+            
+        except Exception as e:
+            print(f"[qt_overlay] Error setting background image: {str(e)}")
+            traceback.print_exc()
+    
+    @classmethod
+    def _init_background(cls):
+        """Initialize Qt components for displaying the background image"""
+        try:
+            # Create window
+            cls._background_window = QWidget()
+            cls._background_window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+            cls._background_window.setAttribute(Qt.WA_TranslucentBackground)
+            cls._background_window.setAttribute(Qt.WA_ShowWithoutActivating)
+            
+            # Set window to stay in background
+            if cls._parent_hwnd:
+                try:
+                    win32gui.SetParent(int(cls._background_window.winId()), cls._parent_hwnd)
+                    style = win32gui.GetWindowLong(int(cls._background_window.winId()), win32con.GWL_EXSTYLE)
+                    win32gui.SetWindowLong(
+                        int(cls._background_window.winId()),
+                        win32con.GWL_EXSTYLE,
+                        style | win32con.WS_EX_NOACTIVATE
+                    )
+                except Exception as e:
+                    print(f"[qt overlay] Error setting parent/style for background window: {e}")
+            
+            # Create scene and view
+            cls._background_scene = QGraphicsScene()
+            cls._background_view = QGraphicsView(cls._background_scene, cls._background_window)
+            cls._background_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._background_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._background_view.setStyleSheet("background: transparent; border: none;")
+            cls._background_view.setFrameShape(QGraphicsView.NoFrame)
+            cls._background_view.setRenderHint(QPainter.SmoothPixmapTransform)
+            
+            # Create pixmap item
+            cls._background_pixmap_item = cls._background_scene.addPixmap(QPixmap())
+            
+            # Set up layout
+            screen_size = cls._app.primaryScreen().size()
+            cls._background_view.setFixedSize(screen_size)
+            cls._background_window.setFixedSize(screen_size)
+            
+            # Set window to cover the entire screen
+            cls._background_window.move(0, 0)
+            
+            # Mark as initialized
+            cls._background_initialized = True
+            
+            print("[qt_overlay] Background components initialized")
+            
+        except Exception as e:
+            print(f"[qt_overlay] Error initializing background components: {str(e)}")
+            traceback.print_exc()
+            cls._background_initialized = False
+            
+    @classmethod
+    def hide_background(cls):
+        """Hide the background image"""
+        if cls._background_initialized and cls._background_window:
+            cls._background_window.hide()
+            print("[qt_overlay] Background hidden")
 
     @classmethod
     def hide_gm_assistance(cls):
         """Hide the game master assistance overlay."""
-        if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+        if cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
             cls._gm_assistance_overlay['window'].hide()
-            # DO NOT reset _was_visible here.  We want to remember it was shown.
-
+            # DO NOT reset _was_visible here. We want to remember it was shown.
+            
     # --- Waiting Screen Label Methods ---
     @classmethod
     def _init_waiting_label(cls):
         """Initialize the waiting screen label overlay."""
-        if cls._waiting_label_initialized:
+        if hasattr(cls, '_waiting_label_initialized') and cls._waiting_label_initialized:
             return
 
         print("[qt overlay] Initializing waiting screen label...")
@@ -2879,7 +2920,7 @@ class Overlay:
                  print("[qt overlay] Warning: Overlay not initialized, cannot show waiting label.")
                  return
 
-            if not cls._waiting_label_initialized or cls._waiting_label is None:
+            if not hasattr(cls, '_waiting_label_initialized') or not cls._waiting_label_initialized or cls._waiting_label is None:
                 cls._init_waiting_label()
                 if not cls._waiting_label_initialized or cls._waiting_label is None: # Check again after init attempt
                      print("[qt overlay] Error: Failed to initialize waiting label, cannot show.")
@@ -2907,10 +2948,11 @@ class Overlay:
                 window.setGeometry(screen_rect)
                 view.setGeometry(0,0, screen_rect.width(), screen_rect.height())
                 window.show()
+                window.raise_()
             else:
-                 # Already visible, just update text (handled above)
-                 pass
-                 # print("[qt overlay] Waiting screen label already visible, text updated.") # Debug
+                # Already visible, just update text (handled above)
+                pass
+                # print("[qt overlay] Waiting screen label already visible, text updated.") # Debug
 
         except Exception as e:
             print(f"[qt overlay] Error showing waiting screen label: {e}")
@@ -2919,7 +2961,7 @@ class Overlay:
     @classmethod
     def hide_waiting_screen_label(cls):
         """Hide the waiting screen label overlay."""
-        if cls._waiting_label_initialized and cls._waiting_label and cls._waiting_label.get('window'):
+        if hasattr(cls, '_waiting_label_initialized') and cls._waiting_label_initialized and cls._waiting_label and cls._waiting_label.get('window'):
             if cls._waiting_label['window'].isVisible():
                 print("[qt overlay] Hiding waiting screen label.")
                 cls._waiting_label['window'].hide()
