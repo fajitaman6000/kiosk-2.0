@@ -16,6 +16,40 @@ import cv2
 import base64
 print("[qt overlay] Ending imports ...")
 
+# --- Define BackgroundWidget ---
+class BackgroundWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.background_pixmap = None
+        # Configure window: Frameless, stays on bottom (attempt), Tool hint (no taskbar icon)
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnBottomHint | Qt.Tool)
+        # Might need WA_PaintOnScreen depending on transparency/compositing needs
+        # self.setAttribute(Qt.WA_PaintOnScreen)
+        self.setAttribute(Qt.WA_TranslucentBackground) # Needed for potential transparency effects
+        self.setAttribute(Qt.WA_TransparentForMouseEvents) # Ignore mouse events completely
+        self.showFullScreen() # Make it cover the entire screen
+
+    def setPixmap(self, pixmap):
+        self.background_pixmap = pixmap
+        self.update() # Trigger repaint
+
+    def paintEvent(self, event):
+        # Only paint if we have a valid pixmap
+        if self.background_pixmap and not self.background_pixmap.isNull():
+            painter = QPainter(self)
+            # Scale pixmap to cover the widget's rectangle, maintaining aspect ratio
+            # Qt.KeepAspectRatioByExpanding ensures coverage, may crop
+            scaled_pixmap = self.background_pixmap.scaled(
+                self.size(), Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+            )
+            # Calculate top-left point to center the potentially cropped image
+            point = QPointF(
+                (self.width() - scaled_pixmap.width()) / 2,
+                (self.height() - scaled_pixmap.height()) / 2
+            )
+            painter.drawPixmap(point, scaled_pixmap)
+        # No super().paintEvent() needed unless inheriting specific QWidget painting
+
 class ClickableVideoView(QGraphicsView):
     """Custom QGraphicsView for video display that handles clicks"""
     clicked = pyqtSignal() # Signal emitted on click
@@ -216,10 +250,19 @@ class OverlayBridge(QObject):
     def show_all_overlays_slot(self):
         Overlay.show_all_overlays()
 
+    @pyqtSlot(str)
+    def set_background_image_slot(self, image_path):
+        # print(f"[Bridge] set_background_image_slot called with path: {image_path}") # Debug
+        try:
+            Overlay._actual_set_background_image(image_path)
+        except Exception as e:
+            print(f"[Bridge] Error in set_background_image_slot: {e}")
+            traceback.print_exc()
+
 
 class Overlay:
     _app = None
-    _window = None
+    _window = None # This is the Cooldown overlay window
     _parent_hwnd = None
     _initialized = False
     _timer_thread = None
@@ -262,96 +305,145 @@ class Overlay:
     _waiting_label = None # Dictionary: {'window': QWidget, 'view': QGraphicsView, 'scene': QGraphicsScene, 'text_item': QGraphicsTextItem}
     _waiting_label_initialized = False
 
+    # --- Background Image ---
+    _background_window = None # The dedicated BackgroundWidget instance
+    _background_pixmap = None # Store the loaded, unscaled pixmap
+
     @classmethod
     def init(cls, tkinter_root=None):
-        """Initialize Qt application and base window"""
-        if not cls._app:
-            cls._app = QApplication.instance()
-            if cls._app is None:
-                print("[qt overlay] Creating QApplication...")
-                cls._app = QApplication(sys.argv)
-            else:
-                print("[qt overlay] Using existing QApplication instance.")
+        # Prevent multiple initializations
+        if cls._initialized:
+            # print("Overlay already initialized.") # Reduce noise
+            return
 
+        print("[qt overlay] Initializing Overlay...")
+
+        cls._app = QApplication.instance()
+        if cls._app is None:
+            print("[qt overlay] Creating QApplication instance...")
+            cls._app = QApplication(sys.argv)
+        else:
+            print("[qt overlay] Using existing QApplication instance.")
+
+        # --- Create Background Window FIRST ---
+        if not cls._background_window:
+            print("[qt overlay] Creating BackgroundWidget...")
+            cls._background_window = BackgroundWidget()
+            cls._background_window.setObjectName("BackgroundWindow")
+            # Show is called in BackgroundWidget.__init__
+            cls._background_window.lower() # Ensure it starts at the bottom
+            print("[qt overlay] BackgroundWidget created and shown.")
+        # --- End Background Window Creation ---
+
+        # --- Initialize Bridge ---
         if not cls._bridge:
-            print("[qt overlay] Creating OverlayBridge...")
-            cls._bridge = OverlayBridge()
+             cls._bridge = OverlayBridge()
+             print("[qt overlay] OverlayBridge created.")
+        # --- End Bridge Init ---
 
         # --- Store kiosk_app reference early ---
         if tkinter_root and hasattr(tkinter_root, 'kiosk_app'):
-             cls._kiosk_app = tkinter_root.kiosk_app
+             cls._kiosk_app = tkinter_root.kiosk_app # Get reference from Tkinter root
              print(f"[qt overlay] Stored kiosk_app reference: {cls._kiosk_app}")
         else:
              print("[qt overlay] Warning: No kiosk_app reference found on tkinter_root.")
              cls._kiosk_app = None # Important for checks later
+        # --- End Store kiosk_app ---
 
-
-        # --- Rest of init ---
-        if tkinter_root:
-            cls._parent_hwnd = tkinter_root.winfo_id()
-        else:
-            cls._parent_hwnd = None
-
-        if not cls._window:
-            cls._window = QWidget()
-            cls._window.setAttribute(Qt.WA_TranslucentBackground)
-            cls._window.setWindowFlags(
-                Qt.FramelessWindowHint |
-                Qt.WindowStaysOnTopHint |
-                Qt.Tool |
-                Qt.WindowDoesNotAcceptFocus
-            )
-            cls._window.setAttribute(Qt.WA_ShowWithoutActivating)
-            if cls._parent_hwnd:
-                 try:
-                    win32gui.SetParent(int(cls._window.winId()), cls._parent_hwnd)
-                    style = win32gui.GetWindowLong(int(cls._window.winId()), win32con.GWL_EXSTYLE)
-                    win32gui.SetWindowLong(
-                        int(cls._window.winId()),
-                        win32con.GWL_EXSTYLE,
-                        style | win32con.WS_EX_NOACTIVATE
-                    )
-                 except Exception as e:
-                     print(f"[qt overlay] Error setting parent/style for main window: {e}")
-
-            cls._scene = QGraphicsScene()
-            cls._view = QGraphicsView(cls._scene, cls._window)
-            cls._view.setStyleSheet("background: transparent; border: none;")
-            cls._view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cls._view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-            cls._view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-            cls._text_item = QGraphicsTextItem()
-            cls._text_item.setDefaultTextColor(Qt.yellow)
-            font = QFont('Arial', 24)
-            cls._text_item.setFont(font)
-            cls._scene.addItem(cls._text_item)
-
-
-        cls._initialized = True
-
-        # Initialize all overlays
+        # --- Initialize other overlays (Timer, Buttons, etc.) ---
+        # ... (existing init code for timer, buttons, hints etc.) ...
+        cls.init_timer()
+        cls.init_help_button()
         cls._init_hint_text_overlay()
         cls._init_hint_request_text_overlay()
         cls._init_gm_assistance_overlay()
-        cls._init_video_display() # Initialize video components
-        cls._init_fullscreen_hint()
+        # Video init should happen on demand via prepare_video_display
+        # Fullscreen hint init should happen on demand via show_fullscreen_hint
+        # View buttons init should happen on demand via show_view_..._button
+        cls._init_waiting_label() # Init waiting label structure
 
-        # Initialize timer and help button
-        cls.init_timer()
-        cls.init_help_button()
+        # --- Cooldown Overlay Window (cls._window) ---
+        if tkinter_root:
+             # Find the HWND of the Tkinter root window
+             # Using update_idletasks() and geometry() to get HWND
+             tkinter_root.update_idletasks()
+             # The geometry format might give 'WxH+X+Y', we might not need it directly
+             # winfo_id() gives the window ID that win32gui can use
+             try:
+                 cls._parent_hwnd = int(tkinter_root.winfo_id())
+                 print(f"[qt overlay] Found Tkinter parent HWND: {cls._parent_hwnd}")
+             except Exception as e:
+                  print(f"[qt overlay] Error getting Tkinter HWND: {e}")
+                  cls._parent_hwnd = None # Fallback
+        else:
+             cls._parent_hwnd = None # No Tkinter root provided
 
-        # Hide GM assistance overlay initially
-        cls.hide_gm_assistance()
-        # Hide video display initially
-        cls.hide_video_display()
-        # Hide fullscreen hint initially
-        cls.hide_fullscreen_hint()
-        
-        cls.hide_view_image_button()
-        cls.hide_view_solution_button()
-        cls.hide_waiting_screen_label() # Hide waiting label on init
 
-        print("[qt overlay] Initialization complete.")
+        # --- Initialize the main Cooldown/Text Overlay Window (cls._window) ---
+        if not cls._window:
+            print("[qt overlay] Creating main Cooldown Overlay QWidget (cls._window)...")
+            # This window is primarily for cooldown text, make it specific
+            # Note: This widget definition needs to exist somewhere. Assuming it's defined
+            # later or was intended to be a simple QWidget. Let's create a simple QWidget
+            # for now if no proper definition exists.
+            # **** We MUST find the actual definition or define it correctly ****
+            # Let's assume it's defined as OverlayWidget later for now. If not, this will fail.
+            # If OverlayWidget was the incorrect addition from before, we need to define it *here*.
+            # Let's redefine it here simply for the cooldown text.
+            class CooldownOverlayWidget(QWidget): # Define inline for clarity
+                def __init__(self, parent_hwnd=None):
+                    super().__init__()
+                    self.cooldown_text_item = None # To hold the text item
+                    self.initUI(parent_hwnd)
+
+                def initUI(self, parent_hwnd):
+                    self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+                    self.setAttribute(Qt.WA_TranslucentBackground)
+                    self.setAttribute(Qt.WA_TransparentForMouseEvents) # Cooldown text doesn't need clicks
+
+                    screen_geo = QApplication.primaryScreen().geometry()
+                    self.setGeometry(screen_geo) # Fullscreen initially
+
+                    self.scene = QGraphicsScene(self)
+                    self.scene.setSceneRect(self.geometry().x(), self.geometry().y(), self.geometry().width(), self.geometry().height())
+
+                    self.view = QGraphicsView(self.scene, self)
+                    self.view.setStyleSheet("background: transparent; border: none;")
+                    self.view.setGeometry(self.rect())
+                    self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+                    self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+                    # Create text item but don't set text yet
+                    self.cooldown_text_item = QGraphicsTextItem()
+                    self.cooldown_text_item.setDefaultTextColor(QColor(255, 0, 0, 200)) # Red, semi-transparent
+                    font = QFont("Arial", 72, QFont.Bold)
+                    self.cooldown_text_item.setFont(font)
+                    self.scene.addItem(self.cooldown_text_item)
+
+
+                # Add method to update text and position
+                def update_text(self, text):
+                    if not self.cooldown_text_item: return
+                    self.cooldown_text_item.setPlainText(text)
+                    # Center the text
+                    rect = self.cooldown_text_item.boundingRect()
+                    center_x = (self.scene.width() - rect.width()) / 2
+                    center_y = (self.scene.height() - rect.height()) / 2
+                    self.cooldown_text_item.setPos(center_x, center_y)
+                    self.update() # Ensure repaint
+
+                # Add a specific hide method for clarity if needed, called by hide_cooldown
+                @pyqtSlot() # Make it a slot for invokeMethod
+                def hide_widget(self):
+                    self.hide()
+
+            cls._window = CooldownOverlayWidget(cls._parent_hwnd)
+            cls._window.setObjectName("CooldownOverlayWindow")
+            print("[qt overlay] Main Cooldown Overlay QWidget (cls._window) created.")
+
+
+        cls._initialized = True
+        print("[qt overlay] Overlay initialized successfully.")
 
     @classmethod
     def _init_fullscreen_hint(cls):
@@ -1478,10 +1570,10 @@ class Overlay:
             cls._gm_assistance_overlay['view'].setGeometry(0, 0, window_width, window_height)
             old_view.deleteLater()
 
-            # Show the window immediately
-            cls._gm_assistance_overlay['window'].show()
-            cls._gm_assistance_overlay['view'].show()
-            cls._gm_assistance_overlay['window'].raise_()
+            # Show the window immediately - REMOVE THESE LINES
+            # cls._gm_assistance_overlay['window'].show()
+            # cls._gm_assistance_overlay['view'].show()
+            # cls._gm_assistance_overlay['window'].raise_()
 
     @classmethod
     def show_hint_text(cls, text, room_number=None):
@@ -2266,11 +2358,7 @@ class Overlay:
 
             if cls._parent_hwnd:
                 style = win32gui.GetWindowLong(int(cls._button_window.winId()), win32con.GWL_EXSTYLE)
-                win32gui.SetWindowLong(
-                    int(cls._button_window.winId()),
-                    win32con.GWL_EXSTYLE,
-                    style | win32con.WS_EX_NOACTIVATE
-                )
+                win32gui.SetWindowLong(int(cls._button_window.winId()), win32con.GWL_EXSTYLE, style | win32con.WS_EX_NOACTIVATE)
 
             print("[qt overlay]Help button initialization complete")
 
@@ -2925,3 +3013,125 @@ class Overlay:
                 cls._waiting_label['window'].hide()
         #else:
             # print("[qt overlay] Waiting screen label not initialized or already hidden.") # Debug noise
+
+    @classmethod
+    def _actual_set_background_image(cls, image_path):
+        # Target the dedicated background window
+        if not cls._background_window:
+            print("[qt overlay] Error: Background window not initialized.")
+            return
+
+        if not image_path or not os.path.exists(image_path):
+             print(f"[qt overlay] Background image path invalid or not found: {image_path}. Clearing background.")
+             cls._background_pixmap = None
+             cls._background_window.setPixmap(None) # Update the widget
+             return
+
+        try:
+            # Load the pixmap
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                print(f"[qt overlay] Failed to load background image: {image_path}")
+                cls._background_pixmap = None
+                cls._background_window.setPixmap(None)
+            else:
+                cls._background_pixmap = pixmap # Store the loaded pixmap
+                cls._background_window.setPixmap(cls._background_pixmap) # Set on the widget
+                print(f"[qt overlay] Successfully loaded background: {image_path}")
+                # Ensure it's visually behind other elements if possible
+                cls._background_window.lower()
+
+
+        except Exception as e:
+            print(f"[qt overlay] Error setting background image: {e}")
+            traceback.print_exc()
+            cls._background_pixmap = None
+            if cls._background_window: # Check again in case of error during creation
+                cls._background_window.setPixmap(None)
+
+    @classmethod
+    def set_background_image(cls, image_path):
+        # This method ensures the call happens on the Qt GUI thread via the bridge
+        if not cls._initialized or not cls._bridge:
+            # Attempt to initialize if not done yet? Or just fail. Let's fail for now.
+            print("[qt overlay] Overlay not initialized, cannot set background.")
+            # Optionally queue the call if initialization is pending? Complex.
+            return
+
+        # print(f"[qt overlay] Queuing background set: {image_path}") # Debug
+        QMetaObject.invokeMethod(
+            cls._bridge,
+            "set_background_image_slot",
+            Qt.QueuedConnection, # Ensure runs on Qt thread
+            Q_ARG(str, image_path)
+        )
+
+    @classmethod
+    def hide_cooldown(cls):
+        # ... (rest of hide_cooldown) ...
+        QMetaObject.invokeMethod(
+            cls._window, # Target the specific cooldown window
+            "hide_widget", # Call its specific hide method (defined inline above)
+            Qt.QueuedConnection
+        )
+        # ... existing code ...
+
+    @classmethod
+    def hide_all_overlays(cls):
+        # print("[qt overlay] Hiding non-video overlay UI elements")
+        try:
+            # Hide background? No, background should generally stay visible.
+            # if cls._background_window:
+            #     cls._background_window.hide()
+
+            # Hide Cooldown overlay (cls._window)
+            if hasattr(cls, '_window') and cls._window and cls._window.isVisible():
+                 cls.hide_cooldown() # Use the specific hide method
+
+            # ... hide other overlays as before ...
+            if hasattr(cls, '_timer_window') and cls._timer_window and cls._timer_window.isVisible():
+                cls._timer_window.hide()
+            # ... (rest of the hides) ...
+            cls.hide_waiting_screen_label()
+
+        except Exception as e:
+            print(f"[qt overlay] Error hiding non-video overlays: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def show_all_overlays(cls):
+        # print("[qt overlay] Restoring non-video overlay UI elements.")
+
+        # Show background? Ensure it's visible and lowered.
+        if cls._background_window:
+            if not cls._background_window.isVisible():
+                cls._background_window.show()
+            cls._background_window.lower() # Ensure it's at the bottom
+
+        # --- CHECK GAME STATE FIRST ---
+        # ... (game state check as before) ...
+
+        # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
+        try:
+            # Restore Cooldown? Only if state dictates (handled later in the method)
+            # The check for ui_instance.hint_cooldown will handle showing cls._window
+
+            # ... restore timer, buttons, hints etc. as before ...
+
+            # Ensure cooldown visibility is checked correctly using cls._window
+            if hasattr(cls, '_window') and cls._window:
+                 should_show_cooldown = False
+                 # ... (logic using ui_instance.hint_cooldown) ...
+                 if should_show_cooldown:
+                     if not cls._window.isVisible(): cls._window.show()
+                     cls._window.raise_()
+                 else:
+                     if cls._window.isVisible(): cls._window.hide() # Use hide() directly here
+
+            # ... (rest of restore logic) ...
+        except Exception as e:
+            print(f"[qt overlay] Error showing non-video overlays: {e}")
+            traceback.print_exc()
+
+
+# ... rest of the file ...
