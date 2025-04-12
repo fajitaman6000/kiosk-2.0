@@ -352,53 +352,162 @@ class VideoManager:
         bridge_exists = Overlay._bridge is not None
         player_instance = None
         with self._lock:
-            if not self.is_playing and not self.should_stop:
-                print("[video manager] Force stop: Nothing to stop.")
-                return
+            # Check if there's actually anything happening that needs stopping
+            # It's okay to call force_stop multiple times during a reset.
+            # if not self.is_playing and not self.should_stop:
+            #     print("[video manager] Force stop: Nothing actively playing or stopping.")
+                # return # Let's allow it to proceed to ensure cleanup anyway
 
-            self.resetting = True
-            self.should_stop = True
-            self.is_playing = False
-            player_instance = self.video_player
-            self.video_player = None
-            self.completion_callback = None
+            print("[video manager] Force stop: Setting state flags.")
+            self.resetting = True # Mark as resetting
+            self.should_stop = True # Signal any active player to stop
+            self.is_playing = False # Assume stopped state immediately
+            player_instance = self.video_player # Grab reference before nulling
+            self.video_player = None # Clear player reference
+            self.completion_callback = None # Clear callback
 
         try:
+            # Stop the player thread if it exists
             if player_instance:
                 print("[video manager] Force stopping video player instance...")
-                player_instance.force_stop()
+                player_instance.force_stop() # Ask player thread to terminate and clean up
             else:
                 print("[video manager] Force stop: No player instance found.")
 
-
             # Immediately attempt to destroy Qt video display (if bridge exists)
+            # Use QueuedConnection because this method (force_stop) might be called
+            # from the main thread (via reset handler's root.after)
             if bridge_exists:
-                 print("[video manager] Force destroying Qt video display...")
-                 QMetaObject.invokeMethod(Overlay._bridge, "destroy_video_display_slot", Qt.BlockingQueuedConnection)
-                 print("[video manager] Force destroy Qt display complete.")
-
+                 print("[video manager] Force destroying Qt video display (Queued)...")
+                 QMetaObject.invokeMethod(
+                     Overlay._bridge,
+                     "destroy_video_display_slot",
+                     Qt.QueuedConnection # <<< FIX: Use QueuedConnection
+                 )
+                 # We don't wait for completion here.
+                 print("[video manager] Force destroy Qt display request queued.")
+            else:
+                 print("[video manager] Warning: Bridge missing, cannot destroy Qt display.")
 
             # Immediately restore music volume
             print("[video manager] Force restoring music volume...")
             if mixer.get_init():
-                 mixer.music.set_volume(1.0)
+                 mixer.music.set_volume(1.0) # Set volume directly
 
-            # Immediately show other overlays (if bridge exists)
+            # Immediately request showing other overlays (if bridge exists)
+            # Use QueuedConnection for safety.
             if bridge_exists:
-                 print("[video manager] Force showing non-video overlays...")
-                 QMetaObject.invokeMethod(Overlay._bridge, "show_all_overlays_slot", Qt.QueuedConnection)
+                 print("[video manager] Force showing non-video overlays (Queued)...")
+                 QMetaObject.invokeMethod(
+                     Overlay._bridge,
+                     "show_all_overlays_slot",
+                     Qt.QueuedConnection # <<< FIX: Use QueuedConnection
+                 )
+                 print("[video manager] Show all overlays request queued.")
+            else:
+                 print("[video manager] Warning: Bridge missing, cannot show overlays.")
 
         except Exception as e:
             print(f"[video manager] Error during force_stop cleanup: {e}")
             traceback.print_exc()
         finally:
+            # Ensure state is definitely reset even if errors occurred
             with self._lock:
                  self.is_playing = False
                  self.should_stop = True
-                 self.resetting = False
+                 self.resetting = False # Reset the resetting flag after cleanup attempt
                  self.video_player = None
                  self.completion_callback = None
             print("[video manager] Force stop process finished.")
+
+    def _perform_post_playback_cleanup(self):
+        """Performs cleanup actions AFTER the player thread has confirmed completion."""
+        print("[video manager] Performing post-playback cleanup...")
+        bridge_exists = Overlay._bridge is not None # Check bridge existence once
+
+        with self._lock:
+            # Double-check state. If reset happened while player was finishing, skip normal cleanup.
+            if self.resetting:
+                 print("[video manager] Post-playback cleanup: Resetting flag is set, skipping normal cleanup.")
+                 # State should already be cleared by force_stop.
+                 return
+
+            # If already cleaned up (e.g., stop_video called again), skip.
+            if not self.is_playing and not self.should_stop:
+                 print("[video manager] Post-playback cleanup: Already stopped/cleaned up, skipping.")
+                 return
+
+            # Mark as fully stopped now player thread has finished
+            self.is_playing = False
+            self.should_stop = True # Keep should_stop as True to indicate it was stopped
+            final_callback = self.completion_callback # Grab callback before clearing
+            self.completion_callback = None
+            player_instance = self.video_player # Grab player ref before clearing
+            self.video_player = None
+
+        try:
+            # 1. Destroy Qt video display (Queued)
+            if bridge_exists:
+                print("[video manager] Destroying Qt video display (Queued)...")
+                QMetaObject.invokeMethod(
+                    Overlay._bridge,
+                    "destroy_video_display_slot",
+                    Qt.QueuedConnection # <<< Use QueuedConnection
+                )
+                print("[video manager] Qt video display destruction queued.")
+            else:
+                print("[video manager] Warning: Bridge missing, cannot destroy Qt display during cleanup.")
+
+            # 2. Restore background music volume (can run here)
+            print("[video manager] Restoring background music volume...")
+            self._fade_background_music(1.0, duration=0.3) # Fade back up
+
+            # 3. Show other overlays (Queued)
+            if bridge_exists:
+                print("[video manager] Restoring non-video overlays (Queued)...")
+                QMetaObject.invokeMethod(
+                    Overlay._bridge,
+                    "show_all_overlays_slot",
+                    Qt.QueuedConnection # <<< Use QueuedConnection
+                )
+                print("[video manager] Show all overlays request queued.")
+            else:
+                 print("[video manager] Warning: Bridge missing, cannot show overlays during cleanup.")
+
+
+            # 4. Clean up VideoPlayer instance resources (if it existed)
+            if player_instance:
+                 print("[video manager] Cleaning up video player instance resources...")
+                 player_instance._cleanup_resources() # Ensure temp audio file is deleted
+            else:
+                 print("[video manager] No video player instance found during cleanup.")
+
+
+            # 5. Execute the final completion callback IF provided
+            if final_callback:
+                print(f"[video manager] Executing final completion callback: {final_callback}")
+                try:
+                    # Ensure callback runs on the main Tkinter thread
+                    self.root.after(0, final_callback)
+                except Exception as cb_err:
+                    print(f"[video manager] Error executing final completion callback: {cb_err}")
+                    traceback.print_exc()
+            else:
+                print("[video manager] No final completion callback to execute.")
+
+            print("[video manager] Post-playback cleanup complete.")
+
+        except Exception as e:
+            print("[video manager] Error during post-playback cleanup:")
+            traceback.print_exc()
+        finally:
+             # Final state check/reset in case of errors during cleanup
+             with self._lock:
+                  self.is_playing = False
+                  self.should_stop = True
+                  # Don't reset 'resetting' flag here, let force_stop handle that
+                  self.video_player = None # Ensure it's None
+                  self.completion_callback = None # Ensure it's None
 
     # --- No longer need UI hiding/restoring logic here ---
     # --- No longer need _cleanup, _force_cleanup, reset_state (handled within play/stop/force_stop) ---
