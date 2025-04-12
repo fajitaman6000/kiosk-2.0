@@ -33,11 +33,6 @@ rebooter added to kiosk app
 
 finish tk to qt transition
 
-
-""Replace the Tkinter Label used for the background image in ui.py (setup_room_interface function) with a Qt-based background rendering method. This method should display the appropriate room background image within the main application window (which will eventually be Qt)." (Addresses the last remaining Tkinter widget).
-"Replace the main Tkinter root window (self.root = tk.Tk() in kiosk.py) with a primary Qt window (e.g., a QWidget or potentially the main Overlay._window if suitable) to serve as the main application container. Update all references to self.root that pertain to window management (like fullscreen, title, icon - though some might become irrelevant or handled differently in Qt)." (Addresses the core window framework).
-"Replace the Tkinter event loop (self.root.mainloop() in kiosk.py) with the Qt event loop (QApplication.exec_()). Subsequently, replace all uses of the Tkinter timing mechanism (root.after and root.after_cancel, primarily used for cooldowns and scheduling updates) with the Qt equivalent, likely using QTimer or potentially QMetaObject.invokeMethod for thread-safe updates if needed." (Addresses the runtime mechanics tied to the root window)."
-
 ##############################################################################################################################
 # known priority bugs
 

@@ -53,15 +53,13 @@ class KioskUI:
         
         try:
             if os.path.exists(path):
-                # Return the path directly instead of loading/resizing here
-                return path 
-                # image = Image.open(path)
-                # screen_width = self.root.winfo_screenwidth()
-                # screen_height = self.root.winfo_screenheight()
-                # image = image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
-                # return ImageTk.PhotoImage(image)
+                image = Image.open(path)
+                screen_width = self.root.winfo_screenwidth()
+                screen_height = self.root.winfo_screenheight()
+                image = image.resize((screen_width, screen_height), Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(image)
         except Exception as e:
-            print(f"[ui.py]Error checking background path: {str(e)}") # Updated error message slightly
+            print(f"[ui.py]Error loading background: {str(e)}")
         return None
         
     def setup_waiting_screen(self):
@@ -126,12 +124,10 @@ class KioskUI:
         # Configure the room-specific elements
         if room_number > 0:
             self.current_room = room_number
-            background_path = self.load_background(room_number) # Get the path
-            if background_path:
-                # Call Overlay to set the background image
-                Overlay.set_background_image(background_path)
-                # bg_label = tk.Label(self.root, image=self.background_image) # Remove Tkinter Label
-                # bg_label.place(x=0, y=0, relwidth=1, relheight=1) # Remove Tkinter placement
+            self.background_image = self.load_background(room_number)
+            if self.background_image:
+                bg_label = tk.Label(self.root, image=self.background_image)
+                bg_label.place(x=0, y=0, relwidth=1, relheight=1)
 
             # Load room-specific timer background
             self.message_handler.timer.load_room_background(room_number)
