@@ -35,7 +35,6 @@ class ClickableVideoView(QGraphicsView):
         print(f"[qt overlay] Setting video skippable: {skippable}")
         self._is_skippable = skippable
 
-# qt_overlay.py (add this class near ClickableVideoView)
 class ClickableHintView(QGraphicsView):
     """Custom QGraphicsView for fullscreen hint display that handles clicks"""
     clicked = pyqtSignal() # Signal emitted on click
@@ -259,6 +258,10 @@ class Overlay:
     _view_solution_button_initialized = False
     _view_solution_button_ui_instance = None # To store ui instance for click
 
+    # --- Waiting Screen ---
+    _waiting_label = None # Dictionary: {'window': QWidget, 'view': QGraphicsView, 'scene': QGraphicsScene, 'text_item': QGraphicsTextItem}
+    _waiting_label_initialized = False
+
     @classmethod
     def init(cls, tkinter_root=None):
         """Initialize Qt application and base window"""
@@ -344,6 +347,12 @@ class Overlay:
         # Hide fullscreen hint initially
         cls.hide_fullscreen_hint()
         
+        cls.hide_view_image_button()
+        cls.hide_view_solution_button()
+        cls.hide_waiting_screen_label() # Hide waiting label on init
+
+        print("[qt overlay] Initialization complete.")
+
     @classmethod
     def _init_fullscreen_hint(cls):
         """Initialize fullscreen hint display components."""
@@ -1138,7 +1147,6 @@ class Overlay:
         except Exception as e:
             print(f"[qt overlay] Error updating video frame: {e}")
             traceback.print_exc()
-# --- END SNIPPET ---
 
     @classmethod
     def _init_hint_text_overlay(cls):
@@ -2551,6 +2559,7 @@ class Overlay:
             cls.hide_view_image_button()
             cls.hide_view_solution_button()
             # --- END ADD HIDES ---
+            cls.hide_waiting_screen_label() # <--- Add hide for waiting label here
 
             # print("[qt overlay] Non-video overlay UI elements hidden.") # Reduce noise
         except Exception as e:
@@ -2800,3 +2809,119 @@ class Overlay:
         if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
             cls._gm_assistance_overlay['window'].hide()
             # DO NOT reset _was_visible here.  We want to remember it was shown.
+
+    # --- Waiting Screen Label Methods ---
+    @classmethod
+    def _init_waiting_label(cls):
+        """Initialize the waiting screen label overlay."""
+        if cls._waiting_label_initialized:
+            return
+
+        print("[qt overlay] Initializing waiting screen label...")
+        try:
+            screen_rect = cls._app.primaryScreen().geometry()
+            screen_width = screen_rect.width()
+            screen_height = screen_rect.height()
+
+            window = QWidget()
+            window.setParent(None) # Ensure it's a top-level window
+            window.setAttribute(Qt.WA_TranslucentBackground, True)
+            window.setWindowFlags(
+                Qt.FramelessWindowHint |        # No border or title bar
+                Qt.WindowStaysOnTopHint |      # Always on top
+                Qt.Tool |                      # Doesn't appear in taskbar
+                Qt.WindowTransparentForInput  # Click-through initially (optional)
+            )
+            # Set geometry before creating view/scene
+            window.setGeometry(0, 0, screen_width, screen_height)
+
+            scene = QGraphicsScene(0, 0, screen_width, screen_height)
+            view = QGraphicsView(scene, window)
+            view.setParent(window) # Explicitly set parent
+            view.setStyleSheet("background: transparent; border: 0px;")
+            view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            view.setRenderHint(QPainter.Antialiasing)
+            # Ensure view covers the whole window area
+            view.setGeometry(0, 0, screen_width, screen_height)
+
+
+            text_item = QGraphicsTextItem()
+            font = QFont("Arial", 24)
+            text_item.setFont(font)
+            text_item.setDefaultTextColor(Qt.white)
+            # Set alignment within the text item's bounding rect
+            text_item.setTextWidth(screen_width * 0.8) # Limit width for centering
+
+            scene.addItem(text_item)
+
+            cls._waiting_label = {
+                'window': window,
+                'view': view,
+                'scene': scene,
+                'text_item': text_item
+            }
+            cls._waiting_label_initialized = True
+            print("[qt overlay] Waiting screen label initialized.")
+
+        except Exception as e:
+            print(f"[qt overlay] Error initializing waiting screen label: {e}")
+            traceback.print_exc()
+            cls._waiting_label = None # Ensure it's None on error
+            cls._waiting_label_initialized = False
+
+
+    @classmethod
+    def show_waiting_screen_label(cls, computer_name):
+        """Show the waiting screen label with the computer name."""
+        try:
+            if not cls._initialized:
+                 print("[qt overlay] Warning: Overlay not initialized, cannot show waiting label.")
+                 return
+
+            if not cls._waiting_label_initialized or cls._waiting_label is None:
+                cls._init_waiting_label()
+                if not cls._waiting_label_initialized or cls._waiting_label is None: # Check again after init attempt
+                     print("[qt overlay] Error: Failed to initialize waiting label, cannot show.")
+                     return
+
+            text = f"Waiting for room assignment.\nComputer Name: {computer_name}"
+            text_item = cls._waiting_label['text_item']
+            window = cls._waiting_label['window']
+            view = cls._waiting_label['view']
+
+            # Update text and ensure alignment/positioning
+            text_item.setHtml(f"<div style='color: white; text-align: center;'>{text.replace('\n', '<br>')}</div>")
+
+            # Recalculate position to center the text block
+            text_rect = text_item.boundingRect()
+            scene_rect = view.sceneRect()
+            center_x = (scene_rect.width() - text_rect.width()) / 2
+            center_y = (scene_rect.height() - text_rect.height()) / 2
+            text_item.setPos(center_x, center_y)
+
+            if not window.isVisible():
+                print("[qt overlay] Showing waiting screen label.")
+                # Ensure geometry is set correctly before showing
+                screen_rect = cls._app.primaryScreen().geometry()
+                window.setGeometry(screen_rect)
+                view.setGeometry(0,0, screen_rect.width(), screen_rect.height())
+                window.show()
+            else:
+                 # Already visible, just update text (handled above)
+                 pass
+                 # print("[qt overlay] Waiting screen label already visible, text updated.") # Debug
+
+        except Exception as e:
+            print(f"[qt overlay] Error showing waiting screen label: {e}")
+            traceback.print_exc()
+
+    @classmethod
+    def hide_waiting_screen_label(cls):
+        """Hide the waiting screen label overlay."""
+        if cls._waiting_label_initialized and cls._waiting_label and cls._waiting_label.get('window'):
+            if cls._waiting_label['window'].isVisible():
+                print("[qt overlay] Hiding waiting screen label.")
+                cls._waiting_label['window'].hide()
+        #else:
+            # print("[qt overlay] Waiting screen label not initialized or already hidden.") # Debug noise

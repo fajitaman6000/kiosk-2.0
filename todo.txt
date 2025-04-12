@@ -68,6 +68,7 @@ hangup reliability:
 ##############################################################################################################################
 # known low priority bugs
 
+closing image hint doesn't restore "Image Hint Received" text
 kiosk auto resets twice
 tab out doesn't always clear UI elements from view
 kiosk UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist

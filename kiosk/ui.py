@@ -63,12 +63,12 @@ class KioskUI:
         return None
         
     def setup_waiting_screen(self):
-        self.status_label = tk.Label(
-            self.root, 
-            text=f"Waiting for room assignment...\nComputer Name: {self.computer_name}",
-            fg='white', bg='black', font=('Arial', 24)
-        )
-        self.status_label.place(relx=0.5, rely=0.5, anchor='center')
+        # Clear any existing room background/widgets first
+        for widget in self.root.winfo_children():
+            if not hasattr(widget, 'is_persistent'):
+                widget.destroy()
+        # Use the Qt Overlay for the waiting screen
+        Overlay.show_waiting_screen_label(self.computer_name)
         
     def clear_all_labels(self):
         """Clear all UI elements and cancel any pending cooldown timer"""
@@ -111,6 +111,9 @@ class KioskUI:
 
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
+        # Ensure the waiting screen label is hidden
+        Overlay.hide_waiting_screen_label()
+
         # Clear any existing widgets except persistent ones
         for widget in self.root.winfo_children():
             # Skip destroying widgets marked as persistent
