@@ -2560,6 +2560,8 @@ class Overlay:
                  ui_instance = cls._kiosk_app.ui
         else:
             print("[qt overlay] Warning: _kiosk_app not available in show_all_overlays.")
+            # If no kiosk_app or ui, we can't really proceed with state-dependent restores
+            return
 
 
         if game_lost:
@@ -2574,73 +2576,116 @@ class Overlay:
 
         # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
         try:
-            # --- Existing restores ---
-            # Timer (only if text exists)
+            # --- Restore Timer ---
+            # Timer (only if text exists and window is available)
             if hasattr(cls, '_timer_window') and cls._timer_window:
+                # Check if timer object and text item exist and have content
                 if hasattr(cls, '_timer') and cls._timer.text_item and cls._timer.text_item.toPlainText():
+                     # Show if not already visible
                      if not cls._timer_window.isVisible(): cls._timer_window.show()
-                     cls._timer_window.raise_()
+                     cls._timer_window.raise_() # Ensure it's on top
 
-            # Button - Rely on update_help_button to manage its visibility based on game state.
+            # --- Trigger Help Button Update ---
+            # Relies on _actual_help_button_update to decide visibility based on state
             if ui_instance and hasattr(ui_instance.parent_app, '_actual_help_button_update'): # Check parent_app reference exists
                 if hasattr(ui_instance.parent_app, 'root') and ui_instance.parent_app.root: # Check root exists
                     # print("[qt overlay show_all] Triggering help button update.") # Debug
                     ui_instance.parent_app.root.after(10, ui_instance.parent_app._actual_help_button_update) # Use parent_app reference
 
-            # Hint Text (only if text exists)
+            # --- Restore Hint Text ---
+            # Hint Text (only if text exists and window is available)
             if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window'):
-                 hint_window = cls._hint_text['window']
-                 # Check if the text item exists AND has actual text content
-                 if '_text_item' in cls._hint_text and cls._hint_text['_text_item'] and cls._hint_text['_text_item'].toPlainText().strip():
-                     if not hint_window.isVisible(): hint_window.show()
-                     hint_window.raise_()
-                     # --- ADD LOGIC TO SHOW SIDE BUTTONS IF HINT TEXT IS VISIBLE ---
-                     if ui_instance:
-                         if hasattr(ui_instance, 'stored_image_data') and ui_instance.stored_image_data:
-                             print("[qt overlay show_all] Hint text visible, showing View Image button.")
-                             cls.show_view_image_button(ui_instance)
-                         if hasattr(ui_instance, 'stored_video_info') and ui_instance.stored_video_info:
-                             print("[qt overlay show_all] Hint text visible, showing View Solution button.")
-                             cls.show_view_solution_button(ui_instance)
-                     # --- END ADDED LOGIC ---
+                hint_window = cls._hint_text['window']
+                # Check if the text item exists AND has actual text content
+                if '_text_item' in cls._hint_text and cls._hint_text['_text_item'] and cls._hint_text['_text_item'].toPlainText().strip():
+                    # Show if not already visible
+                    if not hint_window.isVisible():
+                        hint_window.show()
+                    hint_window.raise_() # Ensure it's on top
+                else:
+                    # Explicitly hide if no text content
+                    if hint_window.isVisible():
+                         hint_window.hide()
+                    # print("[qt overlay.show_all_overlays] Hint text item has no content, ensuring hint window is hidden.")
+
+            # --- Restore Side Buttons (View Image/Solution) ---
+            # **** MOVED OUTSIDE HINT TEXT CHECK ****
+            # These depend only on whether the corresponding data exists in the ui_instance
+            if ui_instance:
+                # Show "View Image Hint" button if image data exists
+                if hasattr(ui_instance, 'stored_image_data') and ui_instance.stored_image_data:
+                     print("[qt overlay show_all] Stored image data found, showing View Image button.")
+                     cls.show_view_image_button(ui_instance)
+                else:
+                    # Explicitly hide if no data (handles case where data was cleared)
+                    # print("[qt overlay show_all] No stored image data, ensuring View Image button is hidden.") # Debug
+                    cls.hide_view_image_button()
+
+                # Show "View Solution" button if video info exists
+                if hasattr(ui_instance, 'stored_video_info') and ui_instance.stored_video_info:
+                     print("[qt overlay show_all] Stored video info found, showing View Solution button.")
+                     cls.show_view_solution_button(ui_instance)
+                else:
+                    # Explicitly hide if no info
+                    # print("[qt overlay show_all] No stored video info, ensuring View Solution button is hidden.") # Debug
+                    cls.hide_view_solution_button()
+            else:
+                # If no ui_instance, hide buttons as we can't determine state
+                print("[qt overlay show_all] No ui_instance, hiding side buttons.")
+                cls.hide_view_image_button()
+                cls.hide_view_solution_button()
 
 
-            # Hint Request Text (only if text exists)
+            # --- Restore Hint Request Text ---
+            # Hint Request Text (only if text exists and window is available)
             if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window'):
                  req_window = cls._hint_request_text['window']
+                 # Check if the text item exists AND has actual text content
                  if '_text_item' in cls._hint_request_text and cls._hint_request_text['_text_item'] and cls._hint_request_text['_text_item'].toPlainText().strip():
+                     # Show if not already visible
                      if not req_window.isVisible(): req_window.show()
-                     req_window.raise_()
+                     req_window.raise_() # Ensure it's on top
+                 else:
+                     # Explicitly hide if no text content
+                     if req_window.isVisible():
+                        req_window.hide()
 
-            # --- MODIFIED COOLDOWN VISIBILITY CHECK ---
-            if hasattr(cls, '_window') and cls._window: # Main window used for cooldown
+            # --- Restore Cooldown Overlay ---
+            # Uses the main overlay window (cls._window)
+            if hasattr(cls, '_window') and cls._window:
                  should_show_cooldown = False
                  if ui_instance:
-                     # Check the actual cooldown state *AND* if the text item has content
+                     # Check the actual cooldown state *AND* if the cooldown text item has content
                      if ui_instance.hint_cooldown and hasattr(cls, '_text_item') and cls._text_item.toPlainText().strip():
                          should_show_cooldown = True
-                         # print("[qt overlay show_all] Cooldown should be visible.") # Debug
 
                  if should_show_cooldown:
+                     # Show if not already visible
                      if not cls._window.isVisible(): cls._window.show()
-                     cls._window.raise_()
+                     cls._window.raise_() # Ensure it's on top
                  else:
-                     # Explicitly hide if it shouldn't be shown
+                     # Explicitly hide if cooldown shouldn't be shown
                      if cls._window.isVisible():
                          # print("[qt overlay show_all] Hiding cooldown overlay.") # Debug
                          cls._window.hide()
-            # --- END MODIFIED CHECK ---
 
 
-            # GM Assistance (only if was previously visible)
+            # --- Restore GM Assistance ---
+            # GM Assistance (only if it was previously visible and window available)
             if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
                 gm_window = cls._gm_assistance_overlay['window']
                 # Use get method with default False to avoid KeyError if _was_visible doesn't exist yet
                 was_visible_flag = cls._gm_assistance_overlay.get('_was_visible', False)
                 if was_visible_flag:
+                    # Show if not already visible
                     if not gm_window.isVisible(): gm_window.show()
-                    gm_window.raise_()
-                    cls._gm_assistance_overlay['_was_visible'] = False # Reset flag
+                    gm_window.raise_() # Ensure it's on top
+                    # Reset flag after showing it once
+                    cls._gm_assistance_overlay['_was_visible'] = False
+                else:
+                    # Ensure it's hidden if it wasn't flagged as visible
+                    if gm_window.isVisible():
+                        gm_window.hide()
 
 
             # print("[qt overlay] Non-video overlay UI elements restored.") # Reduce noise
