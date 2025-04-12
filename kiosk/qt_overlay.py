@@ -611,23 +611,31 @@ class Overlay:
             scene.addItem(rect)
             cls._view_image_button['rect'] = rect
 
-            # Text Item
+            # Inside _init_view_image_button (and similar for _init_view_solution_button)
+
             text_item = QGraphicsTextItem("VIEW IMAGE HINT")
             text_item.setDefaultTextColor(Qt.white)
-            text_item.setFont(QFont('Arial', 24)) # Match ui.py
+            text_item.setFont(QFont('Arial', 24))
             scene.addItem(text_item)
             cls._view_image_button['text_item'] = text_item
 
-            # Rotate and Center Text within Rectangle
-            text_item.setTransformOriginPoint(text_item.boundingRect().center())
-            text_item.setRotation(270) # Match ui.py
-            # After rotation, center it
-            rotated_text_width = text_item.boundingRect().height() # Width becomes height after 270 deg rot
-            rotated_text_height = text_item.boundingRect().width() # Height becomes width
-            text_x = (button_width - rotated_text_width) / 2
-            text_y = (button_height - rotated_text_height) / 2
-            # Need to adjust y slightly because rotation origin isn't perfect top-left
-            text_item.setPos(text_x, text_y + rotated_text_height) # Adjust based on bottom-left corner after rotation
+            # 1. Calculate centers
+            button_center_x = button_width / 2
+            button_center_y = button_height / 2
+            text_rect = text_item.boundingRect()
+            text_center_x = text_rect.width() / 2
+            text_center_y = text_rect.height() / 2
+
+            # 2. Position the item's top-left so its center is at the button's center
+            initial_pos_x = button_center_x - text_center_x
+            initial_pos_y = button_center_y - text_center_y
+            text_item.setPos(initial_pos_x, initial_pos_y)
+
+            # 3. Set transform origin to the item's local center
+            text_item.setTransformOriginPoint(text_center_x, text_center_y)
+
+            # 4. Rotate
+            text_item.setRotation(90)
 
 
             # Set geometry for view and scene rect
@@ -695,21 +703,29 @@ class Overlay:
             cls._view_solution_button['rect'] = rect
 
             # Text Item
-            text_item = QGraphicsTextItem("VIEW SOLUTION") # Different text
+            text_item = QGraphicsTextItem("VIEW SOLUTION")
             text_item.setDefaultTextColor(Qt.white)
-            text_item.setFont(QFont('Arial', 24)) # Match ui.py
+            text_item.setFont(QFont('Arial', 24))
             scene.addItem(text_item)
             cls._view_solution_button['text_item'] = text_item
 
-            # Rotate and Center Text within Rectangle
-            text_item.setTransformOriginPoint(text_item.boundingRect().center())
-            text_item.setRotation(270) # Match ui.py
-            # After rotation, center it
-            rotated_text_width = text_item.boundingRect().height()
-            rotated_text_height = text_item.boundingRect().width()
-            text_x = (button_width - rotated_text_width) / 2
-            text_y = (button_height - rotated_text_height) / 2
-            text_item.setPos(text_x, text_y + rotated_text_height) # Adjust based on bottom-left corner
+            # 1. Calculate centers
+            button_center_x = button_width / 2
+            button_center_y = button_height / 2
+            text_rect = text_item.boundingRect()
+            text_center_x = text_rect.width() / 2
+            text_center_y = text_rect.height() / 2
+
+            # 2. Position the item's top-left so its center is at the button's center
+            initial_pos_x = button_center_x - text_center_x
+            initial_pos_y = button_center_y - text_center_y
+            text_item.setPos(initial_pos_x, initial_pos_y)
+
+            # 3. Set transform origin to the item's local center
+            text_item.setTransformOriginPoint(text_center_x, text_center_y)
+
+            # 4. Rotate
+            text_item.setRotation(90)
 
             # Set geometry for view and scene rect
             view.setGeometry(0, 0, button_width, button_height)
