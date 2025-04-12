@@ -2845,6 +2845,91 @@ class Overlay:
             print("[qt_overlay] Background hidden")
 
     @classmethod
+    def show_gm_assistance(cls):
+        """Show the game master assistance overlay."""
+        if cls._gm_assistance_overlay and cls._gm_assistance_overlay['window']:
+            try:
+                # Reset window and view geometry first
+                window_width = 400
+                window_height = 600
+                screen_width = 1920
+                screen_height = 1080
+                x_pos = (screen_width - window_width) // 2
+                y_pos = (screen_height - window_height) // 2
+
+                # Reset window geometry
+                cls._gm_assistance_overlay['window'].setGeometry(x_pos, y_pos, window_width, window_height)
+                cls._gm_assistance_overlay['view'].setGeometry(0, 0, window_width, window_height)
+                cls._gm_assistance_overlay['scene'].setSceneRect(0, 0, window_width, window_height)
+
+                # Reset all rotations and positions first
+                cls._gm_assistance_overlay['text_item'].setRotation(0)
+                cls._gm_assistance_overlay['yes_button'].setRotation(0)
+                cls._gm_assistance_overlay['no_button'].setRotation(0)
+                cls._gm_assistance_overlay['yes_rect'].setRotation(0)
+                cls._gm_assistance_overlay['no_rect'].setRotation(0)
+
+                # Get the text dimensions before rotation
+                text_rect = cls._gm_assistance_overlay['text_item'].boundingRect()
+                text_width = text_rect.width()
+                text_height = text_rect.height()
+
+                # Calculate positions
+                x_center = (window_width - text_height) / 2 + 140
+                y_center = (window_height + text_width) / 2
+
+                # Apply rotations
+                cls._gm_assistance_overlay['text_item'].setRotation(90)
+                cls._gm_assistance_overlay['yes_button'].setRotation(90)
+                cls._gm_assistance_overlay['no_button'].setRotation(90)
+                cls._gm_assistance_overlay['yes_rect'].setRotation(90)
+                cls._gm_assistance_overlay['no_rect'].setRotation(90)
+
+                # Position text
+                cls._gm_assistance_overlay['text_item'].setPos(x_center, y_center - text_width)
+
+                # Button positioning
+                button_spacing = 270
+                button_width = 170
+                button_height = 60
+                base_x = x_center - 150
+                base_y = y_center - text_width/2 + 30
+
+                # Position Yes button and its components
+                cls._gm_assistance_overlay['yes_rect'].setPos(base_x, base_y)
+                yes_text_width = cls._gm_assistance_overlay['yes_button'].boundingRect().width()
+                yes_text_height = cls._gm_assistance_overlay['yes_button'].boundingRect().height()
+                yes_rect_center_x = base_x + button_height/2
+                yes_rect_center_y = base_y + button_width/2
+                cls._gm_assistance_overlay['yes_button'].setPos(
+                    yes_rect_center_x - yes_text_height/2,
+                    yes_rect_center_y - yes_text_width/2
+                )
+
+                # Position No button and its components
+                cls._gm_assistance_overlay['no_rect'].setPos(base_x, base_y - button_spacing)
+                no_text_width = cls._gm_assistance_overlay['no_button'].boundingRect().width()
+                no_text_height = cls._gm_assistance_overlay['no_button'].boundingRect().height()
+                no_rect_center_x = base_x + button_height/2
+                no_rect_center_y = (base_y - button_spacing) + button_width/2
+                cls._gm_assistance_overlay['no_button'].setPos(
+                    no_rect_center_x - no_text_height/2,
+                    no_rect_center_y - no_text_width/2
+                )
+
+                # Set visibility flag BEFORE showing
+                cls._gm_assistance_overlay['_was_visible'] = True
+
+                # Show and raise the window
+                cls._gm_assistance_overlay['window'].show()
+                cls._gm_assistance_overlay['window'].raise_()
+                cls._gm_assistance_overlay['view'].viewport().update()
+
+            except Exception as e:
+                print(f"[qt overlay] Error showing GM assistance overlay: {e}")
+                traceback.print_exc()
+
+    @classmethod
     def hide_gm_assistance(cls):
         """Hide the game master assistance overlay."""
         if cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
