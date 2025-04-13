@@ -1,6 +1,5 @@
 # ui.py
 print("[ui] Beginning imports ...")
-import tkinter as tk
 from PIL import Image, ImageTk
 import os
 import base64
@@ -86,13 +85,6 @@ class KioskUI:
         Overlay.hide_hint_text()
         Overlay.hide_view_image_button()
         Overlay.hide_view_solution_button()
-
-
-        # Clear Tkinter fullscreen image (if it somehow still exists)
-        if hasattr(self, 'fullscreen_image') and self.fullscreen_image:
-            try: self.fullscreen_image.destroy()
-            except tk.TclError: pass
-            self.fullscreen_image = None
 
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
