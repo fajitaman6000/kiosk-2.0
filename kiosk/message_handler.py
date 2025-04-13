@@ -93,26 +93,6 @@ class MessageHandler:
             Overlay.hide_gm_assistance()
             # Video display should already be hidden by video_manager.force_stop()
 
-            # --- Clear Tkinter UI Elements (if any remain relevant) ---
-            # Destroy specific buttons if they are still Tkinter and managed by ui.py
-            if hasattr(self.kiosk_app.ui, 'video_solution_button') and self.kiosk_app.ui.video_solution_button:
-                 try:
-                     self.kiosk_app.ui.video_solution_button.destroy()
-                 except tk.TclError: pass # Ignore if already gone
-                 self.kiosk_app.ui.video_solution_button = None
-
-            if hasattr(self.kiosk_app.ui, 'image_button') and self.kiosk_app.ui.image_button:
-                try:
-                    self.kiosk_app.ui.image_button.destroy()
-                except tk.TclError: pass
-                self.kiosk_app.ui.image_button = None
-
-            if hasattr(self.kiosk_app.ui, 'fullscreen_image') and self.kiosk_app.ui.fullscreen_image:
-                 try:
-                     self.kiosk_app.ui.fullscreen_image.destroy()
-                 except tk.TclError: pass
-                 self.kiosk_app.ui.fullscreen_image = None
-
             # Clear general labels managed by ui.py
             self.kiosk_app.ui.clear_all_labels() # This should only destroy Tkinter labels
 
