@@ -23,15 +23,21 @@
 [kiosk_file_downloader] Processed 60/73 files...
 [kiosk_file_downloader] Processing batch of 10 files
 
-
 ##############################################################################################################################
-# important/immediate todo
-
-film video solutions, import/move over audio hints, add image hints as custom hints and images to the manual hint library
-
-rebooter added to kiosk app
+# pre-beta testing
 
 finish tk to qt transition
+
+
+##############################################################################################################################
+# todo
+
+film video solutions 
+import/move over audio hints
+add image hints as custom hints
+add images to the manual hint library
+rebooter added to kiosk app
+
 
 ##############################################################################################################################
 # known priority bugs
