@@ -1,6 +1,6 @@
 # qt_overlay.py
 print("[qt overlay] Beginning imports ...")
-from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject
+from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject, QTimer
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsItem
 from PIL import Image
@@ -177,6 +177,47 @@ def convert_cv_qt(cv_img):
 class OverlayBridge(QObject):
     """Receives invocations from other threads and calls Overlay class methods."""
 
+    def __init__(self):
+        super().__init__()
+        self._timers = []  # Keep track of active timers
+
+    @pyqtSlot(int, object)
+    def schedule_timer(self, delay_ms, callback):
+        """Schedule a timer in the Qt main thread"""
+        if delay_ms == 0:
+            # For immediate execution, use invokeMethod directly
+            QMetaObject.invokeMethod(self, "execute_callback",
+                                   Qt.QueuedConnection,
+                                   Q_ARG(object, callback))
+        else:
+            # For delayed execution, create a single-shot timer
+            timer = QTimer(self)
+            timer.setSingleShot(True)
+            timer.timeout.connect(lambda: self._handle_timer_timeout(timer, callback))
+            self._timers.append(timer)
+            timer.start(delay_ms)
+
+    def _handle_timer_timeout(self, timer, callback):
+        """Handle timer timeout and cleanup"""
+        try:
+            callback()
+        except Exception as e:
+            print(f"[qt overlay] Error executing callback: {e}")
+            traceback.print_exc()
+        finally:
+            if timer in self._timers:
+                self._timers.remove(timer)
+            timer.deleteLater()
+
+    @pyqtSlot(object)
+    def execute_callback(self, callback):
+        """Execute the callback in the Qt main thread"""
+        try:
+            callback()
+        except Exception as e:
+            print(f"[qt overlay] Error executing callback: {e}")
+            traceback.print_exc()
+
     @pyqtSlot(bool, object) # For is_skippable (bool), click_callback (Python object)
     def prepare_video_display_slot(self, is_skippable, click_callback):
         # print("[Bridge] prepare_video_display_slot called")
@@ -216,6 +257,18 @@ class OverlayBridge(QObject):
     def show_all_overlays_slot(self):
         Overlay.show_all_overlays()
 
+    @pyqtSlot(bool)
+    def check_game_loss_visibility_slot(self, game_lost):
+        Overlay._check_game_loss_visibility(game_lost)
+
+    @pyqtSlot(bool)
+    def check_game_win_visibility_slot(self, game_won):
+        Overlay._check_game_win_visibility(game_won)
+
+    @pyqtSlot()
+    def on_closing_slot(self):
+        if hasattr(Overlay, '_kiosk_app') and Overlay._kiosk_app:
+            Overlay._kiosk_app.on_closing()
 
 class Overlay:
     _app = None
@@ -271,27 +324,30 @@ class Overlay:
     
     @classmethod
     def init(cls, tkinter_root=None):
-        """Initialize Qt application and base window"""
-        if not cls._app:
-            cls._app = QApplication.instance()
-            if cls._app is None:
-                print("[qt overlay] Creating QApplication...")
-                cls._app = QApplication(sys.argv)
-            else:
-                print("[qt overlay] Using existing QApplication instance.")
+        """Initialize the Qt overlay system."""
+        if cls._initialized:
+            return
 
-        if not cls._bridge:
-            print("[qt overlay] Creating OverlayBridge...")
-            cls._bridge = OverlayBridge()
-
-        # --- Store kiosk_app reference early ---
-        if tkinter_root and hasattr(tkinter_root, 'kiosk_app'):
-             cls._kiosk_app = tkinter_root.kiosk_app
-             print(f"[qt overlay] Stored kiosk_app reference: {cls._kiosk_app}")
-        else:
-             print("[qt overlay] Warning: No kiosk_app reference found on tkinter_root.")
-             cls._kiosk_app = None # Important for checks later
+        # Create QApplication if it doesn't exist
+        if not QApplication.instance():
+            print("[qt overlay] Creating QApplication...")
+            cls._app = QApplication([])
             
+        # Initialize timer scheduler in Qt main thread
+        from message_handler import init_timer_scheduler
+        init_timer_scheduler()
+
+        # Create bridge for thread-safe operations
+        print("[qt overlay] Creating OverlayBridge...")
+        cls._bridge = OverlayBridge()
+        
+        # Store kiosk_app reference if available
+        if hasattr(tkinter_root, 'kiosk_app'):
+            print("[qt overlay] Stored kiosk_app reference:", tkinter_root.kiosk_app)
+            cls._kiosk_app = tkinter_root.kiosk_app
+        else:
+            print("[qt overlay] No kiosk_app available")
+
         # --- Rest of init ---
         if tkinter_root:
             cls._parent_hwnd = tkinter_root.winfo_id()
@@ -2628,7 +2684,8 @@ class Overlay:
             if ui_instance and hasattr(ui_instance.parent_app, '_actual_help_button_update'): # Check parent_app reference exists
                 if hasattr(ui_instance.parent_app, 'root') and ui_instance.parent_app.root: # Check root exists
                     # print("[qt overlay show_all] Triggering help button update.") # Debug
-                    ui_instance.parent_app.root.after(10, ui_instance.parent_app._actual_help_button_update) # Use parent_app reference
+                    # Replace root.after with QTimer.singleShot
+                    QTimer.singleShot(10, ui_instance.parent_app._actual_help_button_update) # Use parent_app reference
 
             # --- Restore Hint Text ---
             # Hint Text (only if text exists and window is available)

@@ -12,7 +12,27 @@ import pygame
 from qt_overlay import Overlay
 from kiosk_file_downloader import KioskFileDownloader
 import base64
+import threading
+from PyQt5.QtCore import QMetaObject, Qt, Q_ARG, QTimer, QObject, pyqtSlot # Import for invoking methods thread-safely
 print("[message_handler] Ending imports ...")
+
+# Create a global timer scheduler in the Qt main thread
+_timer_scheduler = None
+
+def init_timer_scheduler():
+    """Initialize the timer scheduler in the Qt main thread"""
+    global _timer_scheduler
+    if _timer_scheduler is None:
+        _timer_scheduler = QTimer()
+    return _timer_scheduler
+
+class TimerScheduler(QObject):
+    def __init__(self):
+        super().__init__()
+        
+    @pyqtSlot(int, object)
+    def schedule_timer(self, delay_ms, callback):
+        QTimer.singleShot(delay_ms, callback)
 
 class MessageHandler:
     # How long to remember processed command IDs (in seconds)
@@ -26,6 +46,22 @@ class MessageHandler:
         self._last_admin_ip = None  # Track last admin IP to detect changes
         # Store recently processed command IDs to prevent duplicate execution
         self.processed_command_ids = {} # {command_id: timestamp}
+        self.root = kiosk_app.root # Keep root for 'root.after' for now
+        self._lock = threading.Lock()
+        self._message_queue = []
+        self._processing = False
+        self._stop_event = threading.Event()
+
+    def schedule_timer(self, delay_ms, callback):
+        """Thread-safe way to schedule a timer"""
+        # Use the bridge's timer scheduling
+        QMetaObject.invokeMethod(
+            Overlay._bridge,
+            "schedule_timer",
+            Qt.QueuedConnection,
+            Q_ARG(int, delay_ms),
+            Q_ARG(object, callback)
+        )
 
     def _ensure_file_downloader(self, admin_ip):
         """Ensure we have a properly initialized file downloader with the correct admin IP."""
@@ -120,13 +156,78 @@ class MessageHandler:
                     self.kiosk_app.ui.setup_waiting_screen() # Show waiting screen if no room
 
             # Schedule the final UI restoration slightly later to ensure state is settled
-            self.kiosk_app.root.after(100, restore_base_ui)
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(100, restore_base_ui)
 
         except Exception as e:
             print(f"[message handler] Error during GUI reset operations: {e}")
             traceback.print_exc()
     # --- End new method ---
 
+    def add_message(self, message, delay=0):
+        """Add a message to the queue with optional delay."""
+        with self._lock:
+            self._message_queue.append((message, delay))
+            if not self._processing:
+                self.schedule_timer(0, self._process_queue)
+
+    def _process_queue(self):
+        """Process messages in the queue."""
+        if self._stop_event.is_set():
+            return
+
+        with self._lock:
+            if not self._message_queue:
+                self._processing = False
+                return
+
+            message, delay = self._message_queue.pop(0)
+            self._processing = True
+
+        # If there's a delay, schedule the message display
+        if delay > 0:
+            self.schedule_timer(delay * 1000, lambda: self._display_message(message))
+        else:
+            self._display_message(message)
+
+        # Schedule next queue processing
+        self.schedule_timer(0, self._process_queue)
+
+    def _display_message(self, message):
+        """Display a message using the Qt overlay."""
+        if not Overlay._bridge:
+            print("[message_handler] Error: Overlay Bridge not initialized.")
+            return
+
+        try:
+            # Use QueuedConnection to avoid blocking
+            QMetaObject.invokeMethod(
+                Overlay._bridge,
+                "display_message_slot",
+                Qt.QueuedConnection,
+                Q_ARG(str, message)
+            )
+        except Exception as e:
+            print(f"[message_handler] Error displaying message: {e}")
+            traceback.print_exc()
+
+    def clear_messages(self):
+        """Clear all pending messages."""
+        with self._lock:
+            self._message_queue.clear()
+            self._processing = False
+
+    def stop(self):
+        """Stop message processing."""
+        self._stop_event.set()
+        self.clear_messages()
+
+    def start(self):
+        """Start message processing."""
+        self._stop_event.clear()
+        with self._lock:
+            if self._message_queue and not self._processing:
+                self.schedule_timer(0, self._process_queue)
 
     def handle_message(self, msg):
         """Handles incoming messages and delegates to specific methods."""
@@ -198,7 +299,7 @@ class MessageHandler:
                 self.kiosk_app.ui.current_hint = None
                 self.kiosk_app.audio_manager.current_music = None
                 # --- GUI update (schedule on main thread) ---
-                self.kiosk_app.root.after(0, lambda room=msg['room']: self.kiosk_app.ui.setup_room_interface(room))
+                self.schedule_timer(0, lambda room=msg['room']: self.kiosk_app.ui.setup_room_interface(room))
 
             elif msg_type == 'hint' and is_targeted and self.kiosk_app.assigned_room:
                 if msg.get('room') == self.kiosk_app.assigned_room:
@@ -230,7 +331,7 @@ class MessageHandler:
                     print(f"[message handler][Kiosk] handle_message: Received hint, clearing hint_requested_flag for room {self.kiosk_app.assigned_room}")
                     # --- GUI update (schedule on main thread) ---
                     if hint_data is not None: # Ensure we have data before scheduling
-                         self.kiosk_app.root.after(0, lambda d=hint_data: self.kiosk_app.show_hint(d))
+                        self.schedule_timer(0, lambda d=hint_data: self.kiosk_app.show_hint(d))
 
             elif msg_type == 'timer_command' and is_targeted:
                 print(f"[message handler][DEBUG] Processing timer command (Command ID: {command_id})")
@@ -257,18 +358,19 @@ class MessageHandler:
                         if self.kiosk_app.assigned_room:
                             print(f"[message handler][DEBUG] Timer starting - playing background music for room: {self.kiosk_app.assigned_room}")
                             # Schedule audio play on main thread
-                            self.kiosk_app.root.after(0, lambda room=self.kiosk_app.assigned_room: self.kiosk_app.audio_manager.play_background_music(room))
+                            self.schedule_timer(0, lambda room=self.kiosk_app.assigned_room: self.kiosk_app.audio_manager.play_background_music(room))
                     self.kiosk_app.hint_requested_flag = False
                     print(f"[message handler][Kiosk] handle_message: Timer started, clearing hint_requested_flag for room {self.kiosk_app.assigned_room}")
 
                 # --- GUI update (schedule on main thread) ---
-                self.kiosk_app.root.after(0, self.kiosk_app._actual_help_button_update)
+                self.schedule_timer(0, self.kiosk_app._actual_help_button_update)
 
             elif msg_type == 'video_command' and is_targeted:
                 print(f"[message handler][DEBUG] Processing video command (Command ID: {command_id})")
                 # KioskApp.play_video likely interacts with VideoManager which uses Qt invokes,
                 # so calling it directly might be okay, but safer to schedule.
-                self.kiosk_app.root.after(0, lambda vt=msg['video_type'], m=msg['minutes']: self.kiosk_app.play_video(vt, m))
+                # Replace root.after with QTimer.singleShot
+                self.schedule_timer(0, lambda vt=msg['video_type'], m=msg['minutes']: self.kiosk_app.play_video(vt, m))
 
             elif msg_type == 'soundcheck' and is_targeted:
                 print(f"[message handler] soundcheck command received (Command ID: {command_id})")
@@ -277,21 +379,21 @@ class MessageHandler:
             elif msg_type == 'clear_hints' and is_targeted:
                 print(f"[message handler][DEBUG] Processing clear hints command (Command ID: {command_id})")
                 # KioskApp.clear_hints modifies state and calls UI/Overlay methods
-                self.kiosk_app.root.after(0, self.kiosk_app.clear_hints)
+                self.schedule_timer(0, self.kiosk_app.clear_hints)
 
             elif msg_type == 'play_sound' and is_targeted:
                 print(f"[message handler][DEBUG] Received play sound command (Command ID: {command_id})")
                 sound_name = msg.get('sound_name')
                 if sound_name:
                     # Schedule audio play on main thread
-                    self.kiosk_app.root.after(0, lambda sn=sound_name: self.kiosk_app.audio_manager.play_sound(sn))
+                    self.schedule_timer(0, lambda sn=sound_name: self.kiosk_app.audio_manager.play_sound(sn))
 
             elif msg_type == 'audio_hint' and is_targeted:
                 print(f"[message handler][DEBUG] Received audio hint command (Command ID: {command_id})")
                 audio_path = msg.get('audio_path')
                 if audio_path:
                     # Schedule audio play on main thread
-                     self.kiosk_app.root.after(0, lambda ap=audio_path: self.kiosk_app.audio_manager.play_hint_audio(ap))
+                    self.schedule_timer(0, lambda ap=audio_path: self.kiosk_app.audio_manager.play_hint_audio(ap))
 
             elif msg_type == 'solution_video' and is_targeted:
                 print(f"[message handler][DEBUG] Received solution video command (Command ID: {command_id})")
@@ -315,8 +417,8 @@ class MessageHandler:
                         hint_data = { 'text': 'Video Solution Received' }
 
                         # Schedule GUI updates
-                        self.kiosk_app.root.after(0, lambda d=hint_data: self.kiosk_app.show_hint(d, start_cooldown=False))
-                        self.kiosk_app.root.after(50, lambda rf=room_folder, vf=video_filename: self.kiosk_app.ui.show_video_solution(rf, vf)) # Slight delay for button
+                        self.schedule_timer(0, lambda d=hint_data: self.kiosk_app.show_hint(d, start_cooldown=False))
+                        self.schedule_timer(50, lambda rf=room_folder, vf=video_filename: self.kiosk_app.ui.show_video_solution(rf, vf)) # Slight delay for button
 
                     else:
                         print(f"[message handler] Error: Solution video not found at {video_path}")
@@ -349,18 +451,18 @@ class MessageHandler:
 
                 # --- Schedule the GUI-related operations ---
                 print("[message handler][DEBUG] Scheduling GUI reset operations...")
-                self.kiosk_app.root.after(0, self._execute_reset_gui_operations)
+                self.schedule_timer(0, self._execute_reset_gui_operations)
 
 
             elif msg_type == 'toggle_music_command' and is_targeted:
                 print(f"[message handler][DEBUG] Received toggle music command (Command ID: {command_id})")
                 # Schedule audio toggle on main thread
-                self.kiosk_app.root.after(0, self.kiosk_app.audio_manager.toggle_music)
+                self.schedule_timer(0, self.kiosk_app.audio_manager.toggle_music)
 
             elif msg_type == 'stop_video_command' and is_targeted:
                 print(f"[message handler][DEBUG] Received stop video command (Command ID: {command_id})")
                 # VideoManager uses Qt invokes, likely safe, but scheduling is safest
-                self.kiosk_app.root.after(0, self.handle_stop_video_command) # Delegate to keep handle_message cleaner
+                self.schedule_timer(0, self.handle_stop_video_command) # Delegate to keep handle_message cleaner
 
             elif msg_type == 'toggle_auto_start' and is_targeted:
                 print(f"[message handler] Toggling auto start (Command ID: {command_id})")
@@ -370,15 +472,15 @@ class MessageHandler:
             elif msg_type == 'offer_assistance' and is_targeted:
                 print(f"[message handler] Received offer assistance command (Command ID: {command_id})")
                 # Schedule audio and overlay show on main thread
-                self.kiosk_app.root.after(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
-                self.kiosk_app.root.after(50, lambda: Overlay.show_gm_assistance()) # Slight delay
+                self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
+                self.schedule_timer(50, lambda: Overlay.show_gm_assistance()) # Slight delay
 
             elif msg_type == 'victory' and is_targeted:
                 print(f"[message handler] Victory detected (Command ID: {command_id})")
                 # Set state flag (safe)
                 self.kiosk_app.timer.game_won = True
                 # Handle game win logic (involves audio/video/overlay - schedule it)
-                self.kiosk_app.root.after(0, self.kiosk_app.handle_game_win)
+                self.schedule_timer(0, self.kiosk_app.handle_game_win)
 
             elif msg_type == 'request_screenshot' and is_targeted:
                 # The command_id check already happened

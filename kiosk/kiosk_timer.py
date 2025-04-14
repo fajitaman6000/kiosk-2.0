@@ -4,6 +4,7 @@ import time
 from qt_overlay import Overlay # Use Qt overlay for display
 import os
 import traceback
+from PyQt5.QtCore import QMetaObject, Qt, QTimer, Q_ARG
 # Removed tkinter and PIL imports as they are no longer needed for display
 
 print("[kiosk timer] Ending imports ...")
@@ -24,10 +25,10 @@ class KioskTimer:
         # No Tkinter widget creation here anymore
 
         # Delay Qt timer initialization until the Qt app/overlay is likely ready
-        # Using root.after to schedule within the Tkinter main loop
-        self.root.after(1000, self._delayed_qt_init)
+        # Using QTimer.singleShot instead of root.after
+        QTimer.singleShot(1000, self._delayed_qt_init)
 
-        # Start update loop (scheduled via Tkinter's root.after)
+        # Start update loop (scheduled via QTimer.singleShot)
         self.update_timer_loop()
 
     def _delayed_qt_init(self):
@@ -42,7 +43,7 @@ class KioskTimer:
             print(f"[kiosk timer] Error during delayed Qt init: {e}")
             traceback.print_exc()
             # Optionally retry or handle the error
-            # self.root.after(1000, self._delayed_qt_init) # Example retry
+            # QTimer.singleShot(1000, self._delayed_qt_init) # Example retry
 
     def load_room_background(self, room_number):
         """Loads the timer background via the Qt Overlay."""
@@ -54,7 +55,7 @@ class KioskTimer:
         except AttributeError:
             # Fallback if Overlay or its method isn't ready yet
             print("[kiosk timer] Overlay not ready for background load, scheduling retry.")
-            self.root.after(500, lambda: self.load_room_background(room_number))
+            QTimer.singleShot(500, lambda: self.load_room_background(room_number))
         except Exception as e:
             print(f"[kiosk timer] Error loading timer background via Overlay: {e}")
             traceback.print_exc()
@@ -141,9 +142,9 @@ class KioskTimer:
             print(f"[kiosk timer] Error in update_timer_loop: {e}")
             traceback.print_exc()
         finally:
-            # Schedule the next execution of this loop using Tkinter's scheduler
-            # This keeps the timer logic tied to the main Tkinter event loop
-            self.root.after(100, self.update_timer_loop) # Schedule next update
+            # Schedule the next execution of this loop using QTimer.singleShot
+            # This keeps the timer logic tied to the Qt event loop
+            QTimer.singleShot(100, self.update_timer_loop) # Schedule next update
 
     def get_time_str(self):
         """Get the current time remaining as a formatted string MM:SS."""

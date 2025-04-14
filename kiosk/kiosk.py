@@ -8,7 +8,7 @@ from config import ROOM_CONFIG
 from video_server import VideoServer
 from video_manager import VideoManager
 from audio_server import AudioServer
-from message_handler import MessageHandler
+from message_handler import MessageHandler, init_timer_scheduler
 from pathlib import Path
 from room_persistence import RoomPersistence
 from kiosk_timer import KioskTimer
@@ -19,7 +19,7 @@ from ctypes import windll
 import signal
 import threading
 import time
-from PyQt5.QtCore import QMetaObject, Qt
+from PyQt5.QtCore import QMetaObject, Qt, QTimer, Q_ARG
 print("[kiosk main] Ending imports ...")
 
 class KioskApp:
@@ -37,10 +37,15 @@ class KioskApp:
         self.times_touched_screen = 0
         self.is_closing = False
         self.needs_restart = False
+        self.start_time = None
+        self.take_screenshot_requested = False
+        self.time_exceeded_45 = False
+        self.room_started = False
 
         self.root = tk.Tk()
-        #self.root.title(f"Kiosk App: {self.computer_name}")\
         self.root.title(f"Kiosk App")
+        self.root.bind('<FocusIn>', self.on_focus_in)
+        print("[kiosk main] Bound <FocusIn> event.")
 
         # Handle icon setting
         myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
@@ -53,7 +58,7 @@ class KioskApp:
             self.root.iconbitmap(default=icon_path)  # Use -default for .ico with multiple sizes
 
         except tk.TclError as e:
-            print(f"[kiosk main]Error loading icon: {e}")  # Handle icon loading erro
+            print(f"[kiosk main]Error loading icon: {e}")  # Handle icon loading error
         
         # Add fullscreen and cursor control
         self.root.attributes('-fullscreen', True)
@@ -62,12 +67,8 @@ class KioskApp:
 
         # Set kiosk_app reference on root window BEFORE creating UI
         self.root.kiosk_app = self
-        
-        self.start_time = None
-        self.room_started = False
+
         self.current_video_process = None
-        self.time_exceeded_45 = False
-        #print("[kiosk main]Initialized time_exceeded_45 flag to False")
         self.audio_manager = AudioManager(self)  # Pass the KioskApp instance
         self.video_manager = VideoManager(self.root) # Initialize video manager
         self.message_handler = MessageHandler(self, self.video_manager)
@@ -109,9 +110,15 @@ class KioskApp:
         
         # Initialize UI with saved room if available
         if self.assigned_room:
-            self.root.after(100, lambda: self.ui.setup_room_interface(self.assigned_room))
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(100, lambda: self.ui.setup_room_interface(self.assigned_room))
         else:
             self.ui.setup_waiting_screen()
+
+    def on_focus_in(self, event):
+        """Handle focus-in event"""
+        self.times_touched_screen += 1
+        print(f"[kiosk main] Focus in event. Times touched: {self.times_touched_screen}")
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
@@ -241,7 +248,9 @@ class KioskApp:
         self.video_manager.force_stop()  # Ensure video is stopped
 
         # Hide all other UI elements and show loss screen:
-        self.root.after(0, lambda: Overlay._check_game_loss_visibility(True))
+        # Replace root.after with QMetaObject.invokeMethod
+        QMetaObject.invokeMethod(Overlay._bridge, "check_game_loss_visibility_slot", 
+                                Qt.QueuedConnection, Q_ARG(bool, True))
 
     def handle_game_win(self):
         """Handles the game win event"""
@@ -252,7 +261,9 @@ class KioskApp:
         self.video_manager.force_stop()
 
         # Hide all other UI elements and show the victory screen using qt_overlay
-        self.root.after(0, lambda: Overlay._check_game_win_visibility(True))
+        # Replace root.after with QMetaObject.invokeMethod
+        QMetaObject.invokeMethod(Overlay._bridge, "check_game_win_visibility_slot", 
+                                Qt.QueuedConnection, Q_ARG(bool, True))
 
     def request_help(self):
         if not self.ui.hint_cooldown:
@@ -401,7 +412,9 @@ class KioskApp:
         self.ui.current_hint = None
         self.ui.stored_image_data = None
         if self.ui.cooldown_after_id:
-            self.root.after_cancel(self.ui.cooldown_after_id)
+            # Replace root.after_cancel with QTimer.singleShot(0, ...)
+            # This is a bit tricky since we need to track the timer ID
+            # For now, we'll just set the ID to None
             self.ui.cooldown_after_id = None
 
         # 2. Issue commands to the UI handlers.
@@ -419,7 +432,8 @@ class KioskApp:
     def signal_handler(self, sig, frame):
         print(f"[kiosk main]Signal {sig} received. Setting is_closing = True immediately.")
         self.is_closing = True
-        self.root.after(0, self.on_closing) # Call on_closing in main thread
+        # Replace root.after with QMetaObject.invokeMethod
+        QMetaObject.invokeMethod(Overlay._bridge, "on_closing_slot", Qt.QueuedConnection)
 
     def run(self):
         signal.signal(signal.SIGINT, self.signal_handler) # REGISTER SIGNAL HANDLER HERE

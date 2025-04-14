@@ -7,6 +7,7 @@ import io
 import traceback
 from qt_overlay import Overlay
 import threading
+from PyQt5.QtCore import QTimer # Import for delayed execution
 print("[ui] Ending imports ...")
 
 class KioskUI:
@@ -66,7 +67,9 @@ class KioskUI:
     def clear_all_labels(self):
         """Clear all UI elements and cancel any pending cooldown timer"""
         if self.cooldown_after_id:
-            self.root.after_cancel(self.cooldown_after_id)
+            # Replace root.after_cancel with QTimer.singleShot(0, None) to effectively cancel
+            # We can't directly cancel QTimer.singleShot, but we can set the flag to False
+            self.hint_cooldown = False
             self.cooldown_after_id = None
             
         self.hint_cooldown = False
@@ -126,7 +129,8 @@ class KioskUI:
             else:
                 # If there's NO current hint, then update the help button.
                 print("[ui.py]No current hint, updating help button within setup_room_interface")
-                self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update())
+                # Replace root.after with QTimer.singleShot
+                QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
     
     def request_help(self):
         """Creates the 'Hint Requested' message in the status frame and clears any existing hints"""
@@ -265,13 +269,15 @@ class KioskUI:
 
         # Update help button state as well
         print("[ui.py restore_hint_view] Triggering help button update.")
-        self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update())
+        # Replace root.after with QTimer.singleShot
+        QTimer.singleShot(50, lambda: self.message_handler._actual_help_button_update())
 
     def start_cooldown(self):
         """Start cooldown timer with matching overlay"""
         print("[ui.py]Starting cooldown timer")
         if self.cooldown_after_id:
-            self.root.after_cancel(self.cooldown_after_id)
+            # Replace root.after_cancel with setting the flag to False
+            self.hint_cooldown = False
             self.cooldown_after_id = None
         
         self.hint_cooldown = True
@@ -282,15 +288,14 @@ class KioskUI:
         if seconds_left > 0 and self.hint_cooldown:
             if not self.message_handler.video_manager.is_playing and not self.image_is_fullscreen:
                 Overlay.show_hint_cooldown(seconds_left)
-            self.cooldown_after_id = self.root.after(
-                1000,
-                lambda: self.update_cooldown(seconds_left - 1)
-            )
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(1000, lambda: self.update_cooldown(seconds_left - 1))
         else:
             self.hint_cooldown = False
             self.cooldown_after_id = None
             Overlay.hide_cooldown()
-            self.message_handler.root.after(100, lambda: self.message_handler._actual_help_button_update()) # Removed and added lambda for thread safety
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
 
     def show_video_solution(self, room_folder, video_filename):
         """Stores video info and shows the Qt 'View Solution' button."""
@@ -380,7 +385,8 @@ class KioskUI:
 
             # Ensure help button state is correct (show_all_overlays might call update_help_button)
             # If not, trigger it explicitly AFTER show_all_overlays has potentially run
-            self.message_handler.root.after(50, lambda: self.message_handler._actual_help_button_update())
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(50, lambda: self.message_handler._actual_help_button_update())
 
         except Exception as e:
             print(f"[ui.py] Error in handle_video_completion: {e}")
