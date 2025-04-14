@@ -203,7 +203,27 @@ class VideoManager:
         """Callback received from VideoPlayer when its thread finishes/stops."""
         print("[video manager][CALLBACK_1] _on_player_complete entered (received from VideoPlayer thread).")
         # This might be called from the VideoPlayer's thread.
-        print("[video manager][CALLBACK_END] _on_player_complete finished (no longer schedules cleanup). ") # INFO
+
+        # --- Cleanup Trigger Logic --- 
+        # If the video completed naturally (should_stop is False), 
+        # we need to trigger the cleanup from here.
+        # If stop_video was called, it handles the cleanup itself after waiting.
+        if not self.should_stop:
+            print("[video manager][CALLBACK_NATURAL_COMPLETION] Video finished naturally. Scheduling cleanup via root.after.")
+            # Use root.after to schedule cleanup on the main Tkinter thread
+            try:
+                if self.root: # Ensure root exists
+                    self.root.after(0, self._perform_post_playback_cleanup)
+                else:
+                    print("[video manager][ERROR] Cannot schedule cleanup: self.root is None.")
+            except Exception as e:
+                print(f"[video manager][ERROR] Exception scheduling cleanup via root.after: {e}")
+                traceback.print_exc()
+        else:
+            print("[video manager][CALLBACK_STOPPED] Video was stopped manually. Cleanup handled by stop_video.")
+        # --- End Cleanup Trigger Logic ---
+
+        print("[video manager][CALLBACK_END] _on_player_complete finished.") 
 
     def _perform_post_playback_cleanup(self):
         """Performs cleanup actions AFTER the player thread has confirmed completion."""
