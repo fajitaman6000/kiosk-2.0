@@ -362,6 +362,7 @@ class VideoPlayer:
             traceback.print_exc()
             self.playback_complete = False # Mark as abnormal completion
         finally:
+            print("[video player][PLAYER_FINALLY_1] Entering player thread finally block.")
             print(f"[video player] Player thread cleaning up... (Processed approx {frame_count} frames)")
             if not got_first_frame:
                  print("[video player] Player: Never received the first frame.")
@@ -369,37 +370,58 @@ class VideoPlayer:
                  if not self.should_stop: # If stop wasn't explicitly called
                      self.playback_complete = False
 
+            print("[video player][PLAYER_FINALLY_2] Checking audio channel.")
             if audio_started and self.video_sound_channel.get_busy():
+                print("[video player][PLAYER_FINALLY_3] Audio channel busy, stopping...")
                 self.video_sound_channel.stop()
                 print("[video player] Player: Stopped video audio channel.")
                 time.sleep(0.05) # Short pause to allow sound system to react
+                print("[video player][PLAYER_FINALLY_4] Audio channel stopped.")
+            else:
+                print("[video player][PLAYER_FINALLY_3] Audio channel not busy or not started.")
 
             was_playing = self.is_playing # Capture state before setting false
+            print(f"[video player] Player thread finishing. Player state: is_playing={was_playing}, should_stop={self.should_stop}, playback_complete={self.playback_complete}, got_first_frame={got_first_frame}") # DEBUG
+            print("[video player][PLAYER_FINALLY_5] Setting self.is_playing = False.")
             self.is_playing = False # Mark as no longer playing *before* callback
 
             # Determine if completion callback should run
             # Run if playback started (got first frame) OR if stop was explicitly called
             should_run_callback = got_first_frame or self.should_stop
+            print(f"[video player] Player thread cleanup: should_run_callback = {should_run_callback}") # DEBUG
+            print("[video player][PLAYER_FINALLY_6] Determined should_run_callback.")
 
             if should_run_callback and self.on_complete_callback:
-                 if self.playback_complete and not self.should_stop:
-                     print("[video player] Player: Triggering on_complete_callback (Normal Completion).")
-                 elif self.should_stop:
-                     print("[video player] Player: Triggering on_complete_callback (Playback Stopped).")
-                 else: # playback_complete is False and not should_stop -> abnormal termination
-                     print("[video player] Player: Triggering on_complete_callback (Abnormal Termination).")
+                print("[video player][PLAYER_FINALLY_7] Callback should run and exists.")
+                if self.playback_complete and not self.should_stop:
+                    print("[video player] Player: Triggering on_complete_callback (Normal Completion).")
+                elif self.should_stop:
+                    print("[video player] Player: Triggering on_complete_callback (Playback Stopped).")
+                else: # playback_complete is False and not should_stop -> abnormal termination
+                    print("[video player] Player: Triggering on_complete_callback (Abnormal Termination).")
 
-                 try:
-                      # Run callback in a separate thread to avoid blocking player cleanup?
-                      # For simplicity now, run directly. If callbacks are long, consider threading.
-                      self.on_complete_callback()
-                 except Exception as cb_err:
-                      print(f"[video player] Player: Error executing on_complete_callback: {cb_err}")
+                try:
+                     print("[video player] Player: About to execute self.on_complete_callback()...") # DEBUG
+                     print("[video player][PLAYER_FINALLY_8] Executing callback now.")
+                     # Run callback in a separate thread to avoid blocking player cleanup?
+                     # For simplicity now, run directly. If callbacks are long, consider threading.
+                     self.on_complete_callback()
+                     print("[video player] Player: Successfully executed self.on_complete_callback().") # DEBUG
+                     print("[video player][PLAYER_FINALLY_9] Callback execution finished.")
+                except Exception as cb_err:
+                     print(f"[video player] Player: Error executing on_complete_callback: {cb_err}")
+                     traceback.print_exc() # DEBUG: Print traceback for callback error
+                     print("[video player][PLAYER_FINALLY_9_ERR] Callback execution failed.")
             elif not should_run_callback:
                  print("[video player] Player: Playback did not effectively start or stop wasn't called, skipping final on_complete_callback.")
+                 print("[video player][PLAYER_FINALLY_7_SKIP] Skipping callback (not needed).")
+            elif self.on_complete_callback is None:
+                 print("[video player] Player: on_complete_callback is None, cannot trigger.") # DEBUG
+                 print("[video player][PLAYER_FINALLY_7_NONE] Skipping callback (is None).")
 
 
             print("[video player] Player thread finished.")
+            print("[video player][PLAYER_FINALLY_10] Exiting player thread finally block.")
 
     # --- extract_audio --- (No changes needed here)
     def extract_audio(self, video_path):
@@ -530,11 +552,12 @@ class VideoPlayer:
 
 
     # --- stop_video --- (No changes needed here)
-    def stop_video(self, wait=False):
+    def stop_video(self, wait=True):
         """Stop video playback gracefully."""
         print(f"[video player] stop_video called (wait={wait}). is_playing={self.is_playing}")
 
         if not self.is_playing and self.should_stop:
+             print("[video player] stop_video called but already stopping.") # INFO
              return
 
         if not self.is_playing and not self.should_stop:
@@ -546,22 +569,31 @@ class VideoPlayer:
 
         print("[video player] Stop signal sent to threads.")
 
+        # Try stopping audio earlier
         if self.video_sound_channel.get_busy():
             print("[video player] Stopping audio channel.")
             self.video_sound_channel.stop()
-            time.sleep(0.05)
+            time.sleep(0.05) # Allow brief time for audio system
 
+        # Drain the queue and add sentinel
         if self.frame_queue:
+            print("[video player] Draining frame queue...") # INFO
+            drained_count = 0
             try:
                 while not self.frame_queue.empty():
-                    try: self.frame_queue.get_nowait()
-                    except queue.Empty: break
-                self.frame_queue.put(None, block=False)
+                    try:
+                        self.frame_queue.get_nowait()
+                        drained_count += 1
+                    except queue.Empty:
+                        break
+                self.frame_queue.put(None, block=False) # Signal end to player
+                print(f"[video player] Drained {drained_count} frames and added sentinel.") # INFO
             except queue.Full:
-                 print("[video player] Warning: Queue full when trying to clear/put None during stop.")
+                 print("[video player] Warning: Queue full when trying to put None during stop.")
             except Exception as e:
                  print(f"[video player] Error interacting with queue during stop: {e}")
 
+        # --- JOIN THREADS IF wait=True ---
         if wait:
             join_timeout = 2.0 # Max wait time for threads
             print(f"[video player] Waiting for threads to join (timeout {join_timeout}s)...")
@@ -570,16 +602,26 @@ class VideoPlayer:
             reader_thread = self.video_reader_thread
             player_thread = self.video_player_thread
 
+            # Wait for Reader Thread
             if reader_thread and reader_thread.is_alive() and reader_thread != current_thread:
-                reader_thread.join(timeout=join_timeout/2)
+                reader_thread.join(timeout=join_timeout / 2)
                 if reader_thread.is_alive():
                      print("[video player] Warning: Reader thread did not exit cleanly after stop request.")
+                else:
+                     print("[video player] Reader thread joined successfully.")
 
+            # Wait for Player Thread
             if player_thread and player_thread.is_alive() and player_thread != current_thread:
-                 player_thread.join(timeout=join_timeout/2)
+                 # Player thread might take slightly longer if it was processing the last frame/callback
+                 player_thread.join(timeout=join_timeout / 2) # Give it its own timeout portion
                  if player_thread.is_alive():
                       print("[video player] Warning: Player thread did not exit cleanly after stop request.")
+                 else:
+                      print("[video player] Player thread joined successfully.")
 
+            # If waiting, ensure is_playing is false after joins attempt
+            # (Player thread's finally block *should* set this, but this is a safeguard)
+            print("[video player] Setting is_playing = False after join attempt.")
             self.is_playing = False # Force state if threads didn't exit cleanly
             print("[video player] Thread join finished.")
         # If not waiting, is_playing will be set False by the player thread's finally block

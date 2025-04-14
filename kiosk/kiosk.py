@@ -115,6 +115,24 @@ class KioskApp:
         else:
             self.ui.setup_waiting_screen()
 
+        # Start the dedicated Qt event processing loop
+        self._process_qt_events() # Start the loop
+
+    def _process_qt_events(self):
+        """Periodically process Qt events to keep the overlay responsive."""
+        if self.is_closing: # Stop processing if closing
+            return
+        try:
+            if Overlay._app:
+                Overlay._app.processEvents()
+        except Exception as e:
+            print(f"[kiosk main] Error processing Qt events: {e}")
+            # Optionally add traceback.print_exc() here for debugging
+        finally:
+             # Reschedule this method to run again after a short interval (e.g., 20ms)
+             # Adjust the interval as needed for responsiveness vs performance
+             self.root.after(20, self._process_qt_events)
+
     def on_focus_in(self, event):
         """Handle focus-in event"""
         self.times_touched_screen += 1
@@ -124,6 +142,10 @@ class KioskApp:
         """Check timer and update help button state"""
         try:
             Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
+            # --- REMOVE Qt event processing from here ---
+            # if Overlay._app: # Check if QApplication instance exists
+            #    Overlay._app.processEvents()
+            # --- End REMOVE Qt event processing ---
         except Exception as e:
             traceback.print_exc()
 

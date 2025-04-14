@@ -201,38 +201,47 @@ class VideoManager:
 
     def _on_player_complete(self):
         """Callback received from VideoPlayer when its thread finishes/stops."""
-        print("[video manager] _on_player_complete called (player thread finished).")
+        print("[video manager][CALLBACK_1] _on_player_complete entered (received from VideoPlayer thread).")
         # This might be called from the VideoPlayer's thread.
-        # Schedule the final cleanup and callback execution on the main Qt thread.
-        # Replace root.after with QTimer.singleShot
-        QTimer.singleShot(0, self._perform_post_playback_cleanup)
+        print("[video manager][CALLBACK_END] _on_player_complete finished (no longer schedules cleanup). ") # INFO
 
     def _perform_post_playback_cleanup(self):
         """Performs cleanup actions AFTER the player thread has confirmed completion."""
+        print("[video manager][CLEANUP_ENTRY] $$$ _perform_post_playback_cleanup HAS BEEN ENTERED $$$")
+        print("[video manager][CLEANUP_1] _perform_post_playback_cleanup entered (scheduled by QTimer). ")
         print("[video manager] Performing post-playback cleanup...")
-        # --- Check if bridge exists before invoking methods ---
+        # --- Check if bridge exists before invoking methods --- 
+        print("[video manager][CLEANUP_2] Checking Overlay._bridge.")
         if not Overlay._bridge:
-             print("[video manager] Cleanup skipped: Overlay bridge missing.")
+             print("[video manager][CLEANUP_3_FAIL] Cleanup skipped: Overlay bridge missing.")
              # Ensure state is still reset
+             print("[video manager][CLEANUP_4_FAIL] Acquiring lock to reset state (bridge missing)." )
              with self._lock:
+                  print("[video manager][CLEANUP_5_FAIL] Lock acquired. Resetting state.")
                   self.is_playing = False
                   self.should_stop = True
                   self.resetting = False
                   self.video_player = None
                   self.completion_callback = None
+             print("[video manager][CLEANUP_6_FAIL] Lock released. State reset.")
              return
 
+        print("[video manager][CLEANUP_3] Bridge exists. Acquiring lock...")
         with self._lock:
+            print("[video manager][CLEANUP_4] Lock acquired. Checking state.")
             if not self.is_playing and not self.should_stop and not self.resetting:
-                 print("[video manager] Post-playback cleanup: Already stopped/reset, skipping.")
+                 print("[video manager][CLEANUP_5_SKIP] Post-playback cleanup: Already stopped/reset, skipping.")
+                 # Lock is released automatically here
                  return
+            print("[video manager][CLEANUP_5] State indicates cleanup needed. Setting flags: is_playing=False, should_stop=True")
             self.is_playing = False
-            was_stopped_manually = self.should_stop
+            was_stopped_manually = self.should_stop # Maybe log this? print(f"[CLEANUP_5b] was_stopped_manually={was_stopped_manually}")
             self.should_stop = True
+            print("[video manager][CLEANUP_6] Lock released.")
 
         try:
             # 1. Destroy Qt video display (Invoke slot on bridge)
-            print("[video manager] Destroying Qt video display...")
+            print("[video manager][CLEANUP_7] Destroying Qt video display (Queued)...")
             # Use QueuedConnection to avoid blocking the Tkinter thread and causing deadlocks.
             # The Qt window will be destroyed asynchronously by the Qt event loop.
             QMetaObject.invokeMethod(
@@ -240,54 +249,71 @@ class VideoManager:
                 "destroy_video_display_slot", # Call the slot
                 Qt.QueuedConnection # <<< CHANGED FROM BlockingQueuedConnection
             )
+            print("[video manager][CLEANUP_8] destroy_video_display_slot queued.")
             # Don't print "destroyed" here, as it happens asynchronously now.
             # print("[video manager] Qt video display destruction queued.") # Optional log
 
             # 2. Restore background music volume (can run here)
-            print("[video manager] Restoring background music volume...")
+            print("[video manager][CLEANUP_9] Restoring background music volume...")
             self._fade_background_music(1.0, duration=0.3)
+            print("[video manager][CLEANUP_10] Background music fade initiated/completed.")
 
             # 3. Show other overlays (Invoke slot on bridge)
-            print("[video manager] Restoring non-video overlays...")
+            print("[video manager][CLEANUP_11] Restoring non-video overlays (Queued)...")
             # Use QueuedConnection - doesn't need to block
             QMetaObject.invokeMethod(Overlay._bridge, "show_all_overlays_slot", Qt.QueuedConnection)
+            print("[video manager][CLEANUP_12] show_all_overlays_slot queued.")
 
             # 4. Clean up VideoPlayer instance resources
+            print("[video manager][CLEANUP_13] Checking video_player instance.")
             if self.video_player:
-                 print("[video manager] Cleaning up video player instance...")
+                 print("[video manager][CLEANUP_14] Cleaning up video player instance resources...")
                  self.video_player._cleanup_resources() # Explicitly clean temp audio
+                 print("[video manager][CLEANUP_15] Video player resources cleaned.")
                  self.video_player = None
+                 print("[video manager][CLEANUP_16] Video player instance set to None.")
             else:
-                 print("[video manager] No video player instance found during cleanup.")
+                 print("[video manager][CLEANUP_14_SKIP] No video player instance found during cleanup.")
 
 
             # 5. Execute the final completion callback IF provided and NOT resetting
+            print("[video manager][CLEANUP_17] Checking for final completion callback.")
             final_callback = self.completion_callback
-            self.completion_callback = None
+            print(f"[video manager][CLEANUP_18] final_callback = {final_callback}, self.resetting = {self.resetting}")
+            self.completion_callback = None # Clear it regardless
+            print("[video manager][CLEANUP_19] Set self.completion_callback to None.")
 
             if final_callback and not self.resetting:
-                print(f"[video manager] Executing final completion callback: {final_callback}")
+                print(f"[video manager][CLEANUP_20] Scheduling final completion callback via QTimer: {final_callback}")
                 try:
                     # Replace root.after with QTimer.singleShot
                     QTimer.singleShot(0, final_callback) # Schedule on Qt thread
+                    print("[video manager][CLEANUP_21] Final callback scheduled successfully.")
                 except Exception as cb_err:
-                    print(f"[video manager] Error executing final completion callback: {cb_err}")
+                    print(f"[video manager][CLEANUP_21_ERR] Error scheduling final completion callback: {cb_err}")
                     traceback.print_exc()
             elif self.resetting:
-                 print("[video manager] Resetting, skipping final completion callback.")
+                 print("[video manager][CLEANUP_20_SKIP] Resetting, skipping final completion callback.")
+            else: # Callback was None
+                print("[video manager][CLEANUP_20_SKIP] No final callback provided, skipping.")
 
-            print("[video manager] Post-playback cleanup complete.")
+            print("[video manager][CLEANUP_22] Post-playback cleanup complete.")
 
         except Exception as e:
-            print("[video manager] Error during post-playback cleanup:")
+            print("[video manager][CLEANUP_ERR] Error during post-playback cleanup:")
             traceback.print_exc()
         finally:
+             print("[video manager][CLEANUP_FINALLY_1] Entering finally block.")
+             print("[video manager][CLEANUP_FINALLY_2] Acquiring lock...")
              with self._lock:
+                  print("[video manager][CLEANUP_FINALLY_3] Lock acquired. Resetting state.")
                   self.is_playing = False
                   self.should_stop = True
                   self.resetting = False
                   self.video_player = None
                   self.completion_callback = None
+                  print("[video manager][CLEANUP_FINALLY_4] State reset.")
+             print("[video manager][CLEANUP_FINALLY_5] Lock released. Exiting finally block.")
 
 
     def _cleanup_after_error(self):
@@ -325,6 +351,7 @@ class VideoManager:
         """Stop video playback gracefully."""
         print("[video manager] stop_video called.")
         player_instance = None
+        cleanup_needed = False # Flag to track if cleanup should run
         with self._lock:
             if not self.is_playing:
                 print("[video manager] Not currently playing.")
@@ -335,20 +362,27 @@ class VideoManager:
 
             print("[video manager] Setting flags to stop playback.")
             self.should_stop = True # Signal intent to stop
-            # Keep is_playing True until _perform_post_playback_cleanup confirms player stopped
+            # Keep is_playing True until cleanup confirms player stopped
             player_instance = self.video_player # Get reference to signal player
+            cleanup_needed = True # Mark that cleanup should happen after player stops
 
         # Signal the VideoPlayer instance to stop (if it exists)
         # This runs outside the lock to avoid potential deadlocks if player calls back quickly
         if player_instance:
-            print("[video manager] Signaling video player instance to stop...")
-            player_instance.stop_video() # Ask the player thread to stop
-            # Player's _on_player_complete will trigger the rest of the cleanup (_perform_post_playback_cleanup)
+            print("[video manager] Signaling video player instance to stop and waiting...")
+            player_instance.stop_video(wait=True) # <<< MODIFIED: Ask the player thread to stop AND WAIT
+            print("[video manager] Video player stop_video returned (threads should be joined). ")
+            # --- Trigger cleanup directly AFTER player stops --- 
+            if cleanup_needed:
+                 print("[video manager] Triggering post-playback cleanup directly after player stop.")
+                 self._perform_post_playback_cleanup()
+            # --- End Trigger --- 
         else:
              print("[video manager] No video player instance to signal stop.")
              # If no player instance, but we were 'playing', trigger cleanup directly
-             # Replace root.after with QTimer.singleShot
-             QTimer.singleShot(0, self._perform_post_playback_cleanup)
+             if cleanup_needed:
+                  print("[video manager] No player instance, triggering cleanup directly.")
+                  self._perform_post_playback_cleanup()
 
 
     def force_stop(self):
