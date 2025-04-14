@@ -118,10 +118,10 @@ class MessageHandler:
                 pygame.mixer.stop()
 
             # --- Cancel Tkinter Timers ---
-            if self.kiosk_app.ui.cooldown_after_id:
-                print("[message handler] Cancelling existing cooldown timer.")
-                self.kiosk_app.root.after_cancel(self.kiosk_app.ui.cooldown_after_id)
-                self.kiosk_app.ui.cooldown_after_id = None
+            #if self.kiosk_app.ui.cooldown_after_id:
+                #print("[message handler] Cancelling existing cooldown timer.")
+                #self.kiosk_app.root.after_cancel(self.kiosk_app.ui.cooldown_after_id)
+                #self.kiosk_app.ui.cooldown_after_id = None
 
             # --- Hide Qt Overlays ---
             print("[message handler] Hiding all Qt overlays...")

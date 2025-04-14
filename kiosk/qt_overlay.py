@@ -54,12 +54,15 @@ class TimerThread(QThread):
     
     def __init__(self):
         super().__init__()
+        print("[DEBUG OVERLAY] TimerThread initialized")
         
     def run(self):
         # Thread just emits signals, actual updates happen in main thread
+        print("[DEBUG OVERLAY] TimerThread run() started")
         pass
         
     def update_display(self, time_str):
+        print(f"[DEBUG OVERLAY] TimerThread emitting update signal with time: {time_str}")
         self.update_signal.emit(time_str)
 
 class TimerDisplay:
@@ -2195,31 +2198,46 @@ class Overlay:
     @classmethod
     def update_timer_display(cls, time_str):
         """Update timer display, but NOT if game is lost."""
+        print(f"\n[DEBUG OVERLAY] update_timer_display called with time: {time_str}")
+        
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
+            print("[DEBUG OVERLAY] Timer or text_item not initialized")
             return
+            
         if cls._kiosk_app.timer.game_lost:  # Don't update if game is lost
+            print("[DEBUG OVERLAY] Game is lost, not updating timer")
             return
-        if cls._kiosk_app.timer.game_won: # Don't update if game is won.
+            
+        if cls._kiosk_app.timer.game_won:  # Don't update if game is won
+            print("[DEBUG OVERLAY] Game is won, not updating timer")
             return
             
         # Initialize timer thread if needed
         if cls._timer_thread is None:
+            print("[DEBUG OVERLAY] Initializing timer thread")
             cls._timer_thread = TimerThread()
             cls._timer_thread.update_signal.connect(cls._actual_timer_update)
             cls._timer_thread.start()
         
         # Send update through thread
+        print("[DEBUG OVERLAY] Sending update through timer thread")
         cls._timer_thread.update_display(time_str)
 
     @classmethod
     def _actual_timer_update(cls, time_str):
         """Actual update method that runs in the main thread"""
+        print(f"\n[DEBUG OVERLAY] _actual_timer_update called with time: {time_str}")
+        
         if hasattr(cls, '_timer') and cls._timer.text_item:
+            print("[DEBUG OVERLAY] Updating timer text item")
             cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
             cls._timer.text_item.setPos(350, 145)
             if cls._timer_window:
+                print("[DEBUG OVERLAY] Showing and raising timer window")
                 cls._timer_window.show()
                 cls._timer_window.raise_()
+        else:
+            print("[DEBUG OVERLAY] Timer or text_item not available for update")
 
     @classmethod
     def load_timer_background(cls, room_number):
