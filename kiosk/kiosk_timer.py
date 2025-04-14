@@ -77,16 +77,12 @@ class KioskTimer:
 
     def handle_command(self, command, minutes=None):
         """Handles start, stop, and set commands for the timer."""
-        print(f"\n[DEBUG TIMER] handle_command called with command: {command}, minutes: {minutes}")
-        print(f"[DEBUG TIMER] Current state - is_running: {self.is_running}, time_remaining: {self.time_remaining}, last_update: {self.last_update}")
-        
         if command == "start":
             if not self.is_running: # Prevent resetting last_update if already running
                 self.is_running = True
                 self.last_update = time.time()
-                print(f"[DEBUG TIMER] Timer started - new last_update: {self.last_update}")
             else:
-                print("[DEBUG TIMER] Timer already running, 'start' command ignored.")
+                print("[kiosk timer] Timer already running, 'start' command ignored.")
 
         elif command == "stop":
             if self.is_running:
@@ -95,28 +91,25 @@ class KioskTimer:
                     current_time = time.time()
                     elapsed = current_time - self.last_update
                     self.time_remaining = max(0, self.time_remaining - elapsed)
-                    print(f"[DEBUG TIMER] Timer stopped - elapsed: {elapsed}, new time_remaining: {self.time_remaining}")
                 self.is_running = False
                 self.last_update = None
-                print("[DEBUG TIMER] Timer stopped - is_running set to False, last_update cleared")
+                print("[kiosk timer] Timer stopped")
             else:
-                print("[DEBUG TIMER] Timer already stopped, 'stop' command ignored.")
+                print("[kiosk timer] Timer already stopped, 'stop' command ignored.")
 
         elif command == "set" and minutes is not None:
-            print(f"[DEBUG TIMER] Setting timer to {minutes} minutes")
             self.time_remaining = minutes * 60
             self.game_lost = False  # Reset game_lost flag when timer is set
             self.game_won = False  # Reset game_won flag as well
             self.is_running = False # Setting the timer implies it's not running yet
             self.last_update = None
-            print(f"[DEBUG TIMER] Timer set - time_remaining: {self.time_remaining}, is_running: {self.is_running}")
+            print(f"[kiosk timer] Timer set to {minutes} minutes (stopped)")
 
         # Update the display regardless of command to show current state/time
         self.update_display()
 
     def update_timer_loop(self):
         """Main loop executed periodically to update timer state."""
-        print("\n[DEBUG TIMER] update_timer_loop called")
         try:
             if self.is_running and self.last_update is not None:
                 current_time = time.time()
@@ -124,40 +117,31 @@ class KioskTimer:
                 old_time = self.time_remaining
                 self.time_remaining = max(0, self.time_remaining - elapsed)
                 self.last_update = current_time # Update last_update *after* calculating elapsed
-                
-                print(f"[DEBUG TIMER] update_timer_loop - elapsed: {elapsed:.2f}s")
-                print(f"[DEBUG TIMER] Time update - old: {old_time:.2f}s, new: {self.time_remaining:.2f}s")
-                print(f"[DEBUG TIMER] Current state - is_running: {self.is_running}, last_update: {self.last_update}")
 
                 # Check for game loss condition
                 if not self.game_lost and self.time_remaining <= 0:
-                    print(f"[DEBUG TIMER] Timer reached zero - triggering game loss")
+                    print(f"[kiosk timer] Timer reached zero.")
                     self.game_lost = True
                     self.is_running = False # Stop the timer definitively
                     self.last_update = None
 
                     # Trigger game loss audio and UI changes via kiosk_app
                     if self.kiosk_app:
-                        print("[DEBUG TIMER] Triggering game loss handling")
+                        print("[kiosk timer] Triggering game loss handling.")
                         self.kiosk_app.audio_manager.stop_background_music()
                         if self.kiosk_app.assigned_room:
                             self.kiosk_app.audio_manager.play_loss_audio(self.kiosk_app.assigned_room)
                         else:
-                            print("[DEBUG TIMER] No room assigned, cannot play loss audio")
+                            print("[kiosk timer] No room assigned, cannot play loss audio.")
                         self.kiosk_app.handle_game_loss() # Tell kiosk app game is lost
                     else:
-                        print("[DEBUG TIMER] KioskApp reference missing, cannot handle game loss")
+                        print("[kiosk timer] KioskApp reference missing, cannot handle game loss.")
 
                 # Update the visual display
                 self.update_display()
-            else:
-                if not self.is_running:
-                    print("[DEBUG TIMER] Timer not running, skipping update")
-                if self.last_update is None:
-                    print("[DEBUG TIMER] last_update is None, skipping update")
 
         except Exception as e:
-            print(f"[DEBUG TIMER] Error in update_timer_loop: {e}")
+            print(f"[kiosk timer] Error in update_timer_loop: {e}")
             traceback.print_exc()
 
     def get_time_str(self):
@@ -170,12 +154,8 @@ class KioskTimer:
 
     def update_display(self):
         """Updates the timer display via the Qt Overlay, checking conditions."""
-        print(f"\n[DEBUG TIMER] update_display called")
-        print(f"[DEBUG TIMER] Current state - time_remaining: {self.time_remaining:.2f}s, is_running: {self.is_running}")
-        
         # Avoid queueing multiple updates if one is already scheduled/running
         if self._update_scheduled:
-            print("[DEBUG TIMER] Update already scheduled, skipping")
             return
         self._update_scheduled = True
 
@@ -189,16 +169,14 @@ class KioskTimer:
             )
 
             if should_hide_timer:
-                print("[DEBUG TIMER] Conditions met to hide timer")
                 Overlay.hide_timer()
             else:
                 # Conditions met to show/update the timer
                 time_str = self.get_time_str()
-                print(f"[DEBUG TIMER] Updating display with time: {time_str}")
                 Overlay.update_timer_display(time_str)
 
         except Exception as e:
-            print(f"[DEBUG TIMER] Error in update_display: {e}")
+            print(f"[kiosk timer] Error in update_display: {e}")
             traceback.print_exc()
         finally:
             self._update_scheduled = False
