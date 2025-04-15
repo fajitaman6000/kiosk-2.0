@@ -1,4 +1,4 @@
-print("[qt overlay] Beginning imports ...")
+print("[qt init] Beginning imports ...")
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject, QTimer
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsItem
@@ -14,7 +14,7 @@ from config import ROOM_CONFIG
 import cv2
 import base64
 from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
-print("[qt overlay] Ending imports ...")
+print("[qt init] Ending imports ...")
 
 
 def init_fullscreen_hint(cls):
@@ -22,7 +22,7 @@ def init_fullscreen_hint(cls):
     if cls._fullscreen_hint_initialized:
         return
 
-    print("[qt overlay] Initializing fullscreen hint components...")
+    print("[qt init] Initializing fullscreen hint components...")
     try:
         # Create window
         cls._fullscreen_hint_window = QWidget() # No parent initially needed for fullscreen
@@ -65,10 +65,10 @@ def init_fullscreen_hint(cls):
         cls._fullscreen_hint_pixmap_item.setPos(0, 0) # Place item at top-left
 
         cls._fullscreen_hint_initialized = True
-        print("[qt overlay] Fullscreen hint components initialized.")
+        print("[qt init] Fullscreen hint components initialized.")
 
     except Exception as e:
-        print(f"[qt overlay] Error initializing fullscreen hint display: {e}")
+        print(f"[qt init] Error initializing fullscreen hint display: {e}")
         traceback.print_exc()
         cls._fullscreen_hint_initialized = False 
 
@@ -78,7 +78,7 @@ def init_view_image_button(cls):
     """Initialize the 'View Image Hint' button components."""
     if cls._view_image_button_initialized:
         return
-    print("[qt overlay] Initializing View Image Hint button components...")
+    print("[qt init] Initializing View Image Hint button components...")
     try:
         cls._view_image_button = {
             'window': QWidget(cls._window), # Parent to main overlay window
@@ -158,9 +158,9 @@ def init_view_image_button(cls):
             win32gui.SetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE, style | win32con.WS_EX_NOACTIVATE)
 
         cls._view_image_button_initialized = True
-        print("[qt overlay] View Image Hint button initialized.")
+        print("[qt init] View Image Hint button initialized.")
     except Exception as e:
-        print(f"[qt overlay] Error initializing View Image Hint button: {e}")
+        print(f"[qt init] Error initializing View Image Hint button: {e}")
         traceback.print_exc()
         cls._view_image_button_initialized = False
 
@@ -169,7 +169,7 @@ def init_view_solution_button(cls):
     """Initialize the 'View Solution' button components."""
     if cls._view_solution_button_initialized:
         return
-    print("[qt overlay] Initializing View Solution button components...")
+    print("[qt init] Initializing View Solution button components...")
     try:
         cls._view_solution_button = {
             'window': QWidget(cls._window), # Parent to main overlay window
@@ -247,12 +247,11 @@ def init_view_solution_button(cls):
             win32gui.SetWindowLong(int(win.winId()), win32con.GWL_EXSTYLE, style | win32con.WS_EX_NOACTIVATE)
 
         cls._view_solution_button_initialized = True
-        print("[qt overlay] View Solution button initialized.")
+        print("[qt init] View Solution button initialized.")
     except Exception as e:
-        print(f"[qt overlay] Error initializing View Solution button: {e}")
+        print(f"[qt init] Error initializing View Solution button: {e}")
         traceback.print_exc()
         cls._view_solution_button_initialized = False
-
 
 
 def init_video_display(cls):
@@ -260,7 +259,7 @@ def init_video_display(cls):
     if cls._video_is_initialized:
         return # Already initialized
 
-    print("[qt overlay] Initializing video display components...")
+    print("[qt init] Initializing video display components...")
     try:
         # Create video window
         cls._video_window = QWidget() # No parent initially
@@ -303,14 +302,12 @@ def init_video_display(cls):
         cls._video_frame_item.setPos(0, 0) # Place item at top-left
 
         cls._video_is_initialized = True
-        print("[qt overlay] Video display components initialized.")
+        print("[qt init] Video display components initialized.")
 
     except Exception as e:
-        print(f"[qt overlay] Error initializing video display: {e}")
+        print(f"[qt init] Error initializing video display: {e}")
         traceback.print_exc()
         cls._video_is_initialized = False
-
-
 
 
 def init_hint_text_overlay(cls):
@@ -432,12 +429,12 @@ def init_hint_request_text_overlay(cls):
 
 def init_gm_assistance_overlay(cls):
     """Initialize game master assistance overlay components."""
-    print("[qt overlay] Initializing GM assistance overlay...")
-    print(f"[qt overlay] Has kiosk_app: {hasattr(cls, 'kiosk_app')}")
+    print("[qt init] Initializing GM assistance overlay...")
+    print(f"[qt init] Has kiosk_app: {hasattr(cls, 'kiosk_app')}")
     if hasattr(cls, 'kiosk_app') and cls._kiosk_app is not None:
-        print(f"[qt overlay] Using kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
+        print(f"[qt init] Using kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
     else:
-        print("[qt overlay] No kiosk_app available")
+        print("[qt init] No kiosk_app available")
         
     if not hasattr(cls, '_gm_assistance_overlay') or not cls._gm_assistance_overlay:
         cls._gm_assistance_overlay = {
@@ -601,29 +598,29 @@ def init_gm_assistance_overlay(cls):
                 items = self.scene().items(scene_pos)
                 for item in items:
                     if item == cls._gm_assistance_overlay['yes_rect'] or item == cls._gm_assistance_overlay['yes_button']:
-                        print("[qt overlay] Yes button clicked - GM assistance accepted")
+                        print("[qt init] Yes button clicked - GM assistance accepted")
                         # Send message to admin using the kiosk app's network
                         if hasattr(cls, 'kiosk_app') and cls._kiosk_app is not None:
-                            print(f"[qt overlay] Found kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
+                            print(f"[qt init] Found kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
                             try:
                                 cls._kiosk_app.network.send_message({
                                     'type': 'gm_assistance_accepted',
                                     'computer_name': cls._kiosk_app.computer_name
                                 })
-                                print("[qt overlay] Message sent successfully")
+                                print("[qt init] Message sent successfully")
                             except Exception as e:
-                                print(f"[qt overlay] Error sending message: {e}")
+                                print(f"[qt init] Error sending message: {e}")
                                 traceback.print_exc()
                         else:
-                            print("[qt overlay] Error: kiosk_app not found or is None")
-                            print(f"[qt overlay] Has kiosk_app attribute: {hasattr(cls, 'kiosk_app')}")
+                            print("[qt init] Error: kiosk_app not found or is None")
+                            print(f"[qt init] Has kiosk_app attribute: {hasattr(cls, 'kiosk_app')}")
                             if hasattr(cls, 'kiosk_app'):
-                                print(f"[qt overlay] kiosk_app value: {cls._kiosk_app}")
+                                print(f"[qt init] kiosk_app value: {cls._kiosk_app}")
                         # Hide the overlay after accepting
                         cls.hide_gm_assistance()
                         break
                     elif item == cls._gm_assistance_overlay['no_rect'] or item == cls._gm_assistance_overlay['no_button']:
-                        print("[qt overlay] Player clicked \"No\" - In-room assistance declined")
+                        print("[qt init] Player clicked \"No\" - In-room assistance declined")
                         # Hide the overlay after declining
                         cls.hide_gm_assistance()
                         break
@@ -652,11 +649,11 @@ def init_gm_assistance_overlay(cls):
 def init_timer(cls):
     """Initialize the timer display components"""
     if not cls._initialized:
-        print("[qt overlay]Warning: Attempting to init_timer before base initialization")
+        print("[qt init]Warning: Attempting to init_timer before base initialization")
         return
             
     if not hasattr(cls, '_timer'):
-        print("[qt overlay]Initializing timer components...")
+        print("[qt init]Initializing timer components...")
         cls._timer = TimerDisplay()
             
         # Create a separate window for the timer
@@ -684,11 +681,11 @@ def init_timer(cls):
         cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
         # Set up background image first
-        print("[qt overlay]Setting up background placeholder...")
+        print("[qt init]Setting up background placeholder...")
         cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
         
         # Create timer text and add it after background
-        print("[qt overlay]Setting up timer text...")
+        print("[qt init]Setting up timer text...")
         cls._timer.text_item = QGraphicsTextItem()
         cls._timer.text_item.setDefaultTextColor(Qt.white)
         font = QFont('Arial', 120)
@@ -722,17 +719,17 @@ def init_timer(cls):
                 style | win32con.WS_EX_NOACTIVATE
             )
             
-        print("[qt overlay]Timer initialization complete")
+        print("[qt init]Timer initialization complete")
 
 
 
 def init_help_button(cls):
     if not cls._initialized:
-        print("[qt overlay]Warning: Attempting to init_help_button before base initialization")
+        print("[qt init]Warning: Attempting to init_help_button before base initialization")
         return
 
     if not hasattr(cls, '_button'):
-        print("[qt overlay]Initializing help button components...")
+        print("[qt init]Initializing help button components...")
         cls._button = {}
 
         # Create a separate window for the button
@@ -770,10 +767,10 @@ def init_help_button(cls):
         cls._button['scene'].setSceneRect(scene_rect)
 
         # Debug prints
-        #print(f"[qt overlay]View Setup Debug:")
-        #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
-        #print(f"[qt overlay]Scene rect: {scene_rect}")
-        #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
+        #print(f"[qt init]View Setup Debug:")
+        #print(f"[qt init]View geometry: {cls._button_view.geometry()}")
+        #print(f"[qt init]Scene rect: {scene_rect}")
+        #print(f"[qt init]View matrix: {cls._button_view.transform()}")
 
         # Set up placeholders for images
         cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -790,7 +787,7 @@ def init_help_button(cls):
                 style | win32con.WS_EX_NOACTIVATE
             )
 
-        print("[qt overlay]Help button initialization complete")
+        print("[qt init]Help button initialization complete")
 
 
 
@@ -814,7 +811,7 @@ def init_background(cls):
                     style | win32con.WS_EX_NOACTIVATE
                 )
             except Exception as e:
-                print(f"[qt overlay] Error setting parent/style for background window: {e}")
+                print(f"[qt init] Error setting parent/style for background window: {e}")
         
         # Create scene and view
         cls._background_scene = QGraphicsScene()
@@ -853,7 +850,7 @@ def init_waiting_label(cls):
     if hasattr(cls, '_waiting_label_initialized') and cls._waiting_label_initialized:
         return
 
-    print("[qt overlay] Initializing waiting screen label...")
+    print("[qt init] Initializing waiting screen label...")
     try:
         screen_rect = cls._app.primaryScreen().geometry()
         screen_width = screen_rect.width()
@@ -898,10 +895,10 @@ def init_waiting_label(cls):
             'text_item': text_item
         }
         cls._waiting_label_initialized = True
-        print("[qt overlay] Waiting screen label initialized.")
+        print("[qt init] Waiting screen label initialized.")
 
     except Exception as e:
-        print(f"[qt overlay] Error initializing waiting screen label: {e}")
+        print(f"[qt init] Error initializing waiting screen label: {e}")
         traceback.print_exc()
         cls._waiting_label = None # Ensure it's None on error
         cls._waiting_label_initialized = False
