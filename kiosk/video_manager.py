@@ -18,9 +18,10 @@ from PyQt5.QtCore import QMetaObject, Qt, Q_ARG, QTimer # Import for invoking me
 print("[video_manager] Ending imports ...")
 
 class VideoManager:
-    def __init__(self, root):
+    def __init__(self, root=None):
         print("[video manager] Initializing VideoManager")
-        self.root = root # Keep root for 'root.after' for now
+        # root is kept for compatibility but no longer used
+        self.root = None
         self.is_playing = False
         self.should_stop = False # User/logic requested stop
         self._lock = threading.Lock() # Lock for managing state changes
@@ -209,21 +210,14 @@ class VideoManager:
         # we need to trigger the cleanup from here.
         # If stop_video was called, it handles the cleanup itself after waiting.
         if not self.should_stop:
-            print("[video manager][CALLBACK_NATURAL_COMPLETION] Video finished naturally. Scheduling cleanup via root.after.")
-            # Use root.after to schedule cleanup on the main Tkinter thread
-            try:
-                if self.root: # Ensure root exists
-                    self.root.after(0, self._perform_post_playback_cleanup)
-                else:
-                    print("[video manager][ERROR] Cannot schedule cleanup: self.root is None.")
-            except Exception as e:
-                print(f"[video manager][ERROR] Exception scheduling cleanup via root.after: {e}")
-                traceback.print_exc()
+            print("[video manager][CALLBACK_NATURAL_COMPLETION] Video finished naturally. Scheduling cleanup via QTimer.")
+            # Replace root.after with QTimer.singleShot
+            QTimer.singleShot(0, self._perform_post_playback_cleanup)
         else:
             print("[video manager][CALLBACK_STOPPED] Video was stopped manually. Cleanup handled by stop_video.")
         # --- End Cleanup Trigger Logic ---
 
-        print("[video manager][CALLBACK_END] _on_player_complete finished.") 
+        print("[video manager][CALLBACK_END] _on_player_complete finished.")
 
     def _perform_post_playback_cleanup(self):
         """Performs cleanup actions AFTER the player thread has confirmed completion."""

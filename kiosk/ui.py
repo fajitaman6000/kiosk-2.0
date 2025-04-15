@@ -12,7 +12,7 @@ print("[ui] Ending imports ...")
 
 class KioskUI:
     def __init__(self, root, computer_name, room_config, message_handler):
-        self.root = root
+        # root parameter kept for compatibility but no longer used
         self.computer_name = computer_name
         self.room_config = room_config
         self.message_handler = message_handler
@@ -29,18 +29,15 @@ class KioskUI:
         self.current_hint = None
         self.cooldown_after_id = None
         self.stored_image_data = None
-
+        self.image_button = None  # Keep for compatibility
         self.image_is_fullscreen = False
 
-        self.setup_root()
-
-        # Pass the Tkinter root window to Overlay.init()
-        Overlay.init(tkinter_root=self.root)
+        # Initialize the Qt overlay
+        Overlay.init()
         
     def setup_root(self):
-        self.root.attributes('-fullscreen', True)
-        self.root.configure(bg='black')
-        #self.root.bind('<Escape>', lambda e: self.root.attributes('-fullscreen', False))
+        # No longer needed with Qt
+        pass
 
     def load_background(self, room_number):
         if room_number not in self.room_config['backgrounds']:
@@ -58,33 +55,28 @@ class KioskUI:
         
     def setup_waiting_screen(self):
         # Clear any existing room background/widgets first
-        for widget in self.root.winfo_children():
-            if not hasattr(widget, 'is_persistent'):
-                widget.destroy()
+        # No need to clear Tkinter widgets since we don't have any
+        
         # Use the Qt Overlay for the waiting screen
         Overlay.show_waiting_screen_label(self.computer_name)
         
     def clear_all_labels(self):
         """Clear all UI elements and cancel any pending cooldown timer"""
         if self.cooldown_after_id:
-            # Replace root.after_cancel with QTimer.singleShot(0, None) to effectively cancel
-            # We can't directly cancel QTimer.singleShot, but we can set the flag to False
+            # Set the hint_cooldown to False to prevent further cooldown actions
             self.hint_cooldown = False
             self.cooldown_after_id = None
             
         self.hint_cooldown = False
         
-        for widget in [self.hint_label]: # Removed self.help_button from here
-            if widget:
-                widget.destroy()
-                
+        # No longer need to destroy Tkinter widgets
         self.hint_label = None
         
     def clear_hint_ui(self):
-        """Clears Tkinter elements AND hides corresponding Qt elements."""
-        print("[ui.py] Clearing Tkinter hint UI elements and hiding Qt counterparts")
+        """Clears hint UI elements and hides Qt elements."""
+        print("[ui.py] Clearing hint UI elements and hiding Qt counterparts")
 
-        # Hide Qt Hint Text/Buttons first
+        # Hide Qt Hint Text/Buttons
         Overlay.hide_hint_text()
         Overlay.hide_view_image_button()
         Overlay.hide_view_solution_button()
@@ -94,12 +86,7 @@ class KioskUI:
         # Ensure the waiting screen label is hidden
         Overlay.hide_waiting_screen_label()
 
-        # Clear any existing widgets except persistent ones
-        for widget in self.root.winfo_children():
-            # Skip destroying widgets marked as persistent
-            if hasattr(widget, 'is_persistent'):
-                continue
-            widget.destroy()
+        # No need to clear Tkinter widgets
 
         # Configure the room-specific elements
         if room_number > 0:
@@ -108,7 +95,7 @@ class KioskUI:
             # Get background path and set background using Qt overlay
             background_path = self.load_background(room_number)
             if background_path:
-                # Use Qt to render the background instead of tkinter Label
+                # Use Qt to render the background
                 Overlay.set_background_image(background_path)
 
             # Load room-specific timer background
@@ -129,7 +116,7 @@ class KioskUI:
             else:
                 # If there's NO current hint, then update the help button.
                 print("[ui.py]No current hint, updating help button within setup_room_interface")
-                # Replace root.after with QTimer.singleShot
+                # Use QTimer.singleShot
                 QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
     
     def request_help(self):

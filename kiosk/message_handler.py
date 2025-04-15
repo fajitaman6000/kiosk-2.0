@@ -46,7 +46,6 @@ class MessageHandler:
         self._last_admin_ip = None  # Track last admin IP to detect changes
         # Store recently processed command IDs to prevent duplicate execution
         self.processed_command_ids = {} # {command_id: timestamp}
-        self.root = kiosk_app.root # Keep root for 'root.after' for now
         self._lock = threading.Lock()
         self._message_queue = []
         self._processing = False

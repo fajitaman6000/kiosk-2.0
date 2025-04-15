@@ -27,8 +27,8 @@ class TimerUpdateThread(QThread):
 
 class KioskTimer:
     def __init__(self, root, kiosk_app):
-        """Initialize the timer with root (for scheduling) and kiosk_app reference"""
-        self.root = root # Still needed for root.after scheduling
+        """Initialize the timer with kiosk_app reference"""
+        # root parameter is kept for compatibility but is no longer used
         self.kiosk_app = kiosk_app
         self.time_remaining = 60 * 45  # Default 45 minutes
         self.is_running = False
@@ -180,5 +180,17 @@ class KioskTimer:
             traceback.print_exc()
         finally:
             self._update_scheduled = False
+
+    def start(self, duration_seconds=None):
+        """Start the timer with optional duration in seconds"""
+        if duration_seconds is not None:
+            self.time_remaining = duration_seconds
+        
+        self.is_running = True
+        self.last_update = time.time()
+        self.game_lost = False  # Reset game lost flag
+        self.game_won = False   # Reset game won flag
+        print(f"[kiosk timer] Timer started with {self.time_remaining} seconds remaining")
+        self.update_display()
 
     # Removed _do_update_display as it's no longer needed; logic is in update_display

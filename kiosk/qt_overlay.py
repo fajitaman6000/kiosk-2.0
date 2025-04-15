@@ -180,7 +180,7 @@ class Overlay:
     _background_initialized = False
     
     @classmethod
-    def init(cls, tkinter_root=None):
+    def init(cls):
         """Initialize the Qt overlay system."""
         if cls._initialized:
             return
@@ -198,18 +198,10 @@ class Overlay:
         print("[qt overlay] Creating OverlayBridge...")
         cls._bridge = OverlayBridge()
         
-        # Store kiosk_app reference if available
-        if hasattr(tkinter_root, 'kiosk_app'):
-            print("[qt overlay] Stored kiosk_app reference:", tkinter_root.kiosk_app)
-            cls._kiosk_app = tkinter_root.kiosk_app
-        else:
-            print("[qt overlay] No kiosk_app available")
+        print("[qt overlay] Kiosk_app reference needs to be set separately.")
 
         # --- Rest of init ---
-        if tkinter_root:
-            cls._parent_hwnd = tkinter_root.winfo_id()
-        else:
-            cls._parent_hwnd = None
+        cls._parent_hwnd = None # Explicitly set to None as it's no longer used for parenting
 
         if not cls._window:
             cls._window = QWidget()
@@ -221,17 +213,6 @@ class Overlay:
                 Qt.WindowDoesNotAcceptFocus
             )
             cls._window.setAttribute(Qt.WA_ShowWithoutActivating)
-            if cls._parent_hwnd:
-                 try:
-                    win32gui.SetParent(int(cls._window.winId()), cls._parent_hwnd)
-                    style = win32gui.GetWindowLong(int(cls._window.winId()), win32con.GWL_EXSTYLE)
-                    win32gui.SetWindowLong(
-                        int(cls._window.winId()),
-                        win32con.GWL_EXSTYLE,
-                        style | win32con.WS_EX_NOACTIVATE
-                    )
-                 except Exception as e:
-                     print(f"[qt overlay] Error setting parent/style for main window: {e}")
 
             cls._scene = QGraphicsScene()
             cls._view = QGraphicsView(cls._scene, cls._window)
@@ -273,6 +254,12 @@ class Overlay:
         cls.hide_waiting_screen_label() # Hide waiting label on init
 
         print("[qt overlay] Initialization complete.")
+    
+    @classmethod
+    def set_kiosk_app(cls, kiosk_app):
+        """Set the kiosk_app reference directly."""
+        cls._kiosk_app = kiosk_app
+        print(f"[qt overlay] Kiosk_app reference set: {kiosk_app}")
 
     @classmethod
     def _init_fullscreen_hint(cls):
