@@ -203,15 +203,17 @@ class Overlay:
         # Get the main window if available
         from qt_main import QtKioskApp
         main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+        content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
         
-        if not main_window:
-            print("[qt overlay] Warning: No main window available yet")
+        if not main_window or not content_widget:
+            print("[qt overlay] Warning: No main window/content widget available yet")
             # Create a temporary parent window if needed
             if not cls._window:
                 cls._window = QWidget()
         else:
-            print("[qt overlay] Using main window as parent")
-            cls._window = main_window
+            print("[qt overlay] Using content widget as parent")
+            # Use content_widget instead of main_window to preserve layering
+            cls._window = content_widget
         
         # Create main overlay components if needed
         if not hasattr(cls, '_scene') or cls._scene is None:
@@ -230,13 +232,15 @@ class Overlay:
         # Mark as initialized before creating components
         cls._initialized = True
 
-        # Initialize all overlays
+        # Initialize background first to ensure it's at the bottom
+        cls._init_background()  # Initialize background component
+        
+        # Then initialize all other overlays that should appear above it
         cls._init_hint_text_overlay()
         cls._init_hint_request_text_overlay()
         cls._init_gm_assistance_overlay()
         cls._init_video_display() # Initialize video components
         cls._init_fullscreen_hint()
-        cls._init_background()  # Initialize background component
 
         # Initialize timer and help button
         cls.init_timer()
@@ -1955,21 +1959,12 @@ class Overlay:
                     y_offset = max(0, (scaled_pixmap.height() - screen_height) // 2)
                     cls._background_pixmap_item.setOffset(-x_offset, -y_offset)
                 
-                # Make sure window is visible and at the bottom of the z-order
+                # Make sure window is visible but stays in the background
                 cls._background_window.show()
-                cls._background_window.lower()  # Keep it at the bottom of the z-order
+                cls._background_window.lower()  # Critical: keep it at the bottom
                 
-                # Ensure all other windows are above it
-                if hasattr(cls, '_window') and cls._window:
-                    cls._window.raise_()
-                if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window'):
-                    cls._hint_text['window'].raise_()
-                if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window'):
-                    cls._hint_request_text['window'].raise_()
-                if hasattr(cls, '_timer_window') and cls._timer_window:
-                    cls._timer_window.raise_()
-                if hasattr(cls, '_button_window') and cls._button_window:
-                    cls._button_window.raise_()
+                # Ensure proper scene rect
+                cls._background_scene.setSceneRect(0, 0, screen_width, screen_height)
                 
                 print(f"[qt_overlay] Background set to: {image_path}")
             

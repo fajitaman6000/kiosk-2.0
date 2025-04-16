@@ -1,5 +1,5 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer
 import signal
 
@@ -16,8 +16,14 @@ class QtKioskApp(QApplication):
         self.main_window = QWidget()
         self.main_window.setWindowTitle("Escape Room Kiosk")
         
-        # Make it a proper window - removing problematic flags
-        # Don't use Qt.Tool or Qt.FramelessWindowHint which hide from taskbar
+        # Use a layout to properly manage child widgets
+        self.layout = QVBoxLayout(self.main_window)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(0)
+        
+        # Content area where UI elements will be placed
+        self.content_widget = QWidget(self.main_window)
+        self.layout.addWidget(self.content_widget)
         
         # Set a reasonable size for the main window
         screen_size = self.primaryScreen().size()

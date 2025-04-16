@@ -24,17 +24,25 @@ def init_fullscreen_hint(cls):
 
     print("[qt init] Initializing fullscreen hint components...")
     
-    # Get the main window if available
+    # Get the main window and content widget
     from qt_main import QtKioskApp
     main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+    content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+    
+    if not content_widget:
+        print("[qt init] Error: No content widget available for fullscreen hint")
+        if main_window:
+            content_widget = main_window  # Fallback to main window
+        else:
+            return  # Can't proceed without parent
     
     try:
-        # Create window as child of main window
-        cls._fullscreen_hint_window = QWidget(main_window)
+        # Create window as child of content widget
+        cls._fullscreen_hint_window = QWidget(content_widget)
         cls._fullscreen_hint_window.setStyleSheet("background-color: black;") # Black background
         
-        # Use simpler window flags - no WindowStaysOnTopHint or Tool
-        cls._fullscreen_hint_window.setWindowFlags(Qt.FramelessWindowHint)
+        # Make it fill the entire parent
+        cls._fullscreen_hint_window.setGeometry(0, 0, content_widget.width(), content_widget.height())
 
         # Create scene and view using the new clickable view
         cls._fullscreen_hint_scene = QGraphicsScene(cls._fullscreen_hint_window)
@@ -55,15 +63,12 @@ def init_fullscreen_hint(cls):
         cls._fullscreen_hint_pixmap_item = QGraphicsPixmapItem()
         cls._fullscreen_hint_scene.addItem(cls._fullscreen_hint_pixmap_item)
 
-        # Initial full screen setup (will be refined when image is shown)
-        screen_geometry = QApplication.desktop().screenGeometry()
-        width = screen_geometry.width()
-        height = screen_geometry.height()
-
-        cls._fullscreen_hint_window.setGeometry(0, 0, width, height)
-        cls._fullscreen_hint_view.setGeometry(0, 0, width, height)
-        cls._fullscreen_hint_scene.setSceneRect(0, 0, width, height)
-        cls._fullscreen_hint_pixmap_item.setPos(0, 0) # Place item at top-left
+        # Make view fill the parent
+        cls._fullscreen_hint_view.setGeometry(0, 0, content_widget.width(), content_widget.height())
+        cls._fullscreen_hint_scene.setSceneRect(0, 0, content_widget.width(), content_widget.height())
+        
+        # Hide initially
+        cls._fullscreen_hint_window.hide()
 
         cls._fullscreen_hint_initialized = True
         print("[qt init] Fullscreen hint components initialized.")
@@ -266,17 +271,25 @@ def init_video_display(cls):
 
     print("[qt init] Initializing video display components...")
     
-    # Get the main window if available
+    # Get the main window and content widget
     from qt_main import QtKioskApp
     main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+    content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+    
+    if not content_widget:
+        print("[qt init] Error: No content widget available for video display")
+        if main_window:
+            content_widget = main_window  # Fallback to main window
+        else:
+            return  # Can't proceed without parent
     
     try:
-        # Create video window - parent to main window
-        cls._video_window = QWidget(main_window)
+        # Create video window as a child of content widget to ensure proper z-order
+        cls._video_window = QWidget(content_widget)
         cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
         
-        # Use more standard window flags - avoid WindowStaysOnTopHint and Tool
-        cls._video_window.setWindowFlags(Qt.FramelessWindowHint)
+        # Video should be visible above background but below UI elements
+        cls._video_window.setGeometry(0, 0, content_widget.width(), content_widget.height())
         
         # Create scene and view
         cls._video_scene = QGraphicsScene(cls._video_window)
@@ -301,6 +314,9 @@ def init_video_display(cls):
         cls._video_view.setGeometry(0, 0, width, height)
         cls._video_scene.setSceneRect(0, 0, width, height)
         cls._video_frame_item.setPos(0, 0) # Place item at top-left
+        
+        # Hide initially
+        cls._video_window.hide()
 
         cls._video_is_initialized = True
         print("[qt init] Video display components initialized.")
@@ -793,18 +809,28 @@ def init_help_button(cls):
 def init_background(cls):
     """Initialize Qt components for displaying the background image"""
     try:
-        # Create window - parented to the main window
+        # Get the main window's content widget to parent to
         from qt_main import QtKioskApp
         main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
         
         if not main_window:
             print("[qt init] Error: No main window available for parenting background window")
             return
+        
+        # Use content_widget as the parent to preserve proper z-ordering
+        content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+        if not content_widget:
+            print("[qt init] Error: No content widget available, using main window")
+            content_widget = main_window
             
-        # Create background window as a child of the main window
-        cls._background_window = QWidget(main_window)
-        # Remove problematic WindowStaysOnTopHint flag that makes it cover everything
-        cls._background_window.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
+        # Create background directly in the main window's content area
+        # This is critical to ensure proper z-ordering
+        cls._background_window = QWidget(content_widget)
+        
+        # Make it fill the entire parent and stay in the background
+        cls._background_window.setGeometry(0, 0, main_window.width(), main_window.height())
+        cls._background_window.lower()  # Ensure it stays at the back
+        cls._background_window.setAutoFillBackground(True)  # Important for proper rendering
         
         # Create scene and view
         cls._background_scene = QGraphicsScene()
@@ -815,19 +841,14 @@ def init_background(cls):
         cls._background_view.setFrameShape(QGraphicsView.NoFrame)
         cls._background_view.setRenderHint(QPainter.SmoothPixmapTransform)
         
+        # Make view fill the background window
+        cls._background_view.setGeometry(0, 0, main_window.width(), main_window.height())
+        
         # Create pixmap item
         cls._background_pixmap_item = cls._background_scene.addPixmap(QPixmap())
         
-        # Set up layout
-        screen_size = cls._app.primaryScreen().size()
-        cls._background_view.setFixedSize(screen_size)
-        cls._background_window.setFixedSize(screen_size)
-        
-        # Set window to cover the entire main window area
-        cls._background_window.move(0, 0)
-        
-        # Ensure background is at the bottom of the z-order stack
-        cls._background_window.lower()
+        # Set scene rect to match view size
+        cls._background_scene.setSceneRect(0, 0, main_window.width(), main_window.height())
         
         # Mark as initialized
         cls._background_initialized = True
