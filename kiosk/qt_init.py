@@ -329,15 +329,19 @@ def init_video_display(cls):
 
 def init_hint_text_overlay(cls):
     """Initialize hint text overlay components."""
-    # Get the main window if available
+    # Get the main window and content widget
     from qt_main import QtKioskApp
     main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+    content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
     
-    if not main_window:
-        print("[qt init] Warning: No main window available for hint text overlay")
-        parent = cls._window
+    if not content_widget:
+        print("[qt init] Warning: No content widget available for hint text overlay")
+        if main_window:
+            parent = main_window
+        else:
+            parent = cls._window
     else:
-        parent = main_window
+        parent = content_widget
     
     if not hasattr(cls, '_hint_text') or not cls._hint_text:
         cls._hint_text = {
@@ -349,21 +353,27 @@ def init_hint_text_overlay(cls):
             'current_background': None
         }
 
-    # Create hint window if needed
+    # Create hint window if needed - CRITICAL: Create at the correct dimensions immediately
     if not cls._hint_text['window']:
-        # Parent to main window instead of using problematic flags
+        width = 588  # Default width for hint window
+        height = 951  # Default height for hint window
+        
+        # Parent to content widget to ensure proper z-ordering
         cls._hint_text['window'] = QWidget(parent)
-        cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground)
-        # Use fewer problematic flags - no WindowStaysOnTopHint or Tool
-        cls._hint_text['window'].setWindowFlags(
-            Qt.FramelessWindowHint
-        )
+        
+        # Critical: Set fixed geometry immediately at creation time
+        cls._hint_text['window'].setGeometry(850, 80, width, height)
+        
+        # Make sure it's transparent
+        cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground, True)
 
     # Create scene and view if needed
     if not cls._hint_text['scene']:
         cls._hint_text['scene'] = QGraphicsScene()
     if not cls._hint_text['view']:
         cls._hint_text['view'] = QGraphicsView(cls._hint_text['scene'], cls._hint_text['window'])
+        # Critical: Use explicit transparent background
+        cls._hint_text['view'].viewport().setAutoFillBackground(False)
         cls._hint_text['view'].setStyleSheet("""
             QGraphicsView {
                 background: transparent;
@@ -373,6 +383,12 @@ def init_hint_text_overlay(cls):
         cls._hint_text['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cls._hint_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cls._hint_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        
+        # Fill the window exactly
+        width = cls._hint_text['window'].width()
+        height = cls._hint_text['window'].height()
+        cls._hint_text['view'].setGeometry(0, 0, width, height)
+        cls._hint_text['scene'].setSceneRect(0, 0, width, height)
 
     # Create text item if needed
     if not cls._hint_text['text_item']:
@@ -382,22 +398,28 @@ def init_hint_text_overlay(cls):
         cls._hint_text['text_item'].setFont(font)
         cls._hint_text['scene'].addItem(cls._hint_text['text_item'])
 
-    # Set up background image first
+    # Set up background image for the hint text (not the main background)
     if not cls._hint_text['bg_image_item']:
         cls._hint_text['bg_image_item'] = cls._hint_text['scene'].addPixmap(QPixmap())
         cls._hint_text['bg_image_item'].setZValue(-1) # Set the image to the background layer
 
-    if cls._parent_hwnd:
-        style = win32gui.GetWindowLong(int(cls._hint_text['window'].winId()), win32con.GWL_EXSTYLE)
-        win32gui.SetWindowLong(
-            int(cls._hint_text['window'].winId()),
-            win32con.GWL_EXSTYLE,
-            style | win32con.WS_EX_NOACTIVATE
-        )
-
 
 def init_hint_request_text_overlay(cls):
     """Initialize hint request text overlay components."""
+    # Get the main window and content widget
+    from qt_main import QtKioskApp
+    main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+    content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+    
+    if not content_widget:
+        print("[qt init] Warning: No content widget available for hint request text overlay")
+        if main_window:
+            parent = main_window
+        else:
+            parent = cls._window
+    else:
+        parent = content_widget
+    
     if not hasattr(cls, '_hint_request_text') or not cls._hint_request_text:
         cls._hint_request_text = {
             'window': None,
@@ -410,21 +432,27 @@ def init_hint_request_text_overlay(cls):
 
     # Create hint window if needed
     if not cls._hint_request_text['window']:
-        cls._hint_request_text['window'] = QWidget(cls._window)
-        cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground)
-        cls._hint_request_text['window'].setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.WindowDoesNotAcceptFocus
-        )
-        cls._hint_request_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
+        # Define size and position
+        width = 100  # Default width for hint request window
+        height = 1079  # Default height for hint request window
+        
+        # Parent to content widget to ensure proper z-ordering
+        cls._hint_request_text['window'] = QWidget(parent)
+        
+        # Critical: Set fixed geometry immediately at creation
+        cls._hint_request_text['window'].setGeometry(510, 0, width, height)
+        
+        # Ensure transparency
+        cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground, True)
 
     # Create scene and view if needed
     if not cls._hint_request_text['scene']:
         cls._hint_request_text['scene'] = QGraphicsScene()
     if not cls._hint_request_text['view']:
         cls._hint_request_text['view'] = QGraphicsView(cls._hint_request_text['scene'], cls._hint_request_text['window'])
+        
+        # Critical: Explicitly disable auto-fill background
+        cls._hint_request_text['view'].viewport().setAutoFillBackground(False)
         cls._hint_request_text['view'].setStyleSheet("""
             QGraphicsView {
                 background: transparent;
@@ -434,6 +462,12 @@ def init_hint_request_text_overlay(cls):
         cls._hint_request_text['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cls._hint_request_text['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         cls._hint_request_text['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        
+        # Fill the window exactly
+        width = cls._hint_request_text['window'].width()
+        height = cls._hint_request_text['window'].height()
+        cls._hint_request_text['view'].setGeometry(0, 0, width, height)
+        cls._hint_request_text['scene'].setSceneRect(0, 0, width, height)
 
     # Create text item if needed
     if not cls._hint_request_text['text_item']:
@@ -442,14 +476,6 @@ def init_hint_request_text_overlay(cls):
         font = QFont('Arial', 24)
         cls._hint_request_text['text_item'].setFont(font)
         cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
-
-    if cls._parent_hwnd:
-        style = win32gui.GetWindowLong(int(cls._hint_request_text['window'].winId()), win32con.GWL_EXSTYLE)
-        win32gui.SetWindowLong(
-            int(cls._hint_request_text['window'].winId()),
-            win32con.GWL_EXSTYLE,
-            style | win32con.WS_EX_NOACTIVATE
-        )
 
 
 def init_gm_assistance_overlay(cls):

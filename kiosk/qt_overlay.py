@@ -809,321 +809,6 @@ class Overlay:
         cls._hint_text_thread.update_text({'text':text, 'room_number':room_number})
 
     @classmethod
-    def _actual_hide(cls):
-        """Internal helper to perform the actual hiding, now thread-safe."""
-        print("[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===")
-
-        if cls._window:
-            cls._window.hide()
-        if hasattr(cls, '_timer_window') and cls._timer_window:
-            cls._timer_window.hide()
-        if hasattr(cls, '_button_window') and cls._button_window:
-            cls._button_window.hide()
-        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-            cls._hint_text['window'].hide()
-            cls._hint_text['text_item'].setPlainText("")
-        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
-            if cls._hint_request_text['window']:
-                cls._hint_request_text['window'].hide()
-            if cls._hint_request_text['scene']:
-                cls._hint_request_text['scene'].clear()
-
-        if cls._timer_thread is not None:
-            cls._timer_thread.quit()
-            cls._timer_thread.wait()
-            cls._timer_thread = None
-        if hasattr(cls, '_timer') and cls._timer:
-            if cls._timer.text_item:
-                cls._timer.text_item.setPlainText("")
-            if cls._timer.bg_image_item:
-                cls._timer.bg_image_item.setPixmap(QPixmap())
-            if hasattr(cls, '_timer_scene') and cls._timer.scene:
-                cls._timer.scene.clear()
-        if hasattr(cls, '_button_view') and cls._button_view:
-            if hasattr(cls, "_button") and cls._button:
-                 if cls._button.get('scene'):
-                    cls._button['scene'].clear()
-                 else:
-                    print("[qt_overlay.py - hide] _button['scene'] does NOT exist")
-            else:
-                print("[qt_overlay.py - hide] _button does not exist.")
-            cls._button_view.set_click_callback(None)
-        print("[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===")
-
-    @classmethod
-    def show_loss_screen(cls):
-        """Display the game loss screen."""
-        if not cls._initialized:
-            return
-
-        # --- Create/Rebuild Loss Screen Elements --- (GOOD PRACTICE)
-        if hasattr(cls, '_loss_screen') and cls._loss_screen:
-            if cls._loss_screen.get('window'):
-                cls._loss_screen['window'].hide()  # Hide before deleting
-                cls._loss_screen['window'].deleteLater()
-                cls._loss_screen['window'] = None
-            if cls._loss_screen.get('scene'):
-                cls._loss_screen['scene'].clear()  # Clear items
-                cls._loss_screen['scene'] = None
-            if cls._loss_screen.get('view'):
-                cls._loss_screen['view'].deleteLater()
-                cls._loss_screen['view'] = None
-            # Remove the text item attribute, as we'll be using an image.
-            if '_text_item' in cls._loss_screen:
-                del cls._loss_screen['_text_item']
-
-
-        if not hasattr(cls, '_loss_screen'):
-            cls._loss_screen = {}
-
-        cls._loss_screen['window'] = QWidget(cls._window)  # Parent to main if needed
-        cls._loss_screen['window'].setAttribute(Qt.WA_TranslucentBackground)
-        cls._loss_screen['window'].setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.WindowDoesNotAcceptFocus
-        )
-        cls._loss_screen['window'].setAttribute(Qt.WA_ShowWithoutActivating)
-
-        cls._loss_screen['scene'] = QGraphicsScene()
-        cls._loss_screen['view'] = QGraphicsView(cls._loss_screen['scene'], cls._loss_screen['window'])
-        cls._loss_screen['view'].setStyleSheet("""
-            QGraphicsView {
-                background: transparent;  /* Or a loss-screen background */
-                border: none;
-            }
-        """)
-        cls._loss_screen['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        cls._loss_screen['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        cls._loss_screen['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-
-        # --- Image Item Instead of Text Item ---
-        cls._loss_screen['image_item'] = QGraphicsPixmapItem()
-        cls._loss_screen['scene'].addItem(cls._loss_screen['image_item'])
-
-
-        if cls._parent_hwnd:  # Set window attributes if parent exists
-            style = win32gui.GetWindowLong(int(cls._loss_screen['window'].winId()), win32con.GWL_EXSTYLE)
-            win32gui.SetWindowLong(
-                int(cls._loss_screen['window'].winId()),
-                win32con.GWL_EXSTYLE,
-                style | win32con.WS_EX_NOACTIVATE
-            )
-
-        # --- Geometry and Positioning ---
-        width = 1920
-        height = 1080
-        cls._loss_screen['window'].setGeometry(0, 0, width, height)  # Full screen
-        cls._loss_screen['view'].setGeometry(0, 0, width, height)
-        cls._loss_screen['scene'].setSceneRect(QRectF(0, 0, width, height))
-
-        # --- Load and Set Image ---
-        image_path = os.path.join("other_files", "loss.png")
-        if os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-            # --- Scale the Pixmap ---
-            scale_factor = 0.5
-            scaled_pixmap = pixmap.scaled(
-                int(pixmap.width() * scale_factor),
-                int(pixmap.height() * scale_factor),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation  # Use SmoothTransformation for better quality
-            )
-            cls._loss_screen['image_item'].setPixmap(scaled_pixmap)
-
-            # --- Positioning the Image ---
-            cls._loss_screen['image_item'].setTransform(QTransform())
-            cls._loss_screen['image_item'].setRotation(90)
-
-
-            image_width = scaled_pixmap.width()  # Use scaled width and height
-            image_height = scaled_pixmap.height() # Use scaled width and height
-            cls._loss_screen['image_item'].setPos(
-                (width + image_height) / 2,
-                (height - image_width) / 2
-            )
-
-        else:
-            print(f"[qt overlay] Loss image not found: {image_path}")
-            #  Fallback to text display IF the image is missing.  Good practice.
-            cls._loss_screen['text_item'] = QGraphicsTextItem()
-            cls._loss_screen['text_item'].setDefaultTextColor(Qt.white)
-            font = QFont('Arial', 48)
-            cls._loss_screen['text_item'].setFont(font)
-            cls._loss_screen['scene'].addItem(cls._loss_screen['text_item'])
-            message = "Time's up! A host will arrive to collect you shortly."
-            cls._loss_screen['text_item'].setHtml(
-                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
-            )
-            cls._loss_screen['text_item'].setTransform(QTransform())
-            cls._loss_screen['text_item'].setRotation(90)
-            text_width = cls._loss_screen['text_item'].boundingRect().width()
-            text_height = cls._loss_screen['text_item'].boundingRect().height()
-            cls._loss_screen['text_item'].setPos(
-                (width + text_height) / 2,
-                (height - text_width) / 2
-            )
-            
-
-        cls._loss_screen['window'].show()
-        cls._loss_screen['window'].raise_()
-
-    @classmethod
-    def hide_loss_screen(cls):
-        """Hide the loss screen."""
-        if hasattr(cls, '_loss_screen') and cls._loss_screen and cls._loss_screen.get('window'):
-            cls._loss_screen['window'].hide()
-
-    @classmethod
-    def show_victory_screen(cls):
-        """Display the game victory screen."""
-        if not cls._initialized:
-            return
-
-        # --- Create/Rebuild Victory Screen Elements ---
-        if hasattr(cls, '_victory_screen') and cls._victory_screen:
-            if cls._victory_screen.get('window'):
-                cls._victory_screen['window'].hide()  # Hide before deleting
-                cls._victory_screen['window'].deleteLater()
-                cls._victory_screen['window'] = None
-            if cls._victory_screen.get('scene'):
-                cls._victory_screen['scene'].clear()  # Clear items
-                cls._victory_screen['scene'] = None
-            if cls._victory_screen.get('view'):
-                cls._victory_screen['view'].deleteLater()
-                cls._victory_screen['view'] = None
-            # Remove the text item attribute, as we'll be using an image.
-            if '_text_item' in cls._victory_screen:
-                del cls._victory_screen['_text_item']
-
-
-        # Initialize _victory_screen as a dictionary HERE:
-        if not hasattr(cls, '_victory_screen') or cls._victory_screen is None:
-            cls._victory_screen = {}
-
-        cls._victory_screen['window'] = QWidget(cls._window)  # Parent to main if needed
-        cls._victory_screen['window'].setAttribute(Qt.WA_TranslucentBackground)
-        cls._victory_screen['window'].setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.WindowDoesNotAcceptFocus
-        )
-        cls._victory_screen['window'].setAttribute(Qt.WA_ShowWithoutActivating)
-
-        cls._victory_screen['scene'] = QGraphicsScene()
-        cls._victory_screen['view'] = QGraphicsView(cls._victory_screen['scene'], cls._victory_screen['window'])
-        cls._victory_screen['view'].setStyleSheet("""
-            QGraphicsView {
-                background: transparent;  /* Or a victory-screen background */
-                border: none;
-            }
-        """)
-        cls._victory_screen['view'].setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        cls._victory_screen['view'].setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        cls._victory_screen['view'].setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-
-        # --- Image Item Instead of Text Item ---
-        cls._victory_screen['image_item'] = QGraphicsPixmapItem()
-        cls._victory_screen['scene'].addItem(cls._victory_screen['image_item'])
-
-
-        if cls._parent_hwnd:  # Set window attributes if parent exists
-            style = win32gui.GetWindowLong(int(cls._victory_screen['window'].winId()), win32con.GWL_EXSTYLE)
-            win32gui.SetWindowLong(
-                int(cls._victory_screen['window'].winId()),
-                win32con.GWL_EXSTYLE,
-                style | win32con.WS_EX_NOACTIVATE
-            )
-
-        # --- Geometry and Positioning ---
-        width = 1920
-        height = 1080
-        cls._victory_screen['window'].setGeometry(0, 0, width, height)  # Full screen
-        cls._victory_screen['view'].setGeometry(0, 0, width, height)
-        cls._victory_screen['scene'].setSceneRect(QRectF(0, 0, width, height))
-
-        # --- Load and Set Image ---
-        image_path = os.path.join("other_files", "victory.png")  # CHANGED FILENAME
-        if os.path.exists(image_path):
-            pixmap = QPixmap(image_path)
-            # --- Scale the Pixmap ---
-            scale_factor = 0.5
-            scaled_pixmap = pixmap.scaled(
-                int(pixmap.width() * scale_factor),
-                int(pixmap.height() * scale_factor),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation  # Use SmoothTransformation for better quality
-            )
-            cls._victory_screen['image_item'].setPixmap(scaled_pixmap)
-
-            # --- Positioning the Image ---
-            cls._victory_screen['image_item'].setTransform(QTransform())
-            cls._victory_screen['image_item'].setRotation(90)
-
-
-            image_width = scaled_pixmap.width()  # Use scaled width and height
-            image_height = scaled_pixmap.height() # Use scaled width and height
-            cls._victory_screen['image_item'].setPos(
-                (width + image_height) / 2,
-                (height - image_width) / 2
-            )
-
-        else:
-            print(f"[qt overlay] Victory image not found: {image_path}")
-            #  Fallback to text display IF the image is missing.  Good practice.
-            cls._victory_screen['text_item'] = QGraphicsTextItem()
-            cls._victory_screen['text_item'].setDefaultTextColor(Qt.white)
-            font = QFont('Arial', 48)
-            cls._victory_screen['text_item'].setFont(font)
-            cls._victory_screen['scene'].addItem(cls._victory_screen['text_item'])
-            message = "Congratulations! You won!"  # CHANGED MESSAGE
-            cls._victory_screen['text_item'].setHtml(
-                f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
-            )
-            cls._victory_screen['text_item'].setTransform(QTransform())
-            cls._victory_screen['text_item'].setRotation(90)
-            text_width = cls._victory_screen['text_item'].boundingRect().width()
-            text_height = cls._victory_screen['text_item'].boundingRect().height()
-            cls._victory_screen['text_item'].setPos(
-                (width + text_height) / 2,
-                (height - text_width) / 2
-            )
-
-
-        cls._victory_screen['window'].show()
-        cls._victory_screen['window'].raise_()
-
-    @classmethod
-    def hide_victory_screen(cls):
-        """Hide the victory screen."""
-        if hasattr(cls, '_victory_screen') and cls._victory_screen and cls._victory_screen.get('window'):
-            cls._victory_screen['window'].hide()
-
-    @classmethod
-    def _check_game_loss_visibility(cls, game_lost):
-        """Helper to control visibility based on game_lost flag."""
-        if game_lost:
-            # Game is lost, hide ALL other elements
-            cls.hide_all_overlays()  # Existing method
-            cls.show_loss_screen()
-
-        else:
-            # Game is NOT lost, proceed as before
-            cls.hide_loss_screen()
-            cls.show_all_overlays()
-
-    @classmethod
-    def _check_game_win_visibility(cls, game_won):
-        if game_won:
-            cls.hide_all_overlays()
-            cls.show_victory_screen()
-        else:
-            cls.hide_victory_screen()
-            cls.show_all_overlays()
-
-    @classmethod
     def _actual_hint_text_update(cls, data):
         """Update the hint text in the main thread."""
         try:
@@ -1134,14 +819,19 @@ class Overlay:
             text = data.get('text', "")
             room_number = data.get('room_number')
 
-            width = 588
-            height = 951
-            
-            # Set hint window size and position
-            cls._hint_text['window'].setGeometry(850, 80, width, height)
-            cls._hint_text['view'].setGeometry(0, 0, width, height)
-            cls._hint_text['scene'].setSceneRect(QRectF(0, 0, width, height))
+            # 1. First, ensure the background remains visible
+            if hasattr(cls, '_background_window') and cls._background_window:
+                cls._background_window.show()
+                cls._background_window.lower()  # Keep the background at the bottom
 
+            # Ensure the window itself is fully transparent
+            cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground, True)
+            cls._hint_text['view'].viewport().setAutoFillBackground(False)
+            
+            # Make sure the hint text window has the correct size and position
+            width = cls._hint_text['window'].width()
+            height = cls._hint_text['window'].height()
+            
             # Update hint background only if a room number is present
             if room_number:
                 background_name = None
@@ -1176,8 +866,9 @@ class Overlay:
             # Clear the existing text before updating
             cls._hint_text['text_item'].setHtml("")
 
+            # Set text with transparent background explicitly
             cls._hint_text['text_item'].setHtml(
-                f'<div style="background-color: transparent; padding: 20px;text-align:center;width:{height-40}px">{text}</div>'
+                f'<div style="background-color: transparent; padding: 20px; text-align:center; width:{height-40}px">{text}</div>'
             )
 
             cls._hint_text['text_item'].setTransform(QTransform())
@@ -1190,15 +881,11 @@ class Overlay:
                 (width + text_height) / 2,
                 (height - text_width) / 2
             )
-            #print(f"[qt overlay]Text position set to: {cls._hint_text['text_item'].pos()}")
-            
-            #print(f"[qt overlay]Text bounding rectangle set to: {cls._hint_text['text_item'].boundingRect()}")
-            
             
             # ADDED CHECK: Only show if no video is playing.
             if not cls._kiosk_app.video_manager.is_playing:
+                # Show the window but don't raise it above other elements
                 cls._hint_text['window'].show()
-                cls._hint_text['window'].raise_()
         except Exception as e:
             print(f"[qt overlay]Error in _actual_hint_text_update: {e}")
             traceback.print_exc()
@@ -1334,34 +1021,73 @@ class Overlay:
     @classmethod
     def show_hint_cooldown(cls, seconds):
         """Show cooldown message with proper rotation"""
-        if not cls._initialized or not cls._window:
+        if not cls._initialized:
             return
-            
+        
+        # First, ensure background is visible
+        if hasattr(cls, '_background_window') and cls._background_window:
+            cls._background_window.show()
+            cls._background_window.lower()  # Keep background at the bottom
+        
+        # Get main window and content widget
+        from qt_main import QtKioskApp
+        main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
+        content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+        
+        # Define cooldown dimensions
         width = 100
         height = 1079
         
-        cls._window.setGeometry(510, 0, width, height)
-        cls._view.setGeometry(0, 0, width, height)
-        cls._scene.setSceneRect(QRectF(0, 0, width, height))
+        # If we don't have a dedicated window for cooldown, create one
+        if not hasattr(cls, '_cooldown_window') or not cls._cooldown_window:
+            parent = content_widget if content_widget else (main_window if main_window else None)
+            if not parent:
+                print("[qt overlay] No parent available for cooldown window")
+                return
+            
+            # Create dedicated cooldown window
+            cls._cooldown_window = QWidget(parent)
+            cls._cooldown_window.setAttribute(Qt.WA_TranslucentBackground, True)
+            cls._cooldown_window.setGeometry(510, 0, width, height)
+            
+            # Create scene and view
+            cls._cooldown_scene = QGraphicsScene()
+            cls._cooldown_view = QGraphicsView(cls._cooldown_scene, cls._cooldown_window)
+            cls._cooldown_view.viewport().setAutoFillBackground(False)
+            cls._cooldown_view.setStyleSheet("background: transparent; border: none;")
+            cls._cooldown_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._cooldown_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._cooldown_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+            cls._cooldown_view.setGeometry(0, 0, width, height)
+            cls._cooldown_scene.setSceneRect(0, 0, width, height)
+            
+            # Create text item
+            cls._cooldown_text = QGraphicsTextItem()
+            cls._cooldown_text.setDefaultTextColor(Qt.white)
+            font = QFont('Arial', 20)
+            cls._cooldown_text.setFont(font)
+            cls._cooldown_scene.addItem(cls._cooldown_text)
         
+        # Update cooldown message
         message = f"Please wait {seconds} seconds until requesting the next hint."
-        cls._text_item.setHtml(
+        cls._cooldown_text.setHtml(
             f'<div style="background-color: rgba(0, 0, 0, 180); padding: 20px;">{message}</div>'
         )
         
-        cls._text_item.setTransform(QTransform())
-        cls._text_item.setRotation(90)
+        # Rotate and position text
+        cls._cooldown_text.setTransform(QTransform())
+        cls._cooldown_text.setRotation(90)
         
-        text_width = cls._text_item.boundingRect().width()
-        text_height = cls._text_item.boundingRect().height()
-        cls._text_item.setPos(
+        text_width = cls._cooldown_text.boundingRect().width()
+        text_height = cls._cooldown_text.boundingRect().height()
+        cls._cooldown_text.setPos(
             (width + text_height) / 2,
             (height - text_width) / 2
         )
         
-        cls._window.show()
-        cls._window.raise_()
-    
+        # Show but don't raise
+        cls._cooldown_window.show()
+
     @classmethod
     def init_timer(cls):
         """Initialize the timer display components"""
@@ -2138,3 +1864,57 @@ class Overlay:
                 cls._waiting_label['window'].hide()
         #else:
             # print("[qt overlay] Waiting screen label not initialized or already hidden.") # Debug noise
+
+    @classmethod
+    def _actual_hide(cls):
+        """Internal helper to perform the actual hiding, now thread-safe."""
+        print("[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===")
+
+        if cls._window:
+            cls._window.hide()
+        if hasattr(cls, '_timer_window') and cls._timer_window:
+            cls._timer_window.hide()
+        if hasattr(cls, '_button_window') and cls._button_window:
+            cls._button_window.hide()
+        if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
+            cls._hint_text['window'].hide()
+            cls._hint_text['text_item'].setPlainText("")
+        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
+            if cls._hint_request_text['window']:
+                cls._hint_request_text['window'].hide()
+            if cls._hint_request_text['scene']:
+                cls._hint_request_text['scene'].clear()
+        if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
+            cls._cooldown_window.hide()
+
+        if cls._timer_thread is not None:
+            cls._timer_thread.quit()
+            cls._timer_thread.wait()
+            cls._timer_thread = None
+        if hasattr(cls, '_timer') and cls._timer:
+            if cls._timer.text_item:
+                cls._timer.text_item.setPlainText("")
+            if cls._timer.bg_image_item:
+                cls._timer.bg_image_item.setPixmap(QPixmap())
+            if hasattr(cls, '_timer_scene') and cls._timer.scene:
+                cls._timer.scene.clear()
+        if hasattr(cls, '_button_view') and cls._button_view:
+            if hasattr(cls, "_button") and cls._button:
+                 if cls._button.get('scene'):
+                    cls._button['scene'].clear()
+                 else:
+                    print("[qt_overlay.py - hide] _button['scene'] does NOT exist")
+            else:
+                print("[qt_overlay.py - hide] _button does not exist.")
+            cls._button_view.set_click_callback(None)
+        print("[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===")
+
+    @classmethod
+    def hide_hint_cooldown(cls):
+        """Hide the cooldown display"""
+        if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
+            cls._cooldown_window.hide()
+        
+        # For backwards compatibility, also hide the older cooldown if it exists
+        if hasattr(cls, '_window') and cls._window:
+            cls._window.hide()
