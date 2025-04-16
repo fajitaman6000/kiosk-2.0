@@ -265,31 +265,23 @@ def init_view_solution_button(cls):
 
 
 def init_video_display(cls):
-    """Initialize video display components (window, scene, view, item)."""
+    """Initialize video display components (window, scene, view, item) as a top-level window."""
     if cls._video_is_initialized:
         return # Already initialized
 
-    print("[qt init] Initializing video display components...")
-    
-    # Get the main window and content widget
-    from qt_main import QtKioskApp
-    main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
-    content_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
-    
-    if not content_widget:
-        print("[qt init] Error: No content widget available for video display")
-        if main_window:
-            content_widget = main_window  # Fallback to main window
-        else:
-            return  # Can't proceed without parent
+    print("[qt init] Initializing video display components as top-level window...")
     
     try:
-        # Create video window as a child of content widget to ensure proper z-order
-        cls._video_window = QWidget(content_widget)
+        # Create video window as a standalone top-level window instead of as a child
+        cls._video_window = QWidget()
         cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
         
-        # Video should be visible above background but below UI elements
-        cls._video_window.setGeometry(0, 0, content_widget.width(), content_widget.height())
+        # Set window flags to make it stay on top and frameless
+        cls._video_window.setWindowFlags(
+            Qt.FramelessWindowHint |
+            Qt.WindowStaysOnTopHint |
+            Qt.Tool
+        )
         
         # Create scene and view
         cls._video_scene = QGraphicsScene(cls._video_window)
@@ -319,7 +311,7 @@ def init_video_display(cls):
         cls._video_window.hide()
 
         cls._video_is_initialized = True
-        print("[qt init] Video display components initialized.")
+        print("[qt init] Video display components initialized as top-level window.")
 
     except Exception as e:
         print(f"[qt init] Error initializing video display: {e}")

@@ -120,17 +120,11 @@ class VideoManager:
             self.completion_callback = on_complete # Store the final callback
 
         try:
-            # 1. Hide other overlays (Invoke slot on bridge)
-            print("[video manager] Hiding UI elements for video playback...")
-            # Use the new safer method that won't cause white screen issues
-            QMetaObject.invokeMethod(Overlay._bridge, "hide_overlays_for_video_slot", Qt.QueuedConnection)
-
-
-            # 2. Fade out background music (can run in this thread)
+            # 1. Fade out background music (can run in this thread)
             print("[video manager] Fading out background music...")
             self._fade_background_music(0.3) # Fade down to 30%
 
-            # 3. Prepare Qt video display (Invoke slot on bridge)
+            # 2. Prepare Qt video display (Invoke slot on bridge)
             is_skippable = "video_solutions" in video_path.lower().replace("\\", "/")
             print(f"[video manager] Video skippable: {is_skippable}")
 
@@ -147,16 +141,15 @@ class VideoManager:
             )
             # invokeMethod now returns immediately.
 
-            # 4. Show Qt video display (Invoke slot on bridge) - Keep as Queued
+            # 3. Show Qt video display (Invoke slot on bridge) - Keep as Queued
             QMetaObject.invokeMethod(Overlay._bridge, "show_video_display_slot", Qt.QueuedConnection)
 
-
-            # 5. Instantiate VideoPlayer
+            # 4. Instantiate VideoPlayer
             print("[video manager] Instantiating VideoPlayer...")
             # --- Ensure player is created only if bridge calls succeed ---
             self.video_player = VideoPlayer(self.ffmpeg_path)
 
-            # 6. Extract audio (can run in this thread)
+            # 5. Extract audio (can run in this thread)
             print("[video manager] Extracting audio...")
             audio_path = self.video_player.extract_audio(video_path)
             if audio_path:
@@ -164,7 +157,7 @@ class VideoManager:
             else:
                 print("[video manager] Audio extraction failed or no audio track.")
 
-            # 7. Start VideoPlayer playback (runs its own thread)
+            # 6. Start VideoPlayer playback (runs its own thread)
             print("[video manager] Starting video player...")
             self.video_player.play_video(
                 video_path,
@@ -273,13 +266,7 @@ class VideoManager:
             self._fade_background_music(1.0, duration=0.3)
             print("[video manager][CLEANUP_10] Background music fade initiated/completed.")
 
-            # 3. Show other overlays (Invoke slot on bridge)
-            print("[video manager][CLEANUP_11] Restoring non-video overlays (Queued)...")
-            # Use QueuedConnection - doesn't need to block
-            QMetaObject.invokeMethod(Overlay._bridge, "show_all_overlays_slot", Qt.QueuedConnection)
-            print("[video manager][CLEANUP_12] show_all_overlays_slot queued.")
-
-            # 4. Clean up VideoPlayer instance resources
+            # 3. Clean up VideoPlayer instance resources
             print("[video manager][CLEANUP_13] Checking video_player instance.")
             if self.video_player:
                  print("[video manager][CLEANUP_14] Cleaning up video player instance resources...")
@@ -291,7 +278,7 @@ class VideoManager:
                  print("[video manager][CLEANUP_14_SKIP] No video player instance found during cleanup.")
 
 
-            # 5. Execute the final completion callback IF provided and NOT resetting
+            # 4. Execute the final completion callback IF provided and NOT resetting
             print("[video manager][CLEANUP_17] Checking for final completion callback.")
             final_callback = self.completion_callback
             print(f"[video manager][CLEANUP_18] final_callback = {final_callback}, self.resetting = {self.resetting}")

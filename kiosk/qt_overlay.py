@@ -116,8 +116,8 @@ class OverlayBridge(QObject):
 
     @pyqtSlot()
     def hide_overlays_for_video_slot(self):
-        """Safely hide UI elements for video without affecting main window."""
-        Overlay.hide_overlays_for_video()
+        """No longer hides UI elements for video playback, since video is in its own top-level window."""
+        Overlay.hide_overlays_for_video() # Now a no-op
 
 def convert_cv_qt(cv_img):
     """Convert from an opencv image (assuming BGR) to QPixmap"""
@@ -1954,57 +1954,9 @@ class Overlay:
 
     @classmethod
     def hide_overlays_for_video(cls):
-        """Hide only essential UI elements for video playback without affecting main window.
-        This more focused version prevents potential white screen issues."""
-        try:
-            # Hide specific UI elements individually
-            # Timer (keep visible during videos)
-            # if hasattr(cls, '_timer_window') and cls._timer_window and cls._timer_window.isVisible():
-            #    cls._timer_window.hide()
-            
-            # Help button
-            if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
-                 cls._button_window.hide()
-                 
-            # Hint text
-            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window') and cls._hint_text['window'].isVisible():
-                 cls._hint_text['window'].hide()
-                 
-            # Hint request text
-            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window') and cls._hint_request_text['window'].isVisible():
-                 cls._hint_request_text['window'].hide()
-                 
-            # GM assistance overlay
-            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
-                gm_window = cls._gm_assistance_overlay['window']
-                if gm_window and gm_window.isVisible():
-                    cls._gm_assistance_overlay['_was_visible'] = True
-                    gm_window.hide()
-                else:
-                    cls._gm_assistance_overlay['_was_visible'] = False
-            
-            # Hide cooldown window properly
-            if hasattr(cls, '_cooldown_window') and cls._cooldown_window and cls._cooldown_window.isVisible():
-                cls._cooldown_window.hide()
-            
-            # Handle the main cooldown window properly (CRITICAL FIX)
-            if hasattr(cls, '_window') and cls._window and cls._window.isVisible():
-                # Only hide this if it's showing cooldown text
-                if hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
-                    cls._window.hide()
-            
-            # Hide game end screens
-            cls.hide_victory_screen()
-            cls.hide_loss_screen()
-            
-            # Hide view buttons
-            cls.hide_view_image_button()
-            cls.hide_view_solution_button()
-            
-            # Hide waiting label
-            cls.hide_waiting_screen_label()
-            
-            print("[qt overlay] UI elements hidden for video playback")
-        except Exception as e:
-            print(f"[qt overlay] Error hiding UI for video: {e}")
-            traceback.print_exc()
+        """
+        No-op method - UI elements are no longer hidden during video playback
+        since video is now displayed in its own standalone top-level window.
+        """
+        print("[qt overlay] UI elements no longer need to be hidden for video playback (top-level video window)")
+        # Intentionally empty - all UI elements remain visible

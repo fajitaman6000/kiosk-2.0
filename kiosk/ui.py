@@ -323,13 +323,6 @@ class KioskUI:
                 else:
                     print("[ui.py] Starting video playback")
                     if hasattr(self, 'stored_video_info') and self.stored_video_info:
-
-                        # Hide hint text and the solution button itself via Overlay
-                        Overlay.hide_hint_text()
-                        Overlay.hide_view_solution_button()
-                        # Also hide image button if present
-                        Overlay.hide_view_image_button()
-
                         # Construct video path
                         video_path = os.path.join(
                             "video_solutions",
@@ -347,8 +340,6 @@ class KioskUI:
                             )
                         else:
                             print(f"[ui.py] Error: Video file not found at {video_path}")
-                            # If video fails to start, restore the UI immediately
-                            Overlay.show_all_overlays() # Restore relevant overlays
                     else:
                         print("[ui.py] Error: No video info stored")
 
@@ -359,22 +350,12 @@ class KioskUI:
                  print("[ui.toggle_solution_video] thread lock released")
 
     def handle_video_completion(self):
-        """Handle cleanup after video finishes, restoring Qt overlays"""
-        print("[ui.py] Handling video completion (Qt version)")
-        # self.video_is_playing = False # State managed by VideoManager
+        """Handle cleanup after video finishes"""
+        print("[ui.py] Handling video completion (top-level window version)")
 
         try:
-            # --- Rely on show_all_overlays to restore correct state ---
-            print("[ui.py handle_video_completion] Triggering show_all_overlays")
-            # This should show hint text, appropriate side buttons (image/video), timer, help button etc.
-            # Ensure show_all_overlays correctly checks stored_image_data and stored_video_info
-            Overlay.show_all_overlays()
-
-            # Ensure help button state is correct (show_all_overlays might call update_help_button)
-            # If not, trigger it explicitly AFTER show_all_overlays has potentially run
-            # Replace root.after with QTimer.singleShot
+            # Only update help button state if needed
             QTimer.singleShot(50, lambda: self.message_handler._actual_help_button_update())
-
         except Exception as e:
             print(f"[ui.py] Error in handle_video_completion: {e}")
             traceback.print_exc()
