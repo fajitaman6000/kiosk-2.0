@@ -121,13 +121,13 @@ class MessageHandler:
                 #print("[message handler] Cancelling existing cooldown timer.")
                 #self.kiosk_app.root.after_cancel(self.kiosk_app.ui.cooldown_after_id)
                 #self.kiosk_app.ui.cooldown_after_id = None
-
+            
             # --- Hide Qt Overlays ---
             print("[message handler] Hiding all Qt overlays...")
             Overlay.hide() # Hides all standard overlays including timer, buttons, hints etc.
             Overlay.hide_gm_assistance()
             # Video display should already be hidden by video_manager.force_stop()
-
+            
             # Clear general labels managed by ui.py
             self.kiosk_app.ui.clear_all_labels() # This should only destroy Tkinter labels
 

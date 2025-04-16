@@ -393,12 +393,6 @@ class VideoManager:
         bridge_exists = Overlay._bridge is not None
         player_instance = None
         with self._lock:
-            # Check if there's actually anything happening that needs stopping
-            # It's okay to call force_stop multiple times during a reset.
-            # if not self.is_playing and not self.should_stop:
-            #     print("[video manager] Force stop: Nothing actively playing or stopping.")
-                # return # Let's allow it to proceed to ensure cleanup anyway
-
             print("[video manager] Force stop: Setting state flags.")
             self.resetting = True # Mark as resetting
             self.should_stop = True # Signal any active player to stop
@@ -406,47 +400,31 @@ class VideoManager:
             player_instance = self.video_player # Grab reference before nulling
             self.video_player = None # Clear player reference
             self.completion_callback = None # Clear callback
-
+        
         try:
-            # Stop the player thread if it exists
+            # Step 1: Stop the player thread if it exists
             if player_instance:
                 print("[video manager] Force stopping video player instance...")
                 player_instance.force_stop() # Ask player thread to terminate and clean up
             else:
                 print("[video manager] Force stop: No player instance found.")
-
-            # Immediately attempt to destroy Qt video display (if bridge exists)
-            # Use QueuedConnection because this method (force_stop) might be called
-            # from the main thread (via reset handler's root.after)
-            if bridge_exists:
-                 print("[video manager] Force destroying Qt video display (Queued)...")
-                 QMetaObject.invokeMethod(
-                     Overlay._bridge,
-                     "destroy_video_display_slot",
-                     Qt.QueuedConnection # <<< FIX: Use QueuedConnection
-                 )
-                 # We don't wait for completion here.
-                 print("[video manager] Force destroy Qt display request queued.")
-            else:
-                 print("[video manager] Warning: Bridge missing, cannot destroy Qt display.")
-
-            # Immediately restore music volume
+            
+            # Step 2: Restore music volume immediately
             print("[video manager] Force restoring music volume...")
             if mixer.get_init():
                  mixer.music.set_volume(1.0) # Set volume directly
-
-            # Immediately request showing other overlays (if bridge exists)
-            # Use QueuedConnection for safety.
+            
+            # Step 3: Just destroy the video display, no need for other UI manipulation
             if bridge_exists:
-                 print("[video manager] Force showing non-video overlays (Queued)...")
-                 QMetaObject.invokeMethod(
-                     Overlay._bridge,
-                     "show_all_overlays_slot",
-                     Qt.QueuedConnection # <<< FIX: Use QueuedConnection
-                 )
-                 print("[video manager] Show all overlays request queued.")
+                print("[video manager] Force destroying video display (Queued)...")
+                QMetaObject.invokeMethod(
+                    Overlay._bridge,
+                    "destroy_video_display_slot",
+                    Qt.QueuedConnection
+                )
+                print("[video manager] Video display destroy request queued.")
             else:
-                 print("[video manager] Warning: Bridge missing, cannot show overlays.")
+                print("[video manager] Warning: Bridge missing, cannot destroy video display.")
 
         except Exception as e:
             print(f"[video manager] Error during force_stop cleanup: {e}")

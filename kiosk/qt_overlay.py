@@ -118,6 +118,11 @@ class OverlayBridge(QObject):
     def hide_overlays_for_video_slot(self):
         """No longer hides UI elements for video playback, since video is in its own top-level window."""
         Overlay.hide_overlays_for_video() # Now a no-op
+        
+    @pyqtSlot()
+    def show_background_slot(self):
+        """Show the background image if it exists."""
+        Overlay.show_background()
 
 def convert_cv_qt(cv_img):
     """Convert from an opencv image (assuming BGR) to QPixmap"""
@@ -1742,6 +1747,14 @@ class Overlay:
         if cls._background_initialized and cls._background_window:
             cls._background_window.hide()
             print("[qt_overlay] Background hidden")
+            
+    @classmethod
+    def show_background(cls):
+        """Show the background image"""
+        if cls._background_initialized and cls._background_window:
+            cls._background_window.show()
+            cls._background_window.lower()  # Keep at the bottom
+            print("[qt_overlay] Background shown")
 
     @classmethod
     def show_gm_assistance(cls):
