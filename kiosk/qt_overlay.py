@@ -1429,13 +1429,17 @@ class Overlay:
     def hide_cooldown(cls):
         """Hide just the cooldown overlay"""
         print("[qt overlay.hide_cooldown] Called")
-        if cls._window:
-            QMetaObject.invokeMethod(
-                cls._window,
-                "hide",
-                Qt.QueuedConnection
-            )
-            print("[qt_overlay.hide_cooldown] hide() invoked")
+        # Use the dedicated cooldown window if available
+        if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
+            cls._cooldown_window.hide()
+            print("[qt_overlay.hide_cooldown] _cooldown_window hidden")
+        # Only hide cls._window if it's specifically for cooldown (not the main container)
+        elif cls._window and hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
+            # Direct hide call instead of using QMetaObject
+            cls._window.hide()
+            print("[qt_overlay.hide_cooldown] _window hidden")
+        else:
+            print("[qt_overlay.hide_cooldown] No cooldown window found to hide")
     
     @classmethod
     def hide(cls):
