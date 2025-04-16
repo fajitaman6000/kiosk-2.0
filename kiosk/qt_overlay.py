@@ -893,14 +893,14 @@ class Overlay:
     @classmethod
     def hide_hint_text(cls):
         """Hide the hint text overlay (thread-safe)."""
-        print("[qt overlay.hide_hint_text] Called")
+        #print("[qt overlay.hide_hint_text] Called")
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             QMetaObject.invokeMethod(
                 cls._hint_text['window'],
                 "hide",
                 Qt.QueuedConnection  # Use QueuedConnection for thread safety
             )
-            print("[qt overlay.hide_hint_text] hide() invoked via QMetaObject")
+            #print("[qt overlay.hide_hint_text] hide() invoked via QMetaObject")
         else:
             print("[qt overlay.hide_hint_text] _hint_text or window does not exist")
     
@@ -1413,7 +1413,7 @@ class Overlay:
                 else:
                     print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
             else:
-                print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
+                #print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
                 Overlay.hide_hint_text()
         except Exception as e:
            print(f"[qt overlay]Exception during help button update: {e}")

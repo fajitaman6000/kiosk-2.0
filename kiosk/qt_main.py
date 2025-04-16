@@ -16,6 +16,9 @@ class QtKioskApp(QApplication):
         self.main_window = QWidget()
         self.main_window.setWindowTitle("Escape Room Kiosk")
         
+        # Set window flags to remove window decorations
+        self.main_window.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+        
         # Use a layout to properly manage child widgets
         self.layout = QVBoxLayout(self.main_window)
         self.layout.setContentsMargins(0, 0, 0, 0)
@@ -50,8 +53,8 @@ class QtKioskApp(QApplication):
 
     def run(self):
         print("[Qt Main] Starting Qt event loop...")
-        # Show the main window so it appears in taskbar and Alt+Tab
-        self.main_window.show()
+        # Show the main window in fullscreen so it appears in taskbar and Alt+Tab
+        self.main_window.showFullScreen()
         self.main_window.activateWindow()
         self.main_window.raise_()
         exit_code = self.exec_()
