@@ -231,85 +231,95 @@ class KioskApp:
             self.ui.show_hint(text, start_cooldown)
     
     def play_video(self, video_type, minutes):
-        print(f"[kiosk main]play_video called: {video_type}, {minutes} minutes")
+        print(f"[kiosk main]=== Video Playback Sequence Start ===")
+        print(f"[kiosk main]Starting play_video with type: {video_type}")
+        print(f"[kiosk main]Current room assignment: {self.assigned_room}")
         
-        # Ensure needed objects exist
-        if not hasattr(self, 'video_manager') or not hasattr(self, 'timer'):
-            print("[kiosk main]Error: video_manager or timer not initialized.")
-            return
-             
-        # Get video path based on type
-        video_path = None
-        if video_type == "start":
-            video_type_folder = "game_start_videos"
-        elif video_type == "end":
-            video_type_folder = "game_completion"
-        elif video_type == "loss":
-            video_type_folder = "game_loss"
-        else:  # Default to video_solutions for any other type
-            video_type_folder = "video_solutions"
-            
-        # Get room folder for video
-        if not self.assigned_room:
-            print("[kiosk main]Error: No assigned room for video.")
-            return
-            
-        room_folder = f"Room_{self.assigned_room}"
-        videos_base = os.path.join("..", "Videos", room_folder, video_type_folder)
+        # Define video paths upfront
+        video_dir = Path("intro_videos")
+        video_file = video_dir / f"{video_type}.mp4" if video_type != 'game' else None
+        game_video = None
         
-        # Build completion callback
+        # Get room-specific game video name from config if room is assigned
+        if self.assigned_room is not None and self.assigned_room in ROOM_CONFIG['backgrounds']:
+            game_video_name = ROOM_CONFIG['backgrounds'][self.assigned_room].replace('.png', '.mp4')
+            game_video = video_dir / game_video_name
+            print(f"[kiosk main]Found room-specific game video path: {game_video}")
+            print(f"[kiosk main]Game video exists? {game_video.exists() if game_video else False}")
+
         def finish_video_sequence():
-            print("[kiosk main] Video sequence finished.")
-            # If this is a game end video, do nothing special: UI should remain victory screen
-            if video_type == "end":
-                print("[kiosk main] Game completion video finished.")
-                return
-                
-            # If this is a game loss video, do nothing special: UI should remain game over
-            if video_type == "loss":
-                print("[kiosk main] Game loss video finished.")
-                return
-                
-            if video_type == "start":
-                print("[kiosk main] Game start video finished. Starting timer.")
-                # Start timer if a game start video
-                self.timer.start(minutes * 60) # minutes converted to seconds
-                # Show all overlays once video is done
-                Overlay.show_all_overlays()
-            else:
-                # For solution videos, restore all overlays
-                print("[kiosk main] Solution video finished. Restoring overlays.")
-                Overlay.show_all_overlays()
-                
-        # Build and get video path, ensure file exists
-        video_path = None
-        if video_type == "start":
-            video_path = os.path.join(videos_base, "start.mp4")
-        elif video_type == "end":
-            video_path = os.path.join(videos_base, "end.mp4")
-        elif video_type == "loss":
-            video_path = os.path.join(videos_base, "loss.mp4")
-        else:  # solution video            
-            # Look for a video matching the minutes
-            video_path = os.path.join(videos_base, f"{minutes}min.mp4")
+            """Final callback after all videos are complete"""
+            print("[kiosk main]=== Video Sequence Completion ===")
+            print("[kiosk main]Executing finish_video_sequence callback")
+            print(f"[kiosk main]Setting timer to {minutes} minutes")
             
-        # Final check for video file
-        if not video_path or not os.path.exists(video_path):
-            print(f"[kiosk main]Error: Video file not found: {video_path}")
-            return
+            # Send admin notification - before timer starts
+            self.network.send_message({
+                'type': 'intro_video_completed',
+                'computer_name': self.computer_name
+            })
+
+            if (self.auto_start == True):
+                print("[kiosk main]Autostart was on, game will typically be started by this. \n Setting auto_start to false.")
+                self.auto_start = False
+                print(f"and autostart = {self.auto_start}")
             
-        # Play game video only when we have a valid path
+            self.timer.handle_command("set", minutes)
+            self.timer.handle_command("start")
+            
+            # Start playing background music for the assigned room
+            if self.assigned_room:
+                print(f"[kiosk main]Starting background music for room: {self.assigned_room}")
+                self.audio_manager.play_background_music(self.assigned_room)  # Pass the room NUMBER
+            
+            print("[kiosk main]Resetting UI state...")
+            self.ui.hint_cooldown = False
+
+            # Clear hint if it's empty before restoring UI
+            if self.ui.current_hint is not None:
+                hint_text = self.ui.current_hint if isinstance(self.ui.current_hint, str) else self.ui.current_hint.get('text', '')
+                if hint_text is None or hint_text.strip() == "":
+                    print("[kiosk main]Clearing empty hint before setup_room_interface")
+                    self.ui.current_hint = None  # Explicitly clear the hint
+                    Overlay.hide_hint_text() # Hide the hint.
+                    
+
+            self.ui.clear_all_labels() # moved this BELOW the new IF statement.
+            if self.assigned_room:
+                print(f"[kiosk main]Restoring room interface for: {self.assigned_room}")
+                self.ui.setup_room_interface(self.assigned_room)
+                if not self.ui.hint_cooldown:
+                    print("[kiosk main]Creating help button")
+                    Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
+            print("[kiosk main]=== Video Sequence Complete ===\n")
         def play_game_video():
-            print(f"[kiosk main]Playing video: {video_path}")
-            
-            # Check if this is a solution video
-            is_solution = (video_type not in ["start", "end", "loss"])
-            
-            # Tell video_manager to play the video with completion callback
-            self.video_manager.play_video(video_path, finish_video_sequence)
-            
-        # Start playback immediately if already prepared
-        play_game_video()
+            """Helper to play game video if it exists"""
+            print("[kiosk main]=== Starting Game Video Sequence ===")
+            print(f"[kiosk main]Game video path: {game_video}")
+            if game_video and game_video.exists():
+                print(f"[kiosk main]Starting playback of game video: {game_video}")
+                print("[kiosk main]Setting up completion callback to finish_video_sequence")
+                self.video_manager.play_video(str(game_video), on_complete=finish_video_sequence)
+            else:
+                print("[kiosk main]No valid game video found, proceeding to finish sequence")
+                print(f"[kiosk main]Game video exists? {game_video.exists() if game_video else False}")
+                finish_video_sequence()
+            print("[kiosk main]=== Game Video Sequence Initiated ===\n")
+
+        # Play video based on type
+        if video_type != 'game':
+            print("[kiosk main]=== Starting Intro Video Sequence ===")
+            if video_file.exists():
+                print(f"[kiosk main]Found intro video at: {video_file}")
+                print("[kiosk main]Setting up completion callback to play_game_video")
+                self.video_manager.play_video(str(video_file), on_complete=play_game_video)
+            else:
+                print(f"[kiosk main]Intro video not found at: {video_file}")
+                print("[kiosk main]Skipping to game video")
+                play_game_video()  # Skip to game video if intro doesn't exist
+        else:
+            print("[kiosk main]=== Skipping Intro, Playing Game Video ===")
+            play_game_video()
     
     def on_closing(self):
         """Handle application close."""
