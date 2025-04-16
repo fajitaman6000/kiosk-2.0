@@ -121,8 +121,9 @@ class VideoManager:
 
         try:
             # 1. Hide other overlays (Invoke slot on bridge)
-            print("[video manager] Hiding non-video overlays...")
-            QMetaObject.invokeMethod(Overlay._bridge, "hide_all_overlays_slot", Qt.QueuedConnection)
+            print("[video manager] Hiding UI elements for video playback...")
+            # Use the new safer method that won't cause white screen issues
+            QMetaObject.invokeMethod(Overlay._bridge, "hide_overlays_for_video_slot", Qt.QueuedConnection)
 
 
             # 2. Fade out background music (can run in this thread)

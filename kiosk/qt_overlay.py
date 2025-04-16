@@ -114,6 +114,11 @@ class OverlayBridge(QObject):
         if hasattr(Overlay, '_kiosk_app') and Overlay._kiosk_app:
             Overlay._kiosk_app.on_closing()
 
+    @pyqtSlot()
+    def hide_overlays_for_video_slot(self):
+        """Safely hide UI elements for video without affecting main window."""
+        Overlay.hide_overlays_for_video()
+
 def convert_cv_qt(cv_img):
     """Convert from an opencv image (assuming BGR) to QPixmap"""
     try:
@@ -1604,24 +1609,48 @@ class Overlay:
                         req_window.hide()
                  
             # --- Restore Cooldown Overlay ---
-            # Uses the main overlay window (cls._window)
+            # CRITICAL FIX: Be much more careful with the main window - ONLY show if specific conditions are met
             if hasattr(cls, '_window') and cls._window:
                  should_show_cooldown = False
-                 if ui_instance:
-                     # Check the actual cooldown state *AND* if the cooldown text item has content
-                     if ui_instance.hint_cooldown and hasattr(cls, '_text_item') and cls._text_item.toPlainText().strip():
-                         should_show_cooldown = True
-
+                 cooldown_text_valid = False
+                 
+                 # Check if we have valid cooldown text
+                 if hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip():
+                     cooldown_text = cls._text_item.toPlainText().strip()
+                     cooldown_text_valid = cooldown_text.startswith("Please wait")
+                 
+                 # Only show if there's actual cooldown in progress AND valid text
+                 if ui_instance and ui_instance.hint_cooldown and cooldown_text_valid:
+                     should_show_cooldown = True
+                 
                  if should_show_cooldown:
-                     # Show if not already visible
+                     # Only show if it contains valid cooldown text AND cooldown is active
                      if not cls._window.isVisible(): cls._window.show()
                      cls._window.raise_() # Ensure it's on top
                  else:
-                     # Explicitly hide if cooldown shouldn't be shown
+                     # CRITICAL FIX: MAKE ABSOLUTELY SURE we hide this window if it's not showing cooldown
+                     # This prevents the white screen issue
                      if cls._window.isVisible():
-                         # print("[qt overlay show_all] Hiding cooldown overlay.") # Debug
+                         print("[qt overlay] Hiding main window because it's not showing valid cooldown.")
                          cls._window.hide()
 
+            # --- Restore new, dedicated cooldown window if it exists ---
+            if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
+                cooldown_active = ui_instance and ui_instance.hint_cooldown if ui_instance else False
+                cooldown_text_valid = False
+                
+                # Check if cooldown text exists
+                if hasattr(cls, '_cooldown_text') and cls._cooldown_text and cls._cooldown_text.toPlainText().strip():
+                    cooldown_text_valid = True
+                
+                if cooldown_active and cooldown_text_valid:
+                    # Show dedicated cooldown window
+                    if not cls._cooldown_window.isVisible(): cls._cooldown_window.show()
+                    cls._cooldown_window.raise_()
+                else:
+                    # Hide if no active cooldown
+                    if cls._cooldown_window.isVisible():
+                        cls._cooldown_window.hide()
 
             # --- Restore GM Assistance ---
             # GM Assistance (only if it was previously visible and window available)
@@ -1922,3 +1951,60 @@ class Overlay:
         # For backwards compatibility, also hide the older cooldown if it exists
         if hasattr(cls, '_window') and cls._window:
             cls._window.hide()
+
+    @classmethod
+    def hide_overlays_for_video(cls):
+        """Hide only essential UI elements for video playback without affecting main window.
+        This more focused version prevents potential white screen issues."""
+        try:
+            # Hide specific UI elements individually
+            # Timer (keep visible during videos)
+            # if hasattr(cls, '_timer_window') and cls._timer_window and cls._timer_window.isVisible():
+            #    cls._timer_window.hide()
+            
+            # Help button
+            if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
+                 cls._button_window.hide()
+                 
+            # Hint text
+            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window') and cls._hint_text['window'].isVisible():
+                 cls._hint_text['window'].hide()
+                 
+            # Hint request text
+            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window') and cls._hint_request_text['window'].isVisible():
+                 cls._hint_request_text['window'].hide()
+                 
+            # GM assistance overlay
+            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
+                gm_window = cls._gm_assistance_overlay['window']
+                if gm_window and gm_window.isVisible():
+                    cls._gm_assistance_overlay['_was_visible'] = True
+                    gm_window.hide()
+                else:
+                    cls._gm_assistance_overlay['_was_visible'] = False
+            
+            # Hide cooldown window properly
+            if hasattr(cls, '_cooldown_window') and cls._cooldown_window and cls._cooldown_window.isVisible():
+                cls._cooldown_window.hide()
+            
+            # Handle the main cooldown window properly (CRITICAL FIX)
+            if hasattr(cls, '_window') and cls._window and cls._window.isVisible():
+                # Only hide this if it's showing cooldown text
+                if hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
+                    cls._window.hide()
+            
+            # Hide game end screens
+            cls.hide_victory_screen()
+            cls.hide_loss_screen()
+            
+            # Hide view buttons
+            cls.hide_view_image_button()
+            cls.hide_view_solution_button()
+            
+            # Hide waiting label
+            cls.hide_waiting_screen_label()
+            
+            print("[qt overlay] UI elements hidden for video playback")
+        except Exception as e:
+            print(f"[qt overlay] Error hiding UI for video: {e}")
+            traceback.print_exc()
