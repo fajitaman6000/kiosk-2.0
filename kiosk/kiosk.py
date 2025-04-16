@@ -46,12 +46,22 @@ class KioskApp:
         # Create Qt application first, before any other component
         self.qt_app = QtKioskApp(self)
         
-        # Handle icon setting
-        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+        # Handle icon setting for Windows taskbar
+        # Using a specific AppUserModelID helps Windows properly group the application in the taskbar
+        myappid = 'EscapeRoom.KioskApp.2023' # Use a unique, consistent string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-
+        
+        # Set application icon if available
+        try:
+            from PyQt5.QtGui import QIcon
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../assets/icon.ico")
+            if os.path.exists(icon_path):
+                self.qt_app.setWindowIcon(QIcon(icon_path))
+                print(f"[kiosk main] Set application icon from: {icon_path}")
+        except Exception as e:
+            print(f"[kiosk main] Could not set application icon: {e}")
+            
         # Initialize Qt overlay with explicit reference to the QApplication instance
-        # We'll modify the Overlay.init method to accept a reference to the Qt application
         Overlay._app = self.qt_app  # Set the app reference directly
         Overlay.init()
         
@@ -96,20 +106,36 @@ class KioskApp:
         # Initialize UI with saved room if available
         if self.assigned_room:
             # Use QTimer.singleShot instead of root.after
-            QTimer.singleShot(100, lambda: self.ui.setup_room_interface(self.assigned_room))
+            QTimer.singleShot(100, lambda: self.setup_room_with_refresh(self.assigned_room))
         else:
             self.ui.setup_waiting_screen()
+            # Make sure to refresh UI after waiting screen is set up
+            QTimer.singleShot(500, Overlay.refresh_ui)
 
         # Create a timer for the help button update
         self.help_button_timer = QTimer()
         self.help_button_timer.timeout.connect(self._actual_help_button_update)
         self.help_button_timer.start(1000)  # Update every 1 second
+        
+        # Force UI refresh after initialization
+        QTimer.singleShot(1000, Overlay.refresh_ui)
+
+    def setup_room_with_refresh(self, room_number):
+        """Set up room interface and refresh UI to ensure visibility"""
+        self.ui.setup_room_interface(room_number)
+        # Force UI refresh after room setup
+        QTimer.singleShot(500, Overlay.refresh_ui)
+        # And again a bit later to ensure everything is visible
+        QTimer.singleShot(1500, Overlay.refresh_ui)
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
         try:
+            # Call the update_help_button method on the Overlay class
+            from qt_overlay import Overlay
             Overlay.update_help_button(self.ui, self.timer, self.hints_requested, self.time_exceeded_45, self.assigned_room)
         except Exception as e:
+            import traceback
             traceback.print_exc()
 
     def toggle_fullscreen(self):

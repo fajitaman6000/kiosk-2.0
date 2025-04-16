@@ -24,15 +24,23 @@ def init_fullscreen_hint(cls):
 
     print("[qt init] Initializing fullscreen hint components...")
     try:
-        # Create window
-        cls._fullscreen_hint_window = QWidget() # No parent initially needed for fullscreen
+        # Get main window from the app if available
+        main_parent = None
+        if cls._app and hasattr(cls._app, 'main_window'):
+            main_parent = cls._app.main_window
+            print(f"[qt init] Using main window as parent for fullscreen hint: {main_parent}")
+
+        # Create window as child of main window if available
+        cls._fullscreen_hint_window = QWidget(main_parent)
         cls._fullscreen_hint_window.setStyleSheet("background-color: black;") # Black background
-        cls._fullscreen_hint_window.setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool
-        )
-        cls._fullscreen_hint_window.setAttribute(Qt.WA_ShowWithoutActivating)
+        
+        # Use minimal window flags if it's a child window
+        if main_parent:
+            cls._fullscreen_hint_window.setWindowFlags(Qt.FramelessWindowHint)
+        else:
+            # Standalone window flags
+            cls._fullscreen_hint_window.setWindowFlags(Qt.FramelessWindowHint | Qt.Widget)
+            
         cls._fullscreen_hint_window.setAttribute(Qt.WA_OpaquePaintEvent, True) # Optimization
 
         # Create scene and view using the new clickable view
@@ -54,14 +62,21 @@ def init_fullscreen_hint(cls):
         cls._fullscreen_hint_pixmap_item = QGraphicsPixmapItem()
         cls._fullscreen_hint_scene.addItem(cls._fullscreen_hint_pixmap_item)
 
-        # Initial full screen setup (will be refined when image is shown)
+        # Screen setup
         screen_geometry = QApplication.desktop().screenGeometry()
         width = screen_geometry.width()
         height = screen_geometry.height()
 
-        cls._fullscreen_hint_window.setGeometry(0, 0, width, height)
-        cls._fullscreen_hint_view.setGeometry(0, 0, width, height)
-        cls._fullscreen_hint_scene.setSceneRect(0, 0, width, height)
+        # Configure size and position
+        if main_parent:
+            # If child window, size to fit inside parent
+            cls._fullscreen_hint_window.setGeometry(0, 0, main_parent.width(), main_parent.height())
+        else:
+            # For standalone window, use full screen
+            cls._fullscreen_hint_window.setGeometry(0, 0, width, height)
+            
+        cls._fullscreen_hint_view.setGeometry(0, 0, cls._fullscreen_hint_window.width(), cls._fullscreen_hint_window.height())
+        cls._fullscreen_hint_scene.setSceneRect(0, 0, cls._fullscreen_hint_window.width(), cls._fullscreen_hint_window.height())
         cls._fullscreen_hint_pixmap_item.setPos(0, 0) # Place item at top-left
 
         cls._fullscreen_hint_initialized = True
@@ -70,7 +85,7 @@ def init_fullscreen_hint(cls):
     except Exception as e:
         print(f"[qt init] Error initializing fullscreen hint display: {e}")
         traceback.print_exc()
-        cls._fullscreen_hint_initialized = False 
+        cls._fullscreen_hint_initialized = False
 
 
 
@@ -93,8 +108,6 @@ def init_view_image_button(cls):
         win.setAttribute(Qt.WA_TranslucentBackground)
         win.setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
             Qt.WindowDoesNotAcceptFocus
         )
         win.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -184,8 +197,6 @@ def init_view_solution_button(cls):
         win.setAttribute(Qt.WA_TranslucentBackground)
         win.setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
             Qt.WindowDoesNotAcceptFocus
         )
         win.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -261,15 +272,25 @@ def init_video_display(cls):
 
     print("[qt init] Initializing video display components...")
     try:
-        # Create video window
-        cls._video_window = QWidget() # No parent initially
+        # Get main window from the app if available
+        main_parent = None
+        if cls._app and hasattr(cls._app, 'main_window'):
+            main_parent = cls._app.main_window
+            print(f"[qt init] Using main window as parent for video display: {main_parent}")
+
+        # Create video window as child of main window if available
+        cls._video_window = QWidget(main_parent)
         cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
-        cls._video_window.setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool
-        )
-        cls._video_window.setAttribute(Qt.WA_ShowWithoutActivating)
+        
+        # Use minimal window flags if it's a child window
+        if main_parent:
+            cls._video_window.setWindowFlags(Qt.FramelessWindowHint)
+        else:
+            # Standalone window flags
+            cls._video_window.setWindowFlags(Qt.FramelessWindowHint | Qt.Widget)
+            # We need this for a top-level window
+            cls._video_window.setAttribute(Qt.WA_ShowWithoutActivating)
+            
         cls._video_window.setAttribute(Qt.WA_OpaquePaintEvent, True)
 
         # Create scene and view
@@ -282,23 +303,25 @@ def init_video_display(cls):
         cls._video_view.setCacheMode(QGraphicsView.CacheNone)
         cls._video_view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
 
-        # --- Create and add the CUSTOM VideoFrameItem ---
-        # --- REMOVE ---
-        # cls._video_pixmap_item = QGraphicsPixmapItem()
-        # cls._video_scene.addItem(cls._video_pixmap_item)
-        # +++ ADD +++
+        # Create and add the CUSTOM VideoFrameItem
         cls._video_frame_item = VideoFrameItem() # Use the new custom item
         cls._video_scene.addItem(cls._video_frame_item)
-        # --- END CHANGE ---
 
         # Full screen setup
         screen_geometry = QApplication.desktop().screenGeometry()
         width = screen_geometry.width()
         height = screen_geometry.height()
 
-        cls._video_window.setGeometry(0, 0, width, height)
-        cls._video_view.setGeometry(0, 0, width, height)
-        cls._video_scene.setSceneRect(0, 0, width, height)
+        # Configure size and position
+        if main_parent:
+            # If it's a child window, size it to fit inside the parent
+            cls._video_window.setGeometry(0, 0, main_parent.width(), main_parent.height())
+        else:
+            # For standalone window, use full screen
+            cls._video_window.setGeometry(0, 0, width, height)
+            
+        cls._video_view.setGeometry(0, 0, cls._video_window.width(), cls._video_window.height())
+        cls._video_scene.setSceneRect(0, 0, cls._video_window.width(), cls._video_window.height())
         cls._video_frame_item.setPos(0, 0) # Place item at top-left
 
         cls._video_is_initialized = True
@@ -328,8 +351,6 @@ def init_hint_text_overlay(cls):
         cls._hint_text['window'].setAttribute(Qt.WA_TranslucentBackground)
         cls._hint_text['window'].setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
             Qt.WindowDoesNotAcceptFocus
         )
         cls._hint_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
@@ -389,8 +410,6 @@ def init_hint_request_text_overlay(cls):
         cls._hint_request_text['window'].setAttribute(Qt.WA_TranslucentBackground)
         cls._hint_request_text['window'].setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
             Qt.WindowDoesNotAcceptFocus
         )
         cls._hint_request_text['window'].setAttribute(Qt.WA_ShowWithoutActivating)
@@ -451,10 +470,7 @@ def init_gm_assistance_overlay(cls):
         # Set up window properties
         cls._gm_assistance_overlay['window'].setAttribute(Qt.WA_TranslucentBackground)
         cls._gm_assistance_overlay['window'].setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.WindowDoesNotAcceptFocus
+            Qt.FramelessWindowHint
         )
         cls._gm_assistance_overlay['window'].setAttribute(Qt.WA_ShowWithoutActivating)
 
@@ -661,8 +677,6 @@ def init_timer(cls):
         cls._timer_window.setAttribute(Qt.WA_TranslucentBackground)
         cls._timer_window.setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
             Qt.WindowDoesNotAcceptFocus
         )
         cls._timer_window.setAttribute(Qt.WA_ShowWithoutActivating)
@@ -736,10 +750,7 @@ def init_help_button(cls):
         cls._button_window = QWidget(cls._window)
         cls._button_window.setAttribute(Qt.WA_TranslucentBackground)
         cls._button_window.setWindowFlags(
-            Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool |
-            Qt.WindowDoesNotAcceptFocus
+            Qt.FramelessWindowHint
         )
         cls._button_window.setAttribute(Qt.WA_ShowWithoutActivating)
 
@@ -794,24 +805,21 @@ def init_help_button(cls):
 def init_background(cls):
     """Initialize Qt components for displaying the background image"""
     try:
-        # Create window
-        cls._background_window = QWidget()
-        cls._background_window.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
+        # Get main window from the app if available
+        main_parent = None
+        if cls._app and hasattr(cls._app, 'main_window'):
+            main_parent = cls._app.main_window
+            print(f"[qt init] Using main window as parent for background: {main_parent}")
+
+        # Create window as child of main window if available
+        cls._background_window = QWidget(main_parent)
         cls._background_window.setAttribute(Qt.WA_TranslucentBackground)
-        cls._background_window.setAttribute(Qt.WA_ShowWithoutActivating)
+
+        # Use minimal window flags as it's a child window
+        cls._background_window.setWindowFlags(Qt.FramelessWindowHint)
         
-        # Set window to stay in background
-        if cls._parent_hwnd:
-            try:
-                win32gui.SetParent(int(cls._background_window.winId()), cls._parent_hwnd)
-                style = win32gui.GetWindowLong(int(cls._background_window.winId()), win32con.GWL_EXSTYLE)
-                win32gui.SetWindowLong(
-                    int(cls._background_window.winId()),
-                    win32con.GWL_EXSTYLE,
-                    style | win32con.WS_EX_NOACTIVATE
-                )
-            except Exception as e:
-                print(f"[qt init] Error setting parent/style for background window: {e}")
+        # Make sure it stays at the back of the stacking order
+        cls._background_window.lower()
         
         # Create scene and view
         cls._background_scene = QGraphicsScene()
@@ -825,8 +833,12 @@ def init_background(cls):
         # Create pixmap item
         cls._background_pixmap_item = cls._background_scene.addPixmap(QPixmap())
         
-        # Set up layout
-        screen_size = cls._app.primaryScreen().size()
+        # Set up layout - use the main window size directly
+        if main_parent:
+            screen_size = main_parent.size()
+        else:
+            screen_size = cls._app.primaryScreen().size()
+            
         cls._background_view.setFixedSize(screen_size)
         cls._background_window.setFixedSize(screen_size)
         
@@ -861,8 +873,6 @@ def init_waiting_label(cls):
         window.setAttribute(Qt.WA_TranslucentBackground, True)
         window.setWindowFlags(
             Qt.FramelessWindowHint |        # No border or title bar
-            Qt.WindowStaysOnTopHint |      # Always on top
-            Qt.Tool |                      # Doesn't appear in taskbar
             Qt.WindowTransparentForInput  # Click-through initially (optional)
         )
         # Set geometry before creating view/scene

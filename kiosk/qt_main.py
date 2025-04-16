@@ -1,6 +1,7 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QFont
 import signal
 
 class QtKioskApp(QApplication):
@@ -12,22 +13,29 @@ class QtKioskApp(QApplication):
         self.kiosk_app_instance = kiosk_app_instance
         QtKioskApp.instance = self  # Store reference to this instance
         
-        # Create a simple, invisible main window
-        # This helps manage application lifetime and potentially other top-level interactions
-        # if needed later, without being the primary visible interface.
+        # Create a proper main application window that will show in the taskbar
         self.main_window = QWidget()
-        # Optional: Make it truly invisible and non-interactive if desired
-        # self.main_window.setWindowFlags(Qt.FramelessWindowHint | Qt.Tool)
-        # self.main_window.setAttribute(Qt.WA_TranslucentBackground)
-        # self.main_window.setFixedSize(1, 1)
-        # self.main_window.move(-10, -10) # Move offscreen
-
-        print("[Qt Main] QtKioskApp initialized.")
+        self.main_window.setWindowTitle("Escape Room Kiosk")
+        
+        # Make the main window completely transparent but keep its presence in the taskbar
+        self.main_window.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.main_window.setStyleSheet("background-color: transparent;")
+        
+        # Size it to full screen
+        screen_rect = self.desktop().screenGeometry()
+        self.main_window.setGeometry(0, 0, screen_rect.width(), screen_rect.height())
+        
+        # Remove border but keep it in the taskbar (unlike Qt.Tool)
+        self.main_window.setWindowFlags(self.main_window.windowFlags() & ~Qt.FramelessWindowHint)
+        
+        # Show the main window so it appears in taskbar
+        self.main_window.show()
+        
+        print("[Qt Main] QtKioskApp initialized with transparent main window.")
 
         # Graceful shutdown handling for Ctrl+C
         signal.signal(signal.SIGINT, self.signal_handler)
-        # Use a QTimer to periodically check for the signal, as signal handlers
-        # might not work reliably with Qt's event loop on all platforms/situations.
+        # Use a QTimer to periodically check for the signal
         self._signal_timer = QTimer()
         self._signal_timer.setInterval(100) # Check every 100ms
         self._signal_timer.timeout.connect(lambda: None) # Dummy connect to allow timer processing
@@ -40,8 +48,9 @@ class QtKioskApp(QApplication):
 
     def run(self):
         print("[Qt Main] Starting Qt event loop...")
-        # Optional: Show the invisible main window if you haven't hidden it aggressively
-        # self.main_window.show()
+        # Ensure the main window is visible and maximized
+        self.main_window.show()
+        self.main_window.showMaximized()
         exit_code = self.exec_()
         print(f"[Qt Main] Qt event loop finished with exit code: {exit_code}")
         sys.exit(exit_code) 
