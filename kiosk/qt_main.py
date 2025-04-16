@@ -1,7 +1,6 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
 import signal
 
 class QtKioskApp(QApplication):
@@ -13,29 +12,26 @@ class QtKioskApp(QApplication):
         self.kiosk_app_instance = kiosk_app_instance
         QtKioskApp.instance = self  # Store reference to this instance
         
-        # Create a proper main application window that will show in the taskbar
+        # Create a proper main window that will appear in taskbar and Alt+Tab
         self.main_window = QWidget()
         self.main_window.setWindowTitle("Escape Room Kiosk")
         
-        # Make the main window completely transparent but keep its presence in the taskbar
-        self.main_window.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.main_window.setStyleSheet("background-color: transparent;")
+        # Make it a proper window - removing problematic flags
+        # Don't use Qt.Tool or Qt.FramelessWindowHint which hide from taskbar
         
-        # Size it to full screen
-        screen_rect = self.desktop().screenGeometry()
-        self.main_window.setGeometry(0, 0, screen_rect.width(), screen_rect.height())
+        # Set a reasonable size for the main window
+        screen_size = self.primaryScreen().size()
+        self.main_window.setFixedSize(screen_size)
         
-        # Remove border but keep it in the taskbar (unlike Qt.Tool)
-        self.main_window.setWindowFlags(self.main_window.windowFlags() & ~Qt.FramelessWindowHint)
+        # Make this window accept focus
+        self.main_window.setFocusPolicy(Qt.StrongFocus)
         
-        # Show the main window so it appears in taskbar
-        self.main_window.show()
-        
-        print("[Qt Main] QtKioskApp initialized with transparent main window.")
+        print("[Qt Main] QtKioskApp initialized.")
 
         # Graceful shutdown handling for Ctrl+C
         signal.signal(signal.SIGINT, self.signal_handler)
-        # Use a QTimer to periodically check for the signal
+        # Use a QTimer to periodically check for the signal, as signal handlers
+        # might not work reliably with Qt's event loop on all platforms/situations.
         self._signal_timer = QTimer()
         self._signal_timer.setInterval(100) # Check every 100ms
         self._signal_timer.timeout.connect(lambda: None) # Dummy connect to allow timer processing
@@ -48,9 +44,10 @@ class QtKioskApp(QApplication):
 
     def run(self):
         print("[Qt Main] Starting Qt event loop...")
-        # Ensure the main window is visible and maximized
+        # Show the main window so it appears in taskbar and Alt+Tab
         self.main_window.show()
-        self.main_window.showMaximized()
+        self.main_window.activateWindow()
+        self.main_window.raise_()
         exit_code = self.exec_()
         print(f"[Qt Main] Qt event loop finished with exit code: {exit_code}")
         sys.exit(exit_code) 
