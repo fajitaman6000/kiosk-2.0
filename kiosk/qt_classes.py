@@ -18,6 +18,26 @@ class ClickableVideoView(QGraphicsView):
             print("[qt classes] Video is skippable, emitting clicked signal.")
             self.clicked.emit()
         super().mousePressEvent(event)
+        
+    def keyPressEvent(self, event):
+        """Handle key press events and allow system key combinations to pass through."""
+        # Pass Alt+Tab and other system shortcuts through
+        import win32gui
+        if event.modifiers() & Qt.AltModifier:
+            # Let system handle Alt+Tab and other Alt key combinations
+            print("[qt classes] Allowing Alt key combination to pass through")
+            super().keyPressEvent(event)
+            return
+            
+        # Let Escape key close the video if skippable
+        if event.key() == Qt.Key_Escape and self._is_skippable:
+            print("[qt classes] Escape pressed on skippable video, emitting clicked signal")
+            self.clicked.emit()
+            event.accept()
+            return
+            
+        # For other keys, use default handling
+        super().keyPressEvent(event)
 
     def set_skippable(self, skippable):
         print(f"[qt classes] Setting video skippable: {skippable}")

@@ -276,11 +276,10 @@ def init_video_display(cls):
         cls._video_window = QWidget()
         cls._video_window.setStyleSheet("background-color: black;") # Explicit black background
         
-        # Set window flags to make it stay on top and frameless
+        # Set window flags - removed WindowStaysOnTopHint to allow tabbing out
         cls._video_window.setWindowFlags(
             Qt.FramelessWindowHint |
-            Qt.WindowStaysOnTopHint |
-            Qt.Tool
+            Qt.Tool  # Tool windows don't show in taskbar but allow for window switching
         )
         
         # Create scene and view

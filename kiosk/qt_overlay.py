@@ -663,10 +663,26 @@ class Overlay:
         """Show the video display window."""
         if cls._video_window and cls._video_is_initialized:
             print("[qt overlay] Showing video display.")
-            # Ensure it's visible and on top
+            # Ensure it's visible and on top within the application
             cls._video_window.show()
             cls._video_window.raise_()
-            cls._video_window.activateWindow() # Try to ensure it gets focus/clicks
+            cls._video_window.activateWindow() # Set focus to the video window initially
+            
+            # Get the handle to the main application window
+            from qt_main import QtKioskApp
+            if QtKioskApp.instance and QtKioskApp.instance.main_window:
+                # Make the video window a child of the main window in the window hierarchy
+                # but not in the widget hierarchy, so it can be tabbed away from
+                import win32gui
+                try:
+                    main_hwnd = int(QtKioskApp.instance.main_window.winId())
+                    video_hwnd = int(cls._video_window.winId())
+                    # Set the main window as owner (not parent) of the video window
+                    # This keeps visual hierarchy while allowing tabbing out
+                    win32gui.SetWindowLong(video_hwnd, win32con.GWL_HWNDPARENT, main_hwnd)
+                except Exception as e:
+                    print(f"[qt overlay] Error setting window parent relationship: {e}")
+                    
             QApplication.processEvents() # Process pending events
         else:
             print("[qt overlay] Cannot show video display: not initialized or window missing.")
