@@ -22,7 +22,7 @@ class KioskUI:
         self.cooldown_label = None
         self.request_pending_label = None
         self.hint_label = None
-        self.fullscreen_image = None  # Will be handled by container in main window
+        self.fullscreen_image = None
         self._lock = threading.Lock()
 
         self.hint_cooldown = False
