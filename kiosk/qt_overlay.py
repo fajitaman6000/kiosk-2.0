@@ -2020,7 +2020,17 @@ class Overlay:
                     print("[qt_overlay.py - hide] _button['scene'] does NOT exist")
             else:
                 print("[qt_overlay.py - hide] _button does not exist.")
-            cls._button_view.set_click_callback(None)
+            
+            # ClickableVideoView doesn't have set_click_callback, use disconnect instead
+            try:
+                cls._button_view.clicked.disconnect()
+                print("[qt_overlay.py - hide] Disconnected button_view click signals")
+            except TypeError:
+                # No connections to disconnect
+                print("[qt_overlay.py - hide] No click signals to disconnect")
+            except Exception as e:
+                print(f"[qt_overlay.py - hide] Error disconnecting signals: {e}")
+        
         print("[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===")
 
     @classmethod

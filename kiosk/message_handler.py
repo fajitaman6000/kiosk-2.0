@@ -412,11 +412,11 @@ class MessageHandler:
                         self.kiosk_app.hints_received += 1
                         print(f"[message handler][DEBUG] Setting up solution video interface: {video_path}")
 
-                        # Prepare hint data (safe)
-                        hint_data = { 'text': 'Video Solution Received' }
+                        # Pass a string directly to show_hint instead of a dictionary
+                        hint_text = "Video Solution Received"
 
                         # Schedule GUI updates
-                        self.schedule_timer(0, lambda d=hint_data: self.kiosk_app.show_hint(d, start_cooldown=False))
+                        self.schedule_timer(0, lambda text=hint_text: self.kiosk_app.show_hint(text, start_cooldown=False))
                         self.schedule_timer(50, lambda rf=room_folder, vf=video_filename: self.kiosk_app.ui.show_video_solution(rf, vf)) # Slight delay for button
 
                     else:
