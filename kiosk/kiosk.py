@@ -229,7 +229,18 @@ class KioskApp:
         Overlay.hide_hint_request_text()
         self.hint_requested_flag = False  # Reset hint flag
         
-        if text:
+        # Handle different types of hint data
+        if isinstance(text, dict):
+            # Handle dictionary format (used for image hints)
+            hint_text = text.get('text', '')
+            if hint_text:
+                print(f"[kiosk main]Showing hint: {hint_text[:30]}{'...' if len(hint_text) > 30 else ''}")
+            else:
+                print("[kiosk main]Showing image hint (no text)")
+            self.hints_received += 1  # Count hints actually shown
+            self.ui.show_hint(text, start_cooldown)
+        elif text:
+            # Handle string format (text-only hints)
             print(f"[kiosk main]Showing hint: {text[:30]}{'...' if len(text) > 30 else ''}")
             self.hints_received += 1  # Count hints actually shown
             self.ui.show_hint(text, start_cooldown)
