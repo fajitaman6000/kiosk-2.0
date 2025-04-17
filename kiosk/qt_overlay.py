@@ -1992,6 +1992,15 @@ class Overlay:
                 cls._hint_request_text['scene'].clear()
         if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
             cls._cooldown_window.hide()
+        # Hide view solution button
+        if hasattr(cls, '_view_solution_button_initialized') and cls._view_solution_button_initialized and cls._view_solution_button and cls._view_solution_button.get('window'):
+            cls._view_solution_button['window'].hide()
+            cls._view_solution_button_ui_instance = None
+        # Hide view image button
+        if hasattr(cls, '_view_image_button_initialized') and cls._view_image_button_initialized and cls._view_image_button and cls._view_image_button.get('window'):
+            cls._view_image_button['window'].hide()
+            cls._view_image_button_ui_instance = None
+
         if cls._timer_thread is not None:
             cls._timer_thread.quit()
             cls._timer_thread.wait()
