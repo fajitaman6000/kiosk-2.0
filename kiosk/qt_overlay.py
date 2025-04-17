@@ -1434,7 +1434,7 @@ class Overlay:
             if ui.current_hint:  # First, check for the existence of current_hint
                 hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
                 if hint_text is not None and hint_text.strip() != "":
-                    print("[qt_overlay] Restoring hint text from within _actual_help_button_update")
+                    #print("[qt_overlay] Restoring hint text from within _actual_help_button_update")
                     cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
                 else:
                     print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
@@ -1458,20 +1458,39 @@ class Overlay:
         # Use the dedicated cooldown window if available
         if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
             cls._cooldown_window.hide()
-            print("[qt_overlay.hide_cooldown] _cooldown_window hidden")
+            print("[qt overlay] _cooldown_window hidden")
         # Only hide cls._window if it's specifically for cooldown (not the main container)
         elif cls._window and hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
             # Direct hide call instead of using QMetaObject
             cls._window.hide()
-            print("[qt_overlay.hide_cooldown] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
         else:
-            print("[qt_overlay.hide_cooldown] No cooldown window found to hide")
+            print("[qt overlay] No cooldown window found to hide")
     
     @classmethod
     def hide(cls):
         """Hide all overlay windows (thread-safe entry point)."""
         print("[qt_overlay.py - hide] === STARTING hide() - Calling _actual_hide via invokeMethod ===")
-        QMetaObject.invokeMethod(cls, "_actual_hide", Qt.QueuedConnection)
+        # Instead of using QMetaObject.invokeMethod(cls, "_actual_hide", Qt.QueuedConnection)
+        # which fails because cls is a class type, not a QObject instance
+        if cls._bridge:
+            # Use the bridge which is a QObject instance
+            QMetaObject.invokeMethod(cls._bridge, "execute_callback", Qt.QueuedConnection, 
+                                    Q_ARG(object, cls._actual_hide))
+        else:
+            # Fallback to direct call if bridge isn't available
+            cls._actual_hide()
 
     @classmethod
     def hide_all_overlays(cls):
@@ -1499,6 +1518,18 @@ class Overlay:
 
             if hasattr(cls, '_window') and cls._window and cls._window.isVisible(): # Cooldown window
                 cls._window.hide()
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
+                print("[qt overlay] _window hidden")
 
             cls.hide_victory_screen()
             cls.hide_loss_screen()
@@ -1652,8 +1683,20 @@ class Overlay:
                      # CRITICAL FIX: MAKE ABSOLUTELY SURE we hide this window if it's not showing cooldown
                      # This prevents the white screen issue
                      if cls._window.isVisible():
-                         print("[qt overlay] Hiding main window because it's not showing valid cooldown.")
-                         cls._window.hide()
+                        print("[qt overlay] Hiding main window because it's not showing valid cooldown.")
+                        cls._window.hide()
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
+                        print("[qt overlay] _window hidden")
 
             # --- Restore new, dedicated cooldown window if it exists ---
             if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
@@ -1933,7 +1976,8 @@ class Overlay:
         print("[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===")
 
         if cls._window:
-            cls._window.hide()
+            #cls._window.hide() hiding the WINDOW doesn't make any sense because that wouldn't allow anything to be displayed
+            pass
         if hasattr(cls, '_timer_window') and cls._timer_window:
             cls._timer_window.hide()
         if hasattr(cls, '_button_window') and cls._button_window:
@@ -1948,7 +1992,6 @@ class Overlay:
                 cls._hint_request_text['scene'].clear()
         if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
             cls._cooldown_window.hide()
-
         if cls._timer_thread is not None:
             cls._timer_thread.quit()
             cls._timer_thread.wait()
@@ -1980,6 +2023,18 @@ class Overlay:
         # For backwards compatibility, also hide the older cooldown if it exists
         if hasattr(cls, '_window') and cls._window:
             cls._window.hide()
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
+            print("[qt overlay] _window hidden")
 
     @classmethod
     def hide_overlays_for_video(cls):
