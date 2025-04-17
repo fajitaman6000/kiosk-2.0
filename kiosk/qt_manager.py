@@ -231,7 +231,8 @@ class QtManager:
             self.cooldown_after_id = None
         
         self.hint_cooldown = True
-        cooldown_seconds = self.room_config.get('hint_cooldown', 30)
+        # Use fixed 10 seconds cooldown instead of from config
+        cooldown_seconds = 10
         Overlay.show_hint_cooldown(cooldown_seconds)  # Show initial cooldown
         self.update_cooldown(cooldown_seconds)
 
@@ -257,6 +258,9 @@ class QtManager:
             'room_folder': room_folder,
             'video_filename': video_filename
         }
+        
+        # Start cooldown for video solutions
+        self.start_cooldown()
         
         # Show the video solution button
         Overlay.show_view_solution_button(self)
