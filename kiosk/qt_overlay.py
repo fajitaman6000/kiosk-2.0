@@ -1148,6 +1148,14 @@ class Overlay:
         cls._timer_thread.update_display(time_str)
 
     @classmethod
+    def hide_timer(cls):
+        """Hide the timer display."""
+        if hasattr(cls, '_timer_window') and cls._timer_window:
+            if cls._timer_window.isVisible():
+                cls._timer_window.hide()
+                print("[qt overlay] Timer hidden")
+
+    @classmethod
     def _actual_timer_update(cls, time_str):
         """Actual update method that runs in the main thread"""
         #print(f"\n[DEBUG OVERLAY] _actual_timer_update called with time: {time_str}")
