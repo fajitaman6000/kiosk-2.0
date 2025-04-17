@@ -46,9 +46,13 @@ class KioskApp:
         # Create Qt application first, before any other component
         self.qt_app = QtKioskApp(self)
         
-        # Handle icon setting
-        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
-        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        # Set the proper application ID for Windows taskbar grouping
+        # This should be a registered application identifier for your app
+        myappid = 'EscapeRoomKiosk.App.2.0'  # Use a consistent, specific app ID
+        try:
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except Exception as e:
+            print(f"[kiosk main] Failed to set app ID: {str(e)}")
 
         # Initialize Qt overlay with explicit reference to the QApplication instance
         # We'll modify the Overlay.init method to accept a reference to the Qt application

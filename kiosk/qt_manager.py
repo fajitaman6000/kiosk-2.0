@@ -248,27 +248,46 @@ class QtManager:
     def start_cooldown(self):
         """Starts the hint cooldown timer and displays the cooldown message."""
         print("[qt_manager.py] Starting hint cooldown...")
+        
+        # Cancel any existing cooldown timer
         if self.cooldown_after_id:
-            # Replace root.after_cancel with setting the flag to False
-            self.hint_cooldown = False
+            self.cooldown_after_id.stop()
             self.cooldown_after_id = None
         
+        # Set the cooldown flag
         self.hint_cooldown = True
+        
         # Use fixed 10 seconds cooldown instead of from config
         cooldown_seconds = 10
-        Overlay.show_hint_cooldown(cooldown_seconds)  # Show initial cooldown
-        self.update_cooldown(cooldown_seconds)
+        
+        # Show initial cooldown
+        Overlay.show_hint_cooldown(cooldown_seconds)
+        
+        # Create a new QTimer for the cooldown
+        self.cooldown_after_id = QTimer()
+        self.cooldown_after_id.timeout.connect(lambda: self.update_cooldown())
+        self.cooldown_after_id.start(1000)  # Update every second
+        
+        # Store the end time to have a single source of truth
+        self.cooldown_end_time = cooldown_seconds
+        self.cooldown_current_time = cooldown_seconds
 
-    def update_cooldown(self, seconds_left):
+    def update_cooldown(self):
         """Updates the cooldown timer display with the seconds left."""
+        # Decrement the cooldown time
+        self.cooldown_current_time -= 1
+        seconds_left = self.cooldown_current_time
+        
         if seconds_left > 0 and self.hint_cooldown:
+            # Update the cooldown display if appropriate
             if not self.message_handler.video_manager.is_playing and not self.image_is_fullscreen:
                 Overlay.show_hint_cooldown(seconds_left)
-            # Schedule the next update after 1 second
-            QTimer.singleShot(1000, lambda: self.update_cooldown(seconds_left - 1))
         else:
+            # Cooldown is complete
             self.hint_cooldown = False
-            self.cooldown_after_id = None
+            if self.cooldown_after_id:
+                self.cooldown_after_id.stop()
+                self.cooldown_after_id = None
             Overlay.hide_hint_cooldown()
             # Update help button if needed
             QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())

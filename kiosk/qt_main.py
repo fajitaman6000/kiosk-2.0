@@ -1,7 +1,9 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QIcon
 import signal
+import os
 
 class QtKioskApp(QApplication):
     """Main Qt Application class replacing Tkinter root."""
@@ -18,6 +20,16 @@ class QtKioskApp(QApplication):
         
         # Set window flags to remove window decorations
         self.main_window.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)
+        
+        # Set application and window icon
+        icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "icon.ico")
+        if os.path.exists(icon_path):
+            print(f"[Qt Main] Setting application icon from: {icon_path}")
+            app_icon = QIcon(icon_path)
+            self.setWindowIcon(app_icon)
+            self.main_window.setWindowIcon(app_icon)
+        else:
+            print(f"[Qt Main] Warning: Icon file not found at {icon_path}")
         
         # Use a layout to properly manage child widgets
         self.layout = QVBoxLayout(self.main_window)
