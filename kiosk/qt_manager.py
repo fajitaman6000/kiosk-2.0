@@ -4,7 +4,8 @@ import os
 import threading
 import traceback
 from qt_overlay import Overlay
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QObject, pyqtSlot
+import base64
 print("[qt_manager] Ending imports ...")
 
 class QtManager:
@@ -25,8 +26,30 @@ class QtManager:
         self.image_is_fullscreen = False
         self.current_room = 0
 
+        # Register this instance with the overlay for callbacks
+        self.register_with_overlay()
+
         # Initialize the Qt overlay if not already initialized
         Overlay.init()
+
+    def register_with_overlay(self):
+        """Register this instance with the overlay for callbacks."""
+        # Use the _on_view_image_button_clicked and _on_view_solution_button_clicked 
+        # static methods from Overlay, but have them call methods in this class
+        Overlay.register_ui_manager(self)
+
+    def on_view_image_clicked(self):
+        """Handler for view image button clicks."""
+        print("[qt_manager.py] View image button clicked")
+        if self.stored_image_data:
+            self.show_fullscreen_image()
+        else:
+            print("[qt_manager.py] No image data to show")
+
+    def on_view_solution_clicked(self):
+        """Handler for view solution button clicks."""
+        print("[qt_manager.py] View solution button clicked")
+        self.toggle_solution_video()
 
     def load_background(self, room_number):
         if room_number not in self.room_config['backgrounds']:

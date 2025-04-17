@@ -189,6 +189,9 @@ class Overlay:
     _background_pixmap_item = None
     _background_initialized = False
     
+    # Add the _ui_manager class variable to the list of class variables
+    _ui_manager = None  # Reference to the UI manager for callbacks
+    
     @classmethod
     def init(cls):
         """Initialize the Qt overlay system."""
@@ -458,18 +461,19 @@ class Overlay:
     def _on_view_image_button_clicked(cls):
         """Callback when the Qt 'View Image Hint' button is clicked."""
         print("[qt overlay] View Image button clicked.")
+        if hasattr(cls, '_ui_manager') and cls._ui_manager and hasattr(cls._ui_manager, 'on_view_image_clicked'):
+            cls._ui_manager.on_view_image_clicked()
+        else:
+            print("[qt overlay] Error: No UI manager or on_view_image_clicked method available for View Image click.")
 
     @classmethod
     def _on_view_solution_button_clicked(cls):
         """Callback when the Qt 'View Solution' button is clicked."""
         print("[qt overlay] View Solution button clicked.")
-        if cls._view_solution_button_ui_instance and hasattr(cls._view_solution_button_ui_instance, 'toggle_solution_video'):
-            # Call the existing toggle method in ui.py
-            # Ensure this call happens in the main thread if ui.py methods aren't thread-safe
-            # Since the click event happens in the main Qt thread, a direct call should be okay.
-            cls._view_solution_button_ui_instance.toggle_solution_video()
+        if hasattr(cls, '_ui_manager') and cls._ui_manager and hasattr(cls._ui_manager, 'on_view_solution_clicked'):
+            cls._ui_manager.on_view_solution_clicked()
         else:
-            print("[qt overlay] Error: No UI instance or toggle_solution_video method available for View Solution click.")
+            print("[qt overlay] Error: No UI manager or on_view_solution_clicked method available for View Solution click.")
 
     @classmethod
     def show_view_image_button(cls, ui_instance):
@@ -2028,3 +2032,9 @@ class Overlay:
         """
         print("[qt overlay] UI elements no longer need to be hidden for video playback (top-level video window)")
         # Intentionally empty - all UI elements remain visible
+
+    @classmethod
+    def register_ui_manager(cls, ui_manager):
+        """Register the UI manager instance for callbacks."""
+        cls._ui_manager = ui_manager
+        print(f"[qt overlay] UI manager registered: {ui_manager}")

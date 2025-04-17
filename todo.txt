@@ -27,6 +27,7 @@
 # pre-beta testing
 
 failing camera check
+cooldowns overlapping
 
 
 ##############################################################################################################################
@@ -42,7 +43,7 @@ rebooter added to kiosk app
 ##############################################################################################################################
 # known priority bugs
 
-admin application instability resulting in/caused by mqtt disconnect codes 16 and 7 (paho codes?)
+admin application instability resulting in/caused by mqtt disconnect codes 16 and 7: paho codes
     MQTT_ERR_ACL_DENIED = 12
     MQTT_ERR_AGAIN = -1
     MQTT_ERR_AUTH = 11
