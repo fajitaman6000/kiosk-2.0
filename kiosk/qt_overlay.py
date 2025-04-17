@@ -311,6 +311,9 @@ class Overlay:
             print("[qt overlay] Showing fullscreen hint.")
             # 1. Hide other non-video overlays
             cls.hide_all_overlays() # Make sure this hides timer, buttons, text hints etc.
+            
+            # Explicitly hide the view image button when showing fullscreen image
+            cls.hide_view_image_button()
 
             # 2. Decode and load image
             image_bytes = base64.b64decode(image_data_base64)
@@ -424,6 +427,8 @@ class Overlay:
                 cls._fullscreen_hint_pixmap_item.setPixmap(QPixmap())
                 cls._fullscreen_hint_pixmap = None # Clear stored pixmap
 
+            # Explicitly hide the view image button
+            cls.hide_view_image_button()
 
             # Restore other overlays *first*
             cls.show_all_overlays()
@@ -1449,7 +1454,8 @@ class Overlay:
                     #print("[qt_overlay] Restoring hint text from within _actual_help_button_update")
                     cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
                 else:
-                    print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
+                    #print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
+                    pass
             else:
                 #print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
                 Overlay.hide_hint_text()

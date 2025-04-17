@@ -240,13 +240,19 @@ class QtManager:
         if hint_text:
             Overlay.show_hint_text(hint_text, self.current_room)
 
-        # Re-show image button if needed
-        if image_data_exists:
+        # Re-show image button if needed, but only if not in fullscreen mode
+        if image_data_exists and not self.image_is_fullscreen:
             Overlay.show_view_image_button(self)
+        else:
+            # Ensure button is hidden
+            Overlay.hide_view_image_button()
 
         # Re-show video solution button if needed
         if video_info_exists:
             Overlay.show_view_solution_button(self)
+        else:
+            # Ensure button is hidden
+            Overlay.hide_view_solution_button()
 
     def start_cooldown(self):
         """Starts the hint cooldown timer and displays the cooldown message."""

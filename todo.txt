@@ -31,12 +31,12 @@
 ##############################################################################################################################
 # todo
 
+make image viewing overlaying everything instead of hiding elements
 film video solutions 
 import/move over audio hints
 add image hints as custom hints
 add images to the manual hint library
 rebooter added to kiosk app
-
 
 ##############################################################################################################################
 # known priority bugs
