@@ -154,6 +154,9 @@ class QtManager:
 
             # Clear stored video info if a new hint arrives
             self.stored_video_info = None
+            
+            # Explicitly hide the view solution button when receiving a text hint
+            Overlay.hide_view_solution_button()
 
             if start_cooldown:
                 self.start_cooldown() # Starts Qt cooldown overlay via Overlay.show_hint_cooldown
@@ -166,7 +169,7 @@ class QtManager:
 
             # Process hint data
             hint_text = ""
-            self.stored_image_data = None # Reset stored image data
+            self.stored_image_data = None
 
             if isinstance(text_or_data, str):
                 hint_text = text_or_data
