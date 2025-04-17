@@ -1470,19 +1470,9 @@ class Overlay:
         # Only hide cls._window if it's specifically for cooldown (not the main container)
         elif cls._window and hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
             # Direct hide call instead of using QMetaObject
-            cls._window.hide()
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
+            #cls._window.hide()
+            print("[qt overlay]would have tried to hide the window here for whatever reason")
+            pass
         else:
             print("[qt overlay] No cooldown window found to hide")
     
@@ -1525,19 +1515,8 @@ class Overlay:
                    cls._gm_assistance_overlay['_was_visible'] = False # Ensure flag exists
 
             if hasattr(cls, '_window') and cls._window and cls._window.isVisible(): # Cooldown window
-                cls._window.hide()
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
-                print("[qt overlay] _window hidden")
+                #cls._window.hide()
+                print("[qt overlay]would have tried to hide the window here for whatever reason")
 
             cls.hide_victory_screen()
             cls.hide_loss_screen()
@@ -1692,19 +1671,8 @@ class Overlay:
                      # This prevents the white screen issue
                      if cls._window.isVisible():
                         print("[qt overlay] Hiding main window because it's not showing valid cooldown.")
-                        cls._window.hide()
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
-                        print("[qt overlay] _window hidden")
+                        #cls._window.hide()
+                        print("[qt overlay]would have tried to hide the window here for whatever reason")
 
             # --- Restore new, dedicated cooldown window if it exists ---
             if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
@@ -2049,19 +2017,8 @@ class Overlay:
         
         # For backwards compatibility, also hide the older cooldown if it exists
         if hasattr(cls, '_window') and cls._window:
-            cls._window.hide()
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
-            print("[qt overlay] _window hidden")
+            #cls._window.hide()
+            print("[qt overlay]would have tried to hide the window here for whatever reason")
 
     @classmethod
     def hide_overlays_for_video(cls):

@@ -3,7 +3,7 @@ print("[kiosk main] Beginning imports ...")
 # import tkinter as tk - removed
 import socket, sys, os, traceback, ctypes # type: ignore
 from networking import KioskNetwork
-from ui import KioskUI
+from qt_manager import QtManager
 from config import ROOM_CONFIG
 from video_server import VideoServer
 from video_manager import VideoManager
@@ -74,8 +74,8 @@ class KioskApp:
         self.timer = KioskTimer(None, self)  # Pass self but no longer need root
         self.timer.game_won = False 
         
-        # Create UI after setting kiosk_app reference
-        self.ui = KioskUI(None, self.computer_name, ROOM_CONFIG, self)  # No longer need to pass root
+        # Create UI manager with QtManager instead of KioskUI
+        self.ui = QtManager(self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()
         self.network.start_threads()
 
