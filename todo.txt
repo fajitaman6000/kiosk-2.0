@@ -41,6 +41,9 @@ rebooter added to kiosk app
 ##############################################################################################################################
 # known priority bugs
 
+saved hints don't send
+hints don't make sounds
+
 admin application instability resulting in/caused by mqtt disconnect codes 16 and 7: paho codes
     MQTT_ERR_ACL_DENIED = 12
     MQTT_ERR_AGAIN = -1

@@ -636,18 +636,22 @@ def init_gm_assistance_overlay(cls):
         # Add click handling to the view
         class GMAssistanceView(QGraphicsView):
             def mousePressEvent(self, event):
+                # Import Overlay class here to ensure access
+                from qt_overlay import Overlay 
+
                 scene_pos = self.mapToScene(event.pos())
                 items = self.scene().items(scene_pos)
                 for item in items:
                     if item == cls._gm_assistance_overlay['yes_rect'] or item == cls._gm_assistance_overlay['yes_button']:
                         print("[qt init] Yes button clicked - GM assistance accepted")
                         # Send message to admin using the kiosk app's network
-                        if hasattr(cls, 'kiosk_app') and cls._kiosk_app is not None:
-                            print(f"[qt init] Found kiosk_app with computer_name: {cls._kiosk_app.computer_name}")
+                        # Access Overlay._kiosk_app directly
+                        if hasattr(Overlay, '_kiosk_app') and Overlay._kiosk_app is not None:
+                            print(f"[qt init] Found kiosk_app with computer_name: {Overlay._kiosk_app.computer_name}")
                             try:
-                                cls._kiosk_app.network.send_message({
+                                Overlay._kiosk_app.network.send_message({
                                     'type': 'gm_assistance_accepted',
-                                    'computer_name': cls._kiosk_app.computer_name
+                                    'computer_name': Overlay._kiosk_app.computer_name
                                 })
                                 print("[qt init] Message sent successfully")
                             except Exception as e:
@@ -655,15 +659,18 @@ def init_gm_assistance_overlay(cls):
                                 traceback.print_exc()
                         else:
                             print("[qt init] Error: kiosk_app not found or is None")
-                            print(f"[qt init] Has kiosk_app attribute: {hasattr(cls, 'kiosk_app')}")
-                            if hasattr(cls, 'kiosk_app'):
-                                print(f"[qt init] kiosk_app value: {cls._kiosk_app}")
+                            # Use Overlay for checking the attribute existence and value
+                            print(f"[qt init] Has Overlay._kiosk_app attribute: {hasattr(Overlay, '_kiosk_app')}") 
+                            if hasattr(Overlay, '_kiosk_app'):
+                                print(f"[qt init] Overlay._kiosk_app value: {Overlay._kiosk_app}")
                         # Hide the overlay after accepting
-                        cls.hide_gm_assistance()
+                        # Use cls here as it refers to the outer init function's cls reference for the overlay components
+                        cls.hide_gm_assistance() 
                         break
                     elif item == cls._gm_assistance_overlay['no_rect'] or item == cls._gm_assistance_overlay['no_button']:
                         print("[qt init] Player clicked \"No\" - In-room assistance declined")
                         # Hide the overlay after declining
+                        # Use cls here as it refers to the outer init function's cls reference for the overlay components
                         cls.hide_gm_assistance()
                         break
                 super().mousePressEvent(event)
