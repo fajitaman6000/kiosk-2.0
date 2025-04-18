@@ -300,42 +300,35 @@ class VideoPlayer:
 
                 # --- Get Next Frame (or wait) ---
                 next_frame = None
-                try:
-                    if time_until_next_frame > 0.002: # If we have time, wait
-                        sleep_duration = max(0, time_until_next_frame - 0.002)
-                        # Adjust sleep if queue is getting empty to prevent unnecessary waiting
-                        # q_size = self.frame_queue.qsize()
-                        # if q_size < 5 : sleep_duration *= 0.5 # Example heuristic
+                get_timeout = self.frame_time # Default timeout if not sleeping
 
+                try:
+                    # --- Sleep if ahead --- 
+                    if time_until_next_frame > 0.002:
+                        sleep_duration = max(0, time_until_next_frame - 0.002)
                         time.sleep(sleep_duration)
-                        # Reduce timeout slightly if we slept, maybe half the remaining wait time
-                        get_timeout = max(0.001, (time_until_next_frame - sleep_duration) * 1.5)
-                        next_frame = self.frame_queue.get(block=True, timeout=min(get_timeout, self.frame_time * 0.8)) # Don't wait too long
-                    else:
-                        # On time or slightly behind, try non-blocking get first
-                        try:
-                            next_frame = self.frame_queue.get(block=False)
-                        except queue.Empty:
-                            # Queue empty when we expected a frame - reader is lagging
-                            lag_time = -time_until_next_frame
-                            # print(f"[video player] Player: Frame queue empty (lag: {lag_time:.3f}s). Waiting briefly...") # Can be noisy
-                            # Block briefly - if reader is really stuck, we'll timeout later
-                            try:
-                                next_frame = self.frame_queue.get(block=True, timeout=self.frame_time * 1.5) # Wait a bit longer than one frame time
-                            except queue.Empty:
-                                print("[video player] Player: Timed out waiting for frame after lag. Reader may be stuck/slow.")
-                                # Don't 'continue' here, let the loop timing naturally adjust
-                                # or potentially receive the None sentinel next iteration.
-                                # If we skip frames, timing gets worse. Let timing logic handle it.
-                                pass # next_frame is still None, process below
+                        # Use a shorter timeout after sleeping, e.g., 80% of frame time
+                        get_timeout = self.frame_time * 0.8
+                    # If not ahead (time_until_next_frame <= 0.002), 
+                    # get_timeout remains self.frame_time
+                    
+                    # --- Always block with timeout --- 
+                    # Ensure timeout is minimally positive
+                    effective_timeout = max(0.001, get_timeout)
+                    next_frame = self.frame_queue.get(block=True, timeout=effective_timeout)
 
                 except queue.Empty:
-                     # This catch is mainly for the timeout cases
-                     #print(f"[video player] Player: Timed out waiting for next frame ({get_timeout:.3f}s).") # Can be noisy
-                     pass # next_frame is still None, process below
+                    # Timeout occurred. This is expected if the reader lags or finishes.
+                    # Only log if we were significantly behind schedule, maybe?
+                    if time_until_next_frame < -0.1: # Log if more than 100ms behind
+                         lag_time = -time_until_next_frame
+                         # print(f"[video player] Player: Lag detected ({lag_time:.3f}s), queue empty on get({effective_timeout:.3f}s timeout).")
+                    # No need to do anything else here, next_frame remains None,
+                    # the loop continues, effectively displaying the previous frame.
+                    pass
                 except Exception as q_err:
                      print(f"[video player] Player: Error getting frame from queue: {q_err}")
-                     self.should_stop = True # Signal stop on queue error
+                     self.should_stop = True # Signal stop on other queue errors
 
                 # --- Check for End Sentinel ---
                 if next_frame is None and self.frame_queue.empty():
