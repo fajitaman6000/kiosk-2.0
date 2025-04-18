@@ -141,17 +141,18 @@ class VideoPlayer:
                     processed_frame = frame
 
                 # --- Convert to RGB ---
-                # Assuming the display layer (Qt) prefers RGB format.
-                try:
-                    processed_frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-                except cv2.error as cvt_err:
-                    print(f"[video player] Reader: Error converting frame to RGB: {cvt_err}. Sending BGR.")
-                    processed_frame_rgb = processed_frame # Send original BGR if conversion fails
+                # REVERTED: Sending BGR directly as Qt likely expects it or handles conversion.
+                # # Assuming the display layer (Qt) prefers RGB format.
+                # try:
+                #     processed_frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+                # except cv2.error as cvt_err:
+                #     print(f"[video player] Reader: Error converting frame to RGB: {cvt_err}. Sending BGR.")
+                #     processed_frame_rgb = processed_frame # Send original BGR if conversion fails
 
                 # --- Put Frame in Queue ---
                 try:
-                    # Send the processed (or original) RGB frame
-                    self.frame_queue.put(processed_frame_rgb, block=True, timeout=1.0)
+                    # Send the original BGR frame
+                    self.frame_queue.put(processed_frame, block=True, timeout=1.0)
                     processed_frame_count += 1
                 except queue.Full:
                     print("[video player] Reader: Frame queue full. Player might be lagging or stopped.")
