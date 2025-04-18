@@ -140,10 +140,18 @@ class VideoPlayer:
                     # Use frame directly (BGR) at its original resolution
                     processed_frame = frame
 
+                # --- Convert to RGB ---
+                # Assuming the display layer (Qt) prefers RGB format.
+                try:
+                    processed_frame_rgb = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+                except cv2.error as cvt_err:
+                    print(f"[video player] Reader: Error converting frame to RGB: {cvt_err}. Sending BGR.")
+                    processed_frame_rgb = processed_frame # Send original BGR if conversion fails
+
                 # --- Put Frame in Queue ---
                 try:
-                    # Send the processed (or original) BGR frame
-                    self.frame_queue.put(processed_frame, block=True, timeout=1.0)
+                    # Send the processed (or original) RGB frame
+                    self.frame_queue.put(processed_frame_rgb, block=True, timeout=1.0)
                     processed_frame_count += 1
                 except queue.Full:
                     print("[video player] Reader: Frame queue full. Player might be lagging or stopped.")
@@ -240,6 +248,16 @@ class VideoPlayer:
 
             # --- Start Playback Timing ---
             playback_start_perf_counter = time.perf_counter()
+            # Initialize the expected display time for the *first* frame
+            expected_display_time = playback_start_perf_counter
+
+            # --- Pre-Loop Checks ---
+            # Check callback existence once before the loop
+            callback_exists = self.frame_update_callback is not None
+            if not callback_exists:
+                print("[video player] Player: Error: frame_update_callback missing!")
+                # Decide if playback should stop if callback is missing
+                # self.should_stop = True # Optional: stop if callback essential
 
             # --- Playback Loop ---
             current_frame = first_frame
@@ -251,16 +269,12 @@ class VideoPlayer:
                 # --- Process Current Frame ---
                 if current_frame is not None:
                     try:
-                        # Frame is BGR numpy array (potentially original size if < target)
-                        if self.frame_update_callback:
+                        # Frame is RGB numpy array (potentially original size if < target)
+                        if callback_exists:
                             # The callback function is responsible for any necessary
                             # display scaling if current_frame dimensions != screen dimensions
                             self.frame_update_callback(current_frame)
-                        else:
-                            # This check might be redundant if play_video ensures it's set, but good safeguard
-                            if frame_count == 0: # Only warn once if callback missing
-                                print("[video player] Player: Error: frame_update_callback missing!")
-                            # Optionally stop if callback is essential: self.should_stop = True
+                        # No 'else' needed here because we checked existence before the loop
                         frame_count += 1
                     except Exception as frame_err:
                          # Check for the specific Qt object deleted error during shutdown
@@ -278,8 +292,9 @@ class VideoPlayer:
 
 
                 # --- Timing Calculation ---
+                # Increment expected time for the *next* frame BEFORE getting current time
+                expected_display_time += self.frame_time
                 current_time = time.perf_counter()
-                expected_display_time = playback_start_perf_counter + frame_count * self.frame_time
                 time_until_next_frame = expected_display_time - current_time
 
                 # --- Get Next Frame (or wait) ---
