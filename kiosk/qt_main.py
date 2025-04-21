@@ -16,7 +16,7 @@ class QtKioskApp(QApplication):
         
         # Create a proper main window that will appear in taskbar and Alt+Tab
         self.main_window = QWidget()
-        self.main_window.setWindowTitle("Escape Room Kiosk")
+        self.main_window.setWindowTitle("PanIQ Room Kiosk")
         
         # Set window flags to remove window decorations
         self.main_window.setWindowFlags(Qt.Window | Qt.FramelessWindowHint)

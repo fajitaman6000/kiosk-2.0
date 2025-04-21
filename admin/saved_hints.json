@@ -1,18 +1,26 @@
 {
     "rooms": {
-        "3": {
-            "Fart Owl": {
-                "farty": {
-                    "text": "gsdhdfgh",
-                    "image": "lol.png"
+        "4": {
+            "Tools": {
+                "t": {
+                    "text": "ghjkghjkghjkghkj",
+                    "image": null
                 }
             }
         },
-        "2": {
-            "Cameras": {
-                "cam test": {
+        "1": {
+            "Plant Bombs": {
+                "test": {
                     "text": "",
-                    "image": "2.png"
+                    "image": "c4 positions.png"
+                }
+            }
+        },
+        "3": {
+            "Code Panel": {
+                "test": {
+                    "text": "",
+                    "image": "center of table.png"
                 }
             }
         }

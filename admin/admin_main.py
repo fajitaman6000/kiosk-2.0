@@ -28,7 +28,7 @@ try:
             print(f"[main]Working directory set to: {os.getcwd()}")
             
             self.root = tk.Tk()
-            self.root.title("Game Master Control Center")
+            self.root.title("PanIQ Game Master Control Center")
 
             # Handle icon setting
             myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string

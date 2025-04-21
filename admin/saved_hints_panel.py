@@ -452,12 +452,40 @@ class SavedHintsPanel:
         prop_display_name = self.prop_var.get()
         room_str = str(self.current_room)
         
-        # Get hint data directly from the structure
+        # Extract original prop name from the combined format
+        original_name = prop_display_name.split('(')[-1].rstrip(')')
+        original_name = original_name.strip()
+        
+        # Build name mapping just like in get_hints_for_prop
+        room_map = {
+            3: "wizard",
+            1: "casino_ma",
+            2: "casino_ma",
+            5: "haunted",
+            4: "zombie",
+            6: "atlantis",
+            7: "time"
+        }
+        
+        name_mapping = {}
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                for orig_name, prop_info in self.prop_name_mappings[room_key]['mappings'].items():
+                    display_name = prop_info.get('display', orig_name)
+                    name_mapping[orig_name.lower()] = display_name
+                    name_mapping[display_name.lower()] = display_name
+        
+        # Get hint data directly from the structure with name mapping lookup
         selected_hint = None
-        if (room_str in self.hints_data and 
-            prop_display_name in self.hints_data[room_str] and
-            hint_name in self.hints_data[room_str][prop_display_name]):
-            selected_hint = self.hints_data[room_str][prop_display_name][hint_name]
+        if room_str in self.hints_data:
+            for prop_key in self.hints_data[room_str]:
+                if (prop_key.lower() == original_name.lower() or 
+                    (original_name.lower() in name_mapping and 
+                     prop_key.lower() == name_mapping[original_name.lower()].lower())):
+                    if hint_name in self.hints_data[room_str][prop_key]:
+                        selected_hint = self.hints_data[room_str][prop_key][hint_name]
+                        break
                 
         if selected_hint:
             # Prepare hint data
@@ -469,7 +497,7 @@ class SavedHintsPanel:
                     # Get path using room, prop display name, and image filename
                     image_path = self.get_image_path(
                         self.current_room,
-                        prop_display_name,
+                        original_name,
                         selected_hint['image']
                     )
                     if image_path and os.path.exists(image_path):
