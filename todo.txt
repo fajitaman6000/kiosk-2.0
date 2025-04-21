@@ -26,23 +26,33 @@
 ##############################################################################################################################
 # pre-beta testing
 
+saved hints don't send
 
+hint button display bug
 
 ##############################################################################################################################
 # todo
 
-make image viewing overlaying everything instead of hiding elements
-film video solutions 
-import/move over audio hints
-add image hints as custom hints
-add images to the manual hint library
+
+hint contents
+    import/move over audio hints
+    add image hints as custom hints
+    add images to the manual hint library
+    !film video solutions
+
 rebooter added to kiosk app
+
+soundcheck button functionality
+    button which says "touch to play sound"
+    button to confirm sound was heard
+    button to begin testing microphone (visual indicator of audio for solo soundcheck)
+    list of checks including touch seen at admin side
+
+make image viewing overlaying everything instead of hiding elements
+
 
 ##############################################################################################################################
 # known priority bugs
-
-saved hints don't send
-hints don't make sounds
 
 admin application instability resulting in/caused by mqtt disconnect codes 16 and 7: paho codes
     MQTT_ERR_ACL_DENIED = 12
@@ -65,20 +75,18 @@ admin application instability resulting in/caused by mqtt disconnect codes 16 an
     MQTT_ERR_UNKNOWN = 13
 
 hangup reliability: 
-    kiosks don't always launch successfully, especially after the video feed check
     kiosk doesn't retry/add itself back to queue after failed sync attempt
-    "Blocking Network Operations (Highest Probability): This is by far the most likely culprit. The code has multiple places where network operations (sockets, HTTP requests) occur without proper timeouts and error handling. SIGINT (Ctrl+C) often interrupts these blocking calls.
-    Deadlocks (Medium Probability): The code uses threading.Lock in several places (audio_server.py, video_server.py, kiosk_file_downloader.py, video_manager.py, prop_data_monitor.py). Improper lock acquisition and release can lead to deadlocks. A single Ctrl+C might interrupt one thread, potentially breaking a deadlock, but this is unreliable.
-    Long-running operations in the main Tkinter thread (Medium Probability): Blocking calls in the Tkinter main thread will freeze the GUI and can lead to this behavior. While the code tries to offload to threads, some operations still might occur within after callbacks or event handlers.
-    Pygame Mixer Issues (Low Probability): While less likely than network issues, improper use of pygame.mixer can sometimes cause hangs, especially if there are errors loading or playing audio files.
-    Infinite Loops (Low Probability): Less likely, but still possible. If any of the while self.running: loops have a subtle bug that prevents them from exiting, this could occur."
+    kiosks don't always launch successfully, especially after the video feed check
+        "Blocking Network Operations (Highest Probability): This is by far the most likely culprit. The code has multiple places where network operations (sockets, HTTP requests) occur without proper timeouts and error handling. SIGINT (Ctrl+C) often interrupts these blocking calls.
+        Deadlocks (Medium Probability): The code uses threading.Lock in several places (audio_server.py, video_server.py, kiosk_file_downloader.py, video_manager.py, prop_data_monitor.py). Improper lock acquisition and release can lead to deadlocks. A single Ctrl+C might interrupt one thread, potentially breaking a deadlock, but this is unreliable.
+        Long-running operations in the main Tkinter thread (Medium Probability): Blocking calls in the Tkinter main thread will freeze the GUI and can lead to this behavior. While the code tries to offload to threads, some operations still might occur within after callbacks or event handlers.
+        Pygame Mixer Issues (Low Probability): While less likely than network issues, improper use of pygame.mixer can sometimes cause hangs, especially if there are errors loading or playing audio files.
+        Infinite Loops (Low Probability): Less likely, but still possible. If any of the while self.running: loops have a subtle bug that prevents them from exiting, this could occur."
 
 ##############################################################################################################################
 # known low priority bugs
 
-closing image hint doesn't restore "Image Hint Received" text
 kiosk auto resets twice
-tab out doesn't always clear UI elements from view
 kiosk UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
 password for settings gets prompted twice
 mqtt connections get crippled while running file sync
@@ -90,13 +98,12 @@ xyz finished their game (instead of generic victory sound)
 
 kiosk relaunch after sync finish
 
-periodic setting of casino/morning after according to room?
-
 reset props, reset room (runs reset all + reset kiosk)
 
 ##############################################################################################################################
 # ambitious extra ideas:
 
+periodic setting of casino/morning after according to room?
 "wave back" button
 more specific standby audio
 log video solution usage to discourage excessive use

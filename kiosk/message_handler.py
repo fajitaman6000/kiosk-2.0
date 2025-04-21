@@ -418,6 +418,9 @@ class MessageHandler:
 
                         # Pass a string directly to show_hint instead of a dictionary
                         hint_text = "Video Solution Received"
+                        
+                        # --- Play hint sound (schedule on main thread) ---
+                        self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
 
                         # Schedule GUI updates
                         self.schedule_timer(0, lambda text=hint_text: self.kiosk_app.show_hint(text, start_cooldown=False))
