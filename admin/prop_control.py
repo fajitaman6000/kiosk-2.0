@@ -19,7 +19,7 @@ class PropControl:
         5: "haunted",
         4: "zombie",
         6: "atlantis",
-        7: "time"  # Note: This maps to "time_machine" in some contexts
+        7: "time"  # Time Machine room
     }
     # Room-specific MQTT configurations
     ROOM_CONFIGS = {

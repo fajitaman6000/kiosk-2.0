@@ -11,7 +11,7 @@ class ClassicAudioHints:
     ROOM_MAP = {
         "wizard": "wizard",
         "casino": "casino",
-        "ma": "casino",  # Using casino props for MA room
+        "ma": "ma",  # Using ma instead of casino for MA room
         "haunted": "haunted",
         "zombie": "zombie",
         "atlantis": "atlantis",

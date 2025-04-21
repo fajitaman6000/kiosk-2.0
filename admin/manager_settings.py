@@ -30,7 +30,7 @@ class ManagerSettings:
             self.prop_mappings = {}
 
     def get_display_name(self, room_id, prop_name):
-        room_mapping = {'1': 'casino', '2': 'ma', '3': 'haunted', '4': 'zombie', '5': 'wizard', '6': 'atlantis', '7': 'time_machine'}
+        room_mapping = {'1': 'casino', '2': 'ma', '3': 'haunted', '4': 'zombie', '5': 'wizard', '6': 'atlantis', '7': 'time'}
         room_key = room_mapping.get(str(room_id))
         if not room_key:
             return prop_name
