@@ -1324,8 +1324,9 @@ class Overlay:
         show_button = (
             not ui.hint_cooldown and
             not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45) and
-            not timer.game_lost  and # Don't show if game is lost
-            not timer.game_won # Don't show if game is wo
+            not timer.game_lost and # Don't show if game is lost
+            not timer.game_won and # Don't show if game is won
+            not cls._kiosk_app.hint_requested_flag # Don't show if hint is requested
         )
 
         #print(f"[qt overlay]Help Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
