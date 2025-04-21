@@ -96,8 +96,8 @@ class SavedHintsPanel:
         # Map room numbers to config sections
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
@@ -161,8 +161,8 @@ class SavedHintsPanel:
         props_list = []
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
@@ -197,8 +197,8 @@ class SavedHintsPanel:
         # Get the display name mapping for this prop
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
@@ -344,8 +344,8 @@ class SavedHintsPanel:
         # Build name mapping
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
@@ -628,8 +628,8 @@ class SavedHintsPanel:
         # Build name mapping just like in get_hints_for_prop
         room_map = {
             3: "wizard",
-            1: "casino_ma",
-            2: "casino_ma",
+            1: "casino",
+            2: "ma",
             5: "haunted",
             4: "zombie",
             6: "atlantis",
