@@ -1320,7 +1320,7 @@ class Overlay:
         assigned_room = button_data['assigned_room']
         current_minutes = timer.time_remaining / 60
 
-        # Check visibility conditions - NOW includes game_lost
+        # Check visibility conditions
         show_button = (
             not ui.hint_cooldown and
             not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45) and
@@ -1329,16 +1329,22 @@ class Overlay:
             not cls._kiosk_app.hint_requested_flag # Don't show if hint is requested
         )
 
-        #print(f"[qt overlay]Help Button Visibility Check - Time: {current_minutes:.2f}, Cooldown: {ui.hint_cooldown}, Exceeded 45: {time_exceeded_45}")
-
         try:
-            if not cls._kiosk_app.video_manager.is_playing and not cls._kiosk_app.ui.image_is_fullscreen and show_button:
-                # Rebuild the button window to make sure everything is clean
-                if hasattr(cls, '_button_window') and cls._button_window:
-                   cls._button_window.hide()
-                   cls._button_window.deleteLater()
-                   cls._button_window = None
-
+            # Check if we should show the button and it's not already showing
+            button_exists = hasattr(cls, '_button_window') and cls._button_window is not None
+            button_visible = button_exists and cls._button_window.isVisible()
+            
+            # Only show if conditions are met AND no video is playing AND not in fullscreen image mode
+            should_show = show_button and not cls._kiosk_app.video_manager.is_playing and not cls._kiosk_app.ui.image_is_fullscreen
+            
+            # Create button if it should be shown but doesn't exist or isn't visible
+            if should_show and not button_visible:
+                # Create/recreate the button only if needed
+                if button_exists:
+                    cls._button_window.hide()
+                    cls._button_window.deleteLater()
+                    cls._button_window = None
+                
                 # Create a separate window for the button
                 cls._button_window = QWidget(cls._window)
                 cls._button_window.setAttribute(Qt.WA_TranslucentBackground)
@@ -1372,12 +1378,6 @@ class Overlay:
                 # Set scene rect to match view
                 scene_rect = QRectF(0, 0, width, height)
                 cls._button['scene'].setSceneRect(scene_rect)
-
-                # Debug prints
-                #print(f"[qt overlay]View Setup Debug:")
-                #print(f"[qt overlay]View geometry: {cls._button_view.geometry()}")
-                #print(f"[qt overlay]Scene rect: {scene_rect}")
-                #print(f"[qt overlay]View matrix: {cls._button_view.transform()}")
 
                 # Set up placeholders for images
                 cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
@@ -1443,12 +1443,13 @@ class Overlay:
                 cls._button_window.show()
                 cls._button_window.raise_()
                 cls._button_view.viewport().update()
-            else:
-                if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
-                    cls._button_window.hide()
-                    print("[qt overlay]Help button hidden")
+                print("[qt overlay] Help button created and shown")
+            elif not should_show and button_visible:
+                # Hide the button if it should not be shown but is currently visible
+                cls._button_window.hide()
+                print("[qt overlay] Help button hidden")
 
-            # Only show hint text if it's not empty ---
+            # Only show hint text if it's not empty
             if ui.current_hint:  # First, check for the existence of current_hint
                 hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
                 if hint_text is not None and hint_text.strip() != "":

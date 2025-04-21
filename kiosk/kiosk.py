@@ -107,7 +107,7 @@ class KioskApp:
         # Create a timer for the help button update
         self.help_button_timer = QTimer()
         self.help_button_timer.timeout.connect(self._actual_help_button_update)
-        self.help_button_timer.start(1000)  # Update every 1 second
+        self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
@@ -219,6 +219,8 @@ class KioskApp:
         print("[kiosk main]Request help called.")
         # Set flag for stats update
         self.hint_requested_flag = True
+        # Trigger immediate help button update to hide it
+        self._actual_help_button_update()
         # Have UI display the request pending message
         Overlay.show_hint_request_text()
         # Have UI handle the help request (includes sending network message)
@@ -228,6 +230,9 @@ class KioskApp:
         # Clear any pending request status
         Overlay.hide_hint_request_text()
         self.hint_requested_flag = False  # Reset hint flag
+        
+        # Trigger immediate help button update
+        self._actual_help_button_update()
         
         # Handle different types of hint data
         if isinstance(text, dict):

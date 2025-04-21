@@ -298,8 +298,8 @@ class QtManager:
                 self.cooldown_after_id.stop()
                 self.cooldown_after_id = None
             Overlay.hide_hint_cooldown()
-            # Update help button if needed
-            QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
+            # Update help button immediately
+            self.message_handler._actual_help_button_update()
 
     def show_video_solution(self, room_folder, video_filename):
         """Prepares and shows a video solution."""

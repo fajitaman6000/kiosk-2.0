@@ -118,6 +118,12 @@ class KioskTimer:
                 self.time_remaining = max(0, self.time_remaining - elapsed)
                 self.last_update = current_time # Update last_update *after* calculating elapsed
 
+                # Check for timer crossing the 42-minute threshold
+                if old_time > 2520 and self.time_remaining <= 2520:
+                    print("[kiosk timer] Timer crossed the 42-minute threshold, updating help button")
+                    if self.kiosk_app:
+                        self.kiosk_app._actual_help_button_update()
+
                 # Check for game loss condition
                 if not self.game_lost and self.time_remaining <= 0:
                     print(f"[kiosk timer] Timer reached zero.")
