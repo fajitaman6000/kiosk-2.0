@@ -62,50 +62,12 @@ class SavedHintsPanel:
         )
         self.hint_listbox.pack(pady=5)
         self.hint_listbox.bind('<<ListboxSelect>>', self.on_hint_select)
-
-        # Create detail view (initially hidden)
-        self.detail_view = ttk.Frame(self.list_container)
-        
-        # Preview text in detail view
-        self.preview_text = tk.Text(
-            self.detail_view,
-            height=4,
-            width=38,
-            wrap=tk.WORD,
-            state='disabled'
-        )
-        self.preview_text.pack(pady=(5, 10), padx=5)
-        
-        # Image preview in detail view
-        self.image_label = ttk.Label(self.detail_view)
-        self.image_label.pack(pady=(0, 10))
-        
-        # Control buttons in detail view
-        button_frame = ttk.Frame(self.detail_view)
-        button_frame.pack(fill='x', pady=(0, 5), padx=5)
-        
-        self.back_button = ttk.Button(
-            button_frame,
-            text="Back",
-            command=self.show_list_view
-        )
-        self.back_button.pack(side='left', padx=5)
-        
-        self.send_button = ttk.Button(
-            button_frame,
-            text="Send Hint",
-            command=self.send_hint
-        )
-        self.send_button.pack(side='right', padx=5)
         
         # Load hints
         self.hints_data = {}
         self.current_room = None
         self.load_hints()
         self.load_prop_name_mappings()
-
-        # Show list view initially
-        self.show_list_view()
 
         # Register for prop selection notifications if parent has prop_control
         if hasattr(parent, 'app') and hasattr(parent.app, 'prop_control'):
@@ -178,16 +140,12 @@ class SavedHintsPanel:
             self.hints_data = {}
             
     def show_list_view(self):
-        """Switch to list view"""
-        self.detail_view.pack_forget()
-        self.prop_frame.pack(pady=(0, 5))
-        self.hint_frame.pack(pady=5)
-        
-    def show_detail_view(self):
-        """Switch to detail view"""
-        self.prop_frame.pack_forget()
-        self.hint_frame.pack_forget()
-        self.detail_view.pack(fill='both', expand=True, padx=5, pady=5)
+        """Make sure the list view is properly displayed"""
+        # Ensure the prop frame and hint frame are packed
+        if not self.prop_frame.winfo_ismapped():
+            self.prop_frame.pack(pady=(0, 5))
+        if not self.hint_frame.winfo_ismapped():
+            self.hint_frame.pack(pady=5)
 
     def get_props_for_room(self, room_number):
         """Get available props for the current room from hints data"""
@@ -321,7 +279,12 @@ class SavedHintsPanel:
         
         # Clear hint listbox
         self.hint_listbox.delete(0, tk.END)
-        
+
+    def clear_preview(self):
+        """Clear selection in the listbox"""
+        if hasattr(self, 'hint_listbox') and self.hint_listbox:
+            self.hint_listbox.selection_clear(0, tk.END)
+
     def on_prop_select(self, event):
         """Handle prop selection from dropdown"""
         selected_display_name = self.prop_var.get()
@@ -402,45 +365,136 @@ class SavedHintsPanel:
                     break
                 
         if selected_hint:
-            # Update preview text
-            self.preview_text.config(state='normal')
-            self.preview_text.delete('1.0', tk.END)
-            self.preview_text.insert('1.0', selected_hint['text'])
-            self.preview_text.config(state='disabled')
-            
-            # Update image preview
-            if selected_hint.get('image'):
-                try:
-                    # Get path using room, prop display name, and image filename
-                    image_path = self.get_image_path(
-                        self.current_room,
-                        original_name,
-                        selected_hint['image']
-                    )
-                    if image_path and os.path.exists(image_path):
-                        image = Image.open(image_path)
-                        image.thumbnail((200, 200))
-                        photo = ImageTk.PhotoImage(image)
-                        self.image_label.configure(image=photo, text='')
-                        self.image_label.image = photo
-                    else:
-                        self.image_label.configure(text="Image file not found", image='')
-                except Exception as e:
-                    print(f"[saved hints panel]Error loading hint image: {e}")
-                    self.image_label.configure(text="Error loading image", image='')
-            else:
-                self.image_label.configure(text="No image for this hint", image='')
-            
-            # Switch to detail view
-            self.show_detail_view()
-    
-    def clear_preview(self):
-        """Clear the preview area and return to list view"""
-        self.preview_text.config(state='normal')
-        self.preview_text.delete('1.0', tk.END)
-        self.preview_text.config(state='disabled')
-        self.image_label.configure(text="", image='')
-        self.show_list_view()
+            self.show_hint_popup(hint_name, original_name, selected_hint)
+
+    def show_hint_popup(self, hint_name, original_name, hint_data):
+        """Show popup window with hint preview"""
+        # Create popup window
+        popup = tk.Toplevel(self.frame)
+        popup.title(f"Hint: {hint_name}")
+        popup.transient(self.frame)
+        popup.grab_set()
+        
+        # Make it modal
+        popup.focus_set()
+        
+        # Set size and position
+        popup_width = 400
+        popup_height = 400
+        screen_width = popup.winfo_screenwidth()
+        screen_height = popup.winfo_screenheight()
+        x = (screen_width - popup_width) // 2
+        y = (screen_height - popup_height) // 2
+        popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+        
+        # Add hint name label
+        title_frame = ttk.Frame(popup)
+        title_frame.pack(fill='x', padx=10, pady=5)
+        
+        title_label = ttk.Label(title_frame, text=hint_name, font=('Arial', 12, 'bold'))
+        title_label.pack(pady=5)
+        
+        # Add image preview
+        image_frame = ttk.Frame(popup)
+        image_frame.pack(fill='x', padx=10, pady=5)
+        
+        image_label = ttk.Label(image_frame)
+        image_label.pack(pady=5)
+        
+        # Try to load image if present
+        has_image = False
+        if hint_data.get('image'):
+            try:
+                image_path = self.get_image_path(
+                    self.current_room,
+                    original_name,
+                    hint_data['image']
+                )
+                if image_path and os.path.exists(image_path):
+                    image = Image.open(image_path)
+                    # Use a fixed size for the image preview in the popup
+                    image.thumbnail((300, 200))
+                    photo = ImageTk.PhotoImage(image)
+                    image_label.configure(image=photo)
+                    image_label.image = photo
+                    has_image = True
+            except Exception as e:
+                print(f"[saved hints panel]Error loading hint image for popup: {e}")
+        
+        if not has_image:
+            image_label.configure(text="No attached image")
+        
+        # Add text preview in scrollable text widget
+        text_frame = ttk.Frame(popup)
+        text_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        text_label = ttk.Label(text_frame, text="Hint Text:")
+        text_label.pack(anchor='w')
+        
+        # Create text widget with scrollbar
+        text_container = ttk.Frame(text_frame)
+        text_container.pack(fill='both', expand=True)
+        
+        text_widget = tk.Text(
+            text_container,
+            wrap=tk.WORD,
+            height=10,
+            width=40
+        )
+        text_widget.pack(side='left', fill='both', expand=True)
+        
+        scrollbar = ttk.Scrollbar(text_container, command=text_widget.yview)
+        scrollbar.pack(side='right', fill='y')
+        text_widget.config(yscrollcommand=scrollbar.set)
+        
+        # Insert hint text
+        text_widget.insert('1.0', hint_data.get('text', ''))
+        text_widget.config(state='disabled')
+        
+        # Add buttons
+        button_frame = ttk.Frame(popup)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        
+        back_button = ttk.Button(
+            button_frame,
+            text="Back",
+            command=popup.destroy
+        )
+        back_button.pack(side='left', padx=5)
+        
+        send_button = ttk.Button(
+            button_frame,
+            text="Send Hint",
+            command=lambda: self.send_hint_from_popup(popup, hint_data)
+        )
+        send_button.pack(side='right', padx=5)
+
+    def send_hint_from_popup(self, popup, hint_data):
+        """Send hint from popup and close the window"""
+        # Prepare hint data
+        send_data = {'text': hint_data.get('text', '')}
+        
+        # Add image path if present
+        if hint_data.get('image'):
+            try:
+                # Get path using room, prop display name, and image filename
+                image_path = self.get_image_path(
+                    self.current_room,
+                    self.prop_var.get().split('(')[-1].rstrip(')').strip(),
+                    hint_data['image']
+                )
+                if image_path and os.path.exists(image_path):
+                    # Get relative path from sync_directory
+                    rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                    send_data['image_path'] = rel_path
+            except Exception as e:
+                print(f"[saved hints panel]Error getting hint image path for sending: {e}")
+        
+        # Send hint through callback
+        self.send_hint_callback(send_data)
+        
+        # Close popup
+        popup.destroy()
     
     def send_hint(self):
         """Send the currently selected hint"""
@@ -509,6 +563,3 @@ class SavedHintsPanel:
             
             # Send hint through callback
             self.send_hint_callback(hint_data)
-            
-            # Return to list view
-            self.clear_preview()
