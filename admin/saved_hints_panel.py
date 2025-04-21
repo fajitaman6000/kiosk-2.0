@@ -331,9 +331,17 @@ class SavedHintsPanel:
         original_name = prop_display_name.split('(')[-1].rstrip(')')
         original_name = original_name.strip()
         
+        # Get hint data
+        hint_data, prop_key = self.get_hint_data(hint_name, original_name)
+                
+        if hint_data:
+            self.show_hint_popup(hint_name, original_name, prop_key, hint_data, selection[0])
+            
+    def get_hint_data(self, hint_name, original_name):
+        """Get hint data for a specific hint and prop"""
         room_str = str(self.current_room)
         
-        # Build name mapping just like in get_hints_for_prop
+        # Build name mapping
         room_map = {
             3: "wizard",
             1: "casino_ma",
@@ -354,20 +362,87 @@ class SavedHintsPanel:
                     name_mapping[display_name.lower()] = display_name
         
         # Get hint data directly from the structure with name mapping lookup
-        selected_hint = None
+        hint_data = None
+        matched_prop_key = None
+        
         if room_str in self.hints_data:
             for prop_key in self.hints_data[room_str]:
                 if (prop_key.lower() == original_name.lower() or 
                     (original_name.lower() in name_mapping and 
                      prop_key.lower() == name_mapping[original_name.lower()].lower())):
                     if hint_name in self.hints_data[room_str][prop_key]:
-                        selected_hint = self.hints_data[room_str][prop_key][hint_name]
-                    break
-                
-        if selected_hint:
-            self.show_hint_popup(hint_name, original_name, selected_hint)
+                        hint_data = self.hints_data[room_str][prop_key][hint_name]
+                        matched_prop_key = prop_key
+                        break
+        
+        return hint_data, matched_prop_key
 
-    def show_hint_popup(self, hint_name, original_name, hint_data):
+    def navigate_to_hint(self, popup, current_index, direction, image_label, text_widget, title_label, prev_button, next_button):
+        """Navigate to the previous or next hint and update the current popup"""
+        if direction == "prev":
+            new_index = current_index - 1
+        else:
+            new_index = current_index + 1
+
+        # Check if the new index is valid
+        if 0 <= new_index < self.hint_listbox.size():
+            # Select the new hint in the listbox (but don't trigger a new popup)
+            self.hint_listbox.selection_clear(0, tk.END)
+            self.hint_listbox.selection_set(new_index)
+            self.hint_listbox.see(new_index)
+            
+            # Get the new hint data
+            new_hint_name = self.hint_listbox.get(new_index)
+            prop_display_name = self.prop_var.get()
+            original_name = prop_display_name.split('(')[-1].rstrip(')')
+            original_name = original_name.strip()
+            
+            hint_data, prop_key = self.get_hint_data(new_hint_name, original_name)
+            
+            if hint_data:
+                # Update the popup title
+                popup.title(f"Hint: {new_hint_name}")
+                title_label.config(text=new_hint_name)
+                
+                # Update the image
+                has_image = False
+                if hint_data.get('image'):
+                    try:
+                        image_path = self.get_image_path(
+                            self.current_room,
+                            original_name,
+                            hint_data['image']
+                        )
+                        if image_path and os.path.exists(image_path):
+                            image = Image.open(image_path)
+                            image.thumbnail((250, 150))
+                            photo = ImageTk.PhotoImage(image)
+                            image_label.configure(image=photo, text='')
+                            image_label.image = photo
+                            has_image = True
+                    except Exception as e:
+                        print(f"[saved hints panel]Error loading hint image for popup: {e}")
+                
+                if not has_image:
+                    image_label.configure(text="No attached image", image='')
+                    
+                # Update the text
+                text_widget.config(state='normal')
+                text_widget.delete('1.0', tk.END)
+                text_widget.insert('1.0', hint_data.get('text', ''))
+                text_widget.config(state='disabled')
+                
+                # Update navigation buttons
+                prev_button.config(state='normal' if new_index > 0 else 'disabled')
+                next_button.config(state='normal' if new_index < self.hint_listbox.size() - 1 else 'disabled')
+                
+                # Update the buttons' commands to use the new index
+                prev_button.config(command=lambda: self.navigate_to_hint(
+                    popup, new_index, "prev", image_label, text_widget, title_label, prev_button, next_button))
+                next_button.config(command=lambda: self.navigate_to_hint(
+                    popup, new_index, "next", image_label, text_widget, title_label, prev_button, next_button))
+
+    def show_hint_popup(self, hint_name, original_name, prop_key, hint_data, hint_index=None):
         """Show popup window with hint preview"""
         # Create popup window
         popup = tk.Toplevel(self.frame)
@@ -456,6 +531,7 @@ class SavedHintsPanel:
         button_frame.pack(fill='x', padx=10, pady=10)
         button_frame.pack_propagate(False)  # Prevent the frame from shrinking
         
+        # Back button on the left
         back_button = ttk.Button(
             button_frame,
             text="Back",
@@ -463,6 +539,44 @@ class SavedHintsPanel:
         )
         back_button.pack(side='left', padx=5)
         
+        # Navigation buttons in the center
+        nav_frame = ttk.Frame(button_frame)
+        nav_frame.pack(side='left', expand=True, fill='x')
+        
+        # Center the navigation buttons within the nav_frame
+        nav_center = ttk.Frame(nav_frame)
+        nav_center.pack(side='top', anchor='center')
+        
+        # Previous button
+        prev_button = ttk.Button(
+            nav_center,
+            text="<",
+            width=2,
+            command=lambda: self.navigate_to_hint(
+                popup, hint_index, "prev", image_label, text_widget, title_label, prev_button, next_button
+            )
+        )
+        prev_button.pack(side='left', padx=2)
+        
+        # Next button
+        next_button = ttk.Button(
+            nav_center,
+            text=">",
+            width=2,
+            command=lambda: self.navigate_to_hint(
+                popup, hint_index, "next", image_label, text_widget, title_label, prev_button, next_button
+            )
+        )
+        next_button.pack(side='left', padx=2)
+        
+        # Disable buttons if at beginning/end of list
+        if hint_index is not None:
+            if hint_index == 0:
+                prev_button.config(state='disabled')
+            if hint_index == self.hint_listbox.size() - 1:
+                next_button.config(state='disabled')
+        
+        # Send button on the right
         send_button = ttk.Button(
             button_frame,
             text="Send Hint",

@@ -21,6 +21,10 @@
                 "test": {
                     "text": "",
                     "image": "center of table.png"
+                },
+                "test 2": {
+                    "text": "test 2",
+                    "image": "center of table.png"
                 }
             }
         }
