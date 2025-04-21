@@ -380,7 +380,7 @@ class SavedHintsPanel:
         
         # Set size and position
         popup_width = 400
-        popup_height = 400
+        popup_height = 450  # Reduced height
         screen_width = popup.winfo_screenwidth()
         screen_height = popup.winfo_screenheight()
         x = (screen_width - popup_width) // 2
@@ -413,7 +413,7 @@ class SavedHintsPanel:
                 if image_path and os.path.exists(image_path):
                     image = Image.open(image_path)
                     # Use a fixed size for the image preview in the popup
-                    image.thumbnail((300, 200))
+                    image.thumbnail((250, 150))  # Reduced size
                     photo = ImageTk.PhotoImage(image)
                     image_label.configure(image=photo)
                     image_label.image = photo
@@ -438,7 +438,7 @@ class SavedHintsPanel:
         text_widget = tk.Text(
             text_container,
             wrap=tk.WORD,
-            height=10,
+            height=5,  # Reduced height
             width=40
         )
         text_widget.pack(side='left', fill='both', expand=True)
@@ -451,9 +451,10 @@ class SavedHintsPanel:
         text_widget.insert('1.0', hint_data.get('text', ''))
         text_widget.config(state='disabled')
         
-        # Add buttons
-        button_frame = ttk.Frame(popup)
+        # Add buttons - ensure they're visible by giving them their own frame with fixed height
+        button_frame = ttk.Frame(popup, height=50)
         button_frame.pack(fill='x', padx=10, pady=10)
+        button_frame.pack_propagate(False)  # Prevent the frame from shrinking
         
         back_button = ttk.Button(
             button_frame,
