@@ -829,19 +829,25 @@ class Overlay:
         init_gm_assistance_overlay(cls)
 
     @classmethod
-    def show_hint_text(cls, text, room_number=None):
+    def show_hint_text(cls, text, room_number=None, priority=False):
         """Show hint text using a Qt overlay."""
         if not cls._initialized or not cls._hint_text['window']:
             return
 
-         # Initialize hint text thread if needed
+        # Skip the thread for priority hints
+        if priority:
+            # Call update directly for immediate display
+            cls._actual_hint_text_update({'text': text, 'room_number': room_number})
+            return
+
+        # Initialize hint text thread if needed
         if cls._hint_text_thread is None:
             cls._hint_text_thread = HintTextThread()
             cls._hint_text_thread.update_signal.connect(cls._actual_hint_text_update)
             cls._hint_text_thread.start()
 
         # Send update through thread
-        cls._hint_text_thread.update_text({'text':text, 'room_number':room_number})
+        cls._hint_text_thread.update_text({'text': text, 'room_number': room_number})
 
     @classmethod
     def _actual_hint_text_update(cls, data):

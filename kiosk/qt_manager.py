@@ -187,7 +187,7 @@ class QtManager:
 
             # Show hint text via Qt Overlay
             print(f"[qt_manager.py show_hint] Showing hint text: '{hint_text}'")
-            Overlay.show_hint_text(hint_text, self.current_room)
+            Overlay.show_hint_text(hint_text, self.current_room, priority=self.stored_image_data is not None)
 
             # --- Show Qt image button if image data exists ---
             if self.stored_image_data:
