@@ -150,6 +150,7 @@ class Overlay:
     _hint_request_text_thread = None
     _gm_assistance_overlay = None  # Add GM assistance overlay variable
     _victory_screen = None  # Victory screen data
+    _loss_screen = None # Loss screen data
     _game_won = False       # Flag for game won status
     _kiosk_app = None # Store kiosk_app reference explicitly
         # --- new class variables for video display ---
@@ -188,6 +189,20 @@ class Overlay:
     _background_view = None
     _background_pixmap_item = None
     _background_initialized = False
+    
+    # --- Loss Screen ---
+    _loss_screen_window = None
+    _loss_screen_scene = None
+    _loss_screen_view = None
+    _loss_screen_pixmap_item = None
+    _loss_screen_initialized = False
+    
+    # --- Victory Screen ---
+    _victory_screen_window = None
+    _victory_screen_scene = None
+    _victory_screen_view = None
+    _victory_screen_pixmap_item = None
+    _victory_screen_initialized = False
     
     # Add the _ui_manager class variable to the list of class variables
     _ui_manager = None  # Reference to the UI manager for callbacks
@@ -1510,46 +1525,30 @@ class Overlay:
 
     @classmethod
     def hide_all_overlays(cls):
-        """Hide all Qt overlay UI elements temporarily (EXCEPT video)."""
-        # print("[qt overlay] Hiding non-video overlay UI elements") # Reduce noise
-        try:
-            # Existing hides...
-            if hasattr(cls, '_timer_window') and cls._timer_window and cls._timer_window.isVisible():
-                cls._timer_window.hide()
-            if hasattr(cls, '_button_window') and cls._button_window and cls._button_window.isVisible():
-                 cls._button_window.hide()
-            if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text.get('window') and cls._hint_text['window'].isVisible():
-                 cls._hint_text['window'].hide()
-            if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text.get('window') and cls._hint_request_text['window'].isVisible():
-                 cls._hint_request_text['window'].hide()
-            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
-                gm_window = cls._gm_assistance_overlay['window']
-                # Store visibility state ONLY if window exists and might be visible
-                if gm_window:
-                   cls._gm_assistance_overlay['_was_visible'] = gm_window.isVisible()
-                   if cls._gm_assistance_overlay['_was_visible']:
-                       gm_window.hide()
-                else:
-                   cls._gm_assistance_overlay['_was_visible'] = False # Ensure flag exists
+        """Hides all overlay components."""
+        # Call individual hide methods for better maintainability
+        # Order might matter depending on transparency/layering,
+        # but generally hiding should be safe in any order.
+        cls.hide_timer()
+        cls.hide_help_button()
+        cls.hide_cooldown()
+        cls.hide_hint_text()
+        cls.hide_hint_request_text()
+        cls.hide_gm_assistance()
+        cls.hide_waiting_screen_label()
+        cls.hide_background() # Hide the main background
+        cls.hide_fullscreen_hint()
+        cls.hide_view_image_button()
+        cls.hide_view_solution_button()
+        cls.hide_video_display() # Hide video display if it's showing
+        cls.hide_loss_screen()
+        cls.hide_victory_screen()
+        # Note: cls.hide() itself is not called directly here as it might hide the main window
+        # if cls._window is the main application window.
+        # cls.hide() is intended for the old overlay concept, not individual components.
 
-            if hasattr(cls, '_window') and cls._window and cls._window.isVisible(): # Cooldown window
-                #cls._window.hide()
-                print("[qt overlay]would have tried to hide the window here for whatever reason")
+        print("[qt overlay] All overlay components hidden.")
 
-            cls.hide_victory_screen()
-            cls.hide_loss_screen()
-
-            # --- ADD HIDES FOR NEW BUTTONS ---
-            cls.hide_view_image_button()
-            cls.hide_view_solution_button()
-            # --- END ADD HIDES ---
-            cls.hide_waiting_screen_label() # <--- Add hide for waiting label here
-
-            # print("[qt overlay] Non-video overlay UI elements hidden.") # Reduce noise
-        except Exception as e:
-            print(f"[qt overlay] Error hiding non-video overlays: {e}")
-            traceback.print_exc()
-            
     @classmethod
     def show_all_overlays(cls):
         """Restore visibility of all Qt overlay UI elements (EXCEPT video and fullscreen hint)."""
@@ -1796,11 +1795,11 @@ class Overlay:
             
     @classmethod
     def hide_background(cls):
-        """Hide the background image"""
+        """Hides the background image."""
         if cls._background_initialized and cls._background_window:
             cls._background_window.hide()
-            print("[qt_overlay] Background hidden")
-            
+            print("[qt overlay] Background hidden.")
+
     @classmethod
     def show_background(cls):
         """Show the background image"""
@@ -2052,3 +2051,205 @@ class Overlay:
         """Register the UI manager instance for callbacks."""
         cls._ui_manager = ui_manager
         print(f"[qt overlay] UI manager registered: {ui_manager}")
+
+    @classmethod
+    def _init_loss_screen(cls):
+        """Initializes the loss screen components."""
+        if cls._loss_screen_initialized:
+            return
+
+        # Base path for resources
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        image_path = os.path.join(base_path, 'other_files', 'loss.png')
+
+        if not os.path.exists(image_path):
+            print(f"[qt overlay] Loss image not found at {image_path}")
+            return
+
+        # Manually create components instead of using init_background
+        try:
+            cls._loss_screen_window = QWidget()
+            cls._loss_screen_window.setWindowTitle("Game Over") # Set title here
+            cls._loss_screen_window.setWindowFlags(
+                Qt.Window | 
+                Qt.FramelessWindowHint | 
+                Qt.WindowStaysOnTopHint | 
+                Qt.Tool # Prevents showing in taskbar
+            )
+            cls._loss_screen_window.setAttribute(Qt.WA_TranslucentBackground)
+            cls._loss_screen_window.setAttribute(Qt.WA_ShowWithoutActivating)
+
+            cls._loss_screen_scene = QGraphicsScene()
+            cls._loss_screen_view = QGraphicsView(cls._loss_screen_scene, cls._loss_screen_window)
+            cls._loss_screen_view.setStyleSheet("background: transparent; border: none;")
+            cls._loss_screen_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._loss_screen_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._loss_screen_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+            # Load and set pixmap
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                print(f"[qt overlay] Failed to load loss image: {image_path}")
+                cls._loss_screen_window.deleteLater()
+                cls._loss_screen_window = None
+                return
+
+            # Get screen dimensions and scale pixmap
+            screen_size = QApplication.primaryScreen().size()
+            scaled_pixmap = pixmap.scaled(screen_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            cls._loss_screen_pixmap_item = QGraphicsPixmapItem(scaled_pixmap)
+            cls._loss_screen_scene.addItem(cls._loss_screen_pixmap_item)
+
+            # Set geometry and scene rect to fullscreen
+            screen_geom = QApplication.primaryScreen().geometry()
+            cls._loss_screen_window.setGeometry(screen_geom)
+            cls._loss_screen_view.setGeometry(0, 0, screen_geom.width(), screen_geom.height())
+            cls._loss_screen_scene.setSceneRect(0, 0, screen_geom.width(), screen_geom.height())
+
+            # Rotate and center the image
+            pixmap_rect = cls._loss_screen_pixmap_item.boundingRect()
+            cls._loss_screen_pixmap_item.setTransformOriginPoint(pixmap_rect.center())
+            cls._loss_screen_pixmap_item.setRotation(90)
+
+            # Calculate center position *after* rotation
+            rotated_rect = cls._loss_screen_pixmap_item.mapToScene(pixmap_rect).boundingRect()
+            center_x = (screen_geom.width() - rotated_rect.width()) / 2
+            center_y = (screen_geom.height() - rotated_rect.height()) / 2
+            cls._loss_screen_pixmap_item.setPos(center_x, center_y)
+
+        except Exception as e:
+            print(f"[qt overlay] Error manually initializing loss screen: {e}")
+            traceback.print_exc()
+            if hasattr(cls, '_loss_screen_window') and cls._loss_screen_window:
+                cls._loss_screen_window.deleteLater()
+                cls._loss_screen_window = None
+            return
+
+        if cls._loss_screen_window:
+            cls._loss_screen_initialized = True
+            print(f"[qt overlay] Loss screen initialized with {image_path}")
+        else:
+            print(f"[qt overlay] Failed to initialize loss screen.")
+
+    @classmethod
+    def show_loss_screen(cls):
+        """Displays the game loss screen."""
+        if not cls._loss_screen_initialized:
+            cls._init_loss_screen()
+
+        if cls._loss_screen_initialized and cls._loss_screen_window:
+            # Ensure it's brought to the front
+            cls._loss_screen_window.setWindowState(cls._loss_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+            cls._loss_screen_window.showFullScreen()
+            cls._loss_screen_window.activateWindow()
+            cls._loss_screen_window.raise_()
+            print(f"[qt overlay] Loss screen shown.")
+        else:
+            print(f"[qt overlay] Cannot show loss screen, not initialized.")
+
+    @classmethod
+    def hide_loss_screen(cls):
+        """Hides the game loss screen."""
+        if cls._loss_screen_initialized and cls._loss_screen_window:
+            cls._loss_screen_window.hide()
+            print(f"[qt overlay] Loss screen hidden.")
+
+    @classmethod
+    def _init_victory_screen(cls):
+        """Initializes the victory screen components."""
+        if cls._victory_screen_initialized:
+            return
+
+        base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+        image_path = os.path.join(base_path, 'other_files', 'victory.png')
+
+        if not os.path.exists(image_path):
+            print(f"[qt overlay] Victory image not found at {image_path}")
+            return
+
+        # Manually create components instead of using init_background
+        try:
+            cls._victory_screen_window = QWidget()
+            cls._victory_screen_window.setWindowTitle("Victory!") # Set title here
+            cls._victory_screen_window.setWindowFlags(
+                Qt.Window | 
+                Qt.FramelessWindowHint | 
+                Qt.WindowStaysOnTopHint | 
+                Qt.Tool # Prevents showing in taskbar
+            )
+            cls._victory_screen_window.setAttribute(Qt.WA_TranslucentBackground)
+            cls._victory_screen_window.setAttribute(Qt.WA_ShowWithoutActivating)
+
+            cls._victory_screen_scene = QGraphicsScene()
+            cls._victory_screen_view = QGraphicsView(cls._victory_screen_scene, cls._victory_screen_window)
+            cls._victory_screen_view.setStyleSheet("background: transparent; border: none;")
+            cls._victory_screen_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._victory_screen_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            cls._victory_screen_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+
+            # Load and set pixmap
+            pixmap = QPixmap(image_path)
+            if pixmap.isNull():
+                print(f"[qt overlay] Failed to load victory image: {image_path}")
+                cls._victory_screen_window.deleteLater()
+                cls._victory_screen_window = None
+                return
+
+            # Get screen dimensions and scale pixmap
+            screen_size = QApplication.primaryScreen().size()
+            scaled_pixmap = pixmap.scaled(screen_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            cls._victory_screen_pixmap_item = QGraphicsPixmapItem(scaled_pixmap)
+            cls._victory_screen_scene.addItem(cls._victory_screen_pixmap_item)
+
+            # Set geometry and scene rect to fullscreen
+            screen_geom = QApplication.primaryScreen().geometry()
+            cls._victory_screen_window.setGeometry(screen_geom)
+            cls._victory_screen_view.setGeometry(0, 0, screen_geom.width(), screen_geom.height())
+            cls._victory_screen_scene.setSceneRect(0, 0, screen_geom.width(), screen_geom.height())
+
+            # Rotate and center the image
+            pixmap_rect = cls._victory_screen_pixmap_item.boundingRect()
+            cls._victory_screen_pixmap_item.setTransformOriginPoint(pixmap_rect.center())
+            cls._victory_screen_pixmap_item.setRotation(90)
+
+            # Calculate center position *after* rotation
+            rotated_rect = cls._victory_screen_pixmap_item.mapToScene(pixmap_rect).boundingRect()
+            center_x = (screen_geom.width() - rotated_rect.width()) / 2
+            center_y = (screen_geom.height() - rotated_rect.height()) / 2
+            cls._victory_screen_pixmap_item.setPos(center_x, center_y)
+
+        except Exception as e:
+            print(f"[qt overlay] Error manually initializing victory screen: {e}")
+            traceback.print_exc()
+            if hasattr(cls, '_victory_screen_window') and cls._victory_screen_window:
+                cls._victory_screen_window.deleteLater()
+                cls._victory_screen_window = None
+            return
+
+        if cls._victory_screen_window:
+            cls._victory_screen_initialized = True
+            print(f"[qt overlay] Victory screen initialized with {image_path}")
+        else:
+            print(f"[qt overlay] Failed to initialize victory screen.")
+
+    @classmethod
+    def show_victory_screen(cls):
+        """Displays the game victory screen."""
+        if not cls._victory_screen_initialized:
+            cls._init_victory_screen()
+
+        if cls._victory_screen_initialized and cls._victory_screen_window:
+            cls._victory_screen_window.setWindowState(cls._victory_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+            cls._victory_screen_window.showFullScreen()
+            cls._victory_screen_window.activateWindow()
+            cls._victory_screen_window.raise_()
+            print(f"[qt overlay] Victory screen shown.")
+        else:
+            print(f"[qt overlay] Cannot show victory screen, not initialized.")
+
+    @classmethod
+    def hide_victory_screen(cls):
+        """Hides the game victory screen."""
+        if cls._victory_screen_initialized and cls._victory_screen_window:
+            cls._victory_screen_window.hide()
+            print(f"[qt overlay] Victory screen hidden.")
