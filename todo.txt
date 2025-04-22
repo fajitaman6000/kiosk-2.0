@@ -28,22 +28,11 @@
 
 image viewer is a bit off to the side
 
-
-Traceback (most recent call last):
-  File "C:\Users\Vegas Manager\Desktop\Kiosk 2.0\kiosk-2.0\kiosk\kiosk_timer.py", line 142, in update_timer_loop
-    self.kiosk_app.handle_game_loss() # Tell kiosk app game is lost  
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "C:\Users\Vegas Manager\Desktop\Kiosk 2.0\kiosk-2.0\kiosk\kiosk.py", line 207, in handle_game_loss
-    Overlay.show_loss_screen()
-    ^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: type object 'Overlay' has no attribute 'show_loss_screen'
-
-
-
-
 ##############################################################################################################################
 # todo
 
+auto create folders for hint contents
+display hint image in new small window
 
 hint contents
     import/move over audio hints

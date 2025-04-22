@@ -341,83 +341,73 @@ class Overlay:
                 return
             pixmap = QPixmap.fromImage(q_image)
 
-            # 3. Get screen dimensions and calculate scaling/positioning (reuse ui.py logic)
+            # 3. Get screen dimensions for sizing calculations
             screen_width = QApplication.desktop().screenGeometry().width()
             screen_height = QApplication.desktop().screenGeometry().height()
-            margin = 50 # Same margin as tk version
+            margin = 50 # Add some margin for padding
 
-            # Calculate resize ratio maintaining aspect ratio (rotated logic)
-            # Note: We use the original pixmap dimensions for calculation
-            img_width = pixmap.width()
-            img_height = pixmap.height()
+            # For 90 degree rotation, we swap width/height in calculations
+            # The width becomes height, and height becomes width
+            available_width = screen_height - (2 * margin)  # When rotated, width is constrained by screen height
+            available_height = screen_width - (2 * margin)  # When rotated, height is constrained by screen width
 
-            # Ratios considering the final rotated orientation within screen bounds
-            width_ratio = (screen_height - 80) / img_width # Target width is screen height after rotation
-            height_ratio = (screen_width - (2 * margin) - 80) / img_height # Target height is screen width after rotation
-            ratio = min(width_ratio, height_ratio)
+            # Get original dimensions
+            original_width = pixmap.width()
+            original_height = pixmap.height()
 
-            scaled_width = int(img_width * ratio)
-            scaled_height = int(img_height * ratio)
+            # Calculate scale factors for both dimensions
+            width_scale = available_width / original_width
+            height_scale = available_height / original_height
 
-            # Scale pixmap smoothly
-            scaled_pixmap = pixmap.scaled(scaled_width, scaled_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            # Use the smaller scale factor to ensure image fits in both dimensions
+            scale_factor = min(width_scale, height_scale)
+
+            # Calculate new dimensions - we want this LARGE, not tiny
+            new_width = int(original_width * scale_factor)
+            new_height = int(original_height * scale_factor)
+
+            print(f"[qt overlay] Original image size: {original_width}x{original_height}")
+            print(f"[qt overlay] New image size: {new_width}x{new_height}")
+            print(f"[qt overlay] Scale factor: {scale_factor}")
+
+            # Scale the pixmap to the exact size we want
+            scaled_pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             cls._fullscreen_hint_pixmap = scaled_pixmap # Store reference
 
-            # 4. Apply pixmap, rotation, and position
+            # 4. Configure scene and view for fullscreen display
+            cls._fullscreen_hint_window.setGeometry(QApplication.desktop().screenGeometry())
+            cls._fullscreen_hint_view.setGeometry(0, 0, screen_width, screen_height)
+            cls._fullscreen_hint_scene.setSceneRect(0, 0, screen_width, screen_height)
+
+            # Reset any existing transformations
+            cls._fullscreen_hint_view.resetTransform()
+            cls._fullscreen_hint_pixmap_item.setTransform(QTransform())
+            
+            # 5. Apply pixmap to item
             cls._fullscreen_hint_pixmap_item.setPixmap(cls._fullscreen_hint_pixmap)
-            cls._fullscreen_hint_pixmap_item.setTransformOriginPoint(cls._fullscreen_hint_pixmap.width() / 2, cls._fullscreen_hint_pixmap.height() / 2)
-            cls._fullscreen_hint_pixmap_item.setRotation(90) # Rotate
+            
+            # Set the transform origin point to the center of the image
+            cls._fullscreen_hint_pixmap_item.setTransformOriginPoint(new_width/2, new_height/2)
+            
+            # Position the image at the center of the screen
+            center_x = screen_width / 2
+            center_y = screen_height / 2
+            item_origin_x = new_width / 2
+            item_origin_y = new_height / 2
+            cls._fullscreen_hint_pixmap_item.setPos(center_x - item_origin_x, center_y - item_origin_y)
+            
+            # Apply rotation after positioning
+            cls._fullscreen_hint_pixmap_item.setRotation(90)
 
-            # Calculate position for centered *rotated* image
-            # Center point of the screen area (considering margins)
-            center_x_screen = (screen_width - (2 * margin)) / 2 + margin
-            center_y_screen = screen_height / 2
-
-            # The item's top-left corner after rotation needs to be calculated
-            # Rotated width is scaled_height, rotated height is scaled_width
-            rotated_width = scaled_height
-            rotated_height = scaled_width
-            pos_x = center_x_screen - (rotated_width / 2)
-            pos_y = center_y_screen - (rotated_height / 2)
-
-            # Adjust position because rotation happens around the top-left by default before origin change
-            # Need to translate to center *then* rotate effectively.
-            # Easier way: Set position *after* rotation, considering the bounding box change.
-            # The final top-left corner for the rotated item to be centered:
-            final_pos_x = (screen_width + rotated_width) / 2 - rotated_width + margin # Complicated - let's try centering the view contents instead
-            final_pos_y = (screen_height - rotated_height) / 2
-
-            # Let's try centering using the item's bounding rect after transform
-            cls._fullscreen_hint_pixmap_item.setPos(0,0) # Reset position first
-            rotated_bounding_rect = cls._fullscreen_hint_pixmap_item.mapToScene(cls._fullscreen_hint_pixmap_item.boundingRect()).boundingRect()
-
-            final_pos_x_new = (screen_width - rotated_bounding_rect.width()) / 2
-            final_pos_y_new = (screen_height - rotated_bounding_rect.height()) / 2
-            cls._fullscreen_hint_pixmap_item.setPos(final_pos_x_new, final_pos_y_new)
-
-
-            # --- Alternative: FitInView (Easier) ---
-            # Reset transform before fitting
-            # cls._fullscreen_hint_pixmap_item.setTransform(QTransform())
-            # cls._fullscreen_hint_pixmap_item.setPixmap(cls._fullscreen_hint_pixmap) # Set unrotated pixmap
-            # cls._fullscreen_hint_view.resetTransform()
-            # cls._fullscreen_hint_view.setSceneRect(cls._fullscreen_hint_pixmap_item.boundingRect()) # Set scene rect to pixmap size
-            # cls._fullscreen_hint_view.fitInView(cls._fullscreen_hint_pixmap_item, Qt.KeepAspectRatio)
-            # cls._fullscreen_hint_view.rotate(90) # Rotate the entire view
-
-
-            # 5. Connect click handler
+            # 6. Connect click handler
             try:
                 cls._fullscreen_hint_view.clicked.disconnect() # Disconnect previous
             except TypeError:
                 pass # No connection existed
             cls._fullscreen_hint_view.clicked.connect(cls.hide_fullscreen_hint)
 
-            # 6. Show window
-            cls._fullscreen_hint_window.setGeometry(QApplication.desktop().screenGeometry()) # Ensure fullscreen
-            cls._fullscreen_hint_view.setGeometry(0, 0, screen_width, screen_height) # View covers window
-            cls._fullscreen_hint_scene.setSceneRect(0,0, screen_width, screen_height) # Scene covers view
-
+            # 7. Show window
+            # Window geometry already set above
             cls._fullscreen_hint_window.show()
             cls._fullscreen_hint_window.raise_()
             QApplication.processEvents() # Process pending events
