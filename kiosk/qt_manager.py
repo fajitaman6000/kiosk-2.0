@@ -4,7 +4,7 @@ import os
 import threading
 import traceback
 from qt_overlay import Overlay
-from PyQt5.QtCore import QTimer, QObject, pyqtSlot
+from PyQt5.QtCore import QTimer, QObject, pyqtSlot, QMetaObject, Qt, Q_ARG
 import base64
 print("[qt_manager] Ending imports ...")
 
@@ -86,6 +86,30 @@ class QtManager:
         Overlay.hide_hint_text()
         Overlay.hide_view_image_button()
         Overlay.hide_view_solution_button()
+
+        # Clear hint text content directly (don't use QMetaObject.invokeMethod which causes errors)
+        if hasattr(Overlay, '_hint_text') and Overlay._hint_text and 'text_item' in Overlay._hint_text:
+            try:
+                # Direct call instead of using QMetaObject.invokeMethod
+                Overlay._hint_text['text_item'].setPlainText("")
+                print("[qt_manager.py] Cleared hint text content")
+            except Exception as e:
+                print(f"[qt_manager.py] Error clearing hint text: {e}")
+            
+        # Reset hint data
+        self.current_hint = None
+        self.stored_image_data = None
+        self.stored_video_info = None
+        
+        # Clear hint cooldown
+        if self.cooldown_after_id:
+            self.cooldown_after_id.stop()
+            self.cooldown_after_id = None
+        self.hint_cooldown = False
+        Overlay.hide_hint_cooldown()
+        
+        # Hide hint request text
+        Overlay.hide_hint_request_text()
 
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""

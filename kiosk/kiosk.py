@@ -388,10 +388,20 @@ class KioskApp:
         Overlay.hide_hint_request_text()
         self.hint_requested_flag = False  # Reset hint flag
 
-        # Have UI clear labels
+        # Reset hint tracking variables
         if hasattr(self, 'ui'):
+            # Reset UI state variables
+            self.ui.hint_cooldown = False
+            self.ui.current_hint = None
+            self.ui.stored_image_data = None
+            self.ui.stored_video_info = None
+            
+            # Have UI clear labels and hint UI elements
             self.ui.clear_all_labels()
             self.ui.clear_hint_ui()
+        
+        # Update help button to show it again if needed
+        self._actual_help_button_update()
 
     def run(self):
         """Start the application"""

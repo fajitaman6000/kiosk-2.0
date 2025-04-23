@@ -970,17 +970,24 @@ class Overlay:
     
     @classmethod
     def hide_hint_text(cls):
-        """Hide the hint text overlay (thread-safe)."""
+        """Hide the hint text overlay and clear its content."""
         #print("[qt overlay.hide_hint_text] Called")
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
-            QMetaObject.invokeMethod(
-                cls._hint_text['window'],
-                "hide",
-                Qt.QueuedConnection  # Use QueuedConnection for thread safety
-            )
-            #print("[qt overlay.hide_hint_text] hide() invoked via QMetaObject")
+            # Hide the window
+            try:
+                cls._hint_text['window'].hide()
+            except Exception as e:
+                print(f"[qt overlay] Error hiding hint text window: {e}")
+            
+            # Clear the text content if it exists
+            if 'text_item' in cls._hint_text and cls._hint_text['text_item']:
+                try:
+                    cls._hint_text['text_item'].setPlainText("")
+                    #print("[qt overlay] Hint text content cleared")
+                except Exception as e:
+                    print(f"[qt overlay] Error clearing hint text: {e}")
         else:
-            print("[qt overlay.hide_hint_text] _hint_text or window does not exist")
+            print("[qt overlay] _hint_text or window does not exist")
     
     @classmethod
     def show_hint_request_text(cls):
@@ -1092,9 +1099,22 @@ class Overlay:
 
     @classmethod
     def hide_hint_request_text(cls):
-        """Hide the hint request text overlay"""
-        if hasattr(cls, '_hint_request_text') and cls._hint_request_text and cls._hint_request_text['window']:
-            cls._hint_request_text['window'].hide()
+        """Hide the hint request text overlay and clear its content"""
+        if hasattr(cls, '_hint_request_text') and cls._hint_request_text:
+            # Hide the window if it exists
+            if cls._hint_request_text.get('window'):
+                try:
+                    cls._hint_request_text['window'].hide()
+                except Exception as e:
+                    print(f"[qt overlay] Error hiding hint request window: {e}")
+            
+            # Clear the text content if it exists
+            if cls._hint_request_text.get('text_item'):
+                try:
+                    cls._hint_request_text['text_item'].setPlainText("")
+                    print("[qt overlay] Hint request text cleared")
+                except Exception as e:
+                    print(f"[qt overlay] Error clearing hint request text: {e}")
 
     @classmethod
     def show_hint_cooldown(cls, seconds):
@@ -1518,19 +1538,16 @@ class Overlay:
     def hide_cooldown(cls):
         """Hide just the cooldown overlay"""
         print("[qt overlay.hide_cooldown] Called")
-        # Use the dedicated cooldown window if available
-        if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
-            cls._cooldown_window.hide()
-            print("[qt overlay] _cooldown_window hidden")
-        # Only hide cls._window if it's specifically for cooldown (not the main container)
-        elif cls._window and hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
-            # Direct hide call instead of using QMetaObject
-            #cls._window.hide()
-            print("[qt overlay]would have tried to hide the window here for whatever reason")
-            pass
-        else:
-            print("[qt overlay] No cooldown window found to hide")
-    
+        # Call our dedicated method that handles cooldown hiding and text clearing
+        cls.hide_hint_cooldown()
+        
+        # Additional handling for legacy windows if needed
+        if not hasattr(cls, '_cooldown_window') and cls._window and hasattr(cls, '_text_item') and cls._text_item and cls._text_item.toPlainText().strip().startswith("Please wait"):
+            print("[qt overlay] Handling legacy cooldown window")
+            # Clear the text content
+            if hasattr(cls, '_text_item') and cls._text_item:
+                cls._text_item.setPlainText("")
+
     @classmethod
     def hide(cls):
         """Hide all overlay windows (thread-safe entry point)."""
@@ -2050,14 +2067,25 @@ class Overlay:
 
     @classmethod
     def hide_hint_cooldown(cls):
-        """Hide the cooldown display"""
+        """Hide the cooldown display and clear cooldown text"""
         if hasattr(cls, '_cooldown_window') and cls._cooldown_window:
-            cls._cooldown_window.hide()
+            # Hide the window
+            try:
+                cls._cooldown_window.hide()
+            except Exception as e:
+                print(f"[qt overlay] Error hiding cooldown window: {e}")
+            
+            # Clear the cooldown text content directly
+            if hasattr(cls, '_cooldown_text') and cls._cooldown_text:
+                try:
+                    cls._cooldown_text.setHtml("")
+                    print("[qt overlay] Cooldown text cleared")
+                except Exception as e:
+                    print(f"[qt overlay] Error clearing cooldown text: {e}")
         
-        # For backwards compatibility, also hide the older cooldown if it exists
+        # For backwards compatibility, also handle older cooldown
         if hasattr(cls, '_window') and cls._window:
-            #cls._window.hide()
-            print("[qt overlay]would have tried to hide the window here for whatever reason")
+            print("[qt overlay] Cooldown complete")
 
     @classmethod
     def hide_overlays_for_video(cls):

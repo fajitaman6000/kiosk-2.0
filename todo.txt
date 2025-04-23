@@ -1,9 +1,7 @@
 ##############################################################################################################################
 # Test notes
 
-hint button didnt appear when timer hit 42 organically
 verify function of clear hints
-
 
 
 May be just because victory image was not in files:

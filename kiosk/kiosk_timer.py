@@ -101,9 +101,8 @@ class KioskTimer:
             self.time_remaining = minutes * 60
             self.game_lost = False  # Reset game_lost flag when timer is set
             self.game_won = False  # Reset game_won flag as well
-            self.is_running = False # Setting the timer implies it's not running yet
-            self.last_update = None
-            print(f"[kiosk timer] Timer set to {minutes} minutes (stopped)")
+            self.last_update = time.time()  # Update the last_update time to now
+            print(f"[kiosk timer] Timer set to {minutes} minutes (maintaining current running state)")
 
         # Update the display regardless of command to show current state/time
         self.update_display()
