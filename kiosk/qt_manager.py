@@ -267,7 +267,7 @@ class QtManager:
         self.hint_cooldown = True
         
         # Use fixed 10 seconds cooldown instead of from config
-        cooldown_seconds = 10
+        cooldown_seconds = 60
         
         # Show initial cooldown
         Overlay.show_hint_cooldown(cooldown_seconds)

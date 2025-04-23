@@ -126,6 +126,9 @@ class MessageHandler:
             print("[message handler] Hiding all Qt overlays...")
             Overlay.hide() # Hides all standard overlays including timer, buttons, hints etc.
             Overlay.hide_gm_assistance()
+            # Explicitly hide win/loss screens
+            Overlay.hide_victory_screen()
+            Overlay.hide_loss_screen()
             # Video display should already be hidden by video_manager.force_stop()
             
             # Clear general labels managed by ui.py
