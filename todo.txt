@@ -28,6 +28,8 @@
 
 image viewer is a bit off to the side
 
+game loss, game win
+
 
 Traceback (most recent call last):
   File "C:\Users\Vegas Manager\Desktop\Kiosk 2.0\kiosk-2.0\kiosk\kiosk_timer.py", line 142, in update_timer_loop
@@ -110,6 +112,8 @@ xyz finished their game (instead of generic victory sound)
 kiosk relaunch after sync finish
 
 reset props, reset room (runs reset all + reset kiosk)
+
+windows scaling detection, not having to rotate to landscape
 
 ##############################################################################################################################
 # ambitious extra ideas:
