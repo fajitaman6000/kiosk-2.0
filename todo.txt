@@ -1,4 +1,36 @@
 ##############################################################################################################################
+# Test notes
+
+hint button didnt appear when timer hit 42 organically
+verify function of clear hints
+
+
+
+May be just because victory image was not in files:
+
+[qt_manager.py] Clearing hint UI elements and hiding Qt counterparts
+[qt overlay] Victory image not found at C:\Users\PanIQ Vegas\Desktop\kiosk2.0\kiosk-2.0\kiosk\other_files\victory.png
+[qt overlay] Cannot show victory screen, not initialized.
+[qt overlay][DESTROY_1864] +++ destroy_video_display ENTERED (Thread: 1864) +++
+[qt overlay][DESTROY_1864] Video display not destroyed (window missing or not initialized).
+[qt overlay][DESTROY_1864] --- destroy_video_display FINISHED (Thread: 1864) ---
+[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===
+[qt_overlay.py - hide] Disconnected button_view click signals
+[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===
+[qt overlay] Victory image not found at C:\Users\PanIQ Vegas\Desktop\kiosk2.0\kiosk-2.0\kiosk\other_files\victory.png
+[qt overlay] Cannot show victory screen, not initialized.
+[message handler] Received message: {'type': 'timer_command', 'command_id': '70dd055e-0935-46c7-8021-690db90381a6', 'computer_name': 'HAUNTED', 'command': 'set', 'minutes': 45, 'request_hash': 'fa06014a-620a-443f-bee5-7c2d8bb91826'}
+[message handler][DEBUG] Processing timer command (Command ID: 70dd055e-0935-46c7-8021-690db90381a6)
+[message handler][DEBUG] Setting timer to 45.0 minutes
+[kiosk timer] Timer set to 45.0 minutes (stopped)
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QTextDocument(0x17f2c807460), parent's thread is QThread(0x17f214402b0), current thread is QThread(0x17f2c80d6c0)
+Segmentation fault
+
+
+
+
+##############################################################################################################################
 # Freeze log
 
 [video server]Checking camera availability...
@@ -31,8 +63,11 @@ don't stop timer when updating time
 ##############################################################################################################################
 # todo
 
+no progress notification
 auto create folders for hint contents
 display hint image in new small window
+perhaps restart microphone detection when attempting every time (visual audio indicator on admin side too)
+reboot kiosk application
 
 hint contents
     import/move over audio hints
@@ -94,9 +129,6 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
-perhaps restart microphone detection when attempting every time (visual audio indicator on admin side too)
-
-reboot kiosk application
 
 xyz finished their game (instead of generic victory sound)
 

@@ -922,9 +922,31 @@ class Overlay:
             # Clear the existing text before updating
             cls._hint_text['text_item'].setHtml("")
 
+            # Wrap text every 33 characters, avoiding breaking words
+            wrapped_text = ""
+            remaining_text = text
+            while remaining_text:
+                # If remaining text is shorter than max length, add it all
+                if len(remaining_text) <= 38:
+                    wrapped_text += remaining_text
+                    break
+                
+                # Find the last space within the 33 character limit
+                cut_point = 33
+                while cut_point > 0 and remaining_text[cut_point] != ' ' and remaining_text[cut_point-1] != ' ':
+                    cut_point -= 1
+                
+                # If no space found, force cut at 33
+                if cut_point == 0:
+                    cut_point = 33
+                
+                # Add the chunk and a line break
+                wrapped_text += remaining_text[:cut_point] + "<br>"
+                remaining_text = remaining_text[cut_point:].lstrip()
+
             # Set text with transparent background explicitly
             cls._hint_text['text_item'].setHtml(
-                f'<div style="background-color: transparent; padding: 20px; text-align:center; width:{height-40}px">{text}</div>'
+                f'<div style="background-color: transparent; padding: 20px; text-align:center; width:{height-40}px">{wrapped_text}</div>'
             )
 
             cls._hint_text['text_item'].setTransform(QTransform())
