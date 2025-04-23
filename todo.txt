@@ -109,6 +109,8 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # planned features: 
 
+reboot kiosk application
+
 xyz finished their game (instead of generic victory sound)
 
 kiosk relaunch after sync finish

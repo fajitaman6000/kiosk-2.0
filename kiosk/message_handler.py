@@ -330,11 +330,12 @@ class MessageHandler:
                     print(f"[message handler][Kiosk] handle_message: Received hint, clearing hint_requested_flag for room {self.kiosk_app.assigned_room}")
 
                     # --- Play hint sound (schedule on main thread) ---
-                    self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
+                    #self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
 
                     # --- GUI update (schedule on main thread) ---
                     if hint_data is not None: # Ensure we have data before scheduling
                         self.schedule_timer(0, lambda d=hint_data: self.kiosk_app.show_hint(d))
+                    self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
 
             elif msg_type == 'timer_command' and is_targeted:
                 print(f"[message handler][DEBUG] Processing timer command (Command ID: {command_id})")
