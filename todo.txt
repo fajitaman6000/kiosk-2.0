@@ -27,7 +27,6 @@
 # pre-beta testing
 
 don't stop timer when updating time
-dont clear hint on request
 
 ##############################################################################################################################
 # todo

@@ -124,15 +124,13 @@ class QtManager:
                 QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
     
     def request_help(self):
-        """Creates the 'Hint Requested' message and clears any existing hints"""
+        """Creates the 'Hint Requested' message without clearing existing hints"""
         if not self.hint_cooldown:
             # Increase hint count
             if hasattr(self.message_handler, 'hints_requested'):
                 self.message_handler.hints_requested += 1
             
-            # Clear any existing hint
-            self.current_hint = None
-            
+            # No longer clear existing hint
             # Remove help button if it exists
             Overlay.hide_help_button()
             
