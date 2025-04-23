@@ -46,6 +46,8 @@ AttributeError: type object 'Overlay' has no attribute 'show_loss_screen'
 ##############################################################################################################################
 # todo
 
+auto create folders for hint contents
+display hint image in new small window
 
 hint contents
     import/move over audio hints
