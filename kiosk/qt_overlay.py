@@ -16,6 +16,7 @@ import cv2
 import base64
 from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
 from qt_init import init_fullscreen_hint, init_view_image_button, init_view_solution_button, init_video_display, init_hint_text_overlay, init_hint_request_text_overlay, init_gm_assistance_overlay, init_background, init_waiting_label, init_view_image_button, init_view_solution_button, init_timer, init_help_button
+import threading
 print("[qt overlay] Ending imports ...")
 
 class OverlayBridge(QObject):
@@ -715,46 +716,55 @@ class Overlay:
     @classmethod
     def destroy_video_display(cls):
         """Hide and clean up video display resources."""
+        thread_id = threading.get_ident()
+        print(f"[qt overlay][DESTROY_{thread_id}] +++ destroy_video_display ENTERED (Thread: {thread_id}) +++") # ADDED PRINT
         if cls._video_window and cls._video_is_initialized:
-            print("[qt overlay] Destroying video display.")
+            print(f"[qt overlay][DESTROY_{thread_id}] Video window exists and is initialized. Destroying...")
             if cls._video_window.isVisible():
+                print(f"[qt overlay][DESTROY_{thread_id}] Hiding video window...")
                 cls._video_window.hide()
 
             try:
                 if cls._video_view and cls._video_view.receivers(cls._video_view.clicked) > 0:
+                    print(f"[qt overlay][DESTROY_{thread_id}] Disconnecting video click signal...")
                     cls._video_view.clicked.disconnect()
             except TypeError:
-                pass
+                pass # No signal connected
             except Exception as e:
-                print(f"[qt overlay] Error disconnecting video signal during destroy: {e}")
+                print(f"[qt overlay][DESTROY_{thread_id}] Error disconnecting video signal: {e}")
 
-
-            # --- Schedule custom item for deletion ---
+            # --- Schedule Qt objects for deletion ---
+            print(f"[qt overlay][DESTROY_{thread_id}] Scheduling Qt objects for deletion...")
             if cls._video_frame_item and cls._video_scene:
-                # Check if item is still in the scene before removing
                 if cls._video_frame_item in cls._video_scene.items():
+                    print(f"[qt overlay][DESTROY_{thread_id}] Removing video_frame_item from scene...")
                     cls._video_scene.removeItem(cls._video_frame_item)
-                #cls._video_frame_item.deleteLater() # Schedule custom item deletion
-            # --- END CHANGE ---
+                # Don't call deleteLater on items removed from scene explicitly, might be redundant/problematic
+                # cls._video_frame_item.deleteLater()
 
             if cls._video_view:
+                print(f"[qt overlay][DESTROY_{thread_id}] Scheduling video_view deletion...")
                 cls._video_view.deleteLater()
             if cls._video_scene:
+                print(f"[qt overlay][DESTROY_{thread_id}] Scheduling video_scene deletion...")
                 cls._video_scene.deleteLater()
-            cls._video_window.deleteLater()
+            if cls._video_window: # Check again as deleteLater might have been called
+                print(f"[qt overlay][DESTROY_{thread_id}] Scheduling video_window deletion...")
+                cls._video_window.deleteLater()
 
-            # --- Reset state ---
+            # --- Reset state variables ---
+            print(f"[qt overlay][DESTROY_{thread_id}] Resetting state variables...")
             cls._video_window = None
             cls._video_view = None
             cls._video_scene = None
-            # --- REMOVE ---
-            # cls._video_pixmap_item = None
-            # +++ ADD +++
-            cls._video_frame_item = None # Reset custom item reference
-            # --- END CHANGE ---
+            cls._video_frame_item = None
             cls._video_click_callback = None
             cls._last_frame = None
             cls._video_is_initialized = False
+            print(f"[qt overlay][DESTROY_{thread_id}] Video display destroyed.")
+        else:
+            print(f"[qt overlay][DESTROY_{thread_id}] Video display not destroyed (window missing or not initialized).")
+        print(f"[qt overlay][DESTROY_{thread_id}] --- destroy_video_display FINISHED (Thread: {thread_id}) ---") # ADDED PRINT
 
     @classmethod
     def update_video_frame(cls, frame_data):

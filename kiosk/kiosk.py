@@ -314,6 +314,8 @@ class KioskApp:
             print("[kiosk main]=== Video Sequence Complete ===\n")
         def play_game_video():
             """Helper to play game video if it exists"""
+            thread_id = threading.get_ident()
+            print(f"[kiosk main][CALLBACK_{thread_id}] +++ play_game_video ENTERED (Thread: {thread_id}) +++")
             print("[kiosk main]=== Starting Game Video Sequence ===")
             print(f"[kiosk main]Game video path: {game_video}")
             if game_video and game_video.exists():

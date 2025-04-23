@@ -520,7 +520,9 @@ class MessageHandler:
     def handle_stop_video_command(self):
         """Handles the 'stop_video_command' logic. Assumed to be called via root.after."""
         if self.video_manager:
-            self.video_manager.stop_video() # Calls force_stop internally if needed
+            print("[message handler] Executing stop video command")
+            # The video_manager.stop_video method handles the callback chain properly
+            self.video_manager.stop_video() # This will trigger the completion callback
 
     def toggle_auto_start(self):
         """Toggles the auto-start flag on the kiosk. Does not broadcast."""
