@@ -40,15 +40,15 @@ class QtManager:
 
     def on_view_image_clicked(self):
         """Handler for view image button clicks."""
-        print("[qt_manager.py] View image button clicked")
+        print("[qt_manager] View image button clicked")
         if self.stored_image_data:
             self.show_fullscreen_image()
         else:
-            print("[qt_manager.py] No image data to show")
+            print("[qt_manager] No image data to show")
 
     def on_view_solution_clicked(self):
         """Handler for view solution button clicks."""
-        print("[qt_manager.py] View solution button clicked")
+        print("[qt_manager] View solution button clicked")
         self.toggle_solution_video()
 
     def load_background(self, room_number):
@@ -62,7 +62,7 @@ class QtManager:
             if os.path.exists(path):
                 return path
         except Exception as e:
-            print(f"[qt_manager.py] Error loading background: {str(e)}")
+            print(f"[qt_manager] Error loading background: {str(e)}")
         return None
         
     def setup_waiting_screen(self):
@@ -80,7 +80,7 @@ class QtManager:
         
     def clear_hint_ui(self):
         """Clears hint UI elements and hides Qt elements."""
-        print("[qt_manager.py] Clearing hint UI elements and hiding Qt counterparts")
+        print("[qt_manager] Clearing hint UI elements and hiding Qt counterparts")
 
         # Hide Qt Hint Text/Buttons
         Overlay.hide_hint_text()
@@ -92,9 +92,9 @@ class QtManager:
             try:
                 # Direct call instead of using QMetaObject.invokeMethod
                 Overlay._hint_text['text_item'].setPlainText("")
-                print("[qt_manager.py] Cleared hint text content")
+                print("[qt_manager] Cleared hint text content")
             except Exception as e:
-                print(f"[qt_manager.py] Error clearing hint text: {e}")
+                print(f"[qt_manager] Error clearing hint text: {e}")
             
         # Reset hint data
         self.current_hint = None
@@ -139,11 +139,11 @@ class QtManager:
                 hint_text = self.current_hint if isinstance(self.current_hint, str) else self.current_hint.get('text', '')
                 # Check again here, just before showing the hint.
                 if hint_text is not None and hint_text.strip() != "":
-                    print("[qt_manager.py] Restoring non-empty hint within setup_room_interface")
+                    print("[qt_manager] Restoring non-empty hint within setup_room_interface")
                     Overlay.show_hint_text(hint_text, self.current_room)
             else:
                 # If there's NO current hint, then update the help button.
-                print("[qt_manager.py] No current hint, updating help button within setup_room_interface")
+                print("[qt_manager] No current hint, updating help button within setup_room_interface")
                 # Use QTimer.singleShot
                 QTimer.singleShot(100, lambda: self.message_handler._actual_help_button_update())
     
@@ -166,12 +166,12 @@ class QtManager:
 
     def show_hint(self, text_or_data, start_cooldown=True):
         try:
-            print("[qt_manager.py show_hint] Showing hint...")
+            print("[qt_manager] Showing hint...")
             Overlay.hide_help_button() # Hide main help button
 
             # If video was playing, stop it
             if hasattr(self.message_handler.video_manager, 'is_playing') and self.message_handler.video_manager.is_playing:
-                 print("[qt_manager.py show_hint] Warning: Stopping video playback because new hint arrived.")
+                 print("[qt_manager] Warning: Stopping video playback because new hint arrived.")
                  self.message_handler.video_manager.stop_video()
 
             # Clear stored video info if a new hint arrives
@@ -201,31 +201,31 @@ class QtManager:
             else:
                 # Fallback if unexpected data type
                 hint_text = str(text_or_data)
-                print(f"[qt_manager.py show_hint] Warning: Received hint data of unexpected type: {type(text_or_data)}")
+                print(f"[qt_manager] Warning: Received hint data of unexpected type: {type(text_or_data)}")
 
             # Use placeholder if only image exists
             if self.stored_image_data and not hint_text:
                 hint_text = "Image hint received" # Placeholder text
 
             # Show hint text via Qt Overlay
-            print(f"[qt_manager.py show_hint] Showing hint text: '{hint_text}'")
+            print(f"[qt_manager] Showing hint text: '{hint_text}'")
             Overlay.show_hint_text(hint_text, self.current_room, priority=self.stored_image_data is not None)
 
             # --- Show Qt image button if image data exists ---
             if self.stored_image_data:
-                print("[qt_manager.py show_hint] Stored image data found, showing View Image button.")
+                print("[qt_manager] Stored image data found, showing View Image button.")
                 Overlay.show_view_image_button(self) # Pass self (qt_manager_instance)
 
         except Exception as e:
-            print(f"[qt_manager.py] Critical error in show_hint: {e}")
+            print(f"[qt_manager] Critical error in show_hint: {e}")
             traceback.print_exc()
             
     def show_fullscreen_image(self):
         """Display the image in nearly fullscreen using Qt Overlay"""
-        print("[qt_manager.py] Requesting Qt Overlay for fullscreen image.")
+        print("[qt_manager] Requesting Qt Overlay for fullscreen image.")
         self.image_is_fullscreen = True  # Set the flag FIRST
         if not self.stored_image_data:
-            print("[qt_manager.py] No stored image data to show.")
+            print("[qt_manager] No stored image data to show.")
             self.image_is_fullscreen = False # Reset if no data
             return
 
@@ -233,13 +233,13 @@ class QtManager:
             # Call the Qt Overlay to handle display
             Overlay.show_fullscreen_hint(self.stored_image_data, self) # Pass self
         except Exception as e:
-            print("[qt_manager.py] Error requesting fullscreen image overlay:")
+            print("[qt_manager] Error requesting fullscreen image overlay:")
             traceback.print_exc()
             self.image_is_fullscreen = False # Reset flag on error
         
     def restore_hint_view(self):
         """Restores the normal hint view after fullscreen Qt hint is closed."""
-        print("[qt_manager.py] Restoring hint view after Qt fullscreen hint.")
+        print("[qt_manager] Restoring hint view after Qt fullscreen hint.")
         self.image_is_fullscreen = False # Reset flag
 
         # Determine Hint Text
@@ -278,7 +278,7 @@ class QtManager:
 
     def start_cooldown(self):
         """Starts the hint cooldown timer and displays the cooldown message."""
-        print("[qt_manager.py] Starting hint cooldown...")
+        print("[qt_manager] Starting hint cooldown...")
         
         # Cancel any existing cooldown timer
         if self.cooldown_after_id:
@@ -325,7 +325,7 @@ class QtManager:
 
     def show_video_solution(self, room_folder, video_filename):
         """Prepares and shows a video solution."""
-        print(f"[qt_manager.py] Showing video solution: {room_folder}/{video_filename}")
+        print(f"[qt_manager] Showing video solution: {room_folder}/{video_filename}")
         # Store the video info
         self.stored_video_info = {
             'room_folder': room_folder,
@@ -344,7 +344,7 @@ class QtManager:
             print("[qt_manager.toggle_solution_video] thread lock acquired")
             try:
                 is_currently_playing = self.message_handler.video_manager.is_playing
-                print(f"[qt_manager.py] Toggling solution video. Currently playing: {is_currently_playing}")
+                print(f"[qt_manager] Toggling solution video. Currently playing: {is_currently_playing}")
 
                 if is_currently_playing:
                     print("[qt_manager.py] Stopping current video")
@@ -359,30 +359,30 @@ class QtManager:
                             f"{self.stored_video_info['video_filename']}.mp4"
                         )
 
-                        print(f"[qt_manager.py] Video path: {video_path}")
+                        print(f"[qt_manager] Video path: {video_path}")
                         if os.path.exists(video_path):
-                            print("[qt_manager.py] Playing video via VideoManager")
+                            print("[qt_manager] Playing video via VideoManager")
                             self.message_handler.video_manager.play_video(
                                 video_path,
                                 on_complete=self.handle_video_completion # Keep existing completion handler
                             )
                         else:
-                            print(f"[qt_manager.py] Error: Video file not found at {video_path}")
+                            print(f"[qt_manager] Error: Video file not found at {video_path}")
                     else:
                         print("[qt_manager.py] Error: No video info stored")
 
             except Exception as e:
-                print(f"[qt_manager.py] Error in toggle_solution_video: {e}")
+                print(f"[qt_manager] Error in toggle_solution_video: {e}")
                 traceback.print_exc()
             finally:
                 print("[qt_manager.toggle_solution_video] thread lock released")
         
     def handle_video_completion(self):
         """Handles the completion of video playback."""
-        print("[qt_manager.py] Handling video completion (top-level window version)")
+        print("[qt_manager] Handling video completion (top-level window version)")
         try:
             # Only update help button state if needed
             QTimer.singleShot(50, lambda: self.message_handler._actual_help_button_update())
         except Exception as e:
-            print(f"[qt_manager.py] Error in handle_video_completion: {e}")
+            print(f"[qt_manager] Error in handle_video_completion: {e}")
             traceback.print_exc() 

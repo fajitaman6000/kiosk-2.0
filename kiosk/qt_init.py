@@ -877,10 +877,10 @@ def init_background(cls):
         # Mark as initialized
         cls._background_initialized = True
         
-        print("[qt_overlay] Background components initialized")
+        print("[qt init] Background components initialized")
         
     except Exception as e:
-        print(f"[qt_overlay] Error initializing background components: {str(e)}")
+        print(f"[qt init] Error initializing background components: {str(e)}")
         traceback.print_exc()
         cls._background_initialized = False
         

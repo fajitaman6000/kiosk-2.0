@@ -65,33 +65,33 @@ class OverlayBridge(QObject):
 
     @pyqtSlot(bool, object) # For is_skippable (bool), click_callback (Python object)
     def prepare_video_display_slot(self, is_skippable, click_callback):
-        # print("[Bridge] prepare_video_display_slot called")
+        # print("[qt_overlay] prepare_video_display_slot called")
         try:
             Overlay.prepare_video_display(is_skippable, click_callback)
             # Note: Returning success via BlockingQueuedConnection is complex.
             # We assume success if no exception occurs during the call.
         except Exception as e:
-            print(f"[Bridge] Error in prepare_video_display_slot: {e}")
+            print(f"[qt_overlay] Error in prepare_video_display_slot: {e}")
             traceback.print_exc()
 
     @pyqtSlot()
     def show_video_display_slot(self):
-        # print("[Bridge] show_video_display_slot called")
+        # print("[qt_overlay] show_video_display_slot called")
         Overlay.show_video_display()
 
     @pyqtSlot()
     def hide_video_display_slot(self):
-        # print("[Bridge] hide_video_display_slot called")
+        # print("[qt_overlay] hide_video_display_slot called")
         Overlay.hide_video_display()
 
     @pyqtSlot()
     def destroy_video_display_slot(self):
-        # print("[Bridge] destroy_video_display_slot called")
+        # print("[qt_overlay] destroy_video_display_slot called")
         Overlay.destroy_video_display()
 
     @pyqtSlot(object) # Frame data is a numpy array (object)
     def update_video_frame_slot(self, frame_data):
-        # print("[Bridge] update_video_frame_slot called") # Very noisy
+        # print("[qt_overlay] update_video_frame_slot called") # Very noisy
         Overlay.update_video_frame(frame_data)
 
     @pyqtSlot()

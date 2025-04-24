@@ -1,8 +1,8 @@
-print("[qt classes] Beginning imports ...")
+print("[qt_classes] Beginning imports ...")
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, Qt
 from PyQt5.QtGui import QImage
 from PyQt5.QtWidgets import QGraphicsView, QGraphicsItem
-print("[qt classes] Ending imports ...")
+print("[qt_classes] Ending imports ...")
 
 class ClickableVideoView(QGraphicsView):
     """Custom QGraphicsView for video display that handles clicks"""
@@ -13,10 +13,9 @@ class ClickableVideoView(QGraphicsView):
         self._is_skippable = False
 
     def mousePressEvent(self, event):
-        # print("[qt classes] Video view clicked.") # Reduce debug noise
+        # print("[qt_classes] Video view clicked.") # Reduce debug noise
         if event.button() == Qt.LeftButton and self._is_skippable:
-            print("[qt classes] Video is skippable, emitting clicked signal.")
-            self.clicked.emit()
+            print("[qt_classes] Video is skippable, emitting clicked signal.")
         super().mousePressEvent(event)
         
     def keyPressEvent(self, event):
@@ -25,13 +24,13 @@ class ClickableVideoView(QGraphicsView):
         import win32gui
         if event.modifiers() & Qt.AltModifier:
             # Let system handle Alt+Tab and other Alt key combinations
-            print("[qt classes] Allowing Alt key combination to pass through")
+            print("[qt_classes] Allowing Alt key combination to pass through")
             super().keyPressEvent(event)
             return
             
         # Let Escape key close the video if skippable
         if event.key() == Qt.Key_Escape and self._is_skippable:
-            print("[qt classes] Escape pressed on skippable video, emitting clicked signal")
+            print("[qt_classes] Escape pressed on skippable video, emitting clicked signal")
             self.clicked.emit()
             event.accept()
             return
@@ -40,7 +39,7 @@ class ClickableVideoView(QGraphicsView):
         super().keyPressEvent(event)
 
     def set_skippable(self, skippable):
-        print(f"[qt classes] Setting video skippable: {skippable}")
+        print(f"[qt_classes] Setting video skippable: {skippable}")
         self._is_skippable = skippable
 
 class ClickableHintView(QGraphicsView):
@@ -51,7 +50,7 @@ class ClickableHintView(QGraphicsView):
         super().__init__(scene, parent)
 
     def mousePressEvent(self, event):
-        # print("[qt classes] Fullscreen hint view clicked.") # Debug
+        # print("[qt_classes] Fullscreen hint view clicked.") # Debug
         if event.button() == Qt.LeftButton:
             self.clicked.emit()
         super().mousePressEvent(event)
@@ -68,7 +67,10 @@ class TimerThread(QThread):
         pass
         
     def update_display(self, time_str):
-        self.update_signal.emit(time_str)
+        try:
+            self.update_signal.emit(time_str)
+        except Exception as e:
+            print(f"[qt_classes] Error in TimerThread.update_display: {e}")
 
 class TimerDisplay:
     """Handles the visual elements of the timer display"""
@@ -97,34 +99,44 @@ class VideoFrameItem(QGraphicsItem):
 
     def setImage(self, image):
         """Sets the QImage to be displayed."""
-        if isinstance(image, QImage) and not image.isNull():
-            # PrepareGeometryChange is necessary if the image size changes
-            if self._image.size() != image.size():
-                self.prepareGeometryChange()
-            self._image = image # Keep the QImage reference
-            # No need to call update() here explicitly,
-            # the view/scene update in Overlay.update_video_frame triggers the repaint
-        elif image is None or (isinstance(image, QImage) and image.isNull()):
-             # Handle setting an empty image (e.g., on stop)
-             if not self._image.isNull():
-                 self.prepareGeometryChange()
-                 self._image = QImage() # Reset to empty
-             # No update needed if already empty
+        try:
+            if isinstance(image, QImage) and not image.isNull():
+                # PrepareGeometryChange is necessary if the image size changes
+                if self._image.size() != image.size():
+                    self.prepareGeometryChange()
+                self._image = image # Keep the QImage reference
+                # No need to call update() here explicitly,
+                # the view/scene update in Overlay.update_video_frame triggers the repaint
+            elif image is None or (isinstance(image, QImage) and image.isNull()):
+                # Handle setting an empty image (e.g., on stop)
+                if not self._image.isNull():
+                    self.prepareGeometryChange()
+                    self._image = QImage() # Reset to empty
+                # No update needed if already empty
+        except Exception as e:
+            print(f"[qt_classes] Error in VideoFrameItem.setImage: {e}")
 
     def boundingRect(self):
         """Return the bounding rectangle of the image."""
-        # Crucial: Must return the correct size for proper redraws
-        if not self._image.isNull():
-            return QRectF(0, 0, self._image.width(), self._image.height())
-        else:
-            return QRectF() # Return empty rect if no image
+        try:
+            # Crucial: Must return the correct size for proper redraws
+            if not self._image.isNull():
+                return QRectF(0, 0, self._image.width(), self._image.height())
+            else:
+                return QRectF() # Return empty rect if no image
+        except Exception as e:
+            print(f"[qt_classes] Error in VideoFrameItem.boundingRect: {e}")
+            return QRectF()
 
     def paint(self, painter, option, widget=None):
         """Paint the stored QImage directly onto the painter."""
-        if not self._image.isNull():
-            # Draw the image at the item's local origin (0,0)
-            painter.drawImage(0, 0, self._image)
-        # else: draw nothing if no image
+        try:
+            if not self._image.isNull():
+                # Draw the image at the item's local origin (0,0)
+                painter.drawImage(0, 0, self._image)
+            # else: draw nothing if no image
+        except Exception as e:
+            print(f"[qt_classes] Error in VideoFrameItem.paint: {e}")
   
 class HelpButtonThread(QThread):
     """Dedicated thread for button updates"""
@@ -138,7 +150,10 @@ class HelpButtonThread(QThread):
         pass
     
     def update_button(self, button_data):
-        self.update_signal.emit(button_data)
+        try:
+            self.update_signal.emit(button_data)
+        except Exception as e:
+            print(f"[qt_classes] Error in HelpButtonThread.update_button: {e}")
 
 class HintTextThread(QThread):
     """Dedicated thread for hint text updates"""
@@ -152,7 +167,14 @@ class HintTextThread(QThread):
         pass
 
     def update_text(self, text_data):
-        self.update_signal.emit(text_data)
+        try:
+            # Print diagnostic info to help identify thread issues
+            print(f"[qt_classes] HintTextThread emitting update_signal with text: {text_data.get('text', '')[:30]}...")
+            self.update_signal.emit(text_data)
+        except Exception as e:
+            print(f"[qt_classes] Error in HintTextThread.update_text: {e}")
+            import traceback
+            traceback.print_exc()
 
 class HintRequestTextThread(QThread):
     """Dedicated thread for hint request text updates"""
@@ -166,4 +188,11 @@ class HintRequestTextThread(QThread):
         pass
 
     def update_text(self, text):
-        self.update_signal.emit(text)
+        try:
+            # Print diagnostic info to help identify thread issues
+            print(f"[qt_classes] HintRequestTextThread emitting update_signal with text: {text}")
+            self.update_signal.emit(text)
+        except Exception as e:
+            print(f"[qt_classes] Error in HintRequestTextThread.update_text: {e}")
+            import traceback
+            traceback.print_exc()
