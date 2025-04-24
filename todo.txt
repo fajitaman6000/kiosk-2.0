@@ -5,7 +5,8 @@ hints received count seems to correspond with the double "hint received" sound
 time needs to pause when the game finishes
 auto reset may not be functional
 
-after auto reset failed, manual reset also failed 
+after auto reset failed, manual reset also failed and there was a crash
+generally speaking the win/loss screens may be faulty
 
 ##############################################################################################################################
 # Freeze log

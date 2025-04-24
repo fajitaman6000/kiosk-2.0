@@ -209,6 +209,10 @@ class KioskApp:
     def handle_game_win(self):
         """Displays the game win screen"""
         print("[kiosk main]Displaying game win screen...")
+        # Pause the timer
+        if self.timer.is_running:
+            print("[kiosk main]Pausing timer due to victory")
+            self.timer.handle_command("stop")
         # Clear current UI
         self.clear_hints()
         # Display game win screen via Overlay
@@ -242,12 +246,10 @@ class KioskApp:
                 print(f"[kiosk main]Showing hint: {hint_text[:30]}{'...' if len(hint_text) > 30 else ''}")
             else:
                 print("[kiosk main]Showing image hint (no text)")
-            self.hints_received += 1  # Count hints actually shown
             self.ui.show_hint(text, start_cooldown)
         elif text:
             # Handle string format (text-only hints)
             print(f"[kiosk main]Showing hint: {text[:30]}{'...' if len(text) > 30 else ''}")
-            self.hints_received += 1  # Count hints actually shown
             self.ui.show_hint(text, start_cooldown)
     
     def play_video(self, video_type, minutes):
