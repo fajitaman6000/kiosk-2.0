@@ -4,6 +4,7 @@ import time
 import datetime
 import traceback
 from pathlib import Path
+import threading
 
 class KioskLogger:
     """
@@ -26,9 +27,16 @@ class KioskLogger:
         # Open log file
         self.log_file = open(self.log_file_path, 'w', encoding='utf-8')
         
+        # Add file lock for thread safety
+        self.file_lock = threading.Lock()
+        
         # Create stdout and stderr wrappers
-        self.stdout_wrapper = self.LogWrapper(self.stdout_original, self.log_file)
-        self.stderr_wrapper = self.LogWrapper(self.stderr_original, self.log_file, is_error=True)
+        self.stdout_wrapper = self.LogWrapper(self.stdout_original, self.log_file, self.file_lock)
+        self.stderr_wrapper = self.LogWrapper(self.stderr_original, self.log_file, self.file_lock, is_error=True)
+        
+        # Install exception hook to catch unhandled exceptions
+        self.original_excepthook = sys.excepthook
+        sys.excepthook = self.exception_hook
         
         print(f"[KioskLogger] Logging started. Output will be saved to: {self.log_file_path}")
     
@@ -40,28 +48,69 @@ class KioskLogger:
     
     def stop(self):
         """Stop logging and restore original stdout and stderr."""
+        # Restore original streams
         sys.stdout = self.stdout_original
         sys.stderr = self.stderr_original
-        self.log_file.close()
+        
+        # Restore original exception hook
+        sys.excepthook = self.original_excepthook
+        
+        # Close log file
+        try:
+            with self.file_lock:
+                self.log_file.flush()
+                self.log_file.close()
+        except Exception as e:
+            print(f"[KioskLogger] Error closing log file: {e}")
+        
         print(f"[KioskLogger] Logging stopped. Log file: {self.log_file_path}")
+    
+    def exception_hook(self, exc_type, exc_value, exc_traceback):
+        """Custom exception hook to log unhandled exceptions."""
+        try:
+            # Write exception info to log file with timestamp
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            
+            # Format the exception info
+            exception_lines = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            
+            # Write each line with timestamp
+            with self.file_lock:
+                self.log_file.write(f"{timestamp} [UNHANDLED_EXCEPTION] Unhandled exception detected:\n")
+                for line in exception_lines:
+                    for subline in line.splitlines():
+                        if subline.strip():
+                            self.log_file.write(f"{timestamp} [UNHANDLED_EXCEPTION] {subline}\n")
+                self.log_file.flush()
+                
+        except Exception as e:
+            # If we can't log to the file, at least print to the original stderr
+            self.stderr_original.write(f"Error in exception hook: {e}\n")
+        
+        # Call the original exception hook
+        self.original_excepthook(exc_type, exc_value, exc_traceback)
     
     class LogWrapper:
         """Wrapper class for stdout and stderr to capture output to log file."""
-        def __init__(self, original_stream, log_file, is_error=False):
+        def __init__(self, original_stream, log_file, file_lock, is_error=False):
             self.original_stream = original_stream
             self.log_file = log_file
+            self.file_lock = file_lock
             self.is_error = is_error
             self.last_char = '\n'  # Track the last character written
         
         def write(self, message):
-            # Write to original stream
+            # Always write to original stream first
             self.original_stream.write(message)
             
-            # Add timestamp and write to log file
-            if message.strip():  # Only log non-empty messages
-                timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-                prefix = "[ERROR] " if self.is_error else ""
-                
+            # Skip empty messages
+            if not message.strip():
+                return
+            
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+            prefix = "[ERROR] " if self.is_error else ""
+            
+            with self.file_lock:
                 # Ensure each log message starts on a new line if the last character wasn't a newline
                 if self.last_char != '\n' and not message.startswith('\n'):
                     self.log_file.write('\n')
@@ -81,7 +130,8 @@ class KioskLogger:
         
         def flush(self):
             self.original_stream.flush()
-            self.log_file.flush()
+            with self.file_lock:
+                self.log_file.flush()
         
         # Forward other methods to original stream
         def __getattr__(self, attr):
@@ -102,9 +152,36 @@ def init_logging():
 def log_exception(e, context=""):
     """Log an exception with context information."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
-    error_msg = f"{timestamp} [EXCEPTION] {context}: {str(e)}\n"
-    error_msg += traceback.format_exc()
     
-    # Print to stderr (which will be captured by our logger if active)
+    # Get the formatted traceback
+    tb_text = traceback.format_exc()
+    
+    # Log the context and exception message
+    error_msg = f"{timestamp} [EXCEPTION] {context}: {str(e)}\n"
+    
+    # Add each line of the traceback with its own timestamp
+    for line in tb_text.splitlines():
+        if line.strip():
+            error_msg += f"{timestamp} [EXCEPTION] {line}\n"
+    
+    # Write directly to stderr (which will be captured by our logger if active)
     sys.stderr.write(error_msg)
-    sys.stderr.flush() 
+    sys.stderr.flush()
+
+
+# Function to directly log a message to the log file (useful for background threads)
+def log_message(message, level="INFO"):
+    """
+    Log a message directly to the current log file.
+    Useful for background threads or components that don't use stdout/stderr.
+    """
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+    formatted_message = f"{timestamp} [{level}] {message}\n"
+    
+    # Print to stdout/stderr which will be captured by the logger
+    if level in ("ERROR", "EXCEPTION", "CRITICAL"):
+        sys.stderr.write(formatted_message)
+        sys.stderr.flush()
+    else:
+        sys.stdout.write(formatted_message)
+        sys.stdout.flush() 

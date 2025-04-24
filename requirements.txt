@@ -10,3 +10,4 @@ pywin32
 flask
 requests
 pyautogui
+psutil

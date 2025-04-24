@@ -359,48 +359,87 @@ class KioskApp:
         print("[kiosk main] Closing kiosk application...")
         self.is_closing = True
         
-        # Stop video player if running
-        if hasattr(self, 'video_manager'):
-            print("[kiosk main] Stopping video manager...")
-            self.video_manager.force_stop()
+        # Wrap each shutdown step in try-except to ensure complete shutdown
+        try:
+            # Stop video player if running
+            if hasattr(self, 'video_manager'):
+                print("[kiosk main] Stopping video manager...")
+                self.video_manager.force_stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping video manager: {e}")
+            log_exception(e, "Error stopping video manager")
         
-        # Close Qt overlay
-        if Overlay._bridge:
-            print("[kiosk main] Calling Overlay.on_closing_slot...")
-            QMetaObject.invokeMethod(Overlay._bridge, "on_closing_slot", Qt.QueuedConnection)
+        try:
+            # Close Qt overlay
+            if Overlay._bridge:
+                print("[kiosk main] Calling Overlay.on_closing_slot...")
+                QMetaObject.invokeMethod(Overlay._bridge, "on_closing_slot", Qt.QueuedConnection)
+        except Exception as e:
+            print(f"[kiosk main] Error closing overlay: {e}")
+            log_exception(e, "Error closing overlay")
         
-        # Shutdown components
-        if hasattr(self, 'network'):
-            print("[kiosk main] Stopping network...")
-            self.network.stop()
+        try:
+            # Shutdown network component
+            if hasattr(self, 'network'):
+                print("[kiosk main] Stopping network...")
+                # Check which method exists and call it
+                if hasattr(self.network, 'shutdown'):
+                    self.network.shutdown()
+                else:
+                    print("[kiosk main] Warning: No stop method found in network component")
+        except Exception as e:
+            print(f"[kiosk main] Error stopping network: {e}")
+            log_exception(e, "Error stopping network")
         
-        if hasattr(self, 'video_server'):
-            print("[kiosk main] Stopping video server...")
-            self.video_server.stop()
+        try:
+            if hasattr(self, 'video_server'):
+                print("[kiosk main] Stopping video server...")
+                self.video_server.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping video server: {e}")
+            log_exception(e, "Error stopping video server")
             
-        if hasattr(self, 'audio_server'):
-            print("[kiosk main] Stopping audio server...")
-            self.audio_server.stop()
+        try:
+            if hasattr(self, 'audio_server'):
+                print("[kiosk main] Stopping audio server...")
+                self.audio_server.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping audio server: {e}")
+            log_exception(e, "Error stopping audio server")
         
-        if hasattr(self, 'file_downloader'):
-            print("[kiosk main] Stopping file downloader...")
-            self.file_downloader.stop()
+        try:
+            if hasattr(self, 'file_downloader'):
+                print("[kiosk main] Stopping file downloader...")
+                self.file_downloader.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping file downloader: {e}")
+            log_exception(e, "Error stopping file downloader")
         
-        # Stop any video playback
-        if hasattr(self, "current_video_process") and self.current_video_process:
-            # Try to terminate the process
-            try:
-                import psutil
-                p = psutil.Process(self.current_video_process.pid)
-                p.terminate()
-            except Exception as e:
-                print(f"[kiosk main] Error terminating video process: {e}")
-            self.current_video_process = None
+        try:
+            # Stop any video playback
+            if hasattr(self, "current_video_process") and self.current_video_process:
+                # Try to terminate the process
+                try:
+                    import psutil
+                    p = psutil.Process(self.current_video_process.pid)
+                    p.terminate()
+                except Exception as e:
+                    print(f"[kiosk main] Error terminating video process: {e}")
+                    log_exception(e, "Error terminating video process")
+                self.current_video_process = None
+        except Exception as e:
+            print(f"[kiosk main] Error handling video process: {e}")
+            log_exception(e, "Error handling video process")
         
         # Stop the logger last to catch all cleanup messages
-        if hasattr(self, 'logger') and self.logger:
-            print("[kiosk main] Stopping console logger...")
-            self.logger.stop()
+        try:
+            if hasattr(self, 'logger') and self.logger:
+                print("[kiosk main] Stopping console logger...")
+                self.logger.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping logger: {e}")
+            # Can't use log_exception here as logger is being stopped
+            traceback.print_exc()
         
         print("[kiosk main] Shutdown sequence complete.")
 
