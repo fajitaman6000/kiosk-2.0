@@ -45,3 +45,4 @@ kiosk/other_files/**
 kiosk/intro_videos/transcoder.py
 kiosk/intro_videos/downscale.py
 New folder/downscale.py
+sloc counter/**
