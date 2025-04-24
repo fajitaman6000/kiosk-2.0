@@ -16,6 +16,7 @@ from audio_manager import AudioManager
 from kiosk_file_downloader import KioskFileDownloader
 from qt_overlay import Overlay
 from qt_main import QtKioskApp  # Import the new QtKioskApp class
+from logger import init_logging, log_exception  # Import our new logger
 from ctypes import windll
 import signal
 import threading
@@ -27,6 +28,10 @@ class KioskApp:
     def __init__(self):
         print("[kiosk main]Starting KioskApp initialization...")
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
+        
+        # Initialize logging
+        self.logger = init_logging()
+        print("[kiosk main] Console logging initialized.")
 
         #get_stats items to pass with info payload
         self.computer_name = socket.gethostname()
@@ -348,41 +353,57 @@ class KioskApp:
     def on_closing(self):
         """Handle application close."""
         if self.is_closing:
-            print("[kiosk main]WARNING: on_closing() called but already closing.")
+            print("[kiosk main] Already closing, ignoring duplicate on_closing call.")
             return
-        
+            
+        print("[kiosk main] Closing kiosk application...")
         self.is_closing = True
-        print("[kiosk main]on_closing() called, starting shutdown sequence...")
         
         # Stop video player if running
         if hasattr(self, 'video_manager'):
-            print("[kiosk main]Stopping video manager...")
+            print("[kiosk main] Stopping video manager...")
             self.video_manager.force_stop()
         
         # Close Qt overlay
         if Overlay._bridge:
-            print("[kiosk main]Calling Overlay.on_closing_slot...")
+            print("[kiosk main] Calling Overlay.on_closing_slot...")
             QMetaObject.invokeMethod(Overlay._bridge, "on_closing_slot", Qt.QueuedConnection)
         
         # Shutdown components
         if hasattr(self, 'network'):
-            print("[kiosk main]Stopping network...")
+            print("[kiosk main] Stopping network...")
             self.network.stop()
         
         if hasattr(self, 'video_server'):
-            print("[kiosk main]Stopping video server...")
+            print("[kiosk main] Stopping video server...")
             self.video_server.stop()
             
         if hasattr(self, 'audio_server'):
-            print("[kiosk main]Stopping audio server...")
+            print("[kiosk main] Stopping audio server...")
             self.audio_server.stop()
         
         if hasattr(self, 'file_downloader'):
-            print("[kiosk main]Stopping file downloader...")
+            print("[kiosk main] Stopping file downloader...")
             self.file_downloader.stop()
-            
-        print("[kiosk main]Shutdown sequence complete.")
         
+        # Stop any video playback
+        if hasattr(self, "current_video_process") and self.current_video_process:
+            # Try to terminate the process
+            try:
+                import psutil
+                p = psutil.Process(self.current_video_process.pid)
+                p.terminate()
+            except Exception as e:
+                print(f"[kiosk main] Error terminating video process: {e}")
+            self.current_video_process = None
+        
+        # Stop the logger last to catch all cleanup messages
+        if hasattr(self, 'logger') and self.logger:
+            print("[kiosk main] Stopping console logger...")
+            self.logger.stop()
+        
+        print("[kiosk main] Shutdown sequence complete.")
+
     def clear_hints(self):
         """Clear all hints"""
         print("[kiosk main]Clearing hints...")
@@ -412,20 +433,27 @@ class KioskApp:
         self.qt_app.run()
 
 def main():
-    """Program entry point"""
-    # Create and run app
-    app = KioskApp()
-    
-    # Set up signal handler for Ctrl+C
-    def signal_handler(sig, frame):
-        print('\n[kiosk main]SIGINT received, initiating shutdown...')
-        app.on_closing()
-        sys.exit(0)
-    
-    signal.signal(signal.SIGINT, signal_handler)
-    
-    # Start the app
-    app.run()
+    """Main entry point for the kiosk application."""
+    # Setup exception handling for main thread
+    try:
+        app = KioskApp()
+        
+        # Set up signal handler for Ctrl+C
+        def signal_handler(sig, frame):
+            print('\n[kiosk main] SIGINT received, initiating shutdown...')
+            app.on_closing()
+            sys.exit(0)
+        
+        # Set signal handler after KioskApp is created
+        signal.signal(signal.SIGINT, signal_handler)
+        app.run()
+    except Exception as e:
+        print(f"[kiosk main] Fatal error in main thread: {str(e)}")
+        traceback.print_exc()
+        if 'app' in locals() and hasattr(app, 'logger') and app.logger:
+            log_exception(e, "Fatal error in main thread")
+            app.logger.stop()
+        sys.exit(1)
     
 if __name__ == "__main__":
     main()
