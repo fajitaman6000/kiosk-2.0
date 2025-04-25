@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import QGraphicsView, QGraphicsItem
 print("[qt_classes] Ending imports ...")
 
 class ClickableVideoView(QGraphicsView):
-    """Custom QGraphicsView for video display that handles clicks"""
+    """Custom QGraphicsView for video display that handles clicks""" # also repurposed for the hint button!
     clicked = pyqtSignal() # Signal emitted on click
 
     def __init__(self, scene, parent=None):
@@ -13,9 +13,8 @@ class ClickableVideoView(QGraphicsView):
         self._is_skippable = False
 
     def mousePressEvent(self, event):
-        # print("[qt_classes] Video view clicked.") # Reduce debug noise
         if event.button() == Qt.LeftButton and self._is_skippable:
-            print("[qt_classes] Video is skippable, emitting clicked signal.")
+            self.clicked.emit() # Emit the signal directly
         super().mousePressEvent(event)
         
     def keyPressEvent(self, event):
