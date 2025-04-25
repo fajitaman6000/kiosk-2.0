@@ -300,11 +300,6 @@ class ImageViewerPopup(tk.Toplevel):
         # Register cleanup
         self.protocol("WM_DELETE_WINDOW", self.on_close)
 
-        if not self.image_files:
-            self.destroy()
-            messagebox.showwarning("Image Viewer", "No images found in this directory.")
-            return
-
         # Ensure index is valid if list changed somehow
         if not (0 <= self.current_index < len(self.image_files)):
             self.current_index = 0 if self.image_files else -1
