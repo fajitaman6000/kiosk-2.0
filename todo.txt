@@ -1,35 +1,7 @@
 ##############################################################################################################################
 # Test notes
 
-auto reset may not be functional
-after auto reset failed, manual reset also failed and there was a crash
-auto reset crashed kiosk
-    [kiosk timer] Loading timer background for room 3 via Overlay.
-    [qt overlay]Attempting to load timer background for room 3
-    [qt overlay]Looking for background at: timer_backgrounds\wizard_trials.png
-    [qt overlay]Loading background image...
-    [qt overlay]Converting to QPixmap...
-    [qt overlay]Setting background pixmap...
-    [qt overlay]Background loaded successfully
-    [qt_manager.py] No current hint, updating help button within setup_room_interface
-    [message handler][DEBUG] Kiosk GUI reset complete
-    [kiosk main]Displaying game win screen...
-    [kiosk main]Clearing hints...
-    [qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
-    [qt_manager.py] Clearing hint UI elements and hiding Qt counterparts
-    [qt_manager.py] Cleared hint text content
-    [qt overlay] Cooldown text cleared
-    [qt overlay] Cooldown complete
-    [qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
-    [qt overlay] Victory screen shown.
-    [message handler] Received message: {'type': 'timer_command', 'command_id': 'eb3171d2-d2d1-4961-933a-f410ffcf1b52', 'computer_name': 'BACKUP-MINIX', 'command': 'set', 'minutes': 45, 'request_hash': '7ac9513c-1394-4d82-9644-836ecb000caf'}
-    [message handler][DEBUG] Processing timer command (Command ID: eb3171d2-d2d1-4961-933a-f410ffcf1b52)
-    [message handler][DEBUG] Setting timer to 45.0 minutes
-    [kiosk timer] Timer set to 45.0 minutes (maintaining current running state)
-    QObject: Cannot create children for a parent that is in a different thread.
-    (Parent is QTextDocument(0x1db74a30af0), parent's thread is QThread(0x1db744b0500), current thread is QThread(0x1db7c3e16d0)
-    Segmentation fault
-
+in room assistance popup came up with image
 
 ##############################################################################################################################
 # Freeze log
@@ -59,7 +31,7 @@ auto reset crashed kiosk
 ##############################################################################################################################
 # pre-beta testing
 
-audio hint browser 
+saved hint browser that works like audio and image browsers
 
 ##############################################################################################################################
 # todo
