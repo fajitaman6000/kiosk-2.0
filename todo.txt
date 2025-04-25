@@ -59,8 +59,7 @@ auto reset crashed kiosk
 ##############################################################################################################################
 # pre-beta testing
 
-console viewer of selected kiosk
-
+audio hint browser 
 
 ##############################################################################################################################
 # todo
@@ -144,6 +143,8 @@ windows scaling detection, not having to rotate to landscape
 
 ##############################################################################################################################
 # ambitious extra ideas:
+
+option to play sound effects, ways for game masters to enjoyably interact with guests
 
 periodic setting of casino/morning after according to room?
 "wave back" button

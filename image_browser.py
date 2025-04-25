@@ -187,9 +187,14 @@ class ImageBrowserApp:
 
         widgets = self.prop_widgets[prop_dir]
         thumb_label = widgets['thumb_label']
+        name_label = widgets['name_label']
 
         image_files = sorted(get_image_files(prop_dir))
         image_count = len(image_files)
+
+        # Update the name label with the count
+        prop_name = prop_dir.name
+        name_label.configure(text=f"{prop_name} ({image_count})")
 
         # Clear previous thumbnail reference if it exists
         self.thumbnail_references[prop_dir] = None
