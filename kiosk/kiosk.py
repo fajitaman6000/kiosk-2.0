@@ -214,14 +214,28 @@ class KioskApp:
     def handle_game_win(self):
         """Displays the game win screen"""
         print("[kiosk main]Displaying game win screen...")
-        # Pause the timer
-        if self.timer.is_running:
-            print("[kiosk main]Pausing timer due to victory")
-            self.timer.handle_command("stop")
-        # Clear current UI
-        self.clear_hints()
-        # Display game win screen via Overlay
-        Overlay.show_victory_screen()
+        try:
+            # Pause the timer
+            if self.timer.is_running:
+                print("[kiosk main]Pausing timer due to victory")
+                self.timer.handle_command("stop")
+            # Clear current UI
+            self.clear_hints()
+            # Display game win screen via Overlay
+            try:
+                # Check if Overlay is initialized before trying to show victory screen
+                if Overlay._initialized:
+                    Overlay.show_victory_screen()
+                else:
+                    print("[kiosk main]WARNING: Overlay not initialized when trying to show victory screen")
+            except Exception as e:
+                print(f"[kiosk main]ERROR showing victory screen: {e}")
+                import traceback
+                traceback.print_exc()
+        except Exception as e:
+            print(f"[kiosk main]ERROR in handle_game_win: {e}")
+            import traceback
+            traceback.print_exc()
     
     def request_help(self):
         """Request help (hint) from the server. Called by UI and network handlers."""

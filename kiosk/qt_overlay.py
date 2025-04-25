@@ -2285,17 +2285,55 @@ class Overlay:
     @classmethod
     def show_victory_screen(cls):
         """Displays the game victory screen."""
-        if not cls._victory_screen_initialized:
-            cls._init_victory_screen()
+        try:
+            # Ensure initialization is done in a safe way
+            if not cls._victory_screen_initialized:
+                try:
+                    cls._init_victory_screen()
+                except Exception as e:
+                    print(f"[qt overlay] Error initializing victory screen: {e}")
+                    traceback.print_exc()
+                    return
 
-        if cls._victory_screen_initialized and cls._victory_screen_window:
-            cls._victory_screen_window.setWindowState(cls._victory_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
-            cls._victory_screen_window.showFullScreen()
-            cls._victory_screen_window.activateWindow()
-            cls._victory_screen_window.raise_()
-            print(f"[qt overlay] Victory screen shown.")
-        else:
-            print(f"[qt overlay] Cannot show victory screen, not initialized.")
+            # Check if window exists before attempting to display
+            if cls._victory_screen_initialized and cls._victory_screen_window:
+                # Try to show the window directly, catch any errors
+                try:
+                    cls._victory_screen_window.setWindowState(cls._victory_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+                    cls._victory_screen_window.showFullScreen()
+                    cls._victory_screen_window.activateWindow()
+                    cls._victory_screen_window.raise_()
+                    print(f"[qt overlay] Victory screen shown.")
+                except Exception as e:
+                    # If showing fails, try to reinitialize and show again
+                    print(f"[qt overlay] Error showing victory screen: {e}. Attempting to reinitialize.")
+                    traceback.print_exc()
+                    
+                    # Cleanup old window if it exists
+                    try:
+                        cls._victory_screen_initialized = False
+                        if cls._victory_screen_window:
+                            cls._victory_screen_window.deleteLater()
+                            cls._victory_screen_window = None
+                    except Exception:
+                        pass  # Ignore errors during cleanup
+                    
+                    # Try to reinitialize
+                    try:
+                        cls._init_victory_screen()
+                        if cls._victory_screen_initialized and cls._victory_screen_window:
+                            cls._victory_screen_window.showFullScreen()
+                            print(f"[qt overlay] Victory screen shown after reinitialization.")
+                        else:
+                            print(f"[qt overlay] Reinitialization of victory screen failed.")
+                    except Exception as e2:
+                        print(f"[qt overlay] Error reinitializing victory screen: {e2}")
+                        traceback.print_exc()
+            else:
+                print(f"[qt overlay] Cannot show victory screen, not initialized.")
+        except Exception as e:
+            print(f"[qt overlay] Unhandled exception in show_victory_screen: {e}")
+            traceback.print_exc()
 
     @classmethod
     def hide_victory_screen(cls):

@@ -50,6 +50,10 @@ class MessageHandler:
         self._message_queue = []
         self._processing = False
         self._stop_event = threading.Event()
+        # Flag to track when a reset operation is in progress
+        self._resetting_kiosk = False
+        # Queue for victory messages that arrive during reset
+        self._pending_victory_msg = None
 
     def schedule_timer(self, delay_ms, callback):
         """Thread-safe way to schedule a timer"""
@@ -105,6 +109,9 @@ class MessageHandler:
         """Executes the GUI-related parts of the reset process. MUST run on the main thread."""
         print("[message handler] Executing GUI reset operations on main thread...")
         try:
+            # Set flag to indicate reset is in progress
+            self._resetting_kiosk = True
+            
             # Stop video (this should be safe to initiate from here if VideoManager is thread-safe)
             # but the actual Qt hiding happens via invokeMethod anyway.
             self.video_manager.force_stop()
@@ -139,31 +146,49 @@ class MessageHandler:
 
             # --- Restore Base UI ---
             def restore_base_ui():
-                # Check game state flags AFTER they've been reset in the network thread
-                game_lost = self.kiosk_app.timer.game_lost
-                game_won = self.kiosk_app.timer.game_won
+                try:
+                    # Check game state flags AFTER they've been reset in the network thread
+                    game_lost = self.kiosk_app.timer.game_lost
+                    game_won = self.kiosk_app.timer.game_won
 
-                if game_lost:
-                    Overlay.show_loss_screen()
-                elif game_won:
-                    Overlay.show_victory_screen()
-                elif self.kiosk_app.assigned_room:
-                    print("[message handler][DEBUG] Restoring room interface")
-                    self.kiosk_app.ui.setup_room_interface(self.kiosk_app.assigned_room) # Shows background, loads timer bg
-                    Overlay.update_timer_display(self.kiosk_app.timer.get_time_str()) # Show timer value
-                    self.kiosk_app._actual_help_button_update() # Show help button if needed
-                    print("[message handler][DEBUG] Kiosk GUI reset complete")
-                else:
-                    print("[message handler] No room assigned after reset, showing waiting screen.")
-                    self.kiosk_app.ui.setup_waiting_screen() # Show waiting screen if no room
+                    if game_lost:
+                        Overlay.show_loss_screen()
+                    elif game_won:
+                        Overlay.show_victory_screen()
+                    elif self.kiosk_app.assigned_room:
+                        print("[message handler][DEBUG] Restoring room interface")
+                        self.kiosk_app.ui.setup_room_interface(self.kiosk_app.assigned_room) # Shows background, loads timer bg
+                        Overlay.update_timer_display(self.kiosk_app.timer.get_time_str()) # Show timer value
+                        self.kiosk_app._actual_help_button_update() # Show help button if needed
+                        print("[message handler][DEBUG] Kiosk GUI reset complete")
+                    else:
+                        print("[message handler] No room assigned after reset, showing waiting screen.")
+                        self.kiosk_app.ui.setup_waiting_screen() # Show waiting screen if no room
+                    
+                    # Reset is complete, mark flag
+                    self._resetting_kiosk = False
+                    
+                    # Process any victory message that came in during reset
+                    if self._pending_victory_msg:
+                        print("[message handler] Processing pending victory message that arrived during reset")
+                        pending_msg = self._pending_victory_msg
+                        self._pending_victory_msg = None
+                        self.handle_message(pending_msg)
+                except Exception as e:
+                    print(f"[message handler] Error during restore_base_ui: {e}")
+                    traceback.print_exc()
+                    # Make sure we reset the flag even if there's an exception
+                    self._resetting_kiosk = False
 
             # Schedule the final UI restoration slightly later to ensure state is settled
             # Replace root.after with QTimer.singleShot
-            QTimer.singleShot(100, restore_base_ui)
+            QTimer.singleShot(200, restore_base_ui)  # Increased from 100ms to 200ms for more stability
 
         except Exception as e:
             print(f"[message handler] Error during GUI reset operations: {e}")
             traceback.print_exc()
+            # Make sure we reset the flag even if there's an exception
+            self._resetting_kiosk = False
     # --- End new method ---
 
     def add_message(self, message, delay=0):
@@ -486,6 +511,13 @@ class MessageHandler:
 
             elif msg_type == 'victory' and is_targeted:
                 print(f"[message handler] Victory detected (Command ID: {command_id})")
+                
+                # Check if we're in the middle of a reset operation
+                if self._resetting_kiosk:
+                    print("[message handler] Victory message received during kiosk reset - queueing for processing after reset")
+                    self._pending_victory_msg = msg.copy()  # Store a copy of the message
+                    return
+                
                 # Set state flag (safe)
                 self.kiosk_app.timer.game_won = True
                 # Handle game win logic (involves audio/video/overlay - schedule it)
