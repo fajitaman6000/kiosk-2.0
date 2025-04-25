@@ -13,7 +13,7 @@ import numpy as np # Needed for type hints / checks potentially
 from config import ROOM_CONFIG
 import cv2
 import base64
-from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem, ClickableButtonView
+from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
 print("[qt init] Ending imports ...")
 
 
@@ -798,7 +798,7 @@ def init_help_button(cls):
 
         # Set up button scene and view using ClickableView instead of QGraphicsView
         cls._button['scene'] = QGraphicsScene()
-        cls._button_view = ClickableButtonView(cls._button['scene'], cls._button_window)
+        cls._button_view = ClickableVideoView(cls._button['scene'], cls._button_window)
 
         # Define view dimensions (increased to accommodate shadow)
         width = 440  # Increased width

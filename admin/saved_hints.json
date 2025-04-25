@@ -1,4 +1,38 @@
 {
     "rooms": {
+        "4": {
+            "Tools": {
+                "t": {
+                    "text": "ghjkghjkghjkghkj",
+                    "image": null
+                }
+            }
+        },
+        "1": {
+            "Plant Bombs": {
+                "test": {
+                    "text": "",
+                    "image": "c4 positions.png"
+                }
+            },
+            "Painting 1": {
+                "sssss": {
+                    "text": "test",
+                    "image": "all pieces.png"
+                }
+            }
+        },
+        "3": {
+            "Code Panel": {
+                "test": {
+                    "text": "",
+                    "image": "center of table.png"
+                },
+                "test 2": {
+                    "text": "test 2",
+                    "image": "center of table.png"
+                }
+            }
+        }
     }
 }

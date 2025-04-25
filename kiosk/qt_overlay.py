@@ -14,7 +14,7 @@ import numpy as np # Needed for type hints / checks potentially
 from config import ROOM_CONFIG
 import cv2
 import base64
-from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem, ClickableButtonView
+from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
 from qt_init import init_fullscreen_hint, init_view_image_button, init_view_solution_button, init_video_display, init_hint_text_overlay, init_hint_request_text_overlay, init_gm_assistance_overlay, init_background, init_waiting_label, init_view_image_button, init_view_solution_button, init_timer, init_help_button
 import threading
 print("[qt overlay] Ending imports ...")
@@ -1421,8 +1421,7 @@ class Overlay:
 
                 # Set up button scene and view using ClickableView instead of QGraphicsView
                 cls._button['scene'] = QGraphicsScene()
-                # --- USE ClickableButtonView --- 
-                cls._button_view = ClickableButtonView(cls._button['scene'], cls._button_window)
+                cls._button_view = ClickableVideoView(cls._button['scene'], cls._button_window)
 
                 # Define view dimensions (increased to accommodate shadow)
                 width = 440  # Increased width
@@ -1466,6 +1465,9 @@ class Overlay:
                 # Set the origin for rotation to the center of the pixmap
                 button_rect = cls._button['bg_image_item'].boundingRect()
                 cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
+
+                # Make the button view "skippable" (which means clickable in this context)
+                cls._button_view.set_skippable(True)
 
                 # Set up click handling using Qt signals/slots
                 try:

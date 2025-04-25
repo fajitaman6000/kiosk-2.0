@@ -16,7 +16,6 @@ class ClickableVideoView(QGraphicsView):
         # print("[qt_classes] Video view clicked.") # Reduce debug noise
         if event.button() == Qt.LeftButton and self._is_skippable:
             print("[qt_classes] Video is skippable, emitting clicked signal.")
-            self.clicked.emit()
         super().mousePressEvent(event)
         
     def keyPressEvent(self, event):
@@ -42,29 +41,6 @@ class ClickableVideoView(QGraphicsView):
     def set_skippable(self, skippable):
         print(f"[qt_classes] Setting video skippable: {skippable}")
         self._is_skippable = skippable
-
-class ClickableButtonView(QGraphicsView):
-    """Custom QGraphicsView for button elements that handles clicks"""
-    clicked = pyqtSignal() # Signal emitted on click
-
-    def __init__(self, scene, parent=None):
-        super().__init__(scene, parent)
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton:
-            print("[qt_classes] Button view clicked, emitting clicked signal.")
-            self.clicked.emit()
-        super().mousePressEvent(event)
-
-    def keyPressEvent(self, event):
-        """Handle key press events, primarily for accessibility or alternative input."""
-        # Allow standard key presses like Enter/Space to maybe trigger click in future
-        if event.key() in (Qt.Key_Enter, Qt.Key_Return, Qt.Key_Space):
-            print("[qt_classes] Button key pressed, emitting clicked signal.")
-            self.clicked.emit()
-            event.accept()
-            return
-        super().keyPressEvent(event)
 
 class ClickableHintView(QGraphicsView):
     """Custom QGraphicsView for fullscreen hint display that handles clicks"""
