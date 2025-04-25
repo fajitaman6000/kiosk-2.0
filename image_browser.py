@@ -9,8 +9,11 @@ from PIL import Image, ImageTk
 
 # --- Constants ---
 BASE_IMAGE_DIR = Path("admin/sync_directory/hint_image_files")
-THUMBNAIL_SIZE = (64, 64) # Size for the preview thumbnails
+# THUMBNAIL_SIZE = (64, 64) # Old thumbnail size
+PROP_BLOCK_THUMBNAIL_SIZE = (100, 75) # Thumbnail size for the prop block
 POPUP_PREVIEW_SIZE = (600, 400)
+ROOM_GRID_COLUMNS = 3
+PROP_GRID_COLUMNS = 4 # Adjust as needed
 # MAX_THUMBNAILS_DISPLAYED = 5 # Commented out - we'll try showing all
 
 # --- Helper Functions ---
@@ -89,7 +92,7 @@ class ImageBrowserApp:
 
 
     def populate_rooms(self):
-        """Scans the base directory and populates the UI with rooms and props."""
+        """Scans the base directory and populates the UI with rooms and props in grids."""
         # Clear existing content and references
         for widget in self.scrollable_frame.winfo_children():
             widget.destroy()
@@ -100,181 +103,151 @@ class ImageBrowserApp:
             ttk.Label(self.scrollable_frame, text=f"Error: Base directory not found: {BASE_IMAGE_DIR}").pack(pady=10)
             return
 
-        row_index = 0
         room_dirs = sorted([d for d in BASE_IMAGE_DIR.iterdir() if d.is_dir()])
+        num_rooms = len(room_dirs)
 
-        for room_dir in room_dirs:
+        for idx, room_dir in enumerate(room_dirs):
             room_name = room_dir.name
+            grid_row = idx // ROOM_GRID_COLUMNS
+            grid_col = idx % ROOM_GRID_COLUMNS
+
             room_frame = ttk.LabelFrame(self.scrollable_frame, text=room_name, padding="10")
-            room_frame.grid(row=row_index, column=0, padx=10, pady=5, sticky="ew")
-            room_frame.grid_columnconfigure(0, weight=1) # Make prop frames expand
-            self.scrollable_frame.grid_columnconfigure(0, weight=1) # Make room frames expand
-            row_index += 1
+            room_frame.grid(row=grid_row, column=grid_col, padx=10, pady=10, sticky="nsew")
+            # Configure column weights within the scrollable frame for room distribution
+            self.scrollable_frame.grid_columnconfigure(grid_col, weight=1)
 
             prop_dirs = sorted([d for d in room_dir.iterdir() if d.is_dir()])
             prop_row_index = 0
+            prop_col_index = 0
             if not prop_dirs:
-                 ttk.Label(room_frame, text="No prop directories found.").grid(row=0, column=0, padx=5, pady=2, sticky="w")
+                 # Make the label span across potential prop columns if needed
+                 ttk.Label(room_frame, text="No prop directories found.").grid(row=0, column=0, columnspan=PROP_GRID_COLUMNS, padx=5, pady=5, sticky="w")
+            else:
+                for p_idx, prop_dir in enumerate(prop_dirs):
+                    prop_grid_row = p_idx // PROP_GRID_COLUMNS
+                    prop_grid_col = p_idx % PROP_GRID_COLUMNS
+                    self.add_prop_block(room_frame, prop_dir, prop_grid_row, prop_grid_col)
+                    # Configure column weights within the room frame for prop distribution
+                    room_frame.grid_columnconfigure(prop_grid_col, weight=1)
 
-            for prop_dir in prop_dirs:
-                self.add_prop_section(room_frame, prop_dir, prop_row_index)
-                prop_row_index += 1
         # Ensure canvas scroll region is updated after initial population
         self.scrollable_frame.update_idletasks()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
-
-    def add_prop_section(self, parent_frame: ttk.Frame, prop_dir: Path, row: int):
-        """Adds a section for a single prop to the parent (room) frame."""
+    def add_prop_block(self, parent_room_frame: ttk.Frame, prop_dir: Path, grid_row: int, grid_col: int):
+        """Adds a clickable block for a single prop to the parent (room) frame's grid."""
         prop_name = prop_dir.name
-        image_files = sorted(get_image_files(prop_dir)) # Sort images by name
-        image_count = len(image_files)
 
-        prop_frame = ttk.Frame(parent_frame, padding="5")
-        prop_frame.grid(row=row, column=0, padx=5, pady=2, sticky="ew")
-        # Grid config for the prop_frame
-        prop_frame.grid_columnconfigure(1, weight=1) # Allow thumbnail frame to expand
+        # Create the main block frame
+        block_frame = ttk.Frame(parent_room_frame, padding=5, relief=tk.RAISED, borderwidth=1)
+        block_frame.grid(row=grid_row, column=grid_col, padx=5, pady=5, sticky="nsew")
 
-        # --- Top Row: Label and Buttons ---
-        top_frame = ttk.Frame(prop_frame)
-        top_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 5))
+        # Prop Name Label
+        name_label = ttk.Label(block_frame, text=prop_name, anchor="center", font=("TkDefaultFont", 9, "bold"))
+        name_label.pack(pady=(0, 5), fill=tk.X)
 
-        label_text = f"{prop_name}"
-        prop_label = ttk.Label(top_frame, text=label_text, font=("TkDefaultFont", 10, "bold"))
-        prop_label.pack(side=tk.LEFT, padx=(0, 10))
-
-        # Image Count Label (will be updated)
-        count_label = ttk.Label(top_frame, text=f"({image_count} image{'s' if image_count != 1 else ''})")
-        count_label.pack(side=tk.LEFT, padx=(0, 20))
-
-        # Buttons Frame
-        buttons_frame = ttk.Frame(top_frame)
-        buttons_frame.pack(side=tk.RIGHT)
-
-        add_button = ttk.Button(
-            buttons_frame,
-            text="Add...",
-            command=lambda p=prop_dir: self.add_images(p)
+        # Thumbnail/Status Label Area (using a fixed-size frame)
+        thumb_area_frame = ttk.Frame(
+            block_frame,
+            width=PROP_BLOCK_THUMBNAIL_SIZE[0],
+            height=PROP_BLOCK_THUMBNAIL_SIZE[1],
+            # style="Thumb.TFrame" # Optional: Define a style for padding/border if needed
         )
-        add_button.pack(side=tk.RIGHT, padx=(5, 0))
+        thumb_area_frame.pack(expand=True, fill=tk.BOTH)
+        # Prevent the frame from shrinking to fit the label
+        thumb_area_frame.pack_propagate(False)
 
-        open_button = ttk.Button(
-            buttons_frame,
-            text="Open Folder",
-            command=lambda p=prop_dir: self.open_folder(p)
-        )
-        open_button.pack(side=tk.RIGHT)
+        thumb_label = ttk.Label(thumb_area_frame, anchor="center")
+        # Pack the label to fill the frame, it will center automatically
+        thumb_label.pack(expand=True, fill=tk.BOTH)
 
-        # --- Bottom Row: Thumbnails ---
-        # Create a canvas for horizontal scrolling if needed
-        thumb_canvas = tk.Canvas(prop_frame, height=THUMBNAIL_SIZE[1] + 30) # Height for thumb + name
-        thumb_scrollbar = ttk.Scrollbar(prop_frame, orient="horizontal", command=thumb_canvas.xview)
-        thumbnail_area_frame = ttk.Frame(thumb_canvas) # Frame inside canvas
-
-        thumb_canvas.configure(xscrollcommand=thumb_scrollbar.set)
-
-        thumb_canvas.grid(row=1, column=0, columnspan=2, sticky="ew")
-        thumb_scrollbar.grid(row=2, column=0, columnspan=2, sticky="ew")
-
-        thumb_canvas.create_window((0, 0), window=thumbnail_area_frame, anchor="nw")
-
-        thumbnail_area_frame.bind("<Configure>", lambda e, c=thumb_canvas: c.configure(scrollregion=c.bbox("all")))
-
-        # Store widgets for updates
+        # Store widgets needed for updates
         self.prop_widgets[prop_dir] = {
-            'frame': prop_frame,
-            'thumb_area': thumbnail_area_frame,
-            'count_label': count_label,
-            'thumb_canvas': thumb_canvas
+            'block_frame': block_frame,
+            'name_label': name_label,
+            'thumb_label': thumb_label
         }
-        self.thumbnail_references[prop_dir] = [] # Initialize list for this prop
+        # Initialize thumbnail reference storage for this prop
+        self.thumbnail_references[prop_dir] = None
 
-        self.update_prop_thumbnails(prop_dir) # Call dedicated update function
+        # Initial update of the block's content (thumbnail or text)
+        self.update_prop_block(prop_dir)
 
-    def update_prop_thumbnails(self, prop_dir: Path):
-        """Clears and redraws the thumbnail area for a specific prop."""
+        # --- Bind Clicks --- 
+        # Bind click on all elements within the block to open the viewer
+        for widget in [block_frame, name_label, thumb_label]:
+             widget.bind("<Button-1>", lambda e, p=prop_dir: self.open_image_viewer(p, 0))
+
+
+    def update_prop_block(self, prop_dir: Path):
+        """Updates the content (thumbnail or text) of a specific prop block."""
         if prop_dir not in self.prop_widgets:
-            return # Prop section not yet created or already removed
+            print(f"Warning: Cannot update block for {prop_dir.name}, widgets not found.")
+            return
 
         widgets = self.prop_widgets[prop_dir]
-        thumbnail_area_frame = widgets['thumb_area']
-        count_label = widgets['count_label']
-        thumb_canvas = widgets['thumb_canvas']
-
-        # Clear existing thumbnails for this prop
-        for widget in thumbnail_area_frame.winfo_children():
-            widget.destroy()
-        self.thumbnail_references[prop_dir] = [] # Clear specific references
+        thumb_label = widgets['thumb_label']
 
         image_files = sorted(get_image_files(prop_dir))
         image_count = len(image_files)
 
-        # Update count label
-        count_label.configure(text=f"({image_count} image{'s' if image_count != 1 else ''})")
+        # Clear previous thumbnail reference if it exists
+        self.thumbnail_references[prop_dir] = None
+        thumb_label.image = None # Clear previous image explicitly
 
         if image_count == 0:
-             ttk.Label(thumbnail_area_frame, text="No images").pack(side=tk.LEFT, padx=10, pady=5)
+            thumb_label.configure(text="NO IMAGES", image=None, compound=tk.CENTER, foreground="red")
+             # Optionally set a fixed size/min size for empty blocks?
+            # thumb_label.config(height=PROP_BLOCK_THUMBNAIL_SIZE[1]//10) # REMOVED Invalid option
         else:
-            # Display thumbnails with names
-            for i, img_path in enumerate(image_files):
-                thumb_container = ttk.Frame(thumbnail_area_frame)
-                thumb_container.pack(side=tk.LEFT, padx=5, pady=5, anchor='nw')
-
-                thumb = create_thumbnail(img_path, THUMBNAIL_SIZE)
-                if thumb:
-                    thumb_label = ttk.Label(thumb_container, image=thumb)
-                    thumb_label.image = thumb # Keep reference
-                    thumb_label.pack()
-                    self.thumbnail_references[prop_dir].append(thumb) # Store reference
-
-                    # Add filename label
-                    filename_label = ttk.Label(thumb_container, text=img_path.name, wraplength=THUMBNAIL_SIZE[0], justify='center')
-                    filename_label.pack()
-
-                    # Bind click to open popup (passing prop_dir and index)
-                    thumb_label.bind("<Button-1>", lambda e, p=prop_dir, idx=i: self.open_image_viewer(p, idx))
-                    filename_label.bind("<Button-1>", lambda e, p=prop_dir, idx=i: self.open_image_viewer(p, idx))
-
-        # Update the scrollregion of the thumbnail canvas
-        thumbnail_area_frame.update_idletasks()
-        thumb_canvas.configure(scrollregion=thumb_canvas.bbox("all"))
-        # Reset scroll position to the beginning
-        thumb_canvas.xview_moveto(0)
+            first_image_path = image_files[0]
+            thumb = create_thumbnail(first_image_path, PROP_BLOCK_THUMBNAIL_SIZE)
+            if thumb:
+                thumb_label.configure(image=thumb, text="", compound=tk.NONE) # Show only image
+                thumb_label.image = thumb # Keep reference
+                self.thumbnail_references[prop_dir] = thumb # Store reference
+            else:
+                # Error creating thumbnail
+                thumb_label.configure(text="IMG ERR", image=None, compound=tk.CENTER, foreground="orange")
+                # thumb_label.config(height=PROP_BLOCK_THUMBNAIL_SIZE[1]//10) # REMOVED Invalid option
 
 
-    def add_images(self, prop_dir: Path):
-        """Handles the 'Add Images' button click. Refreshes only the specific prop."""
-        file_paths = filedialog.askopenfilenames(
-            title=f"Select images for {prop_dir.name}",
-            filetypes=[("Image Files", "*.jpg *.jpeg *.png *.gif"), ("All Files", "*.*")]
-        )
-
+    def add_images(self, prop_dir: Path, file_paths: list[str]) -> int:
+        """Handles copying images. Returns number of files successfully copied."""
+        # This is now called FROM the popup, file_paths are provided
         if not file_paths:
-            return # User cancelled
+            return 0
 
         copied_count = 0
+        errors = []
         for file_path in file_paths:
             try:
                 source_path = Path(file_path)
                 destination_path = prop_dir / source_path.name
                 if destination_path.exists():
                    print(f"Skipping copy: {destination_path} already exists.")
-                   # Maybe ask user if they want to overwrite?
+                   # Future: Could ask user to overwrite/rename via dialog
                    continue
                 shutil.copy2(source_path, destination_path)
                 print(f"Copied {source_path.name} to {prop_dir.name}")
                 copied_count += 1
             except Exception as e:
+                err_msg = f"Failed to copy {Path(file_path).name}:\n{e}"
                 print(f"Error copying {file_path} to {prop_dir}: {e}")
-                messagebox.showerror("Copy Error", f"Failed to copy {source_path.name}:\n{e}")
+                errors.append(err_msg)
+
+        if errors:
+            messagebox.showerror("Copy Error(s)", "\n\n".join(errors))
 
         if copied_count > 0:
-            print(f"Successfully copied {copied_count} image(s). Refreshing UI for {prop_dir.name}...")
-            # Refresh ONLY the affected prop's thumbnail section
-            self.update_prop_thumbnails(prop_dir)
-            # Also update the main canvas scroll region if layout changed significantly
+            print(f"Successfully copied {copied_count} image(s) to {prop_dir.name}. Refreshing block...")
+            # Refresh ONLY the affected prop's block
+            self.update_prop_block(prop_dir)
+            # Update main scroll region in case block size changed (e.g., NO IMAGES -> thumb)
             self.scrollable_frame.update_idletasks()
             self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        return copied_count
 
     def open_folder(self, folder_path: Path):
         """Opens the specified folder in the system's file explorer."""
@@ -352,18 +325,22 @@ class ImageViewerPopup(tk.Toplevel):
         self.controls_frame.grid(row=1, column=0, sticky="ew")
 
         # Configure columns for layout
-        self.controls_frame.grid_columnconfigure(1, weight=1) # Center filename/index
+        # Columns: 0: Prev, 1: Spacer, 2: Info, 3: Spacer, 4: Next, 5: Add, 6: Open, 7: Rename, 8: Delete, 9: Close
+        self.controls_frame.grid_columnconfigure(2, weight=1) # Center filename/index
+        self.controls_frame.grid_columnconfigure(0, weight=0)
+        self.controls_frame.grid_columnconfigure(4, weight=0)
+        # Add weights for other columns if needed for spacing
 
         # Navigation Buttons
         self.prev_button = ttk.Button(self.controls_frame, text="< Prev", command=self.go_previous)
-        self.prev_button.grid(row=0, column=0, padx=(0, 5))
+        self.prev_button.grid(row=0, column=0, padx=(0, 5), sticky='w')
 
         self.next_button = ttk.Button(self.controls_frame, text="Next >", command=self.go_next)
-        self.next_button.grid(row=0, column=2, padx=(5, 20))
+        self.next_button.grid(row=0, column=4, padx=(5, 10), sticky='e') # Increased padding before actions
 
         # Filename and Index Label (centered)
         self.info_frame = ttk.Frame(self.controls_frame)
-        self.info_frame.grid(row=0, column=1, sticky="ew")
+        self.info_frame.grid(row=0, column=2, sticky="ew") # Spans middle column
         self.info_frame.grid_columnconfigure(0, weight=1)
 
         self.filename_label = ttk.Label(self.info_frame, text="Filename: ", anchor="center")
@@ -371,15 +348,27 @@ class ImageViewerPopup(tk.Toplevel):
         self.index_label = ttk.Label(self.info_frame, text="0 / 0", anchor="center")
         self.index_label.grid(row=1, column=0, sticky='ew')
 
-        # Action Buttons
-        self.rename_button = ttk.Button(self.controls_frame, text="Rename...", command=self.rename_image)
-        self.rename_button.grid(row=0, column=3, padx=5)
+        # Action Buttons Frame (Grouped on the right)
+        self.actions_frame = ttk.Frame(self.controls_frame)
+        self.actions_frame.grid(row=0, column=5, columnspan=5, sticky='e') # Place actions starting from col 5
 
-        self.delete_button = ttk.Button(self.controls_frame, text="Delete", command=self.delete_image)
-        self.delete_button.grid(row=0, column=4, padx=5)
+        self.add_button = ttk.Button(self.actions_frame, text="Add...", command=self.add_images_from_popup)
+        self.add_button.pack(side=tk.LEFT, padx=3)
 
-        self.close_button = ttk.Button(self.controls_frame, text="Close", command=self.on_close)
-        self.close_button.grid(row=0, column=5, padx=(20, 0))
+        self.open_folder_button = ttk.Button(self.actions_frame, text="Open Folder", command=self.open_folder_from_popup)
+        self.open_folder_button.pack(side=tk.LEFT, padx=3)
+
+        self.rename_button = ttk.Button(self.actions_frame, text="Rename...", command=self.rename_image)
+        # self.rename_button.grid(row=0, column=3, padx=5)
+        self.rename_button.pack(side=tk.LEFT, padx=3)
+
+        self.delete_button = ttk.Button(self.actions_frame, text="Delete", command=self.delete_image)
+        # self.delete_button.grid(row=0, column=4, padx=5)
+        self.delete_button.pack(side=tk.LEFT, padx=3)
+
+        self.close_button = ttk.Button(self.actions_frame, text="Close", command=self.on_close)
+        # self.close_button.grid(row=0, column=5, padx=(20, 0))
+        self.close_button.pack(side=tk.LEFT, padx=(10, 0)) # Add more padding before close
 
         # --- Load Initial Image ---
         if self.current_index != -1:
@@ -449,6 +438,9 @@ class ImageViewerPopup(tk.Toplevel):
             self.next_button.config(state=tk.NORMAL if self.current_index < num_images - 1 else tk.DISABLED)
             self.rename_button.config(state=tk.NORMAL)
             self.delete_button.config(state=tk.NORMAL)
+        # Add/Open Folder are always enabled (related to the prop, not specific image)
+        self.add_button.config(state=tk.NORMAL)
+        self.open_folder_button.config(state=tk.NORMAL)
 
     def go_previous(self):
         if self.current_index > 0:
@@ -505,7 +497,7 @@ class ImageViewerPopup(tk.Toplevel):
             self.load_image(new_index) # Load the renamed image (same index)
 
             # Refresh thumbnails in the main app
-            self.app_controller.update_prop_thumbnails(self.prop_dir)
+            self.app_controller.update_prop_block(self.prop_dir)
 
         except OSError as e:
             print(f"Error renaming file {old_path} to {new_path}: {e}")
@@ -532,7 +524,7 @@ class ImageViewerPopup(tk.Toplevel):
             del self.image_files[self.current_index]
 
             # Refresh thumbnails in the main app *before* loading next image in popup
-            self.app_controller.update_prop_thumbnails(self.prop_dir)
+            self.app_controller.update_prop_block(self.prop_dir)
 
             # Determine next image to show in popup
             new_index = self.current_index
@@ -552,6 +544,44 @@ class ImageViewerPopup(tk.Toplevel):
         except Exception as e:
             print(f"Unexpected error during delete: {e}")
             messagebox.showerror("Delete Error", f"An unexpected error occurred:\n{e}", parent=self)
+
+    # --- New methods for relocated buttons ---
+
+    def add_images_from_popup(self):
+        """Handles the 'Add Images' button click from the popup."""
+        file_paths = filedialog.askopenfilenames(
+            title=f"Select images for {self.prop_dir.name}",
+            filetypes=[("Image Files", "*.jpg *.jpeg *.png *.gif"), ("All Files", "*.*")]
+        )
+
+        if not file_paths:
+            return # User cancelled
+
+        # Call the main app's add_images method
+        copied_count = self.app_controller.add_images(self.prop_dir, file_paths)
+
+        if copied_count > 0:
+            # Reload image list within the popup
+            self.load_image_list()
+            # Try to stay on the same image if possible, otherwise go to last?
+            # For simplicity, let's just reload the current index if it's still valid,
+            # otherwise go to the last image of the new list.
+            new_index = self.current_index
+            if not (0 <= new_index < len(self.image_files)):
+                new_index = len(self.image_files) - 1
+            
+            if new_index >= 0:
+                self.load_image(new_index)
+            else:
+                self.show_no_image() # Should not happen if we copied files, but safety check
+
+            # Bring popup to front
+            self.lift()
+            self.focus_set()
+
+    def open_folder_from_popup(self):
+        """Calls the main app's open_folder method."""
+        self.app_controller.open_folder(self.prop_dir)
 
 
 # --- Main Execution ---
