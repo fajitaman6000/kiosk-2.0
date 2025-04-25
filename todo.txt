@@ -1,6 +1,27 @@
 ##############################################################################################################################
 # Test notes
 
+hint button not working:
+    [qt_manager] No current hint, updating help button within setup_room_interface
+    [kiosk timer] Initializing Qt timer display via Overlay...
+    [kiosk timer] Qt timer display initialized.
+    [qt overlay] Help button hidden
+    [video server]Camera check successful
+    [video server]Video server ready for connections
+    [message handler] Received message: {'type': 'timer_command', 'command_id': '19808ef3-4070-4095-857b-7b2633019b56', 'computer_name': 'CASINO-KIOSK', 'command': 'set', 'minutes': 22, 'request_hash': 'c75b19f2-44dc-49b8-b8dd-6bbe03f570d1'}
+    [message handler][DEBUG] Processing timer command (Command ID: 19808ef3-4070-4095-857b-7b2633019b56)
+    [message handler][DEBUG] Setting timer to 22.0 minutes
+    [kiosk timer] Timer set to 22.0 minutes (maintaining current running state)
+    [qt_classes] Setting video skippable: True
+    [qt overlay] Connected help button click signal.
+    [qt overlay] Help button created and shown
+    [qt_classes] Video is skippable, emitting clicked signal.
+    [qt_classes] Video is skippable, emitting clicked signal.
+    [qt_classes] Video is skippable, emitting clicked signal.
+
+
+
+
 auto reset may not be functional
 after auto reset failed, manual reset also failed and there was a crash
 auto reset crashed kiosk
@@ -31,6 +52,79 @@ auto reset crashed kiosk
     Segmentation fault
 
 
+
+(NOTE, PROP WAS STILL FINISHED)
+
+    [qt_classes] HintTextThread emitting update_signal with text: Don't forget about the compute...
+[qt_classes] HintTextThread emitting update_signal with text: Don't forget about the compute...
+[message handler] Received message: {'type': 'victory', 'command_id': '2ef7a108-5f70-4d91-ad30-49231ef96170', 'room_number': 1, 'computer_name': 'CASINO-KIOSK', 'request_hash': '30c5f9da-73c3-443d-a6f9-fa8e73ba93d6'}
+[message handler] Victory detected (Command ID: 2ef7a108-5f70-4d91-ad30-49231ef96170)
+[kiosk main]Displaying game win screen...
+[kiosk main]Pausing timer due to victory
+[kiosk timer] Timer stopped
+[qt overlay] Timer hidden
+[kiosk main]Clearing hints...
+[qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
+[qt_manager] Clearing hint UI elements and hiding Qt counterparts
+[qt_manager] Cleared hint text content
+[qt overlay] Cooldown text cleared
+[qt overlay] Cooldown complete
+[qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
+[qt overlay] Help button hidden
+[qt overlay] Victory screen initialized with C:\Users\PanIQ\Desktop\kiosk2.0\kiosk-2.0\kiosk\other_files\victory.png
+[qt overlay] Victory screen shown.
+[message handler] Received message: {'type': 'timer_command', 'command_id': '8b68baf3-a8e1-4bc3-92c0-d32d9b7ffeda', 'computer_name': 'CASINO-KIOSK', 'command': 'set', 'minutes': 45, 'request_hash': 'a40085a7-d8d4-4d59-9dba-bdaf693c21a4'}
+[message handler][DEBUG] Processing timer command (Command ID: 8b68baf3-a8e1-4bc3-92c0-d32d9b7ffeda)
+[message handler][DEBUG] Setting timer to 45.0 minutes
+[kiosk timer] Timer set to 45.0 minutes (maintaining current running state)
+[message handler] Received message: {'type': 'timer_command', 'command_id': 'fefabfbc-43a1-4f27-9557-f0aa1f0f74f3', 'computer_name': 'CASINO-KIOSK', 'command': 'stop', 'request_hash': '73994ac8-a2a8-4fc9-b113-adc958109483'}
+[message handler][DEBUG] Processing timer command (Command ID: fefabfbc-43a1-4f27-9557-f0aa1f0f74f3)
+[kiosk timer] Timer already stopped, 'stop' command ignored.
+[message handler] Received message: {'type': 'reset_kiosk', 'command_id': 'd3a77761-4c5e-4dfc-8718-8d8b191f2a13', 'computer_name': 'CASINO-KIOSK', 'request_hash': 'd6a356ea-9fbb-4a89-8a93-5658850dc79b'}
+[message handler][DEBUG] Processing kiosk reset (Command ID: d3a77761-4c5e-4dfc-8718-8d8b191f2a13)
+[message handler][DEBUG] Resetting application state...
+[message handler][DEBUG] Resetting UI hint state variables...
+[message handler][DEBUG] Scheduling GUI reset operations...
+[message handler] Executing GUI reset operations on main thread...
+[video manager] Force stopping all video playback.
+[video manager] Force stop: Setting state flags.
+[video manager] Force stop: No player instance found.
+[video manager] Force restoring music volume...
+[video manager] Force destroying video display (Queued)...
+[video manager] Video display destroy request queued.
+[video manager] Force stop process finished.
+[audio manager]Stopped background music
+[audio manager] Stopped all audio.
+[message handler] Hiding all Qt overlays...
+[qt_overlay.py - hide] === STARTING hide() - Calling _actual_hide via invokeMethod ===
+[qt overlay] Victory screen hidden.
+[qt overlay][DESTROY_10848] +++ destroy_video_display ENTERED (Thread: 10848) +++
+[qt overlay][DESTROY_10848] Video display not destroyed (window missing or not initialized).
+[qt overlay][DESTROY_10848] --- destroy_video_display FINISHED (Thread: 10848) ---
+[qt_overlay.py - _actual_hide] === STARTING _actual_hide() ===
+[qt_overlay.py - hide] Disconnected button_view click signals
+[qt_overlay.py - _actual_hide] === COMPLETED _actual_hide() ===
+[message handler] Received message: {'type': 'victory', 'command_id': '3125328d-553c-40a8-ac44-2c44c5137d74', 'room_number': 1, 'computer_name': 'CASINO-KIOSK', 'request_hash': '77f2b45d-6c70-4057-a1bf-6343c98f4361'}
+[message handler] Victory detected (Command ID: 3125328d-553c-40a8-ac44-2c44c5137d74)
+[kiosk main]Displaying game win screen...
+[kiosk main]Clearing hints...
+[qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
+[qt_manager] Clearing hint UI elements and hiding Qt counterparts
+[qt_manager] Cleared hint text content
+[qt overlay] Cooldown text cleared
+[qt overlay] Cooldown complete
+[qt overlay] Error clearing hint request text: wrapped C/C++ object of type QGraphicsTextItem has been deleted
+[qt overlay] Victory screen shown.
+[qt overlay] Victory screen shown.
+[message handler] Received message: {'type': 'timer_command', 'command_id': '4d4132c8-8ff0-4fef-8138-25cb6c354dbe', 'computer_name': 'CASINO-KIOSK', 'command': 'set', 'minutes': 45, 'request_hash': '2bd95d88-f993-4506-99b1-a6bdecfa672f'}
+[message handler][DEBUG] Processing timer command (Command ID: 4d4132c8-8ff0-4fef-8138-25cb6c354dbe)
+[message handler][DEBUG] Setting timer to 45.0 minutes
+[kiosk timer] Timer set to 45.0 minutes (maintaining current running state)
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QTextDocument(0x17910186900), parent's thread is QThread(0x1790783d870), current thread is QThread(0x179139f0770)
+Segmentation fault
+
+
 ##############################################################################################################################
 # Freeze log
 
@@ -59,7 +153,7 @@ auto reset crashed kiosk
 ##############################################################################################################################
 # pre-beta testing
 
-audio hint browser 
+hint button doesn't hide fast enough viewing video
 
 ##############################################################################################################################
 # todo
