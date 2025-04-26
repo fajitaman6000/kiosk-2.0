@@ -20,6 +20,17 @@ class ManagerSettings:
         self.hint_map = {}
         self.tree_items = {}
         self.current_prop_info = None
+        
+        # Full room names mapping
+        self.room_full_names = {
+            '1': 'Casino Heist',
+            '2': 'Morning After',
+            '3': 'Wizard Trials',
+            '4': 'Zombie Outbreak',
+            '5': 'Haunted Manor',
+            '6': 'Atlantis Rising',
+            '7': 'Time Machine'
+        }
 
     def load_prop_mappings(self):
         try:
@@ -208,8 +219,28 @@ class ManagerSettings:
         pass
 
     def load_hints(self):
-        for item in self.hint_tree.get_children():
-            self.hint_tree.delete(item)
+        # Save expanded items before refreshing
+        expanded_items = []
+        if self.hint_tree:
+            # Get all currently expanded items
+            for item_id in self.tree_items:
+                if self.hint_tree.item(item_id, 'open'):
+                    item_info = self.tree_items.get(item_id)
+                    if item_info:
+                        expanded_items.append(item_info)
+            
+        # Save current selection if any
+        current_selection = None
+        if self.hint_tree and self.hint_tree.selection():
+            selected_id = self.hint_tree.selection()[0]
+            if selected_id in self.tree_items:
+                current_selection = self.tree_items[selected_id]
+        
+        # Clear the tree
+        if self.hint_tree:
+            for item in self.hint_tree.get_children():
+                self.hint_tree.delete(item)
+                
         self.hint_map = {}
         self.tree_items = {}
         hint_data = {}
@@ -245,10 +276,13 @@ class ManagerSettings:
             room_id = room_mapping_reverse.get(room_key)
             if not room_id: continue # Skip if room key isn't in our reverse map
 
-            # Use only room name for display
-            room_text = f"{room_key.capitalize()}"
+            # Use full room name with bold font
+            room_text = self.room_full_names.get(room_id, room_key.capitalize())
             room_item = self.hint_tree.insert("", "end", text=room_text, open=False) # Start closed
             self.tree_items[room_item] = {"type": "room", "id": room_id, "key": room_key}
+
+            # Apply bold font to room items
+            self.hint_tree.item(room_item, tags=('room',))
 
             # Get hints for this room from loaded data, default to empty dict
             room_hints_data = hint_data.get(str(room_id), {})
@@ -289,8 +323,76 @@ class ManagerSettings:
                         "data": hint_info # Store the actual hint data (text, image)
                      }
 
-        # Optional: Could add logic here to find props in saved_hints that are NOT in prop_mappings
-        # and display them perhaps with a warning or different style.
+        # Configure room tag for bold font
+        if self.hint_tree:
+            self.hint_tree.tag_configure('room', font=('Arial', 10, 'bold'))
+        
+        # Restore expanded state
+        for item_info in expanded_items:
+            item_type = item_info.get('type')
+            if item_type == 'room':
+                room_id = item_info.get('id')
+                # Find the corresponding new item
+                for item_id, info in self.tree_items.items():
+                    if info.get('type') == 'room' and info.get('id') == room_id:
+                        self.hint_tree.item(item_id, open=True)
+                        break
+            elif item_type == 'prop':
+                room_id = item_info.get('room_id')
+                display_name = item_info.get('display_name')
+                # Find the corresponding new prop item
+                for item_id, info in self.tree_items.items():
+                    if (info.get('type') == 'prop' and 
+                        info.get('room_id') == room_id and 
+                        info.get('display_name') == display_name):
+                        self.hint_tree.item(item_id, open=True)
+                        # Also expand its parent
+                        parent_id = self.hint_tree.parent(item_id)
+                        if parent_id:
+                            self.hint_tree.item(parent_id, open=True)
+                        break
+        
+        # Restore selection if possible
+        if current_selection:
+            select_type = current_selection.get('type')
+            if select_type == 'hint':
+                hint_key = current_selection.get('key')
+                for item_id, info in self.tree_items.items():
+                    if info.get('type') == 'hint' and info.get('key') == hint_key:
+                        self.hint_tree.selection_set(item_id)
+                        self.hint_tree.focus(item_id)
+                        self.hint_tree.see(item_id)
+                        # Make sure parents are expanded
+                        parent_id = self.hint_tree.parent(item_id)
+                        if parent_id:
+                            self.hint_tree.item(parent_id, open=True)
+                            grand_parent = self.hint_tree.parent(parent_id)
+                            if grand_parent:
+                                self.hint_tree.item(grand_parent, open=True)
+                        break
+            elif select_type == 'prop':
+                room_id = current_selection.get('room_id')
+                display_name = current_selection.get('display_name')
+                for item_id, info in self.tree_items.items():
+                    if (info.get('type') == 'prop' and 
+                        info.get('room_id') == room_id and 
+                        info.get('display_name') == display_name):
+                        self.hint_tree.selection_set(item_id)
+                        self.hint_tree.focus(item_id)
+                        self.hint_tree.see(item_id)
+                        # Expand parent
+                        parent_id = self.hint_tree.parent(item_id)
+                        if parent_id:
+                            self.hint_tree.item(parent_id, open=True)
+                        break
+            elif select_type == 'room':
+                room_id = current_selection.get('id')
+                for item_id, info in self.tree_items.items():
+                    if info.get('type') == 'room' and info.get('id') == room_id:
+                        self.hint_tree.selection_set(item_id)
+                        self.hint_tree.focus(item_id)
+                        self.hint_tree.see(item_id)
+                        break
 
     def create_empty_hints_file(self):
         """Creates an empty but valid hints file with proper structure."""
