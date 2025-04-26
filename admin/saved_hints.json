@@ -1,60 +1,58 @@
 {
     "rooms": {
-        "4": {
-            "Tools": {
-                "t": {
-                    "text": "ghjkghjkghjkghkj",
+        "1": {
+            "Memory Hotel": {
+                "casino test": {
+                    "text": "sfdgsdfg",
                     "image": null
                 }
             }
         },
-        "1": {
-            "Plant Bombs": {
-                "test": {
-                    "text": "",
-                    "image": "c4 positions.png"
-                }
-            },
-            "Painting 1": {
-                "sssss": {
-                    "text": "test",
-                    "image": "all pieces.png"
-                }
-            },
-            "Buzzwire": {
-                "fgsdfg": {
-                    "text": ""
+        "2": {
+            "Memory Hotel": {
+                "ma testtt": {
+                    "text": "ma test ",
+                    "image": null
                 }
             }
         },
         "3": {
-            "Code Panel": {
-                "test": {
-                    "text": "",
-                    "image": "center of table.png"
-                },
-                "test 2": {
-                    "text": "test 2",
-                    "image": "center of table.png"
+            "Spirits Board": {
+                "wiz test": {
+                    "text": "wiz test",
+                    "image": null
                 }
-            },
-            "Yellow Puzzle": {
-                "gsdfgsdf": {
-                    "text": ""
+            }
+        },
+        "4": {
+            "TV": {
+                "zom testtt": {
+                    "text": "zom test",
+                    "image": null
                 }
             }
         },
         "5": {
-            "Code Panel": {
-                "hello": {
-                    "text": ""
+            "Yellow Puzzle": {
+                "haunted test": {
+                    "text": "haunt test",
+                    "image": null
                 }
             }
         },
-        "2": {
-            "Drawers": {
-                "sdfgsf": {
-                    "text": ""
+        "6": {
+            "Door": {
+                "atlantis test": {
+                    "text": "atlantis",
+                    "image": null
+                }
+            }
+        },
+        "7": {
+            "Skull Button": {
+                "time": {
+                    "text": "tm test",
+                    "image": null
                 }
             }
         }

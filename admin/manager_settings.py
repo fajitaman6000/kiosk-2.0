@@ -30,7 +30,8 @@ class ManagerSettings:
             self.prop_mappings = {}
 
     def get_display_name(self, room_id, prop_name):
-        room_mapping = {'1': 'casino', '2': 'ma', '3': 'haunted', '4': 'zombie', '5': 'wizard', '6': 'atlantis', '7': 'time'}
+        # Corrected mapping based on admin_main.py
+        room_mapping = {'1': 'casino', '2': 'ma', '3': 'wizard', '4': 'zombie', '5': 'haunted', '6': 'atlantis', '7': 'time'} # Corrected
         room_key = room_mapping.get(str(room_id))
         if not room_key:
             return prop_name
@@ -220,7 +221,8 @@ class ManagerSettings:
             hint_data = {} # Ensure hint_data is a dict
 
         # Iterate through rooms defined in prop_mappings first
-        room_mapping_reverse = {'casino': '1', 'ma': '2', 'haunted': '3', 'zombie': '4', 'wizard': '5', 'atlantis': '6', 'time': '7'}
+        # Corrected reverse mapping based on admin_main.py
+        room_mapping_reverse = {'casino': '1', 'ma': '2', 'wizard': '3', 'zombie': '4', 'haunted': '5', 'atlantis': '6', 'time': '7'} # Corrected
         for room_key, room_info in self.prop_mappings.items():
             room_id = room_mapping_reverse.get(room_key)
             if not room_id: continue # Skip if room key isn't in our reverse map
