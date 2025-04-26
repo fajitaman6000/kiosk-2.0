@@ -118,6 +118,8 @@ class ManagerSettings:
         hint_btn.pack(side='left', padx=5)
         password_btn = ttk.Button(nav_frame, text="Password Settings", command=lambda: self.show_settings_page('password'))
         password_btn.pack(side='left', padx=5)
+        image_browser_btn = ttk.Button(nav_frame, text="Image Browser", command=self.launch_image_browser)
+        image_browser_btn.pack(side='left', padx=5)
         self.settings_container = ttk.Frame(self.main_container)
         self.settings_container.pack(fill='both', expand=True)
         self.show_settings_page('hints')
@@ -178,8 +180,16 @@ class ManagerSettings:
         self.text_widget = tk.Text(self.hint_editor_frame, height=6, width=40, wrap=tk.WORD, state=tk.DISABLED)
         self.text_widget.pack(pady=5)
 
-        self.image_label = ttk.Label(self.hint_editor_frame, text="", font=('Arial', 10, 'bold'))
-        self.image_label.pack(anchor='w', padx=5, pady=2)
+        # --- Image section with refresh button ---
+        image_header_frame = ttk.Frame(self.hint_editor_frame)
+        image_header_frame.pack(fill='x', pady=(5,0), padx=5, anchor='w')
+        
+        self.image_label = ttk.Label(image_header_frame, text="", font=('Arial', 10, 'bold'))
+        self.image_label.pack(side='left')
+        
+        self.refresh_images_button = ttk.Button(image_header_frame, text="↻", width=3, command=self.refresh_image_selector)
+        self.refresh_images_button.pack(side='left', padx=5)
+        self.refresh_images_button.config(state=tk.DISABLED)
 
         image_frame = ttk.Frame(self.hint_editor_frame)
         image_frame.pack(fill='x', pady=5)
@@ -432,6 +442,7 @@ class ManagerSettings:
             self.clear_editor_and_disable()
             self.add_hint_button.config(state=tk.DISABLED)
             self.current_prop_info = None
+            self.refresh_images_button.config(state=tk.DISABLED)
 
         elif item_type == 'prop':
             self.clear_editor_and_disable()
@@ -440,6 +451,7 @@ class ManagerSettings:
             prop_display_name = item_info['display_name']
             self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
             self.show_image_selector(item_info['room_id'], prop_display_name, None, load_only=True)
+            self.refresh_images_button.config(state=tk.NORMAL)
 
         elif item_type == 'hint':
             self.add_hint_button.config(state=tk.DISABLED)
@@ -453,6 +465,7 @@ class ManagerSettings:
                 self.text_widget.config(state=tk.NORMAL)
                 self.image_listbox.config(state=tk.NORMAL)
                 self.delete_button.config(state=tk.NORMAL)
+                self.refresh_images_button.config(state=tk.NORMAL)
 
                 parent_prop_item = self.hint_tree.parent(selected_item)
                 parent_prop_info = self.tree_items.get(parent_prop_item)
@@ -465,6 +478,7 @@ class ManagerSettings:
             else:
                 print(f"Error: Could not find hint key {hint_key} in hint map.")
                 self.clear_editor_and_disable()
+                self.refresh_images_button.config(state=tk.DISABLED)
 
     def clear_editor_and_disable(self):
         """Clears hint editor fields and disables controls."""
@@ -481,6 +495,7 @@ class ManagerSettings:
         
         self.image_listbox.delete(0, tk.END)
         self.image_listbox.config(state=tk.DISABLED)
+        self.refresh_images_button.config(state=tk.DISABLED)
         
         # Safely clear the image by setting a None image
         try:
@@ -1088,6 +1103,46 @@ class ManagerSettings:
 
         else:
             self.selected_image_label.config(text="Selected Image: None", foreground='black')
+
+    def launch_image_browser(self):
+        """Launch the image browser as a separate process."""
+        import subprocess
+        import sys
+        import os
+        
+        try:
+            # Get the correct script path
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "image_browser.py")
+            # Use the same Python executable that's running this script
+            python_exe = sys.executable
+            
+            # Set the working directory to the root of the project
+            # This ensures image_browser.py can find the admin/sync_directory path correctly
+            working_dir = os.path.dirname(os.path.dirname(__file__))
+            
+            # Launch with the correct working directory
+            subprocess.Popen([python_exe, script_path], cwd=working_dir)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to launch Image Browser: {e}")
+
+    def refresh_image_selector(self):
+        """Refresh the image list for the current prop."""
+        if not hasattr(self, 'current_image_context') or not self.current_image_context:
+            return
+        
+        room_id = self.current_image_context.get('room_id')
+        prop_display_name = self.current_image_context.get('prop_display_name')
+        hint_name = self.current_image_context.get('hint_name')
+        selected_image = None
+        
+        # If we have a currently selected hint with an image, preserve that selection
+        if self.selected_hint_key and self.selected_hint_key in self.hint_map:
+            selected_image = self.hint_map[self.selected_hint_key]['data'].get('image')
+        
+        self.show_image_selector(room_id, prop_display_name, hint_name, selected_image)
+        self.status_label.config(text="Images refreshed.", foreground='green')
+        self.status_label.after(2000, lambda: self.status_label.config(text=""))
 
 class AdminPasswordManager:
     def __init__(self, app):
