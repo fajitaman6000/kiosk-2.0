@@ -1,70 +1,10 @@
 {
     "rooms": {
-        "1": {
-            "Memory Hotel": {
-                "casino test": {
-                    "text": "sfdgsdfg",
-                    "image": "lol.png"
-                }
-            }
-        },
-        "2": {
-            "Memory Hotel": {
-                "ma testtt": {
-                    "text": "ma test ",
-                    "image": "shiggy biggy.png"
-                }
-            }
-        },
-        "3": {
-            "Spirits Board": {
-                "wiz test": {
-                    "text": "wiz test",
-                    "image": null
-                }
-            },
-            "Goblet Chest": {
-                "goober chest": {
-                    "text": ""
-                }
-            },
-            "Rod Game": {
-                "rodrod": {
-                    "text": "gg"
-                }
-            }
-        },
-        "4": {
-            "TV": {
-                "zom testtt": {
-                    "text": "zom test",
-                    "image": null
-                }
-            }
-        },
-        "5": {
-            "Yellow Puzzle": {
-                "haunted test": {
-                    "text": "haunt test",
-                    "image": null
-                }
-            }
-        },
-        "6": {
-            "Door": {
-                "atlantis test": {
-                    "text": "atlantis",
-                    "image": null
-                }
-            }
-        },
-        "7": {
-            "Skull Button": {
-                "time 1": {
-                    "text": "tm test",
-                    "image": null
-                }
-            }
-        }
+        "1": {},
+        "2": {},
+        "4": {},
+        "5": {},
+        "6": {},
+        "7": {}
     }
 }

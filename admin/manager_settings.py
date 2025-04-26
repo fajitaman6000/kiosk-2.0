@@ -216,16 +216,26 @@ class ManagerSettings:
 
         try:
             with open('saved_hints.json', 'r') as f:
-                hint_data = json.load(f).get('rooms', {}) # Load only rooms subtree
+                content = f.read().strip()
+                if not content:
+                    # File exists but is empty
+                    print("[hint library] saved_hints.json is empty. Starting fresh.")
+                    self.create_empty_hints_file()
+                    hint_data = {}
+                else:
+                    hint_data = json.loads(content).get('rooms', {}) # Load only rooms subtree
         except FileNotFoundError:
             print("[hint library] saved_hints.json not found. Starting fresh.")
+            self.create_empty_hints_file()
             hint_data = {} # Ensure hint_data is a dict
         except json.JSONDecodeError as e:
             print(f"[hint library]Error decoding saved_hints.json: {e}")
-            messagebox.showerror("Error", f"Error reading saved_hints.json: {e} Cannot load hints.")
-            return
+            #messagebox.showerror("Error", f"Error reading saved_hints.json: {e}. Starting with empty hint data.")
+            self.create_empty_hints_file()
+            hint_data = {} # Ensure hint_data is a dict
         except Exception as e:
             print(f"[hint library]Error loading hints: {e}")
+            self.create_empty_hints_file()
             hint_data = {} # Ensure hint_data is a dict
 
         # Iterate through rooms defined in prop_mappings first
@@ -281,6 +291,24 @@ class ManagerSettings:
 
         # Optional: Could add logic here to find props in saved_hints that are NOT in prop_mappings
         # and display them perhaps with a warning or different style.
+
+    def create_empty_hints_file(self):
+        """Creates an empty but valid hints file with proper structure."""
+        empty_hints = {"rooms": {}}
+        
+        # Initialize with empty structures for all rooms
+        room_mapping_reverse = {'casino': '1', 'ma': '2', 'wizard': '3', 'zombie': '4', 'haunted': '5', 'atlantis': '6', 'time': '7'}
+        
+        for room_key in room_mapping_reverse.keys():
+            room_id = room_mapping_reverse[room_key]
+            empty_hints["rooms"][room_id] = {}
+        
+        try:
+            with open('saved_hints.json', 'w') as f:
+                json.dump(empty_hints, f, indent=4)
+            print("[hint library] Created empty hints file with proper structure")
+        except Exception as e:
+            print(f"[hint library] Error creating empty hints file: {e}")
 
     def on_hint_select(self, event):
         selection = self.hint_tree.selection()
@@ -395,9 +423,6 @@ class ManagerSettings:
              messagebox.showwarning("Warning", "No hint selected to delete.")
              return
 
-        if not messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete the hint '{self.hint_map[self.selected_hint_key]['hint_name']}'?"):
-             return
-
         try:
             room_id = self.hint_map[self.selected_hint_key]['room_id']
             prop_display_name = self.hint_map[self.selected_hint_key]['prop_display_name']
@@ -424,7 +449,7 @@ class ManagerSettings:
                     json.dump(hint_data_file, f, indent=4)
 
                 self.clear_editor_and_disable()
-                self.load_hints()
+                self.load_hints() #problematic line here
                 self.status_label.config(text="Hint deleted.", foreground='green')
                 self.status_label.after(2000, lambda: self.status_label.config(text=""))
 
@@ -848,10 +873,18 @@ class ManagerSettings:
 
         try:
             try:
-                 with open('saved_hints.json', 'r') as f:
-                    hint_data_file = json.load(f)
+                with open('saved_hints.json', 'r') as f:
+                    content = f.read().strip()
+                    if not content:
+                        # File exists but is empty
+                        hint_data_file = {"rooms": {}}
+                    else:
+                        hint_data_file = json.loads(content)
             except FileNotFoundError:
-                 hint_data_file = {"rooms": {}}
+                hint_data_file = {"rooms": {}}
+            except json.JSONDecodeError:
+                # File exists but is corrupt
+                hint_data_file = {"rooms": {}}
 
             if 'rooms' not in hint_data_file:
                  hint_data_file['rooms'] = {}
