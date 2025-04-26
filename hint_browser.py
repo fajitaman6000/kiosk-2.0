@@ -97,32 +97,47 @@ class HintViewerPopup:
         self.prop_original_name = prop_original_name
         self.prop_display_name = prop_display_name
         
-        # Get the prop directory
-        room_folder_name = ROOM_ID_TO_NAME_MAP.get(room_id)
-        self.prop_dir = BASE_IMAGE_DIR / room_folder_name / prop_original_name if room_folder_name else None
+        # Get the room folder name and prop directory
+        self.room_folder_name = ROOM_ID_TO_NAME_MAP.get(room_id)
+        self.prop_dir = BASE_IMAGE_DIR / self.room_folder_name / prop_original_name if self.room_folder_name else None
         
-        # Image navigation state
+        # Image and hint navigation state
         self.image_list = []
-        self.current_image_index = 0
-        self.image_obj = None  # Current loaded image
+        self.current_image_index = -1  # -1 means no image selected (None)
+        self.current_image_obj = None
+        
+        # Hint navigation state
+        self.hints_data = {}
+        self.hint_levels = []
+        self.current_hint_index = 0
         
         # Create popup window
         self.popup = tk.Toplevel(parent)
-        self.popup.title(f"Hint Editor: {prop_display_name} ({ROOM_NAME_MAP.get(room_folder_name, f'Room {room_id}')})")
+        self.popup.title(f"Hint Editor: {prop_display_name} ({ROOM_NAME_MAP.get(self.room_folder_name, f'Room {room_id}')})")
         self.popup.geometry("900x700")
         self.popup.protocol("WM_DELETE_WINDOW", self.on_close)
         
-        # Main frame
+        # Main frame with padding
         main_frame = ttk.Frame(self.popup, padding=10)
         main_frame.pack(expand=True, fill=tk.BOTH)
         
-        # Info frame
+        # Info and control frame (top)
         info_frame = ttk.Frame(main_frame)
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
-        # Title and information
-        ttk.Label(info_frame, text=f"{ROOM_NAME_MAP.get(room_folder_name, f'Room {room_id}')}: {prop_display_name}", 
+        # Title and navigation
+        title_frame = ttk.Frame(info_frame)
+        title_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        
+        ttk.Label(title_frame, 
+                  text=f"{ROOM_NAME_MAP.get(self.room_folder_name, f'Room {room_id}')} » {prop_display_name}", 
                   font=("TkDefaultFont", 12, "bold")).pack(side=tk.LEFT, pady=5)
+        
+        # Image selector dropdown
+        self.image_var = tk.StringVar()
+        self.image_dropdown = ttk.Combobox(title_frame, textvariable=self.image_var, state="readonly", width=30)
+        self.image_dropdown.pack(side=tk.LEFT, padx=10)
+        self.image_dropdown.bind("<<ComboboxSelected>>", self.on_image_selected)
         
         # Button frame
         button_frame = ttk.Frame(info_frame)
@@ -137,107 +152,122 @@ class HintViewerPopup:
         ttk.Button(button_frame, text="Save Hints", 
                    command=self.save_hints).pack(side=tk.LEFT, padx=5)
         
-        # Content frame with two columns
+        # Content frame
         content_frame = ttk.Frame(main_frame)
         content_frame.pack(expand=True, fill=tk.BOTH)
-        content_frame.columnconfigure(0, weight=1)  # Image column
-        content_frame.columnconfigure(1, weight=1)  # Hints column
         
-        # Image display frame (left column)
-        image_frame = ttk.LabelFrame(content_frame, text="Images")
-        image_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        # Image display frame (top)
+        image_frame = ttk.LabelFrame(content_frame, text="Image")
+        image_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         
         # Image preview area
         self.image_preview_frame = ttk.Frame(image_frame)
-        self.image_preview_frame.pack(expand=True, fill=tk.BOTH)
+        self.image_preview_frame.pack(expand=True, fill=tk.BOTH, pady=5)
         
         self.image_label = ttk.Label(self.image_preview_frame, anchor="center")
         self.image_label.pack(expand=True, fill=tk.BOTH)
-        
-        # Image navigation buttons
-        nav_frame = ttk.Frame(image_frame)
-        nav_frame.pack(fill=tk.X, pady=5)
-        
-        self.prev_button = ttk.Button(nav_frame, text="Previous", command=self.go_previous)
-        self.prev_button.pack(side=tk.LEFT, padx=5)
-        
-        self.image_count_label = ttk.Label(nav_frame, text="0/0")
-        self.image_count_label.pack(side=tk.LEFT, expand=True)
-        
-        self.next_button = ttk.Button(nav_frame, text="Next", command=self.go_next)
-        self.next_button.pack(side=tk.RIGHT, padx=5)
         
         # Image action buttons
         action_frame = ttk.Frame(image_frame)
         action_frame.pack(fill=tk.X, pady=5)
         
-        self.rename_button = ttk.Button(action_frame, text="Rename", command=self.rename_image)
+        self.prev_button = ttk.Button(action_frame, text="Previous", command=self.go_previous)
+        self.prev_button.pack(side=tk.LEFT, padx=5)
+        
+        self.image_count_label = ttk.Label(action_frame, text="No image selected")
+        self.image_count_label.pack(side=tk.LEFT, expand=True)
+        
+        self.next_button = ttk.Button(action_frame, text="Next", command=self.go_next)
+        self.next_button.pack(side=tk.RIGHT, padx=5)
+        
+        button_frame2 = ttk.Frame(image_frame)
+        button_frame2.pack(fill=tk.X, pady=5)
+        
+        self.rename_button = ttk.Button(button_frame2, text="Rename", command=self.rename_image)
         self.rename_button.pack(side=tk.LEFT, padx=5)
         
-        self.delete_button = ttk.Button(action_frame, text="Delete", command=self.delete_image)
+        self.delete_button = ttk.Button(button_frame2, text="Delete", command=self.delete_image)
         self.delete_button.pack(side=tk.RIGHT, padx=5)
         
-        # Hints editor frame (right column)
-        hints_frame = ttk.LabelFrame(content_frame, text="Hints")
-        hints_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        # Hint viewer frame (bottom)
+        hint_frame = ttk.LabelFrame(content_frame, text="Hint")
+        hint_frame.pack(fill=tk.BOTH, expand=True)
         
-        # Hints text widget
-        self.hints_text = tk.Text(hints_frame, wrap=tk.WORD, font=("TkDefaultFont", 10))
-        text_scrollbar = ttk.Scrollbar(hints_frame, orient="vertical", command=self.hints_text.yview)
-        self.hints_text.configure(yscrollcommand=text_scrollbar.set)
+        # Hint navigation
+        hint_nav_frame = ttk.Frame(hint_frame)
+        hint_nav_frame.pack(fill=tk.X, pady=5)
         
-        text_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.hints_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.prev_hint_button = ttk.Button(hint_nav_frame, text="Previous Hint", command=self.prev_hint)
+        self.prev_hint_button.pack(side=tk.LEFT, padx=5)
         
-        # Load existing hints and images
-        self.load_hints()
+        self.hint_level_label = ttk.Label(hint_nav_frame, text="No hints available", font=("TkDefaultFont", 10, "bold"))
+        self.hint_level_label.pack(side=tk.LEFT, expand=True)
+        
+        self.next_hint_button = ttk.Button(hint_nav_frame, text="Next Hint", command=self.next_hint)
+        self.next_hint_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Hint text editor
+        self.hint_editor = tk.Text(hint_frame, wrap=tk.WORD, height=10, font=("TkDefaultFont", 10))
+        self.hint_editor.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Add/Delete hint buttons
+        hint_action_frame = ttk.Frame(hint_frame)
+        hint_action_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Button(hint_action_frame, text="Add New Hint", command=self.add_hint).pack(side=tk.LEFT, padx=5)
+        ttk.Button(hint_action_frame, text="Delete This Hint", command=self.delete_hint).pack(side=tk.RIGHT, padx=5)
+        
+        # Load images and populate dropdown
         self.load_image_list()
-        if self.image_list:
-            self.load_image(0)
-        else:
-            self.show_no_image()
-    
-    def load_hints(self):
-        """Load existing hints into the text editor."""
-        self.hints_text.delete("1.0", tk.END)  # Clear current content
-        
-        # Get hints for this prop
-        hints_data = {}
-        room_hints = self.app.hints_data.get(self.room_id, {})
-        
-        # Try to find hints by display name (case insensitive)
-        for key in room_hints:
-            if key.lower() == self.prop_display_name.lower():
-                hints_data = room_hints[key]
-                break
-        
-        # Convert hints to text
-        if hints_data:
-            hint_lines = []
-            for level, hint in sorted(hints_data.items()):
-                hint_lines.append(f"Level {level}:")
-                # Make sure hint is a string
-                if isinstance(hint, dict):
-                    # If it's a dict, convert to string representation
-                    hint_text = json.dumps(hint, indent=2)
-                else:
-                    hint_text = str(hint)
-                hint_lines.append(hint_text)
-                hint_lines.append("")  # Add blank line between hints
-            
-            self.hints_text.insert("1.0", "\n".join(hint_lines))
+        # Load hints
+        self.load_hints()
     
     def load_image_list(self):
-        """Load the list of images for this prop."""
+        """Load the list of images for this prop and populate the dropdown."""
         self.image_list = []
+        
+        # Always add a "None" option
+        dropdown_values = ["(None)"]
+        
         if self.prop_dir and self.prop_dir.is_dir():
+            # Get all images in the directory
             self.image_list = sorted(get_image_files(self.prop_dir))
-        self.update_button_states()
+            
+            # Add image filenames to dropdown
+            for img_path in self.image_list:
+                dropdown_values.append(img_path.name)
+        
+        # Update dropdown
+        self.image_dropdown['values'] = dropdown_values
+        
+        # Default to "None" if no images or first image if available
+        if len(dropdown_values) > 1:
+            self.image_var.set(dropdown_values[1])  # Select first actual image
+            self.on_image_selected(None)  # Trigger loading the image
+        else:
+            self.image_var.set(dropdown_values[0])  # Select "None"
+            self.show_no_image()
+    
+    def on_image_selected(self, event):
+        """Handle selection of an image from the dropdown."""
+        selected = self.image_var.get()
+        
+        if selected == "(None)":
+            self.current_image_index = -1
+            self.show_no_image()
+            return
+        
+        # Find the corresponding index in the image_list
+        for i, img_path in enumerate(self.image_list):
+            if img_path.name == selected:
+                self.load_image(i)
+                return
     
     def show_no_image(self):
-        """Display a message when no images are available."""
-        self.image_label.configure(image=None, text="No images available")
-        self.image_count_label.configure(text="0/0")
+        """Display a message when no images are available or selected."""
+        self.image_label.configure(image=None, text="No image selected")
+        self.image_count_label.configure(text="No image selected")
+        self.current_image_obj = None
         self.update_button_states()
     
     def load_image(self, index):
@@ -250,16 +280,20 @@ class HintViewerPopup:
             self.current_image_index = index
             image_path = self.image_list[index]
             
+            # Update dropdown to match
+            self.image_var.set(image_path.name)
+            
+            # Load and display the image
             img = Image.open(image_path)
             img.thumbnail(POPUP_PREVIEW_SIZE, Image.Resampling.LANCZOS)
             
             photo = ImageTk.PhotoImage(img)
             self.image_label.configure(image=photo, text="")
             self.image_label.image = photo  # Keep a reference
-            self.image_obj = photo  # Store for later reference
+            self.current_image_obj = photo  # Store for later reference
             
             # Update the image count label
-            self.image_count_label.configure(text=f"{index + 1}/{len(self.image_list)}")
+            self.image_count_label.configure(text=f"Image {index + 1} of {len(self.image_list)}")
             
             # Update button states
             self.update_button_states()
@@ -285,12 +319,28 @@ class HintViewerPopup:
             self.next_button.configure(state="normal")
         
         # Update Rename and Delete buttons
-        if image_count == 0:
+        if self.current_image_index < 0:  # No image selected
             self.rename_button.configure(state="disabled")
             self.delete_button.configure(state="disabled")
         else:
             self.rename_button.configure(state="normal")
             self.delete_button.configure(state="normal")
+        
+        # Update hint navigation buttons
+        hint_count = len(self.hint_levels)
+        if hint_count <= 1:
+            self.prev_hint_button.configure(state="disabled")
+            self.next_hint_button.configure(state="disabled")
+        else:
+            if self.current_hint_index <= 0:
+                self.prev_hint_button.configure(state="disabled")
+            else:
+                self.prev_hint_button.configure(state="normal")
+                
+            if self.current_hint_index >= hint_count - 1:
+                self.next_hint_button.configure(state="disabled")
+            else:
+                self.next_hint_button.configure(state="normal")
     
     def go_previous(self):
         """Navigate to the previous image."""
@@ -302,9 +352,161 @@ class HintViewerPopup:
         if self.current_image_index < len(self.image_list) - 1:
             self.load_image(self.current_image_index + 1)
     
+    def load_hints(self):
+        """Load existing hints and prepare for navigation."""
+        # Get hints for this prop
+        self.hints_data = {}
+        room_hints = self.app.hints_data.get(self.room_id, {})
+        
+        # Try to find hints by display name (case insensitive)
+        for key in room_hints:
+            if key.lower() == self.prop_display_name.lower():
+                self.hints_data = room_hints[key]
+                break
+        
+        # Extract and sort hint levels
+        self.hint_levels = sorted([level for level in self.hints_data.keys()], 
+                                  key=lambda x: int(x) if x.isdigit() else 999)
+        
+        # Show first hint if available
+        if self.hint_levels:
+            self.current_hint_index = 0
+            self.show_current_hint()
+        else:
+            self.show_no_hint()
+        
+        # Update navigation buttons
+        self.update_button_states()
+    
+    def show_current_hint(self):
+        """Display the current hint in the editor."""
+        if not self.hint_levels or self.current_hint_index >= len(self.hint_levels):
+            self.show_no_hint()
+            return
+        
+        # Get the current level and hint text
+        level = self.hint_levels[self.current_hint_index]
+        hint_text = self.hints_data.get(level, "")
+        
+        # Clear and update the hint editor
+        self.hint_editor.delete("1.0", tk.END)
+        self.hint_editor.insert("1.0", hint_text)
+        
+        # Update the hint level label
+        self.hint_level_label.configure(text=f"Level {level} Hint")
+    
+    def show_no_hint(self):
+        """Display an empty hint editor when no hints are available."""
+        self.hint_editor.delete("1.0", tk.END)
+        self.hint_level_label.configure(text="No hints available")
+    
+    def prev_hint(self):
+        """Navigate to the previous hint level."""
+        if self.current_hint_index > 0:
+            # Save current hint before navigating
+            self.save_current_hint()
+            
+            self.current_hint_index -= 1
+            self.show_current_hint()
+            self.update_button_states()
+    
+    def next_hint(self):
+        """Navigate to the next hint level."""
+        if self.hint_levels and self.current_hint_index < len(self.hint_levels) - 1:
+            # Save current hint before navigating
+            self.save_current_hint()
+            
+            self.current_hint_index += 1
+            self.show_current_hint()
+            self.update_button_states()
+    
+    def save_current_hint(self):
+        """Save the current hint text to the hints data."""
+        if not self.hint_levels or self.current_hint_index >= len(self.hint_levels):
+            return
+        
+        level = self.hint_levels[self.current_hint_index]
+        hint_text = self.hint_editor.get("1.0", tk.END).strip()
+        
+        # Update the hint in the data structure
+        self.hints_data[level] = hint_text
+    
+    def add_hint(self):
+        """Add a new hint level."""
+        # Save current hint first
+        self.save_current_hint()
+        
+        # Determine the next available level
+        next_level = "1"
+        if self.hint_levels:
+            # Try to find the highest numeric level and add 1
+            numeric_levels = [int(l) for l in self.hint_levels if l.isdigit()]
+            if numeric_levels:
+                next_level = str(max(numeric_levels) + 1)
+        
+        # Let the user choose a level
+        level = simpledialog.askstring(
+            "Add Hint", 
+            "Enter hint level:",
+            initialvalue=next_level
+        )
+        
+        if not level:
+            return  # User cancelled
+        
+        # Add the new hint
+        self.hints_data[level] = ""
+        
+        # Refresh the hint levels and display the new hint
+        self.hint_levels = sorted([level for level in self.hints_data.keys()], 
+                                  key=lambda x: int(x) if x.isdigit() else 999)
+        
+        # Find the index of the new level
+        try:
+            self.current_hint_index = self.hint_levels.index(level)
+            self.show_current_hint()
+            self.update_button_states()
+        except ValueError:
+            # Level not found (shouldn't happen)
+            self.current_hint_index = 0
+            self.show_current_hint()
+            self.update_button_states()
+    
+    def delete_hint(self):
+        """Delete the current hint level."""
+        if not self.hint_levels or self.current_hint_index >= len(self.hint_levels):
+            return
+        
+        level = self.hint_levels[self.current_hint_index]
+        
+        # Confirm deletion
+        if not messagebox.askyesno("Confirm Delete", 
+                             f"Are you sure you want to delete hint level {level}?"):
+            return
+        
+        # Remove this hint
+        if level in self.hints_data:
+            del self.hints_data[level]
+        
+        # Refresh hint levels
+        self.hint_levels = sorted([level for level in self.hints_data.keys()], 
+                                 key=lambda x: int(x) if x.isdigit() else 999)
+        
+        # Adjust current index if needed
+        if not self.hint_levels:
+            self.current_hint_index = 0
+            self.show_no_hint()
+        elif self.current_hint_index >= len(self.hint_levels):
+            self.current_hint_index = len(self.hint_levels) - 1
+            self.show_current_hint()
+        else:
+            self.show_current_hint()
+        
+        self.update_button_states()
+    
     def rename_image(self):
         """Rename the current image file."""
-        if not self.image_list or self.current_image_index >= len(self.image_list):
+        if self.current_image_index < 0 or not self.image_list or self.current_image_index >= len(self.image_list):
             return
         
         current_path = self.image_list[self.current_image_index]
@@ -334,7 +536,6 @@ class HintViewerPopup:
         
         try:
             # Rename the file
-            new_path = current_path.with_name(new_name)
             current_path.rename(new_path)
             
             # Reload the image list and display the renamed image
@@ -360,7 +561,7 @@ class HintViewerPopup:
     
     def delete_image(self):
         """Delete the current image file."""
-        if not self.image_list or self.current_image_index >= len(self.image_list):
+        if self.current_image_index < 0 or not self.image_list or self.current_image_index >= len(self.image_list):
             return
         
         current_path = self.image_list[self.current_image_index]
@@ -421,60 +622,24 @@ class HintViewerPopup:
         
         if copied_count > 0:
             # Reload the image list
-            current_index = self.current_image_index
             self.load_image_list()
-            
-            # If there were no images before, show the first new one
-            if current_index == 0 and not self.image_obj and self.image_list:
-                self.load_image(0)
-        
+    
     def open_folder_from_popup(self):
         """Open the prop folder from the popup."""
         if self.prop_dir:
             self.app.open_folder(self.room_id, self.prop_original_name)
-        
+    
     def save_hints(self):
-        """Save the hints from the text editor."""
-        # Parse the hints text
-        text = self.hints_text.get("1.0", tk.END).strip()
-        lines = text.split("\n")
-        
-        hints = {}
-        current_level = None
-        current_hint_lines = []
-        
-        # Parse lines
-        for line in lines:
-            line = line.strip()
-            if line.lower().startswith("level ") and ":" in line:
-                # Save previous hint if any
-                if current_level is not None and current_hint_lines:
-                    hints[current_level] = "\n".join(current_hint_lines).strip()
-                
-                # Start new hint
-                level_part = line.split(":")[0].replace("Level ", "").strip()
-                try:
-                    current_level = str(int(level_part))
-                    current_hint_lines = []
-                except:
-                    # Invalid level format, treat as part of hint text
-                    if current_level is not None:
-                        current_hint_lines.append(line)
-            else:
-                # Add to current hint
-                if current_level is not None:
-                    current_hint_lines.append(line)
-        
-        # Save last hint
-        if current_level is not None and current_hint_lines:
-            hints[current_level] = "\n".join(current_hint_lines).strip()
+        """Save all hints to the main app's data structure."""
+        # Save the current hint being edited
+        self.save_current_hint()
         
         # Make sure room exists in hints data
         if self.room_id not in self.app.hints_data:
             self.app.hints_data[self.room_id] = {}
         
         # Save the hints with the exact display name provided
-        self.app.hints_data[self.room_id][self.prop_display_name] = hints
+        self.app.hints_data[self.room_id][self.prop_display_name] = self.hints_data
         
         # Save to file and update UI
         if self.app.save_hints():
@@ -738,8 +903,11 @@ class HintBrowserApp:
     def open_hint_viewer(self, room_id, prop_original_name):
         """Opens the hint viewer popup for the selected prop."""
         # Close existing popup if needed
-        if hasattr(self, '_hint_viewer_popup') and self._hint_viewer_popup and self._hint_viewer_popup.winfo_exists():
-            self._hint_viewer_popup.destroy()
+        if hasattr(self, '_hint_viewer_popup') and self._hint_viewer_popup:
+            try:
+                self._hint_viewer_popup.popup.destroy()
+            except (tk.TclError, AttributeError):
+                pass  # Window might already be gone
         
         # Get display name
         prop_id = (room_id, prop_original_name)
@@ -762,26 +930,33 @@ class HintBrowserApp:
             return
         
         folder_path = BASE_IMAGE_DIR / room_folder_name / prop_original_name
+        print(f"Opening folder: {folder_path}")
         
         # Create folder if it doesn't exist
         if not folder_path.is_dir():
             if messagebox.askyesno("Create Folder?", f"The folder doesn't exist:\n{folder_path}\n\nCreate it?"):
                 try:
                     folder_path.mkdir(parents=True, exist_ok=True)
+                    print(f"Created folder: {folder_path}")
                 except Exception as e:
                     messagebox.showerror("Error", f"Couldn't create folder:\n{e}")
                     return
         
         # Open the folder
         try:
+            folder_path_str = str(folder_path.resolve())
+            print(f"Opening folder path: {folder_path_str}")
+            
             if self.system_platform == "Windows":
-                os.startfile(folder_path)
+                # Use subprocess for Windows to handle spaces in paths properly
+                subprocess.Popen(["explorer", folder_path_str])
             elif self.system_platform == "Darwin":  # macOS
-                subprocess.Popen(["open", str(folder_path)])
+                subprocess.Popen(["open", folder_path_str])
             else:  # Linux and other Unix-like
-                subprocess.Popen(["xdg-open", str(folder_path)])
+                subprocess.Popen(["xdg-open", folder_path_str])
         except Exception as e:
             messagebox.showerror("Error", f"Couldn't open folder:\n{e}")
+            print(f"Error opening folder: {e}")
 
     def on_viewer_closed(self):
         """Callback when the viewer popup is closed."""
