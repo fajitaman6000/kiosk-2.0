@@ -3,6 +3,8 @@
 
 in room assistance popup came up with image
 
+opening hint manager twice breaks it the second time
+
 ##############################################################################################################################
 # Freeze log
 

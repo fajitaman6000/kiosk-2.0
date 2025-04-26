@@ -4,7 +4,80 @@
         "2": {},
         "4": {},
         "5": {},
-        "6": {},
+        "6": {
+            "Color Buttons": {
+                "look above door": {
+                    "text": "The buttons correspond to the colors above the door. It's a race against time!",
+                    "image": "victjory.png"
+                }
+            },
+            "Door": {
+                "hold all symbols": {
+                    "text": "All four symbols must be held at the same time."
+                }
+            },
+            "Levers": {
+                "instructions": {
+                    "text": "Each stack of blocks and their symbols can add together to create one of the symbols below. Only one side of each block matters. The 4th block is done for you."
+                }
+            },
+            "Stone Fragments": {
+                "gather all pieces": {
+                    "text": "All pieces must be placed together on the box to open it. If you're missing any, you've got more puzzles to solve."
+                }
+            },
+            "Floor Panels": {
+                "one at a time": {
+                    "text": "The panels on the floor must be stepped on in ORDER, one at a time! Be quick and use only one person."
+                }
+            },
+            "Light Maze": {
+                "not white path": {
+                    "text": "The tip of the crystal must touch the SYMBOL, not the white path. Check the crystal for a map on where to go."
+                }
+            },
+            "Pickaxes": {
+                "feel for symbols": {
+                    "text": "The pickaxe holder has a slot at the bottom. If you feel up inside of it with your fingers, you will feel symbols that match what is drawn on the pickaxes."
+                }
+            },
+            "Laser Crown": {
+                "point at poseidon": {
+                    "text": "The pyramid is emitting a laser from the top! The mirror you have can redirect the laser into the statue's crown. Hold it there for a few seconds."
+                }
+            },
+            "Pyramid": {
+                "trophies": {
+                    "text": "The clear trophies must be placed on all four pillars of the pyramid"
+                }
+            },
+            "Dynamite": {
+                "order": {
+                    "text": "The dynamite sticks came in a box with instructions. Follow these instructions, placing all of the sticks inside the 9 holes. Press the plunger on top of the box when you're done!"
+                }
+            },
+            "Trident": {
+                "put that thing back where it came from or so help me": {
+                    "text": "The trident that you found goes next to the other one in the room. Slide it in to complete Poseidon's quest."
+                }
+            },
+            "Cryptex Chest": {
+                "use octopus": {
+                    "text": "The wheels on the chest correspond to symbols found from those circles on the wall. Move the octopus until it sticks and your symbol will be found."
+                },
+                "line it up properly": {
+                    "text": "The golden trapezoids in the spinning wheel chest show how the wheels must be lined up. Be precise and point the symbols straight up!"
+                }
+            },
+            "Harp Lights": {
+                "look next to the door": {
+                    "text": "There are red lights next to the door. Move your hand through them."
+                },
+                "play them in order": {
+                    "text": "To play the harp properly, put your hand through the first laser at the bottom, and then move it up through each laser one at a time until you reach the top. (It will make the same sound you've been hearing!)"
+                }
+            }
+        },
         "7": {},
         "3": {
             "Mirror": {

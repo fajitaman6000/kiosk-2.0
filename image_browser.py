@@ -12,7 +12,7 @@ BASE_IMAGE_DIR = Path("admin/sync_directory/hint_image_files")
 # THUMBNAIL_SIZE = (64, 64) # Old thumbnail size
 PROP_BLOCK_THUMBNAIL_SIZE = (100, 75) # Thumbnail size for the prop block
 POPUP_PREVIEW_SIZE = (600, 400)
-ROOM_GRID_COLUMNS = 3
+# ROOM_GRID_COLUMNS = 3  # Removed this as we're stacking rooms vertically
 PROP_GRID_COLUMNS = 4 # Adjust as needed
 # MAX_THUMBNAILS_DISPLAYED = 5 # Commented out - we'll try showing all
 
@@ -104,21 +104,19 @@ class ImageBrowserApp:
             return
 
         room_dirs = sorted([d for d in BASE_IMAGE_DIR.iterdir() if d.is_dir()])
-        num_rooms = len(room_dirs)
-
+        
+        # Stack rooms vertically - each room gets its own row
         for idx, room_dir in enumerate(room_dirs):
             room_name = room_dir.name
-            grid_row = idx // ROOM_GRID_COLUMNS
-            grid_col = idx % ROOM_GRID_COLUMNS
-
+            
+            # Place each room in its own row (idx) and span all columns
             room_frame = ttk.LabelFrame(self.scrollable_frame, text=room_name, padding="10")
-            room_frame.grid(row=grid_row, column=grid_col, padx=10, pady=10, sticky="nsew")
-            # Configure column weights within the scrollable frame for room distribution
-            self.scrollable_frame.grid_columnconfigure(grid_col, weight=1)
+            room_frame.grid(row=idx, column=0, padx=10, pady=10, sticky="ew")
+            
+            # Make room frame expand horizontally
+            self.scrollable_frame.grid_columnconfigure(0, weight=1)
 
             prop_dirs = sorted([d for d in room_dir.iterdir() if d.is_dir()])
-            prop_row_index = 0
-            prop_col_index = 0
             if not prop_dirs:
                  # Make the label span across potential prop columns if needed
                  ttk.Label(room_frame, text="No prop directories found.").grid(row=0, column=0, columnspan=PROP_GRID_COLUMNS, padx=5, pady=5, sticky="w")
