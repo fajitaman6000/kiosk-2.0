@@ -255,15 +255,16 @@ class ManagerSettings:
 
                 # Now add the actual hints if they exist
                 for hint_name, hint_info in prop_hints.items():
-                     # Create key using internal prop_name for consistency in hint_map and tree_items
-                    hint_key = f"{room_id}-{prop_name}-{hint_name}"
+                     # Create key using display_name for consistency
+                    hint_key = f"{room_id}-{display_name}-{hint_name}"
                     display_text = f"{hint_name}" # Just the hint name for the tree
                     hint_item = self.hint_tree.insert(prop_item, "end", text=display_text)
+                    # Store hint key in tree_items
                     self.tree_items[hint_item] = {"type": "hint", "key": hint_key}
-                    # Store hint info with internal prop_name reference
+                    # Store hint info with display_name reference
                     self.hint_map[hint_key] = {
                         "room_id": room_id,
-                        "prop_name": prop_name, # Internal name
+                        "prop_display_name": display_name,
                         "hint_name": hint_name,
                         "data": hint_info # Store the actual hint data (text, image)
                      }
@@ -351,9 +352,7 @@ class ManagerSettings:
         hint_data = hint_full_info['data']
         hint_name = hint_full_info['hint_name']
         room_id = hint_full_info['room_id']
-        prop_name = hint_full_info['prop_name']
-
-        prop_display_name = self.get_display_name(room_id, prop_name)
+        prop_display_name = hint_full_info['prop_display_name']
 
         self.rename_entry.delete(0, tk.END)
         self.rename_entry.insert(0, hint_name)
@@ -374,22 +373,22 @@ class ManagerSettings:
 
         try:
             room_id = self.hint_map[self.selected_hint_key]['room_id']
-            prop_name = self.hint_map[self.selected_hint_key]['prop_name']
+            prop_display_name = self.hint_map[self.selected_hint_key]['prop_display_name']
             hint_name = self.hint_map[self.selected_hint_key]['hint_name']
 
             with open('saved_hints.json', 'r') as f:
                 hint_data_file = json.load(f)
 
             room_hints = hint_data_file.get('rooms', {}).get(str(room_id), {})
-            prop_hints = room_hints.get(prop_name)
+            prop_hints = room_hints.get(prop_display_name)
 
             if prop_hints and hint_name in prop_hints:
                 del prop_hints[hint_name]
-                print(f"Deleted hint '{hint_name}' from prop '{prop_name}' in room '{room_id}'")
+                print(f"Deleted hint '{hint_name}' from prop '{prop_display_name}' in room '{room_id}'")
 
                 if not prop_hints:
-                    del room_hints[prop_name]
-                    print(f"Removed empty prop '{prop_name}' from room '{room_id}'")
+                    del room_hints[prop_display_name]
+                    print(f"Removed empty prop '{prop_display_name}' from room '{room_id}'")
                     if not room_hints:
                         del hint_data_file['rooms'][str(room_id)]
                         print(f"Removed empty room '{room_id}'")
@@ -448,18 +447,10 @@ class ManagerSettings:
                      current_selection_index = index
 
             if not load_only:
-                 internal_prop_name = None
+                 internal_prop_name = None # We don't strictly need this anymore
                  room_key = room_map.get(str(room_id))
-                 if room_key and room_key in self.prop_mappings:
-                     for p_name, p_details in self.prop_mappings[room_key]['mappings'].items():
-                         if p_details.get('display') == prop_display_name:
-                             internal_prop_name = p_name
-                             break
-                 if internal_prop_name is None:
-                     print(f"Warning: Could not find internal prop_name for display name '{prop_display_name}' in room {room_id}. Image context might be incomplete.")
-                     internal_prop_name = prop_display_name
-
-                 self.current_image_context = {'room_id': room_id, 'prop_name': internal_prop_name, 'hint_name': hint_name, 'image_dir': image_dir}
+                 # Simplified context setting, directly using prop_display_name
+                 self.current_image_context = {'room_id': room_id, 'prop_display_name': prop_display_name, 'hint_name': hint_name, 'image_dir': image_dir}
                  if current_selection_index != -1:
                     self.image_listbox.selection_set(current_selection_index)
                     self.image_listbox.see(current_selection_index)
@@ -517,10 +508,10 @@ class ManagerSettings:
              return
 
         room_id = self.current_image_context['room_id']
-        prop_name = self.current_image_context['prop_name']
+        prop_display_name = self.current_image_context['prop_display_name']
         hint_name = self.current_image_context['hint_name']
 
-        expected_key = f"{room_id}-{prop_name}-{hint_name}"
+        expected_key = f"{room_id}-{prop_display_name}-{hint_name}"
         if self.selected_hint_key != expected_key:
              print(f"Warning: Image context key '{expected_key}' does not match selected hint key '{self.selected_hint_key}'. Skipping update.")
              return
@@ -531,10 +522,10 @@ class ManagerSettings:
 
             room_data = hint_data.get('rooms', {}).get(str(room_id))
             if not room_data: raise KeyError(f"Room {room_id} not found in saved_hints.json")
-            prop_data = room_data.get(prop_name)
-            if not prop_data: raise KeyError(f"Prop {prop_name} not found in room {room_id}")
+            prop_data = room_data.get(prop_display_name)
+            if not prop_data: raise KeyError(f"Prop {prop_display_name} not found in room {room_id}")
             hint_entry = prop_data.get(hint_name)
-            if not hint_entry: raise KeyError(f"Hint {hint_name} not found in prop {prop_name}")
+            if not hint_entry: raise KeyError(f"Hint {hint_name} not found in prop {prop_display_name}")
 
             if filename:
                  hint_entry['image'] = filename
@@ -600,7 +591,7 @@ class ManagerSettings:
         try:
             new_text = self.text_widget.get('1.0', 'end-1c').strip()
             room_id = self.hint_map[self.selected_hint_key]['room_id']
-            prop_name = self.hint_map[self.selected_hint_key]['prop_name']
+            prop_display_name = self.hint_map[self.selected_hint_key]['prop_display_name']
             hint_name = self.hint_map[self.selected_hint_key]['hint_name']
 
             with open('saved_hints.json', 'r') as f:
@@ -608,8 +599,8 @@ class ManagerSettings:
 
             room_data = hint_data_file.get('rooms', {}).get(str(room_id))
             if not room_data: raise KeyError(f"Room {room_id} not found")
-            prop_data = room_data.get(prop_name)
-            if not prop_data: raise KeyError(f"Prop {prop_name} not found")
+            prop_data = room_data.get(prop_display_name)
+            if not prop_data: raise KeyError(f"Prop {prop_display_name} not found")
             hint_entry = prop_data.get(hint_name)
             if not hint_entry: raise KeyError(f"Hint {hint_name} not found")
 
@@ -666,10 +657,10 @@ class ManagerSettings:
             return
 
         room_id = old_hint_info['room_id']
-        prop_name = old_hint_info['prop_name']
+        prop_display_name = old_hint_info['prop_display_name']
 
         # Check if the new name already exists under the same prop
-        new_hint_key = f"{room_id}-{prop_name}-{new_hint_name}"
+        new_hint_key = f"{room_id}-{prop_display_name}-{new_hint_name}"
         if new_hint_key in self.hint_map:
             messagebox.showerror("Error", f"A hint named '{new_hint_name}' already exists for this prop.")
             # Revert the entry widget to the old name
@@ -690,8 +681,8 @@ class ManagerSettings:
             # Navigate safely
             room_data = hint_data_file.get('rooms', {}).get(str(room_id))
             if not room_data: raise KeyError(f"Room {room_id} not found")
-            prop_data = room_data.get(prop_name)
-            if not prop_data: raise KeyError(f"Prop {prop_name} not found")
+            prop_data = room_data.get(prop_display_name)
+            if not prop_data: raise KeyError(f"Prop {prop_display_name} not found")
 
             if old_hint_name not in prop_data:
                 raise KeyError(f"Original hint '{old_hint_name}' not found in saved data.")
@@ -709,7 +700,7 @@ class ManagerSettings:
             # Add new mapping
             new_hint_full_info = {
                 "room_id": room_id,
-                "prop_name": prop_name,
+                "prop_display_name": prop_display_name,
                 "hint_name": new_hint_name,
                 "data": hint_content
             }
@@ -731,7 +722,7 @@ class ManagerSettings:
             # Update image context if it exists and matches
             if hasattr(self, 'current_image_context') and self.current_image_context:
                  if (self.current_image_context['room_id'] == room_id and
-                     self.current_image_context['prop_name'] == prop_name and
+                     self.current_image_context['prop_display_name'] == prop_display_name and
                      self.current_image_context['hint_name'] == old_hint_name):
                      self.current_image_context['hint_name'] = new_hint_name
 
@@ -766,8 +757,7 @@ class ManagerSettings:
              return
 
         room_id = self.current_prop_info['room_id']
-        prop_name = self.current_prop_info['prop_name'] # Internal name
-        prop_display_name = self.current_prop_info['display_name'] # Display name
+        prop_display_name = self.current_prop_info['display_name']
 
         # Ask user for the new hint name
         new_hint_name = simpledialog.askstring("New Hint Name",
@@ -782,12 +772,12 @@ class ManagerSettings:
             messagebox.showerror("Error", "Hint name cannot be empty.")
             return
 
-        # *** Use internal prop_name for key generation for internal maps ***
-        new_hint_key = f"{room_id}-{prop_name}-{new_hint_name}"
-        # *** Check internal hint_map for conflicts based on internal key ***
+        # *** Use display_name for key generation for hint_map ***
+        new_hint_key = f"{room_id}-{prop_display_name}-{new_hint_name}"
+        # *** Check hint_map for conflicts based on display_name key ***
         if new_hint_key in self.hint_map:
-            messagebox.showerror("Error", f"A hint named '{new_hint_name}\' (internally linked to '{prop_name}') already exists for this prop.")
-            return
+            messagebox.showerror("Error", f"A hint named '{new_hint_name}\' already exists for prop '{prop_display_name}' in the save file.")
+            return # Prevent overwriting just in case hint_map was out of sync
 
         new_hint_data = {"text": ""}
 
@@ -803,14 +793,14 @@ class ManagerSettings:
             if str(room_id) not in hint_data_file['rooms']:
                  hint_data_file['rooms'][str(room_id)] = {}
 
-            # *** Use prop_display_name as the key when writing to the JSON file structure ***
+            # *** Use display_name as the key when writing to the JSON file structure ***
             if prop_display_name not in hint_data_file['rooms'][str(room_id)]:
                  hint_data_file['rooms'][str(room_id)][prop_display_name] = {}
 
             # Check conflict again directly in the dictionary using display_name key
             if new_hint_name in hint_data_file['rooms'][str(room_id)][prop_display_name]:
                  messagebox.showerror("Error", f"A hint named '{new_hint_name}\' already exists for prop '{prop_display_name}' in the save file.")
-                 return # Prevent overwriting just in case internal map was out of sync
+                 return # Prevent overwriting just in case hint_map was out of sync
 
             # Add the new hint using display_name key
             hint_data_file['rooms'][str(room_id)][prop_display_name][new_hint_name] = new_hint_data
@@ -818,7 +808,7 @@ class ManagerSettings:
             with open('saved_hints.json', 'w') as f:
                 json.dump(hint_data_file, f, indent=4)
 
-            print(f"Added new hint \'{new_hint_name}\' to prop \'{prop_display_name}\' (internal: {prop_name}) in room \'{room_id}\'")
+            print(f"Added new hint \'{new_hint_name}\' to prop \'{prop_display_name}\' in room \'{room_id}\'")
 
             # --- Refresh and Select New Hint ---
             # Store current selection/scroll state if desired (optional)

@@ -20,6 +20,11 @@
                     "text": "test",
                     "image": "all pieces.png"
                 }
+            },
+            "Buzzwire": {
+                "fgsdfg": {
+                    "text": ""
+                }
             }
         },
         "3": {
@@ -31,6 +36,25 @@
                 "test 2": {
                     "text": "test 2",
                     "image": "center of table.png"
+                }
+            },
+            "Yellow Puzzle": {
+                "gsdfgsdf": {
+                    "text": ""
+                }
+            }
+        },
+        "5": {
+            "Code Panel": {
+                "hello": {
+                    "text": ""
+                }
+            }
+        },
+        "2": {
+            "Drawers": {
+                "sdfgsf": {
+                    "text": ""
                 }
             }
         }
