@@ -145,6 +145,10 @@ class ManagerSettings:
         self.hint_editor_frame = ttk.Frame(paned_window)
         paned_window.add(self.hint_editor_frame, weight=3)
 
+        # --- Selected Hint Name Label ---
+        self.selected_hint_name_label = ttk.Label(self.hint_editor_frame, text="", font=('Arial', 12, 'bold'))
+        self.selected_hint_name_label.pack(pady=(5, 0))
+
         # --- Add New Hint Button ---
         self.add_hint_button = ttk.Button(self.hint_editor_frame, text="Add New Hint", command=self.add_new_hint, state=tk.DISABLED)
         self.add_hint_button.pack(pady=5)
@@ -175,6 +179,10 @@ class ManagerSettings:
 
         self.image_preview_label = ttk.Label(image_frame)
         self.image_preview_label.pack(side='left', padx=5)
+
+        # --- Selected Image Filename Label ---
+        self.selected_image_label = ttk.Label(self.hint_editor_frame, text="")
+        self.selected_image_label.pack(pady=2, anchor='w', padx=5)
 
         self.status_label = ttk.Label(self.hint_editor_frame, text="")
         self.status_label.pack(pady=5)
@@ -339,13 +347,27 @@ class ManagerSettings:
         self.text_widget.edit_modified(False)
         self.image_listbox.delete(0, tk.END)
         self.image_listbox.config(state=tk.DISABLED)
-        self.image_preview_label.config(image=None)
-        self.image_preview_label.image = None
+        
+        # Safely clear the image by setting a None image
+        try:
+            self.image_preview_label.config(image='')
+            self.image_preview_label.image = None
+        except Exception as e:
+            print(f"[hint library]Error clearing image preview: {e}")
+        
         self.image_label.config(text="")
         self.delete_button.config(state=tk.DISABLED)
         self.status_label.config(text="")
-        if self.autosave_after_id:
-            self.status_label.after_cancel(self.autosave_after_id)
+        self.selected_hint_name_label.config(text="")
+        self.selected_image_label.config(text="")
+        
+        # Safely cancel the autosave timer if it exists
+        if self.autosave_after_id is not None:
+            try:
+                self.status_label.after_cancel(self.autosave_after_id)
+            except ValueError:
+                # The after_id was invalid, just ignore
+                pass
             self.autosave_after_id = None
 
     def select_hint(self, hint_key, hint_full_info):
@@ -363,7 +385,10 @@ class ManagerSettings:
         self.text_widget.insert('1.0', hint_data.get('text', ''))
         self.text_widget.edit_modified(False)
 
+        self.selected_hint_name_label.config(text=f"Editing Hint: {hint_name}")
         self.show_image_selector(room_id, prop_display_name, hint_name, selected_image=hint_data.get('image'))
+        # Update the selected image label after selector is shown and context is set
+        self.update_selected_image_label(hint_data.get('image'))
 
     def delete_selected_hint(self):
         if not self.selected_hint_key:
@@ -415,14 +440,21 @@ class ManagerSettings:
             messagebox.showerror("Error", f"An error occurred deleting hint: {e}")
             print(f"[hint library]Error deleting hint: {e}")
 
+        # Update the selected image label after preview/update attempt
+        # This ensures the label reflects the currently selected *list item*, even if preview fails
+        self.update_selected_image_label(None)
+
     def show_image_selector(self, room_id, prop_display_name, hint_name, selected_image=None, load_only=False):
         room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
         room_folder = room_map.get(str(room_id), "").lower()
         if not room_folder:
              print(f"Cannot find room folder for room ID {room_id}")
              self.image_listbox.delete(0, tk.END)
-             self.image_preview_label.config(image=None)
-             self.image_preview_label.image = None
+             try:
+                 self.image_preview_label.config(image='')
+                 self.image_preview_label.image = None
+             except Exception as e:
+                 print(f"[hint library]Error clearing image preview: {e}")
              return
 
         base_dir = os.path.dirname(__file__)
@@ -430,8 +462,11 @@ class ManagerSettings:
         image_dir = str(image_dir_path)
 
         self.image_listbox.delete(0, tk.END)
-        self.image_preview_label.config(image=None)
-        self.image_preview_label.image = None
+        try:
+            self.image_preview_label.config(image='')
+            self.image_preview_label.image = None
+        except Exception as e:
+            print(f"[hint library]Error clearing image preview in selector: {e}")
 
         current_selection_index = -1
 
@@ -466,8 +501,16 @@ class ManagerSettings:
     def preview_selected_image(self, event=None):
         selection = self.image_listbox.curselection()
         if not selection:
-            self.image_preview_label.config(image=None, text="")
-            self.image_preview_label.image = None
+            # Safely clear the image
+            try:
+                self.image_preview_label.config(text="")
+                self.image_preview_label.config(image='')
+                self.image_preview_label.image = None
+            except Exception as e:
+                print(f"[hint library]Error clearing image preview: {e}")
+            
+            # Clear the selected image label if nothing is selected in the listbox
+            self.update_selected_image_label(None)
             return
 
         filename = self.image_listbox.get(selection[0])
@@ -475,8 +518,10 @@ class ManagerSettings:
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
              print("Preview attempt without valid image context (Hint likely not selected).")
              try:
-                 self.image_preview_label.config(image=None, text="Select hint first", foreground='orange')
+                 self.image_preview_label.config(image='', text="Select hint first", foreground='orange')
                  self.image_preview_label.image = None
+                 # Also clear the label here
+                 self.update_selected_image_label(None)
                  return
              except Exception as e:
                  print(f"Error trying fallback preview: {e}")
@@ -492,15 +537,28 @@ class ManagerSettings:
             photo = ImageTk.PhotoImage(image)
             self.image_preview_label.config(image=photo, text="")
             self.image_preview_label.image = photo
+            # Update the hint data first
             self.update_hint_image(filename)
+            # THEN update the label showing the selected file
+            self.update_selected_image_label(filename)
         except FileNotFoundError:
-             print(f"[hint library]Preview Error: Image file not found at {image_path}")
-             self.image_preview_label.config(text="Image not found", image=None, foreground='red')
-             self.image_preview_label.image = None
+            print(f"[hint library]Preview Error: Image file not found at {image_path}")
+            try:
+                self.image_preview_label.config(text="Image not found", image='', foreground='red')
+                self.image_preview_label.image = None
+            except Exception as e:
+                print(f"[hint library]Error clearing preview after not found: {e}")
+            # Even if not found, update the label to show the filename + status
+            self.update_selected_image_label(filename)
         except Exception as e:
             print(f"[hint library]Error displaying image preview for {image_path}: {e}")
-            self.image_preview_label.config(text=f"Preview Error: {e}", image=None, foreground='red')
-            self.image_preview_label.image = None
+            try:
+                self.image_preview_label.config(text=f"Preview Error: {e}", image='', foreground='red')
+                self.image_preview_label.image = None
+            except Exception as e2:
+                print(f"[hint library]Error clearing preview after error: {e2}")
+            # Update label in case of other errors
+            self.update_selected_image_label(filename)
 
     def update_hint_image(self, filename):
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
@@ -542,6 +600,9 @@ class ManagerSettings:
                     self.hint_map[self.selected_hint_key]['data']['image'] = filename
                  elif 'image' in self.hint_map[self.selected_hint_key]['data']:
                     del self.hint_map[self.selected_hint_key]['data']['image']
+
+            # Update the label after successfully changing the data
+            self.update_selected_image_label(filename)
 
         except FileNotFoundError:
              messagebox.showerror("Error", "saved_hints.json not found.")
@@ -728,6 +789,8 @@ class ManagerSettings:
                      self.current_image_context['hint_name'] == old_hint_name):
                      self.current_image_context['hint_name'] = new_hint_name
 
+            # Update the hint name label
+            self.selected_hint_name_label.config(text=f"Editing Hint: {new_hint_name}")
 
             self.status_label.config(text="Hint renamed.", foreground='green')
             self.status_label.after(2000, lambda: self.status_label.config(text=""))
@@ -856,6 +919,32 @@ class ManagerSettings:
             print(f"[hint library]Error adding new hint: {e}")
             messagebox.showerror("Error", f"An unexpected error occurred adding the hint: {e}")
             self.status_label.config(text="Error adding hint!", foreground='red')
+
+    def update_selected_image_label(self, filename):
+        """Updates the label showing the selected image filename and status."""
+        # If context is missing (e.g., prop selected, not hint), clear or show default
+        if not hasattr(self, 'current_image_context') or not self.current_image_context:
+            try:
+                self.selected_image_label.config(text="Selected Image: N/A", foreground='grey')
+            except Exception as e:
+                print(f"[hint library]Error updating selected image label: {e}")
+            return
+
+        if filename:
+            image_path = Path(self.current_image_context['image_dir']) / filename
+            try:
+                # Check if it exists *and* is a file
+                if image_path.is_file():
+                    self.selected_image_label.config(text=f"Selected Image: {filename}", foreground='black')
+                else:
+                    # Exists but isn't a file (directory?), or doesn't exist
+                     self.selected_image_label.config(text=f"Selected Image: {filename} (Not found!)", foreground='red')
+            except OSError as e: # Catch potential permission errors etc. during check
+                 print(f"[hint library]Error checking image file status {image_path}: {e}")
+                 self.selected_image_label.config(text=f"Selected Image: {filename} (Check Error!)", foreground='orange')
+
+        else:
+            self.selected_image_label.config(text="Selected Image: None", foreground='black')
 
 class AdminPasswordManager:
     def __init__(self, app):

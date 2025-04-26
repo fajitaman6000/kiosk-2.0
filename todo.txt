@@ -97,8 +97,6 @@ hangup reliability:
 # known low priority bugs
 
 kiosk auto resets twice
-kiosk UI element clearing behaviors in relation to videos are flickery due to numerous checks "arguing" about whether they should persist
-password for settings gets prompted twice
 mqtt connections get crippled while running file sync
 
 ##############################################################################################################################

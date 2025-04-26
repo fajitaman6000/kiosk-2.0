@@ -4,7 +4,7 @@
             "Memory Hotel": {
                 "casino test": {
                     "text": "sfdgsdfg",
-                    "image": null
+                    "image": "lol.png"
                 }
             }
         },
@@ -12,7 +12,7 @@
             "Memory Hotel": {
                 "ma testtt": {
                     "text": "ma test ",
-                    "image": null
+                    "image": "shiggy biggy.png"
                 }
             }
         },
@@ -21,6 +21,16 @@
                 "wiz test": {
                     "text": "wiz test",
                     "image": null
+                }
+            },
+            "Goblet Chest": {
+                "goober chest": {
+                    "text": ""
+                }
+            },
+            "Rod Game": {
+                "rodrod": {
+                    "text": "gg"
                 }
             }
         },
@@ -50,7 +60,7 @@
         },
         "7": {
             "Skull Button": {
-                "time": {
+                "time 1": {
                     "text": "tm test",
                     "image": null
                 }
