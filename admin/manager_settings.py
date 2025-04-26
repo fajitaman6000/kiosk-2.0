@@ -234,17 +234,25 @@ class ManagerSettings:
         if self.hint_tree:
             # Get all currently expanded items
             for item_id in self.tree_items:
-                if self.hint_tree.item(item_id, 'open'):
-                    item_info = self.tree_items.get(item_id)
-                    if item_info:
-                        expanded_items.append(item_info)
+                try:
+                    if self.hint_tree.item(item_id, 'open'):
+                        item_info = self.tree_items.get(item_id)
+                        if item_info:
+                            expanded_items.append(item_info)
+                except (tk.TclError, KeyError):
+                    # Skip items that no longer exist
+                    continue
             
         # Save current selection if any
         current_selection = None
         if self.hint_tree and self.hint_tree.selection():
-            selected_id = self.hint_tree.selection()[0]
-            if selected_id in self.tree_items:
-                current_selection = self.tree_items[selected_id]
+            try:
+                selected_id = self.hint_tree.selection()[0]
+                if selected_id in self.tree_items:
+                    current_selection = self.tree_items[selected_id]
+            except (tk.TclError, KeyError):
+                # Handle case where selection is invalid
+                pass
         
         # Clear the tree
         if self.hint_tree:
