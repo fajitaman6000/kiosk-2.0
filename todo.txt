@@ -116,6 +116,7 @@ windows scaling detection, not having to rotate to landscape
 ##############################################################################################################################
 # ambitious extra ideas:
 
+"create popout prop control" (for controlling numerous rooms)
 option to play sound effects, ways for game masters to enjoyably interact with guests
 
 periodic setting of casino/morning after according to room?
