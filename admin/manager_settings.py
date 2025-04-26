@@ -42,11 +42,11 @@ class ManagerSettings:
 
     def check_credentials(self):
         def on_success():
-            self.create_hint_management_view()
+            self.show_hint_manager()
         return self.password_manager.verify_password(callback=on_success)
 
     def show_hint_manager(self):
-        self.check_credentials()
+        self.create_hint_management_view()
 
     def change_password(self):
         change_window = tk.Toplevel(self.app.root)
@@ -207,55 +207,69 @@ class ManagerSettings:
 
         try:
             with open('saved_hints.json', 'r') as f:
-                hint_data = json.load(f).get('rooms', {})
+                hint_data = json.load(f).get('rooms', {}) # Load only rooms subtree
         except FileNotFoundError:
             print("[hint library] saved_hints.json not found. Starting fresh.")
-            hint_data = {}
+            hint_data = {} # Ensure hint_data is a dict
         except json.JSONDecodeError as e:
             print(f"[hint library]Error decoding saved_hints.json: {e}")
             messagebox.showerror("Error", f"Error reading saved_hints.json: {e} Cannot load hints.")
             return
         except Exception as e:
             print(f"[hint library]Error loading hints: {e}")
-            hint_data = {}
+            hint_data = {} # Ensure hint_data is a dict
 
+        # Iterate through rooms defined in prop_mappings first
         room_mapping_reverse = {'casino': '1', 'ma': '2', 'haunted': '3', 'zombie': '4', 'wizard': '5', 'atlantis': '6', 'time': '7'}
         for room_key, room_info in self.prop_mappings.items():
             room_id = room_mapping_reverse.get(room_key)
-            if not room_id: continue
+            if not room_id: continue # Skip if room key isn't in our reverse map
 
-            room_text = f"Room {room_id} ({room_key.capitalize()})"
-            room_item = self.hint_tree.insert("", "end", text=room_text, open=False)
+            # Use only room name for display
+            room_text = f"{room_key.capitalize()}"
+            room_item = self.hint_tree.insert("", "end", text=room_text, open=False) # Start closed
             self.tree_items[room_item] = {"type": "room", "id": room_id, "key": room_key}
 
+            # Get hints for this room from loaded data, default to empty dict
             room_hints_data = hint_data.get(str(room_id), {})
 
+            # Iterate through all props defined for this room in prop_mappings
             for prop_name, prop_details in room_info.get('mappings', {}).items():
                 display_name = prop_details.get('display', prop_name)
-                prop_hints = room_hints_data.get(prop_name, {})
+
+                # *** Use display_name to look up hints in saved_hints.json data ***
+                prop_hints = room_hints_data.get(display_name, {}) # Get saved hints using display_name as key
+
                 hint_count = len(prop_hints)
                 tag_to_use = 'has_hints' if hint_count > 0 else 'no_hints'
 
                 prop_text = f"{display_name} ({hint_count})"
-                prop_item = self.hint_tree.insert(room_item, "end", text=prop_text, tags=(tag_to_use,), open=False)
+                prop_item = self.hint_tree.insert(room_item, "end", text=prop_text, tags=(tag_to_use,), open=False) # Start closed
+                # Store internal prop_name here for consistency, but display_name for lookup
                 self.tree_items[prop_item] = {
                     "type": "prop",
                     "room_id": room_id,
-                    "prop_name": prop_name,
-                    "display_name": display_name
+                    "prop_name": prop_name, # Internal name
+                    "display_name": display_name # Display name
                 }
 
+                # Now add the actual hints if they exist
                 for hint_name, hint_info in prop_hints.items():
+                     # Create key using internal prop_name for consistency in hint_map and tree_items
                     hint_key = f"{room_id}-{prop_name}-{hint_name}"
-                    display_text = f"{hint_name}"
+                    display_text = f"{hint_name}" # Just the hint name for the tree
                     hint_item = self.hint_tree.insert(prop_item, "end", text=display_text)
                     self.tree_items[hint_item] = {"type": "hint", "key": hint_key}
+                    # Store hint info with internal prop_name reference
                     self.hint_map[hint_key] = {
                         "room_id": room_id,
-                        "prop_name": prop_name,
+                        "prop_name": prop_name, # Internal name
                         "hint_name": hint_name,
-                        "data": hint_info
+                        "data": hint_info # Store the actual hint data (text, image)
                      }
+
+        # Optional: Could add logic here to find props in saved_hints that are NOT in prop_mappings
+        # and display them perhaps with a warning or different style.
 
     def on_hint_select(self, event):
         selection = self.hint_tree.selection()
@@ -282,8 +296,9 @@ class ManagerSettings:
             self.clear_editor_and_disable()
             self.add_hint_button.config(state=tk.NORMAL)
             self.current_prop_info = item_info
-            self.image_label.config(text=f"Images available for {item_info['display_name']}:", font=('Arial', 10, 'bold'))
-            self.show_image_selector(item_info['room_id'], item_info['prop_name'], None, load_only=True)
+            prop_display_name = item_info['display_name']
+            self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
+            self.show_image_selector(item_info['room_id'], prop_display_name, None, load_only=True)
 
         elif item_type == 'hint':
             self.add_hint_button.config(state=tk.DISABLED)
@@ -301,7 +316,8 @@ class ManagerSettings:
                 parent_prop_item = self.hint_tree.parent(selected_item)
                 parent_prop_info = self.tree_items.get(parent_prop_item)
                 if parent_prop_info:
-                     self.image_label.config(text=f"Images available for {parent_prop_info['display_name']}:", font=('Arial', 10, 'bold'))
+                     prop_display_name = parent_prop_info['display_name']
+                     self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
                 else:
                      self.image_label.config(text="Images available:", font=('Arial', 10, 'bold'))
 
@@ -337,6 +353,8 @@ class ManagerSettings:
         room_id = hint_full_info['room_id']
         prop_name = hint_full_info['prop_name']
 
+        prop_display_name = self.get_display_name(room_id, prop_name)
+
         self.rename_entry.delete(0, tk.END)
         self.rename_entry.insert(0, hint_name)
 
@@ -344,7 +362,7 @@ class ManagerSettings:
         self.text_widget.insert('1.0', hint_data.get('text', ''))
         self.text_widget.edit_modified(False)
 
-        self.show_image_selector(room_id, prop_name, hint_name, selected_image=hint_data.get('image'))
+        self.show_image_selector(room_id, prop_display_name, hint_name, selected_image=hint_data.get('image'))
 
     def delete_selected_hint(self):
         if not self.selected_hint_key:
@@ -396,21 +414,7 @@ class ManagerSettings:
             messagebox.showerror("Error", f"An error occurred deleting hint: {e}")
             print(f"[hint library]Error deleting hint: {e}")
 
-    def get_image_path(self, room_id, prop_name, image_filename):
-        if not image_filename:
-            return None
-        room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
-        room_folder = room_map.get(str(room_id), "").lower()
-        if not room_folder:
-            print(f"Warning: Room ID {room_id} not found in room_map for image path.")
-            return None
-
-        base_dir = os.path.dirname(__file__)
-        image_path = Path(base_dir) / "sync_directory" / "hint_image_files" / room_folder / prop_name / image_filename
-
-        return str(image_path) if image_path.exists() else None
-
-    def show_image_selector(self, room_id, prop_name, hint_name, selected_image=None, load_only=False):
+    def show_image_selector(self, room_id, prop_display_name, hint_name, selected_image=None, load_only=False):
         room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
         room_folder = room_map.get(str(room_id), "").lower()
         if not room_folder:
@@ -421,7 +425,7 @@ class ManagerSettings:
              return
 
         base_dir = os.path.dirname(__file__)
-        image_dir_path = Path(base_dir) / "sync_directory" / "hint_image_files" / room_folder / prop_name
+        image_dir_path = Path(base_dir) / "sync_directory" / "hint_image_files" / room_folder / prop_display_name
         image_dir = str(image_dir_path)
 
         self.image_listbox.delete(0, tk.END)
@@ -433,7 +437,7 @@ class ManagerSettings:
         if image_dir_path.exists() and image_dir_path.is_dir():
             image_files = []
             for item in os.listdir(image_dir):
-                if item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                if not item.startswith('.') and item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
                    image_files.append(item)
 
             image_files.sort()
@@ -444,45 +448,65 @@ class ManagerSettings:
                      current_selection_index = index
 
             if not load_only:
-                self.current_image_context = {'room_id': room_id, 'prop_name': prop_name, 'hint_name': hint_name, 'image_dir': image_dir}
-                if current_selection_index != -1:
+                 internal_prop_name = None
+                 room_key = room_map.get(str(room_id))
+                 if room_key and room_key in self.prop_mappings:
+                     for p_name, p_details in self.prop_mappings[room_key]['mappings'].items():
+                         if p_details.get('display') == prop_display_name:
+                             internal_prop_name = p_name
+                             break
+                 if internal_prop_name is None:
+                     print(f"Warning: Could not find internal prop_name for display name '{prop_display_name}' in room {room_id}. Image context might be incomplete.")
+                     internal_prop_name = prop_display_name
+
+                 self.current_image_context = {'room_id': room_id, 'prop_name': internal_prop_name, 'hint_name': hint_name, 'image_dir': image_dir}
+                 if current_selection_index != -1:
                     self.image_listbox.selection_set(current_selection_index)
                     self.image_listbox.see(current_selection_index)
                     self.preview_selected_image()
             else:
                  self.current_image_context = None
-
         else:
             print(f"[hint library]Image directory not found or is not a directory: {image_dir}")
+            self.image_label.config(text=f"Image directory not found for {prop_display_name}")
 
     def preview_selected_image(self, event=None):
         selection = self.image_listbox.curselection()
         if not selection:
-            self.image_preview_label.config(image=None)
+            self.image_preview_label.config(image=None, text="")
             self.image_preview_label.image = None
             return
 
         filename = self.image_listbox.get(selection[0])
 
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
-             print("Preview attempt without valid image context.")
-             return
+             print("Preview attempt without valid image context (Hint likely not selected).")
+             try:
+                 self.image_preview_label.config(image=None, text="Select hint first", foreground='orange')
+                 self.image_preview_label.image = None
+                 return
+             except Exception as e:
+                 print(f"Error trying fallback preview: {e}")
+                 return
 
         image_path = Path(self.current_image_context['image_dir']) / filename
         try:
+            if not image_path.is_file():
+                 raise FileNotFoundError(f"Path is not a file: {image_path}")
+
             image = Image.open(str(image_path))
             image.thumbnail((200, 200))
             photo = ImageTk.PhotoImage(image)
-            self.image_preview_label.config(image=photo)
+            self.image_preview_label.config(image=photo, text="")
             self.image_preview_label.image = photo
             self.update_hint_image(filename)
         except FileNotFoundError:
-             print(f"[hint library]Error displaying image preview: File not found at {image_path}")
-             self.image_preview_label.config(text="Preview Error: Not Found", image=None)
+             print(f"[hint library]Preview Error: Image file not found at {image_path}")
+             self.image_preview_label.config(text="Image not found", image=None, foreground='red')
              self.image_preview_label.image = None
         except Exception as e:
-            print(f"[hint library]Error displaying image preview: {e}")
-            self.image_preview_label.config(text=f"Preview Error: {e}", image=None)
+            print(f"[hint library]Error displaying image preview for {image_path}: {e}")
+            self.image_preview_label.config(text=f"Preview Error: {e}", image=None, foreground='red')
             self.image_preview_label.image = None
 
     def update_hint_image(self, filename):
@@ -742,71 +766,100 @@ class ManagerSettings:
              return
 
         room_id = self.current_prop_info['room_id']
-        prop_name = self.current_prop_info['prop_name']
-        prop_display_name = self.current_prop_info['display_name']
+        prop_name = self.current_prop_info['prop_name'] # Internal name
+        prop_display_name = self.current_prop_info['display_name'] # Display name
 
         # Ask user for the new hint name
         new_hint_name = simpledialog.askstring("New Hint Name",
                                                f"Enter a name for the new hint under '{prop_display_name}':",
-                                               parent=self.settings_container) # Use settings_container or main window
+                                               parent=self.settings_container)
 
-        if not new_hint_name: # User cancelled or entered nothing
+        if not new_hint_name:
             return
 
         new_hint_name = new_hint_name.strip()
-        if not new_hint_name: # User entered only whitespace
+        if not new_hint_name:
             messagebox.showerror("Error", "Hint name cannot be empty.")
             return
 
-        # Check if hint name already exists for this prop
+        # *** Use internal prop_name for key generation for internal maps ***
         new_hint_key = f"{room_id}-{prop_name}-{new_hint_name}"
+        # *** Check internal hint_map for conflicts based on internal key ***
         if new_hint_key in self.hint_map:
-            messagebox.showerror("Error", f"A hint named '{new_hint_name}' already exists for this prop.")
+            messagebox.showerror("Error", f"A hint named '{new_hint_name}\' (internally linked to '{prop_name}') already exists for this prop.")
             return
 
-        # Create the new hint structure (empty text, no image)
-        new_hint_data = {"text": "", "image": None} # Explicitly None or omit image key? Let's omit.
         new_hint_data = {"text": ""}
 
-
         try:
-            # Read existing data
             try:
                  with open('saved_hints.json', 'r') as f:
                     hint_data_file = json.load(f)
             except FileNotFoundError:
-                 hint_data_file = {"rooms": {}} # Start fresh if file doesn't exist
+                 hint_data_file = {"rooms": {}}
 
-            # Ensure structure exists down to the prop level
             if 'rooms' not in hint_data_file:
                  hint_data_file['rooms'] = {}
             if str(room_id) not in hint_data_file['rooms']:
                  hint_data_file['rooms'][str(room_id)] = {}
-            if prop_name not in hint_data_file['rooms'][str(room_id)]:
-                 hint_data_file['rooms'][str(room_id)][prop_name] = {}
 
-            # Add the new hint
-            hint_data_file['rooms'][str(room_id)][prop_name][new_hint_name] = new_hint_data
+            # *** Use prop_display_name as the key when writing to the JSON file structure ***
+            if prop_display_name not in hint_data_file['rooms'][str(room_id)]:
+                 hint_data_file['rooms'][str(room_id)][prop_display_name] = {}
 
-            # Write back to file
+            # Check conflict again directly in the dictionary using display_name key
+            if new_hint_name in hint_data_file['rooms'][str(room_id)][prop_display_name]:
+                 messagebox.showerror("Error", f"A hint named '{new_hint_name}\' already exists for prop '{prop_display_name}' in the save file.")
+                 return # Prevent overwriting just in case internal map was out of sync
+
+            # Add the new hint using display_name key
+            hint_data_file['rooms'][str(room_id)][prop_display_name][new_hint_name] = new_hint_data
+
             with open('saved_hints.json', 'w') as f:
                 json.dump(hint_data_file, f, indent=4)
 
-            print(f"Added new hint '{new_hint_name}' to prop '{prop_name}' in room '{room_id}'")
+            print(f"Added new hint \'{new_hint_name}\' to prop \'{prop_display_name}\' (internal: {prop_name}) in room \'{room_id}\'")
 
-            # Refresh the Treeview to show the new hint
-            self.load_hints()
+            # --- Refresh and Select New Hint ---
+            # Store current selection/scroll state if desired (optional)
+            # selected_prop_id = self.hint_tree.selection()[0] if self.hint_tree.selection() else None
 
-            # Optionally, try to select the newly added hint in the tree (might be complex)
-            # self.select_newly_added_hint(new_hint_key) # Needs implementation
+            self.load_hints() # Reload the tree
+
+            # Find the tree item ID for the new hint
+            new_item_id = None
+            for item_id, item_data in self.tree_items.items():
+                if item_data.get('key') == new_hint_key:
+                    new_item_id = item_id
+                    break
+
+            if new_item_id:
+                # Ensure parent nodes are open
+                parent_prop = self.hint_tree.parent(new_item_id)
+                if parent_prop:
+                    self.hint_tree.item(parent_prop, open=True)
+                    parent_room = self.hint_tree.parent(parent_prop)
+                    if parent_room:
+                        self.hint_tree.item(parent_room, open=True)
+
+                # Select, focus, and scroll to the new item
+                self.hint_tree.selection_set(new_item_id)
+                self.hint_tree.focus(new_item_id)
+                self.hint_tree.see(new_item_id)
+                print(f"Selected newly added hint item: {new_item_id}")
+                # Calling selection_set should trigger on_hint_select, enabling the editor
+            else:
+                print(f"Warning: Could not find tree item for new hint key {new_hint_key} after reload.")
+                # Maybe re-select the original prop as fallback?
+                # if selected_prop_id:
+                #     self.hint_tree.selection_set(selected_prop_id)
 
             self.status_label.config(text="New hint added.", foreground='green')
             self.status_label.after(2000, lambda: self.status_label.config(text=""))
 
-
         except json.JSONDecodeError as e:
-             messagebox.showerror("Error", f"Error reading saved_hints.json: {e}")
-             self.status_label.config(text="Error reading file!", foreground='red')
+             messagebox.showerror("Error", f"Error reading/writing saved_hints.json: {e}")
+             self.status_label.config(text="Error accessing file!", foreground='red')
         except Exception as e:
             print(f"[hint library]Error adding new hint: {e}")
             messagebox.showerror("Error", f"An unexpected error occurred adding the hint: {e}")
