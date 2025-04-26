@@ -5,6 +5,23 @@
         "4": {},
         "5": {},
         "6": {},
-        "7": {}
+        "7": {},
+        "3": {
+            "Mirror": {
+                "mirror has symbols": {
+                    "text": "Look at the mirror next to the fireplace. It has the same symbols!"
+                }
+            },
+            "Spin Globe": {
+                "spinning activates podium": {
+                    "text": "Look at the \"Galaxy Podium\" while you spin the globe. The symbols shown there are somewhere else in the room."
+                }
+            },
+            "Veiny Orb": {
+                "tap it": {
+                    "text": "Tap the circle on the side of the white orb's stand. It will show you three colors in order important for another puzzle."
+                }
+            }
+        }
     }
 }

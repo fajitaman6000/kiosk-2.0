@@ -175,7 +175,7 @@ class ManagerSettings:
         self.rename_entry.bind('<Return>', lambda e: self.rename_selected_hint())
 
         ttk.Label(self.hint_editor_frame, text="Text content:", font=('Arial', 10, 'bold')).pack(anchor='w', padx=5, pady=2)
-        self.text_widget = tk.Text(self.hint_editor_frame, height=3, width=40, wrap=tk.WORD, state=tk.DISABLED)
+        self.text_widget = tk.Text(self.hint_editor_frame, height=6, width=40, wrap=tk.WORD, state=tk.DISABLED)
         self.text_widget.pack(pady=5)
 
         self.image_label = ttk.Label(self.hint_editor_frame, text="", font=('Arial', 10, 'bold'))
@@ -472,9 +472,13 @@ class ManagerSettings:
         self.rename_entry.delete(0, tk.END)
         self.rename_entry.config(state=tk.DISABLED)
         self.rename_button.config(state=tk.DISABLED)
+        
+        # First set state to NORMAL to modify content, then disable
+        self.text_widget.config(state=tk.NORMAL)
         self.text_widget.delete('1.0', tk.END)
         self.text_widget.config(state=tk.DISABLED)
         self.text_widget.edit_modified(False)
+        
         self.image_listbox.delete(0, tk.END)
         self.image_listbox.config(state=tk.DISABLED)
         
@@ -511,9 +515,13 @@ class ManagerSettings:
         self.rename_entry.delete(0, tk.END)
         self.rename_entry.insert(0, hint_name)
 
+        # First enable the text widget so we can edit it
+        self.text_widget.config(state=tk.NORMAL)
+        # Then clear and insert the text
         self.text_widget.delete('1.0', tk.END)
         self.text_widget.insert('1.0', hint_data.get('text', ''))
         self.text_widget.edit_modified(False)
+        # We don't disable it here because on_hint_select will enable it after this
 
         self.selected_hint_name_label.config(text=f"Editing Hint: {hint_name}")
         self.show_image_selector(room_id, prop_display_name, hint_name, selected_image=hint_data.get('image'))
