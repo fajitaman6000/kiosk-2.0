@@ -38,11 +38,21 @@ PROP_MAPPING_FILE = ADMIN_DIR / "prop_name_mapping.json"
 
 # THUMBNAIL_SIZE = (64, 64) # Old thumbnail size
 PROP_BLOCK_THUMBNAIL_SIZE = (100, 75) # Thumbnail size for the prop block
-POPUP_PREVIEW_SIZE = (600, 400) # Consider adjusting for text widget
+POPUP_PREVIEW_SIZE = (600, 400) # Image preview size for popup
 ROOM_GRID_COLUMNS = 3
 PROP_GRID_COLUMNS = 4 # Adjust as needed
 
-# Map room folder names to room numbers (adjust if needed)
+# Map room folder names to room display names
+ROOM_NAME_MAP = {
+    "casino": "Casino Heist",
+    "ma": "Morning After",
+    "wizard": "Wizard Trials",
+    "zombie": "Zombie Outbreak",
+    "haunted": "Haunted Manor",
+    "atlantis": "Atlantis Rising",
+    "time": "Time Machine"
+}
+# Map room folder names to room IDs
 ROOM_NAME_TO_ID_MAP = {
     "casino": "1",
     "ma": "2",
@@ -87,10 +97,19 @@ class HintViewerPopup:
         self.prop_original_name = prop_original_name
         self.prop_display_name = prop_display_name
         
+        # Get the prop directory
+        room_folder_name = ROOM_ID_TO_NAME_MAP.get(room_id)
+        self.prop_dir = BASE_IMAGE_DIR / room_folder_name / prop_original_name if room_folder_name else None
+        
+        # Image navigation state
+        self.image_list = []
+        self.current_image_index = 0
+        self.image_obj = None  # Current loaded image
+        
         # Create popup window
         self.popup = tk.Toplevel(parent)
-        self.popup.title(f"Hint Editor: {prop_display_name} (Room {room_id})")
-        self.popup.geometry("800x600")
+        self.popup.title(f"Hint Editor: {prop_display_name} ({ROOM_NAME_MAP.get(room_folder_name, f'Room {room_id}')})")
+        self.popup.geometry("900x700")
         self.popup.protocol("WM_DELETE_WINDOW", self.on_close)
         
         # Main frame
@@ -102,7 +121,7 @@ class HintViewerPopup:
         info_frame.pack(fill=tk.X, pady=(0, 10))
         
         # Title and information
-        ttk.Label(info_frame, text=f"Room {room_id}: {prop_display_name}", 
+        ttk.Label(info_frame, text=f"{ROOM_NAME_MAP.get(room_folder_name, f'Room {room_id}')}: {prop_display_name}", 
                   font=("TkDefaultFont", 12, "bold")).pack(side=tk.LEFT, pady=5)
         
         # Button frame
@@ -110,14 +129,57 @@ class HintViewerPopup:
         button_frame.pack(side=tk.RIGHT)
         
         ttk.Button(button_frame, text="Open Folder", 
-                   command=lambda: self.app.open_folder(room_id, prop_original_name)).pack(side=tk.LEFT, padx=5)
+                   command=self.open_folder_from_popup).pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(button_frame, text="Save", 
+        ttk.Button(button_frame, text="Add Images", 
+                   command=self.add_images_from_popup).pack(side=tk.LEFT, padx=5)
+        
+        ttk.Button(button_frame, text="Save Hints", 
                    command=self.save_hints).pack(side=tk.LEFT, padx=5)
         
-        # Hints editor
-        hints_frame = ttk.LabelFrame(main_frame, text="Hints")
-        hints_frame.pack(expand=True, fill=tk.BOTH)
+        # Content frame with two columns
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(expand=True, fill=tk.BOTH)
+        content_frame.columnconfigure(0, weight=1)  # Image column
+        content_frame.columnconfigure(1, weight=1)  # Hints column
+        
+        # Image display frame (left column)
+        image_frame = ttk.LabelFrame(content_frame, text="Images")
+        image_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
+        
+        # Image preview area
+        self.image_preview_frame = ttk.Frame(image_frame)
+        self.image_preview_frame.pack(expand=True, fill=tk.BOTH)
+        
+        self.image_label = ttk.Label(self.image_preview_frame, anchor="center")
+        self.image_label.pack(expand=True, fill=tk.BOTH)
+        
+        # Image navigation buttons
+        nav_frame = ttk.Frame(image_frame)
+        nav_frame.pack(fill=tk.X, pady=5)
+        
+        self.prev_button = ttk.Button(nav_frame, text="Previous", command=self.go_previous)
+        self.prev_button.pack(side=tk.LEFT, padx=5)
+        
+        self.image_count_label = ttk.Label(nav_frame, text="0/0")
+        self.image_count_label.pack(side=tk.LEFT, expand=True)
+        
+        self.next_button = ttk.Button(nav_frame, text="Next", command=self.go_next)
+        self.next_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Image action buttons
+        action_frame = ttk.Frame(image_frame)
+        action_frame.pack(fill=tk.X, pady=5)
+        
+        self.rename_button = ttk.Button(action_frame, text="Rename", command=self.rename_image)
+        self.rename_button.pack(side=tk.LEFT, padx=5)
+        
+        self.delete_button = ttk.Button(action_frame, text="Delete", command=self.delete_image)
+        self.delete_button.pack(side=tk.RIGHT, padx=5)
+        
+        # Hints editor frame (right column)
+        hints_frame = ttk.LabelFrame(content_frame, text="Hints")
+        hints_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
         
         # Hints text widget
         self.hints_text = tk.Text(hints_frame, wrap=tk.WORD, font=("TkDefaultFont", 10))
@@ -127,8 +189,13 @@ class HintViewerPopup:
         text_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.hints_text.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
         
-        # Load existing hints
+        # Load existing hints and images
         self.load_hints()
+        self.load_image_list()
+        if self.image_list:
+            self.load_image(0)
+        else:
+            self.show_no_image()
     
     def load_hints(self):
         """Load existing hints into the text editor."""
@@ -149,10 +216,222 @@ class HintViewerPopup:
             hint_lines = []
             for level, hint in sorted(hints_data.items()):
                 hint_lines.append(f"Level {level}:")
-                hint_lines.append(hint)
+                # Make sure hint is a string
+                if isinstance(hint, dict):
+                    # If it's a dict, convert to string representation
+                    hint_text = json.dumps(hint, indent=2)
+                else:
+                    hint_text = str(hint)
+                hint_lines.append(hint_text)
                 hint_lines.append("")  # Add blank line between hints
             
             self.hints_text.insert("1.0", "\n".join(hint_lines))
+    
+    def load_image_list(self):
+        """Load the list of images for this prop."""
+        self.image_list = []
+        if self.prop_dir and self.prop_dir.is_dir():
+            self.image_list = sorted(get_image_files(self.prop_dir))
+        self.update_button_states()
+    
+    def show_no_image(self):
+        """Display a message when no images are available."""
+        self.image_label.configure(image=None, text="No images available")
+        self.image_count_label.configure(text="0/0")
+        self.update_button_states()
+    
+    def load_image(self, index):
+        """Load and display the image at the given index."""
+        if not self.image_list or index < 0 or index >= len(self.image_list):
+            self.show_no_image()
+            return
+        
+        try:
+            self.current_image_index = index
+            image_path = self.image_list[index]
+            
+            img = Image.open(image_path)
+            img.thumbnail(POPUP_PREVIEW_SIZE, Image.Resampling.LANCZOS)
+            
+            photo = ImageTk.PhotoImage(img)
+            self.image_label.configure(image=photo, text="")
+            self.image_label.image = photo  # Keep a reference
+            self.image_obj = photo  # Store for later reference
+            
+            # Update the image count label
+            self.image_count_label.configure(text=f"{index + 1}/{len(self.image_list)}")
+            
+            # Update button states
+            self.update_button_states()
+            
+        except Exception as e:
+            print(f"Error loading image {image_path}: {e}")
+            self.image_label.configure(image=None, text=f"Error loading image:\n{e}")
+    
+    def update_button_states(self):
+        """Update the state of navigation buttons based on current index."""
+        image_count = len(self.image_list)
+        
+        # Update Previous button
+        if image_count == 0 or self.current_image_index <= 0:
+            self.prev_button.configure(state="disabled")
+        else:
+            self.prev_button.configure(state="normal")
+        
+        # Update Next button
+        if image_count == 0 or self.current_image_index >= image_count - 1:
+            self.next_button.configure(state="disabled")
+        else:
+            self.next_button.configure(state="normal")
+        
+        # Update Rename and Delete buttons
+        if image_count == 0:
+            self.rename_button.configure(state="disabled")
+            self.delete_button.configure(state="disabled")
+        else:
+            self.rename_button.configure(state="normal")
+            self.delete_button.configure(state="normal")
+    
+    def go_previous(self):
+        """Navigate to the previous image."""
+        if self.current_image_index > 0:
+            self.load_image(self.current_image_index - 1)
+    
+    def go_next(self):
+        """Navigate to the next image."""
+        if self.current_image_index < len(self.image_list) - 1:
+            self.load_image(self.current_image_index + 1)
+    
+    def rename_image(self):
+        """Rename the current image file."""
+        if not self.image_list or self.current_image_index >= len(self.image_list):
+            return
+        
+        current_path = self.image_list[self.current_image_index]
+        current_name = current_path.name
+        
+        # Ask for a new name
+        new_name = simpledialog.askstring(
+            "Rename Image", 
+            "Enter new filename:",
+            initialvalue=current_name
+        )
+        
+        if not new_name:
+            return  # User cancelled
+        
+        # Add extension if missing
+        if not any(new_name.lower().endswith(ext) for ext in ['.jpg', '.jpeg', '.png', '.gif']):
+            # Keep the original extension
+            new_name = f"{new_name}{current_path.suffix}"
+        
+        # Check if name exists
+        new_path = current_path.parent / new_name
+        if new_path.exists() and new_path != current_path:
+            if not messagebox.askyesno("File Exists", 
+                                 f"File '{new_name}' already exists. Overwrite?"):
+                return
+        
+        try:
+            # Rename the file
+            new_path = current_path.with_name(new_name)
+            current_path.rename(new_path)
+            
+            # Reload the image list and display the renamed image
+            current_index = self.current_image_index
+            self.load_image_list()
+            
+            # Find the renamed image's new index
+            for i, img_path in enumerate(self.image_list):
+                if img_path.name == new_name:
+                    self.load_image(i)
+                    return
+            
+            # If not found, load the image at the old index if possible
+            if 0 <= current_index < len(self.image_list):
+                self.load_image(current_index)
+            elif self.image_list:
+                self.load_image(0)
+            else:
+                self.show_no_image()
+                
+        except Exception as e:
+            messagebox.showerror("Rename Error", f"Could not rename file:\n{e}")
+    
+    def delete_image(self):
+        """Delete the current image file."""
+        if not self.image_list or self.current_image_index >= len(self.image_list):
+            return
+        
+        current_path = self.image_list[self.current_image_index]
+        
+        # Confirm deletion
+        if not messagebox.askyesno("Confirm Delete", 
+                             f"Are you sure you want to delete '{current_path.name}'?"):
+            return
+        
+        try:
+            # Delete the file
+            current_path.unlink()
+            
+            # Reload the image list
+            current_index = self.current_image_index
+            self.load_image_list()
+            
+            # Display the next image, or the previous if there is no next
+            if self.image_list:
+                if current_index < len(self.image_list):
+                    self.load_image(current_index)
+                else:
+                    self.load_image(len(self.image_list) - 1)
+            else:
+                self.show_no_image()
+                
+        except Exception as e:
+            messagebox.showerror("Delete Error", f"Could not delete file:\n{e}")
+    
+    def add_images_from_popup(self):
+        """Add images to the prop directory from the popup."""
+        if not self.prop_dir:
+            messagebox.showerror("Error", "No prop directory available")
+            return
+        
+        # Create directory if it doesn't exist
+        if not self.prop_dir.exists():
+            try:
+                self.prop_dir.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not create directory:\n{e}")
+                return
+        
+        # Ask for image files
+        file_paths = filedialog.askopenfilenames(
+            title="Select Image Files",
+            filetypes=[
+                ("Image files", "*.jpg *.jpeg *.png *.gif"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if not file_paths:
+            return  # User cancelled
+        
+        # Copy the files
+        copied_count = self.app.add_images(self.prop_dir, file_paths)
+        
+        if copied_count > 0:
+            # Reload the image list
+            current_index = self.current_image_index
+            self.load_image_list()
+            
+            # If there were no images before, show the first new one
+            if current_index == 0 and not self.image_obj and self.image_list:
+                self.load_image(0)
+        
+    def open_folder_from_popup(self):
+        """Open the prop folder from the popup."""
+        if self.prop_dir:
+            self.app.open_folder(self.room_id, self.prop_original_name)
         
     def save_hints(self):
         """Save the hints from the text editor."""
@@ -331,11 +610,14 @@ class HintBrowserApp:
             if not room_id:
                 continue  # Skip rooms without ID mapping
             
+            # Get the room display name
+            room_display_name = ROOM_NAME_MAP.get(room_name, f"Room {room_id}")
+            
             logging.debug(f"Creating section for room: {room_name} (ID: {room_id})")
             print(f"DEBUG: Creating section for room: {room_name} (ID: {room_id})")
             
             # Create a frame for this room
-            room_frame = ttk.LabelFrame(self.scrollable_frame, text=f"{room_name.capitalize()} (ID: {room_id})")
+            room_frame = ttk.LabelFrame(self.scrollable_frame, text=f"{room_display_name} (ID: {room_id})")
             room_frame.grid(row=row_idx, column=0, padx=10, pady=10, sticky="ew")
             
             # Create a frame for props in this room
@@ -504,6 +786,33 @@ class HintBrowserApp:
     def on_viewer_closed(self):
         """Callback when the viewer popup is closed."""
         self._hint_viewer_popup = None
+
+    def add_images(self, prop_dir: Path, file_paths: list[str]) -> int:
+        """Handles copying images. Returns number of files successfully copied."""
+        if not file_paths:
+            return 0
+
+        copied_count = 0
+        errors = []
+        for file_path in file_paths:
+            try:
+                source_path = Path(file_path)
+                destination_path = prop_dir / source_path.name
+                if destination_path.exists():
+                   print(f"Skipping copy: {destination_path} already exists.")
+                   continue
+                shutil.copy2(source_path, destination_path)
+                print(f"Copied {source_path.name} to {prop_dir.name}")
+                copied_count += 1
+            except Exception as e:
+                err_msg = f"Failed to copy {Path(file_path).name}:\n{e}"
+                print(f"Error copying {file_path} to {prop_dir}: {e}")
+                errors.append(err_msg)
+
+        if errors:
+            messagebox.showerror("Copy Error(s)", "\n\n".join(errors))
+
+        return copied_count
 
 # --- Main Execution ---
 
