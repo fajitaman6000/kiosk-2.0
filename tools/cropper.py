@@ -120,7 +120,7 @@ class ImageCropperApp:
         cx = canvas_w / 2; cy = canvas_h / 2
         try: frame_visual_size = min(canvas_w, canvas_h) * FRAME_VISUAL_SIZE_FACTOR
         except NameError:
-             try: frame_visual_size = FRAME_VISUAL_PIXELS
+             try: frame_visual_size = FRAME_VISUAL_PIXELS # type: ignore
              except NameError: frame_visual_size = min(canvas_w, canvas_h) * 0.75; print("Warning: Default frame size.")
         half_size = frame_visual_size / 2; x1, y1, x2, y2 = cx - half_size, cy - half_size, cx + half_size, cy + half_size
         if self.crop_frame_id: self.canvas.coords(self.crop_frame_id, x1, y1, x2, y2)

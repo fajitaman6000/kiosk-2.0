@@ -12,6 +12,24 @@
                     "text": "The lamp on the wall must be spun until it turns off.",
                     "image": "spin.png"
                 }
+            },
+            "Weight Game": {
+                "order them by weight": {
+                    "text": "Order the bottles on the table by weight.",
+                    "image": "weight order.png"
+                }
+            },
+            "Computer": {
+                "click the icon": {
+                    "text": "Double click the icon on the computer to view the security cameras. You'll find the relevant information inside the vault.",
+                    "image": "cameras app click.png"
+                }
+            },
+            "Plant Bombs": {
+                "solution": {
+                    "text": "The bombs go in these positions in these orientations",
+                    "image": "c4 positions.png"
+                }
             }
         },
         "2": {},
@@ -296,6 +314,28 @@
                 "need these items": {
                     "text": "To complete the shelf, you'll need three items. A goblet of ice, a chalice of dragon's eye, and a crystal skull.",
                     "image": "ice green skull.png"
+                }
+            },
+            "Potion Pot": {
+                "look under bed": {
+                    "text": "The last place I had my recipe book, I recall laying in that wooden bed there. Perhaps you should do the same!"
+                }
+            },
+            "Fart Owl": {
+                "trial and error": {
+                    "text": "Archimedes' puzzle is of trial and error. Place your hand on the side of the owl's log. Hoots are good, farts are bad. Remember what order made the hoots. If you got a fart, start over.",
+                    "image": "owl hand.png"
+                }
+            },
+            "Planet Colors": {
+                "look at the ornament": {
+                    "text": "The ornament on the shelf will indicate to you two things for the planetary puzzle on the wall. Size and color. Match the sizes to their colors using your wand and the box will open for you.",
+                    "image": "planets.png"
+                }
+            },
+            "Stone Pieces": {
+                "rotation matters": {
+                    "text": "Ensure that all the black stone pieces on the desk are rotated to complete the picture of the potion bottle."
                 }
             }
         }

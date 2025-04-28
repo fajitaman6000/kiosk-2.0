@@ -33,14 +33,12 @@ opening hint manager twice breaks it the second time
 ##############################################################################################################################
 # pre-beta testing
 
-"images available for" not populated when prop is selected, not hint item
-need ability to select "none" for images
 
 
 ##############################################################################################################################
 # todo
 
-
+"Other" category as prop for hints
 "currently displayed hint"
 "please select nudge frequency"
 no progress notification
