@@ -213,6 +213,27 @@
                 "tap it": {
                     "text": "Tap the circle on the side of the white orb's stand. It will show you three colors in order important for another puzzle."
                 }
+            },
+            "Knocking Chest": {
+                "book": {
+                    "text": "There's a book on the wall that looks nothing like the rest. Press it and you will hear a pattern.\n\nSure sounds a lot like knocking."
+                },
+                "knock on the chest": {
+                    "text": "The book on the wall behind the wands, when pressed, plays a pattern of sounds. Knock the same pattern on the knocking chest to open it."
+                }
+            },
+            "Spell Chart": {
+                "smell the bottles": {
+                    "text": "The bottles above the fireplace seem to have a smell! And they've got symbols on them that match that spell chart on the wall."
+                },
+                "scroll on desk": {
+                    "text": "The bottles smell like the flavors described on the scroll on the desk. Those bottles have symbols on them that should be tapped on the spell chart in the same order with your wand."
+                }
+            },
+            "Chair": {
+                "sit on it": {
+                    "text": "I know we're all excited to complete our quest, but I think the best thing to do would be to SIT and think about the plan."
+                }
             }
         }
     }
