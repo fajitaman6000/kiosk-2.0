@@ -51,7 +51,8 @@
             },
             "Breakers": {
                 "tools": {
-                    "text": "The toolbench has four rows of four tools, some missing, some not. Sixteen total.\n\nThe breaker box.. how many switches does it have?"
+                    "text": "The toolbench has four rows of four tools, some missing, some not. Sixteen total.\n\nThe breaker box.. how many switches does it have?",
+                    "image": "breaker box.png"
                 }
             },
             "Wagon Wheel": {
@@ -59,13 +60,14 @@
                     "text": "The wheel is a trial and error puzzle, but the solution will always be the same. Try turning it left or right, but be slow and try to remember which directions worked each time."
                 },
                 "red hand red light": {
-                    "text": "The bloody handprint on the wheel corresponds with the light on the wall. Line it up with the light to input a left or right turn into the sequence."
+                    "text": "The bloody handprint on the wheel corresponds with the light on the wall. Line it up with the light to input a left or right turn into the sequence.",
+                    "image": "wheel.png"
                 }
             },
             "Cables Box": {
                 "wrenches": {
                     "text": "Found a box of wrenches? They've all got numbers on them and it looks to me all the number wheels on that box have a differently sized bolt on the front.",
-                    "image": "cheese board.png"
+                    "image": "wrenches.png"
                 },
                 "how to open box": {
                     "text": "There's a wooden board available to you with holes in it. There's a shelf tucked away in a corner with a puzzle on it. Place the board on the puzzle and read the result. Rotate the board to get the next number.",
@@ -81,10 +83,12 @@
             },
             "Sun Dial": {
                 "trial and error": {
-                    "text": "The clock is a trial and error puzzle, but the solution will always be the same. Try turning the red knob on the sun dial left or right, and try to remember which directions worked each time."
+                    "text": "The clock is a trial and error puzzle, but the solution will always be the same. Try turning the red knob on the sun dial left or right, and try to remember which directions worked each time.",
+                    "image": "sun dial.png"
                 },
                 "look at the clock": {
-                    "text": "That big clock responds to LEFT and RIGHT turns of the sun dial in a SPECIFIC ORDER. Keep an eye on it as you turn the dial and try to remember the sequence until you get it right!"
+                    "text": "That big clock responds to LEFT and RIGHT turns of the sun dial in a SPECIFIC ORDER. Keep an eye on it as you turn the dial and try to remember the sequence until you get it right!",
+                    "image": "sun dial.png"
                 }
             },
             "Rope Braid": {
@@ -94,7 +98,8 @@
             },
             "Symbol Maze": {
                 "trial and error": {
-                    "text": "The goal of the block maze in the corner  of the room is to slide the pieces past the gate on the left. Don't be afraid to slide them around a lot. Keep trying until you get it right."
+                    "text": "The goal of the block maze in the corner  of the room is to slide the pieces past the gate on the left. Don't be afraid to slide them around a lot. Keep trying until you get it right.",
+                    "image": "symbol maze.png"
                 }
             },
             "Yellow Puzzle": {
@@ -129,13 +134,14 @@
             },
             "Suitcase": {
                 "rope to open": {
-                    "text": "To get that suitcase open you have to complete something else in the room. Start with that braided rope there. That should be easy."
+                    "text": "To get that suitcase open you have to complete something else in the room. Start with that braided rope there. That should be easy.",
+                    "image": "suitcase.png"
                 }
             },
             "Vanity Photos": {
                 "threadboard": {
                     "text": "Have you found a black and white square with rope in it? What about a door with letters on both sides? If you follow the rope's path and match it to the door, you'll get names!",
-                    "image": "thread door.png"
+                    "image": "thread.png"
                 }
             },
             "Diary/Cross": {
@@ -159,11 +165,16 @@
             "Levers": {
                 "instructions": {
                     "text": "Each stack of blocks and their symbols can add together to create one of the symbols below. Only one side of each block matters. The 4th block is done for you."
+                },
+                "solution": {
+                    "text": "This is the orientation of the levers you must move them to to complete the puzzle",
+                    "image": "levers.png"
                 }
             },
             "Stone Fragments": {
                 "gather all pieces": {
-                    "text": "All pieces must be placed together on the box to open it. If you're missing any, you've got more puzzles to solve."
+                    "text": "All pieces must be placed together on the box to open it. If you're missing any, you've got more puzzles to solve.",
+                    "image": "tangram.png"
                 }
             },
             "Floor Panels": {
@@ -173,7 +184,8 @@
             },
             "Light Maze": {
                 "not white path": {
-                    "text": "The tip of the crystal must touch the SYMBOL, not the white path. Check the crystal for a map on where to go."
+                    "text": "The tip of the crystal must touch the SYMBOL, not the white path. Check the crystal for a map on where to go.",
+                    "image": "light maze.png"
                 }
             },
             "Pickaxes": {
@@ -183,7 +195,8 @@
             },
             "Laser Crown": {
                 "point at poseidon": {
-                    "text": "The pyramid is emitting a laser from the top! The mirror you have can redirect the laser into the statue's crown. Hold it there for a few seconds."
+                    "text": "The pyramid is emitting a laser from the top! The mirror you have can redirect the laser into the statue's crown. Hold it there for a few seconds.",
+                    "image": "poseidon.png"
                 }
             },
             "Pyramid": {
@@ -203,7 +216,8 @@
             },
             "Cryptex Chest": {
                 "use octopus": {
-                    "text": "The wheels on the chest correspond to symbols found from those circles on the wall. Move the octopus until it sticks and your symbol will be found."
+                    "text": "The wheels on the chest correspond to symbols found from those circles on the wall. Move the octopus until it sticks and your symbol will be found.",
+                    "image": "cryptex.png"
                 },
                 "line it up properly": {
                     "text": "The golden trapezoids in the spinning wheel chest show how the wheels must be lined up. Be precise and point the symbols straight up!"
@@ -227,12 +241,14 @@
             },
             "Spin Globe": {
                 "spinning activates podium": {
-                    "text": "Look at the \"Galaxy Podium\" while you spin the globe. The symbols shown there are somewhere else in the room."
+                    "text": "Look at the \"Galaxy Podium\" while you spin the globe. The symbols shown there are somewhere else in the room.",
+                    "image": "galaxy GLOBE.png"
                 }
             },
             "Veiny Orb": {
                 "tap it": {
-                    "text": "Tap the circle on the side of the white orb's stand. It will show you three colors in order important for another puzzle."
+                    "text": "Tap the circle on the side of the white orb's stand. It will show you three colors in order important for another puzzle.",
+                    "image": "veiny orb.png"
                 }
             },
             "Knocking Chest": {
@@ -256,6 +272,30 @@
             "Chair": {
                 "sit on it": {
                     "text": "I know we're all excited to complete our quest, but I think the best thing to do would be to SIT and think about the plan."
+                }
+            },
+            "Rod Game": {
+                "put rods here": {
+                    "text": "There are three square brown rods which fit within holes in the side of the bed.",
+                    "image": "rod holes.png"
+                }
+            },
+            "Fireplace": {
+                "solution": {
+                    "text": "Hold down these four symbols with your wand until the fireplace spell is complete.",
+                    "image": "fireplace solution.png"
+                }
+            },
+            "Code Panel": {
+                "place planchette here": {
+                    "text": "Place the item you found inside the book on the center symbol on the table glyphs.",
+                    "image": "center of table.png"
+                }
+            },
+            "Magic Shelf": {
+                "need these items": {
+                    "text": "To complete the shelf, you'll need three items. A goblet of ice, a chalice of dragon's eye, and a crystal skull.",
+                    "image": "ice green skull.png"
                 }
             }
         }

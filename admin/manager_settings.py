@@ -460,6 +460,8 @@ class ManagerSettings:
             self.current_prop_info = item_info
             prop_display_name = item_info['display_name']
             self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
+            # Enable the image listbox for prop selection too
+            self.image_listbox.config(state=tk.NORMAL)
             self.show_image_selector(item_info['room_id'], prop_display_name, None, load_only=True)
             self.refresh_images_button.config(state=tk.NORMAL)
 
@@ -610,6 +612,8 @@ class ManagerSettings:
         if not room_folder:
              print(f"Cannot find room folder for room ID {room_id}")
              self.image_listbox.delete(0, tk.END)
+             # Add "None" option even when room folder not found
+             self.image_listbox.insert(tk.END, "None")
              try:
                  self.image_preview_label.config(image='')
                  self.image_preview_label.image = None
@@ -622,13 +626,16 @@ class ManagerSettings:
         image_dir = str(image_dir_path)
 
         self.image_listbox.delete(0, tk.END)
+        # Always add "None" option at the top of the list
+        self.image_listbox.insert(tk.END, "None")
+        
         try:
             self.image_preview_label.config(image='')
             self.image_preview_label.image = None
         except Exception as e:
             print(f"[hint library]Error clearing image preview in selector: {e}")
 
-        current_selection_index = -1
+        current_selection_index = 0  # Default to "None" selected
 
         if image_dir_path.exists() and image_dir_path.is_dir():
             image_files = []
@@ -641,22 +648,34 @@ class ManagerSettings:
             for index, filename in enumerate(image_files):
                 self.image_listbox.insert(tk.END, filename)
                 if not load_only and filename == selected_image:
-                     current_selection_index = index
-
-            if not load_only:
-                 internal_prop_name = None # We don't strictly need this anymore
-                 room_key = room_map.get(str(room_id))
-                 # Simplified context setting, directly using prop_display_name
-                 self.current_image_context = {'room_id': room_id, 'prop_display_name': prop_display_name, 'hint_name': hint_name, 'image_dir': image_dir}
-                 if current_selection_index != -1:
-                    self.image_listbox.selection_set(current_selection_index)
-                    self.image_listbox.see(current_selection_index)
-                    self.preview_selected_image()
-            else:
-                 self.current_image_context = None
+                     current_selection_index = index + 1  # +1 because "None" is at index 0
         else:
             print(f"[hint library]Image directory not found or is not a directory: {image_dir}")
             self.image_label.config(text=f"Image directory not found for {prop_display_name}")
+
+        # Always set the image context, even when load_only=True
+        internal_prop_name = None # We don't strictly need this anymore
+        room_key = room_map.get(str(room_id))
+        # Set context regardless of load_only value
+        self.current_image_context = {'room_id': room_id, 'prop_display_name': prop_display_name, 'hint_name': hint_name, 'image_dir': image_dir}
+        
+        if not load_only:
+            if selected_image is None:
+                # Select "None" option
+                self.image_listbox.selection_set(0)
+                self.image_listbox.see(0)
+            elif current_selection_index != 0:
+                self.image_listbox.selection_set(current_selection_index)
+                self.image_listbox.see(current_selection_index)
+                self.preview_selected_image()
+            else:
+                # If the selected image wasn't found, default to "None"
+                self.image_listbox.selection_set(0)
+                self.image_listbox.see(0)
+        else:
+            # Even in load_only mode, we need to select "None" by default
+            self.image_listbox.selection_set(0)
+            self.image_listbox.see(0)
 
     def preview_selected_image(self, event=None):
         selection = self.image_listbox.curselection()
@@ -674,6 +693,19 @@ class ManagerSettings:
             return
 
         filename = self.image_listbox.get(selection[0])
+        
+        # Handle "None" option
+        if filename == "None":
+            try:
+                self.image_preview_label.config(text="No image selected", image='', foreground='gray')
+                self.image_preview_label.image = None
+                # Update hint data to remove the image
+                self.update_hint_image(None)
+                # Update the selected image label
+                self.update_selected_image_label(None)
+            except Exception as e:
+                print(f"[hint library]Error handling None selection: {e}")
+            return
 
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
              print("Preview attempt without valid image context (Hint likely not selected).")
@@ -723,13 +755,18 @@ class ManagerSettings:
     def update_hint_image(self, filename):
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
             return
+        
+        # If no hint is selected (prop selected instead), just skip updating hint data
         if not self.selected_hint_key:
-             print("Skipping image update: No hint selected.")
              return
 
         room_id = self.current_image_context['room_id']
         prop_display_name = self.current_image_context['prop_display_name']
         hint_name = self.current_image_context['hint_name']
+
+        # Skip validation for prop selection (where hint_name is None)
+        if hint_name is None:
+            return
 
         expected_key = f"{room_id}-{prop_display_name}-{hint_name}"
         if self.selected_hint_key != expected_key:
