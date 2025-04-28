@@ -1122,7 +1122,7 @@ class ManagerSettings:
         
         try:
             # Get the correct script path
-            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "image_browser.py")
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tools", "image_browser.py")
             # Use the same Python executable that's running this script
             python_exe = sys.executable
             
