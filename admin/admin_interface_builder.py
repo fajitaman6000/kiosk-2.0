@@ -4,7 +4,7 @@ import time
 from video_client import VideoClient
 from audio_client import AudioClient
 from classic_audio_hints import ClassicAudioHints
-from setup_stats_panel import setup_stats_panel
+from setup_stats_panel import setup_stats_panel, update_volume_meter
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 from admin_audio_manager import AdminAudioManager
 from manager_settings import ManagerSettings
@@ -31,10 +31,10 @@ class AdminInterfaceBuilder:
             'camera_btn': None
         }
         self.video_client = VideoClient()
-        self.audio_client = AudioClient()  # Initialize audio client
-        self.camera_active = False
-        self.audio_active = False
-        self.speaking = False
+        self.audio_clients = {}
+        self.audio_active = {}
+        self.speaking = {}
+        self.preferred_audio_device_index = {}
         self.current_hint_image = None
         self.hint_manager = ManagerSettings(app, self)  # Initialize hint manager
         self.auto_reset_timer_ids = {}
@@ -1090,12 +1090,12 @@ class AdminInterfaceBuilder:
                     
             if hasattr(self, 'audio_active') and self.audio_active:
                 if hasattr(self, 'speaking') and self.speaking:
-                    self.audio_client.stop_speaking()
-                    self.speaking = False
+                    self.audio_clients[computer_name].stop_speaking()
+                    self.speaking = {}
                     if 'speak_btn' in self.stats_elements:
                         self.stats_elements['speak_btn'].config(text="Enable Microphone")
-                self.audio_client.disconnect()
-                self.audio_active = False
+                self.audio_clients[computer_name].disconnect()
+                self.audio_active = {}
                 if 'listen_btn' in self.stats_elements:
                     self.stats_elements['listen_btn'].config(text="Start Listening")
                 if 'speak_btn' in self.stats_elements:
@@ -1433,65 +1433,105 @@ class AdminInterfaceBuilder:
 
     def cleanup(self):
         """Clean up resources before closing"""
-        if hasattr(self, 'audio_manager'):
-            self.audio_manager.cleanup()
+        print("[interface builder] Cleaning up audio clients...")
+        for computer_name, client in self.audio_clients.items():
+            print(f"[interface builder] Disconnecting audio client for {computer_name}")
+            try:
+                client.disconnect()
+            except Exception as e:
+                print(f"[interface builder] Error disconnecting client for {computer_name}: {e}")
+        self.audio_clients.clear()
+
+        # Cleanup video client if necessary
+        if hasattr(self, 'video_client') and hasattr(self.video_client, 'disconnect'):
+             try:
+                 self.video_client.disconnect() # Assuming a similar disconnect method exists
+             except Exception as e:
+                  print(f"[interface builder] Error disconnecting video client: {e}")
+
+        # Original cleanup call (if any)
+        # if hasattr(self, 'audio_manager'):
+        #    self.audio_manager.cleanup() # Keep if audio_manager is still used elsewhere
 
     def toggle_audio(self, computer_name):
         """Toggle audio listening from kiosk"""
-        if not hasattr(self, 'audio_client'):
-            self.audio_client = AudioClient()
-            
-        if getattr(self, 'audio_active', False):
+        # --- Get or create audio client for this computer ---
+        audio_client = self.audio_clients.get(computer_name)
+        if not audio_client:
+            print(f"[interface builder] Creating new AudioClient for {computer_name}")
+            audio_client = AudioClient()
+            self.audio_clients[computer_name] = audio_client
+            # Initialize states for new client
+            self.audio_active[computer_name] = False
+            self.speaking[computer_name] = False
+            # --- Use preferred device if set --- 
+            preferred_index = self.preferred_audio_device_index.get(computer_name)
+            if preferred_index is not None:
+                 print(f"[interface builder] Using preferred device index {preferred_index} for {computer_name}")
+                 # We don't call set_input_device here, just set the index
+                 # get_input_devices() called later will validate and use it.
+                 audio_client.selected_input_device_index = preferred_index
+            # -----------------------------------
+        # ----------------------------------------------------
+
+        is_active = self.audio_active.get(computer_name, False)
+        listen_btn = self.stats_elements.get('listen_btn') # Assume stats_elements corresponds to the selected kiosk
+        speak_btn = self.stats_elements.get('speak_btn')
+
+        if is_active:
             try:
                 # Stop audio
-                self.audio_client.disconnect()
-                self.audio_active = False
-                if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
-                    self.stats_elements['listen_btn'].config(
-                        image=self.stats_elements['listen_btn'].listen_icon,
-                        text="Start Listening"
-                    )
-                else:
-                    self.stats_elements['listen_btn'].config(text="Start Listening")
-                self.stats_elements['speak_btn'].config(state='disabled')
-            except Exception as e:
-                print(f"[interface builder]Error stopping audio: {e}")
-        else:
-            # Start audio
-            self.stats_elements['listen_btn'].config(text="Connecting...")
-            
-            def connect():
-                try:
-                    if self.audio_client.connect(computer_name):
-                        self.audio_active = True
-                        if hasattr(self.stats_elements['listen_btn'], 'stop_listening_icon'):
-                            self.stats_elements['listen_btn'].config(
-                                image=self.stats_elements['listen_btn'].stop_listening_icon,
-                                text="Stop Listening"
-                            )
-                        else:
-                            self.stats_elements['listen_btn'].config(text="Stop Listening")
-                        self.stats_elements['speak_btn'].config(state='normal')
-                    else:
-                        if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
-                            self.stats_elements['listen_btn'].config(
-                                image=self.stats_elements['listen_btn'].listen_icon,
-                                text="Start Listening"
-                            )
-                        else:
-                            self.stats_elements['listen_btn'].config(text="Start Listening")
-                        self.stats_elements['speak_btn'].config(state='disabled')
-                except Exception as e:
-                    print(f"[interface builder]Error connecting audio: {e}")
-                    if hasattr(self.stats_elements['listen_btn'], 'listen_icon'):
-                        self.stats_elements['listen_btn'].config(
-                            image=self.stats_elements['listen_btn'].listen_icon,
+                print(f"[interface builder] Disconnecting audio for {computer_name}")
+                audio_client.disconnect() # Use the specific client
+                self.audio_active[computer_name] = False
+                # Ensure speaking state is also false
+                if self.speaking.get(computer_name, False):
+                     self.toggle_speaking(computer_name) # Stop speaking if active
+                     # Need small delay or check before updating button state?
+
+                if listen_btn:
+                    if hasattr(listen_btn, 'listen_icon'):
+                        listen_btn.config(
+                            image=listen_btn.listen_icon,
                             text="Start Listening"
                         )
                     else:
-                        self.stats_elements['listen_btn'].config(text="Start Listening")
-                    self.stats_elements['speak_btn'].config(state='disabled')
-            
+                        listen_btn.config(text="Start Listening")
+                if speak_btn:
+                    speak_btn.config(state='disabled')
+
+            except Exception as e:
+                print(f"[interface builder] Error stopping audio for {computer_name}: {e}")
+        else:
+            # Start audio
+            if listen_btn:
+                listen_btn.config(text="Connecting...")
+
+            def connect():
+                try:
+                    print(f"[interface builder] Attempting audio connection to {computer_name}")
+                    if audio_client.connect(computer_name): # Use the specific client
+                        print(f"[interface builder] Audio connected for {computer_name}")
+                        self.audio_active[computer_name] = True
+                        # Update UI elements (assuming they are for the current tab)
+                        if listen_btn:
+                            if hasattr(listen_btn, 'stop_listening_icon'):
+                                listen_btn.config(
+                                    image=listen_btn.stop_listening_icon,
+                                    text="Stop Listening"
+                                )
+                            else:
+                                listen_btn.config(text="Stop Listening")
+                        if speak_btn:
+                             speak_btn.config(state='normal')
+                    else:
+                        print(f"[interface builder] Audio connection failed for {computer_name}")
+                        self.audio_active[computer_name] = False
+                except Exception as e:
+                    print(f"[interface builder] Error connecting audio for {computer_name}: {e}")
+                    self.audio_active[computer_name] = False # Ensure state is updated on error
+
+            # Run connect in a separate thread to avoid blocking UI
             threading.Thread(target=connect, daemon=True).start()
 
     def toggle_auto_start(self, computer_name):
@@ -1509,64 +1549,81 @@ class AdminInterfaceBuilder:
 
     def toggle_speaking(self, computer_name):
         """Toggle microphone for speaking to kiosk"""
-        if not self.audio_active:
+        is_active = self.audio_active.get(computer_name, False)
+        if not is_active:
+             print(f"[interface builder] Cannot toggle speaking for {computer_name}: audio not active.")
+             return
+
+        # --- Get the audio client for this computer ---
+        audio_client = self.audio_clients.get(computer_name)
+        if not audio_client:
+            print(f"[interface builder] Error: No audio client found for {computer_name} during toggle_speaking.")
             return
-            
-        if getattr(self, 'speaking', False):
+        # ---------------------------------------------
+
+        is_speaking = self.speaking.get(computer_name, False)
+        speak_btn = self.stats_elements.get('speak_btn') # Assume stats_elements corresponds to the selected kiosk
+
+        if is_speaking:
             try:
                 # Stop speaking
-                self.audio_client.stop_speaking()
-                self.speaking = False
-                # Reset background color of the entire interface
-                self.app.root.configure(bg='systemButtonFace')
-                for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
-                    frame.configure(bg='systemButtonFace')
+                print(f"[interface builder] Stopping speaking for {computer_name}")
+                audio_client.stop_speaking() # Use the specific client
+                self.speaking[computer_name] = False
+
+                # Reset background color of the entire interface (only if this is the currently selected kiosk?)
+                if computer_name == self.selected_kiosk:
+                    self.app.root.configure(bg='systemButtonFace')
+                    # Potentially reset more specific frames if needed
+                    # for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
+                    #    frame.configure(bg='systemButtonFace')
+
                 # Reset button appearance
-                if hasattr(self.stats_elements['speak_btn'], 'enable_mic_icon'):
-                    self.stats_elements['speak_btn'].config(
-                        image=self.stats_elements['speak_btn'].enable_mic_icon,
-                        text="Enable Microphone",
-                        bg='systemButtonFace',
-                        activebackground='systemButtonFace'
-                    )
-                else:
-                    self.stats_elements['speak_btn'].config(
-                        text="Enable Microphone",
-                        bg='systemButtonFace',
-                        activebackground='systemButtonFace'
-                    )
+                if speak_btn:
+                    if hasattr(speak_btn, 'enable_mic_icon'):
+                        speak_btn.config(
+                            image=speak_btn.enable_mic_icon,
+                            text="Enable Microphone",
+                            bg='systemButtonFace', # Reset background
+                            activebackground='systemButtonFace'
+                        )
+                    else:
+                        speak_btn.config(
+                             text="Enable Microphone",
+                             bg='systemButtonFace',
+                             activebackground='systemButtonFace'
+                         )
             except Exception as e:
-                print(f"[interface builder]Error stopping microphone: {e}")
+                print(f"[interface builder] Error stopping microphone for {computer_name}: {e}")
         else:
             # Start speaking
             try:
-                if self.audio_client.start_speaking():
-                    self.speaking = True
-                    # Set red background for the entire interface
-                    self.app.root.configure(bg='#ffcccc')  # Light red
-                    for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
-                        frame.configure(bg='#ffcccc')
+                print(f"[interface builder] Starting speaking for {computer_name}")
+                if audio_client.start_speaking(): # Use the specific client
+                    self.speaking[computer_name] = True
+
+                    # Set red background (only if this is the currently selected kiosk?)
+                    if computer_name == self.selected_kiosk:
+                         self.app.root.configure(bg='#ffcccc')  # Light red
+                        # Potentially set more specific frames if needed
+                        # for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
+                        #     frame.configure(bg='#ffcccc')
+
                     # Update button appearance
-                    if hasattr(self.stats_elements['speak_btn'], 'disable_mic_icon'):
-                        self.stats_elements['speak_btn'].config(
-                            image=self.stats_elements['speak_btn'].disable_mic_icon,
-                            text="Disable Microphone",
-                            bg='#ffcccc',
-                            activebackground='#ffcccc'
-                        )
-                    else:
-                        self.stats_elements['speak_btn'].config(
-                            text="Disable Microphone",
-                            bg='#ffcccc',
-                            activebackground='#ffcccc'
-                        )
-                else:
-                    if hasattr(self.stats_elements['speak_btn'], 'enable_mic_icon'):
-                        self.stats_elements['speak_btn'].config(
-                            image=self.stats_elements['speak_btn'].enable_mic_icon,
-                            text="Enable Microphone"
-                        )
-                    else:
-                        self.stats_elements['speak_btn'].config(text="Enable Microphone")
+                    if speak_btn:
+                        if hasattr(speak_btn, 'disable_mic_icon'):
+                            speak_btn.config(
+                                image=speak_btn.disable_mic_icon,
+                                text="Disable Microphone",
+                                bg='#ffcccc', # Red background for button too
+                                activebackground='#ffcccc'
+                            )
+                        else:
+                            speak_btn.config(
+                                text="Disable Microphone",
+                                bg='#ffcccc',
+                                activebackground='#ffcccc'
+                            )
             except Exception as e:
-                print(f"[interface builder]Error enabling microphone: {e}")
+                print(f"[interface builder] Error enabling microphone for {computer_name}: {e}")
+                self.speaking[computer_name] = False # Ensure state is false on error

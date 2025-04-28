@@ -6,6 +6,9 @@ from saved_hints_panel import SavedHintsPanel
 import json
 import io
 import base64
+import math # Added for volume meter update
+import pyaudio # Added for getting default device info
+import numpy as np # Added for volume calculation in popup
 
 def setup_stats_panel(interface_builder, computer_name):
     """Setup the stats panel interface"""
@@ -601,6 +604,24 @@ def setup_stats_panel(interface_builder, computer_name):
         speak_btn.disable_mic_icon = disable_mic_icon
     speak_btn.pack(side='left', padx=5)
 
+    # --- START: Microphone Device Selector Button ---
+    mic_control_frame = tk.Frame(control_frame, bg='systemButtonFace')
+    mic_control_frame.pack(side='left', padx=(10, 5))
+
+    # Button to open device selection popup
+    mic_select_button = tk.Button(
+        mic_control_frame,
+        text="Mic: Default", # Initial text, will be updated
+        font=('Arial', 8),
+        command=lambda cn=computer_name: show_audio_device_popup(interface_builder, cn),
+        cursor="hand2",
+        width=18, # Adjust width as needed
+        anchor='w' # Align text left
+    )
+    mic_select_button.pack(side='top', pady=(5,0)) # Add some top padding
+    interface_builder.stats_elements['mic_select_button'] = mic_select_button # Store reference
+    # --- END: Microphone Device Selector Button ---
+
     # Store buttons in stats_elements
     interface_builder.stats_elements['camera_btn'] = camera_btn
     interface_builder.stats_elements['listen_btn'] = listen_btn
@@ -961,3 +982,347 @@ def setup_stats_panel(interface_builder, computer_name):
     #c)
 
     #interface_builder.stats_elements['touches_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
+
+    # --- Set Initial Device Label (on the button) --- 
+    initial_audio_client = interface_builder.audio_clients.get(computer_name)
+    # Get the button reference
+    mic_button = interface_builder.stats_elements.get('mic_select_button') 
+
+    if mic_button: # Ensure the button widget exists
+        current_device_name = "Error"
+        selected_index = None
+        try:
+            if initial_audio_client:
+                # Client exists, use its info
+                devices = initial_audio_client.get_input_devices() # This also sets default if None
+                selected_index = initial_audio_client.selected_input_device_index
+                current_device_name = "Default" # Fallback
+                if devices and selected_index is not None:
+                    for dev in devices:
+                        if dev['index'] == selected_index:
+                            current_device_name = dev['name']
+                            break
+            else:
+                # Client doesn't exist, get system default (best effort)
+                temp_audio = None
+                try:
+                    temp_audio = pyaudio.PyAudio()
+                    default_info = temp_audio.get_default_input_device_info()
+                    selected_index = default_info['index']
+                    current_device_name = default_info['name']
+                    # Store this as the preference if no client exists yet
+                    interface_builder.preferred_audio_device_index[computer_name] = selected_index
+                except Exception as e:
+                    print(f"[stats panel] Could not get default audio device info: {e}")
+                    current_device_name = "Default (Unknown)"
+                finally:
+                    if temp_audio:
+                        temp_audio.terminate()
+
+            # Limit display name length
+            max_len = 15
+            display_name = (current_device_name[:max_len] + '...') if len(current_device_name) > max_len else current_device_name
+            # Update the button text
+            mic_button.config(text=f"Mic: {display_name}") 
+
+        except Exception as e:
+            print(f"[stats panel] Error setting initial mic label for {computer_name}: {e}")
+            # Update the button text on error
+            mic_button.config(text=f"Mic: Error") 
+    # -------------------------------------------------
+
+
+# --- START: Helper functions for volume meter and device selection ---
+
+def update_volume_meter(interface_builder, computer_name):
+     # THIS FUNCTION IS NO LONGER USED (Volume meter moved to popup)
+     pass
+
+def show_audio_device_popup(interface_builder, computer_name):
+    """Shows a popup to select the audio input device with live volume preview."""
+    # Use the dictionary to get the correct network audio client (if it exists)
+    network_audio_client = interface_builder.audio_clients.get(computer_name)
+    temp_audio_instance = None
+    popup_stream = None
+    popup_after_id = None
+    devices = []
+    selected_device_index_at_start = None
+    can_set_device_directly = network_audio_client is not None
+
+    # --- Audio parameters for popup preview ---
+    CHUNK = 1024
+    FORMAT = pyaudio.paFloat32
+    CHANNELS = 1
+    RATE = 44100
+    # -----------------------------------------
+
+    # --- Function to calculate volume (mirrors AudioClient._calculate_volume) ---
+    # We define it here to avoid dependency loops if AudioClient needs setup_stats_panel
+    def _calculate_popup_volume(data):
+        try:
+            audio_data = np.frombuffer(data, dtype=np.float32)
+            rms = np.sqrt(np.mean(audio_data**2))
+            if rms > 0:
+                scaled_rms = rms * 8 # Sensitivity adjustment (matches AudioClient)
+                db_volume = 20 * math.log10(scaled_rms + 1e-9)
+                min_db = -40 # Sensitivity adjustment (matches AudioClient)
+                max_db = 0
+                normalized_volume = max(0.0, min(1.0, (db_volume - min_db) / (max_db - min_db)))
+            else:
+                normalized_volume = 0.0
+            return normalized_volume
+        except Exception as vol_e:
+            print(f"[stats panel popup]Error calculating volume: {vol_e}")
+            return 0.0
+    # ----------------------------------------------------------------------
+
+    try:
+        # Need a PyAudio instance regardless to list devices and potentially open stream
+        temp_audio_instance = pyaudio.PyAudio()
+
+        # Get device list
+        for i in range(temp_audio_instance.get_device_count()):
+            dev_info = temp_audio_instance.get_device_info_by_index(i)
+            if dev_info['maxInputChannels'] > 0:
+                devices.append({'index': i, 'name': dev_info['name']})
+
+        if not devices:
+             raise Exception("No input audio devices found on the system.")
+
+        # Determine initially selected device index
+        if network_audio_client:
+            selected_device_index_at_start = network_audio_client.selected_input_device_index
+        else:
+            selected_device_index_at_start = interface_builder.preferred_audio_device_index.get(computer_name)
+
+        if selected_device_index_at_start is None:
+            try:
+                default_info = temp_audio_instance.get_default_input_device_info()
+                selected_device_index_at_start = default_info['index']
+            except Exception:
+                print("[stats panel] Could not get default device index.")
+                selected_device_index_at_start = devices[0]['index'] # Fallback
+
+    except Exception as e:
+        print(f"[stats panel] Error initializing popup/getting devices: {e}")
+        tk.messagebox.showerror("Error", f"Could not retrieve audio devices.\nError: {e}", parent=interface_builder.app.root)
+        if temp_audio_instance:
+            temp_audio_instance.terminate()
+        return
+
+    # --- Create Popup Window --- 
+    popup = tk.Toplevel(interface_builder.app.root)
+    popup.title(f"Select Mic & Preview - {computer_name}")
+    popup.geometry("450x400") # Wider and taller for volume meter
+    popup.transient(interface_builder.app.root)
+    popup.grab_set()
+
+    tk.Label(popup, text="Select an input device (Live Preview):", font=('Arial', 10)).pack(pady=(10,2))
+
+    listbox = tk.Listbox(popup, exportselection=False, width=60, height=8)
+    listbox.pack(pady=5, padx=10)
+
+    # --- Volume Meter --- 
+    volume_label = tk.Label(popup, text="Volume:")
+    volume_label.pack(pady=(5,0))
+    volume_meter_popup = ttk.Progressbar(
+        popup,
+        orient='horizontal',
+        length=300, # Longer bar
+        mode='determinate',
+        style="popup.green.Horizontal.TProgressbar" # Different style name
+    )
+    volume_meter_popup.pack(pady=(2, 10))
+    # Apply custom style for green progress bar
+    style_popup = ttk.Style()
+    style_popup.configure("popup.green.Horizontal.TProgressbar", troughcolor='grey', background='green')
+    # -------------------
+
+    current_selection_list_index = -1
+
+    for i, device in enumerate(devices):
+        max_len_list = 50
+        device_name = device['name']
+        display_name_list = (device_name[:max_len_list] + '...') if len(device_name) > max_len_list else device_name
+        listbox_entry = f"{display_name_list} (Index: {device['index']})"
+        listbox.insert(tk.END, listbox_entry)
+
+        if device['index'] == selected_device_index_at_start:
+            listbox.itemconfig(i, {'bg':'lightblue'})
+            listbox.selection_set(i)
+            listbox.see(i)
+            current_selection_list_index = i
+
+    # --- Live Preview Functions --- 
+    preview_state = {'stream': None, 'after_id': None, 'device_index': None}
+
+    def stop_preview_stream():
+        nonlocal preview_state
+        if preview_state['after_id']:
+            popup.after_cancel(preview_state['after_id'])
+            preview_state['after_id'] = None
+        if preview_state['stream']:
+            try:
+                if preview_state['stream'].is_active():
+                     preview_state['stream'].stop_stream()
+                preview_state['stream'].close()
+                print(f"[stats panel popup] Closed preview stream for index {preview_state['device_index']}")
+            except Exception as e:
+                print(f"[stats panel popup] Error stopping preview stream: {e}")
+            preview_state['stream'] = None
+        if volume_meter_popup:
+             volume_meter_popup['value'] = 0
+
+    def update_popup_volume_meter():
+        nonlocal preview_state
+        if preview_state['stream'] and preview_state['stream'].is_active() and volume_meter_popup.winfo_exists():
+            try:
+                data = preview_state['stream'].read(CHUNK, exception_on_overflow=False)
+                volume = _calculate_popup_volume(data)
+                volume_meter_popup['value'] = volume * 100
+                # Schedule next update only if stream is still supposed to be active
+                if preview_state['stream'] and preview_state['stream'].is_active():
+                    preview_state['after_id'] = popup.after(50, update_popup_volume_meter) # Faster update for preview
+                else:
+                     volume_meter_popup['value'] = 0
+            except Exception as e:
+                 print(f"[stats panel popup] Error reading/updating volume: {e}")
+                 volume_meter_popup['value'] = 0
+                 stop_preview_stream() # Stop on error
+        else:
+             if volume_meter_popup.winfo_exists():
+                 volume_meter_popup['value'] = 0
+             # Ensure loop doesn't restart if stream died
+             if preview_state['after_id']:
+                 popup.after_cancel(preview_state['after_id'])
+                 preview_state['after_id'] = None
+             preview_state['stream'] = None # Mark stream as dead
+
+    def start_preview_stream(device_index):
+        nonlocal preview_state, temp_audio_instance
+        stop_preview_stream() # Stop previous one first
+
+        if device_index is None:
+             print("[stats panel popup] No device index to start preview stream.")
+             return
+
+        print(f"[stats panel popup] Starting preview stream for device index: {device_index}")
+        try:
+            # Ensure PyAudio instance exists
+            if not temp_audio_instance:
+                 temp_audio_instance = pyaudio.PyAudio()
+
+            preview_state['stream'] = temp_audio_instance.open(
+                format=FORMAT,
+                channels=CHANNELS,
+                rate=RATE,
+                input=True,
+                frames_per_buffer=CHUNK,
+                input_device_index=device_index
+            )
+            preview_state['device_index'] = device_index
+            preview_state['stream'].start_stream()
+            update_popup_volume_meter() # Start the update loop
+        except Exception as e:
+            print(f"[stats panel popup] Failed to start preview stream for index {device_index}: {e}")
+            tk.messagebox.showwarning("Preview Error", f"Could not start audio preview for the selected device.\nError: {e}", parent=popup)
+            stop_preview_stream()
+
+    def on_listbox_select(event):
+        selected_indices = listbox.curselection()
+        if selected_indices:
+            selected_list_index = selected_indices[0]
+            selected_device_info = devices[selected_list_index]
+            selected_device_index_from_popup = selected_device_info['index']
+            if selected_device_index_from_popup != preview_state['device_index']:
+                 start_preview_stream(selected_device_index_from_popup)
+
+    listbox.bind('<<ListboxSelect>>', on_listbox_select)
+    # --------------------------
+
+    def on_ok():
+        nonlocal network_audio_client # Allow modification
+        stop_preview_stream() # Stop preview before applying changes
+
+        selected_indices = listbox.curselection()
+        if selected_indices:
+            selected_list_index = selected_indices[0]
+            selected_device_info = devices[selected_list_index]
+            selected_device_index_from_popup = selected_device_info['index']
+            selected_device_name = selected_device_info['name']
+
+            print(f"[stats panel] OK selected device: {selected_device_name} (Index: {selected_device_index_from_popup})")
+
+            max_len = 15
+            display_name_label = (selected_device_name[:max_len] + '...') if len(selected_device_name) > max_len else selected_device_name
+            # Get the button reference to update its text
+            mic_button_to_update = interface_builder.stats_elements.get('mic_select_button') 
+
+            if can_set_device_directly:
+                if selected_device_index_from_popup != network_audio_client.selected_input_device_index:
+                    try:
+                        network_audio_client.set_input_device(selected_device_index_from_popup)
+                        # Update the button text
+                        if mic_button_to_update: 
+                             mic_button_to_update.config(text=f"Mic: {display_name_label}")
+                        print(f"[stats panel] Mic device for {computer_name} set to index {selected_device_index_from_popup}")
+                    except Exception as e:
+                        print(f"[stats panel] Error setting device for {computer_name}: {e}")
+                        tk.messagebox.showerror("Error", f"Failed to set audio device.\nError: {e}", parent=popup)
+                        start_preview_stream(selected_device_index_from_popup) # Restart preview on error
+                        return
+                else:
+                    print(f"[stats panel] No change in device selection for {computer_name}.")
+            else:
+                print(f"[stats panel] Storing preferred device index {selected_device_index_from_popup} for {computer_name}")
+                interface_builder.preferred_audio_device_index[computer_name] = selected_device_index_from_popup
+                 # Update the button text even if storing preference
+                if mic_button_to_update: 
+                     mic_button_to_update.config(text=f"Mic: {display_name_label}")
+
+            close_popup()
+        else:
+            tk.messagebox.showwarning("Selection Required", "Please select a device.", parent=popup)
+            # Restart preview with original selection if nothing chosen
+            start_preview_stream(selected_device_index_at_start)
+
+    def on_cancel():
+        close_popup()
+
+    def close_popup():
+        nonlocal temp_audio_instance
+        stop_preview_stream()
+        if temp_audio_instance:
+             try:
+                 temp_audio_instance.terminate()
+                 print("[stats panel popup] Terminated temporary PyAudio instance.")
+             except Exception as e:
+                  print(f"[stats panel popup] Error terminating PyAudio: {e}")
+             temp_audio_instance = None
+        popup.destroy()
+
+    # Handle window close button
+    popup.protocol("WM_DELETE_WINDOW", close_popup)
+
+    # --- Buttons --- 
+    button_frame = tk.Frame(popup)
+    button_frame.pack(pady=10)
+    ok_button = tk.Button(button_frame, text="OK", width=10, command=on_ok)
+    ok_button.pack(side='left', padx=5)
+    cancel_button = tk.Button(button_frame, text="Cancel", width=10, command=on_cancel)
+    cancel_button.pack(side='left', padx=5)
+    # ---------------
+
+    # Select the initial device in the listbox
+    if current_selection_list_index != -1:
+        listbox.selection_set(current_selection_list_index)
+        listbox.activate(current_selection_list_index)
+        # Start initial preview
+        start_preview_stream(selected_device_index_at_start)
+    else:
+        print("[stats panel popup] No initial device selected in listbox.")
+
+    popup.wait_window()
+
+
+# --- END: Helper functions --- 
