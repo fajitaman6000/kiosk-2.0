@@ -120,6 +120,8 @@ class ManagerSettings:
         password_btn.pack(side='left', padx=5)
         image_browser_btn = ttk.Button(nav_frame, text="Image Browser", command=self.launch_image_browser)
         image_browser_btn.pack(side='left', padx=5)
+        image_cropper_btn = ttk.Button(nav_frame, text="Image Cropper", command=self.launch_image_cropper)
+        image_cropper_btn.pack(side='left', padx=5)
         self.settings_container = ttk.Frame(self.main_container)
         self.settings_container.pack(fill='both', expand=True)
         self.show_settings_page('hints')
@@ -1133,6 +1135,27 @@ class ManagerSettings:
             
         except Exception as e:
             messagebox.showerror("Error", f"Failed to launch Image Browser: {e}")
+
+    def launch_image_cropper(self):
+        """Launch the image cropper as a separate process."""
+        import subprocess
+        import sys
+        import os
+        
+        try:
+            # Get the correct script path
+            script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "tools", "cropper.py")
+            # Use the same Python executable that's running this script
+            python_exe = sys.executable
+            
+            # Set the working directory to the root of the project
+            working_dir = os.path.dirname(os.path.dirname(__file__))
+            
+            # Launch with the correct working directory
+            subprocess.Popen([python_exe, script_path], cwd=working_dir)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to launch Image Cropper: {e}")
 
     def refresh_image_selector(self):
         """Refresh the image list for the current prop."""

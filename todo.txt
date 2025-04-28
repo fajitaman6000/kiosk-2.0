@@ -33,10 +33,13 @@ opening hint manager twice breaks it the second time
 ##############################################################################################################################
 # pre-beta testing
 
-saved hint browser that works like audio and image browsers
+"images available for" not populated when prop is selected, not hint item
+need ability to select "none" for images
+
 
 ##############################################################################################################################
 # todo
+
 
 "currently displayed hint"
 "please select nudge frequency"

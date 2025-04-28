@@ -1,6 +1,19 @@
 {
     "rooms": {
-        "1": {},
+        "1": {
+            "Memory Hotel": {
+                "hotel": {
+                    "text": "There are five buttons which you must press in order. \n\nLeft bottom, back right, street, tower, left middle, front-left bottom.",
+                    "image": "solution.png"
+                }
+            },
+            "Spinning Lamp": {
+                "spin the lamp": {
+                    "text": "The lamp on the wall must be spun until it turns off.",
+                    "image": "spin.png"
+                }
+            }
+        },
         "2": {},
         "4": {
             "Tools": {
@@ -51,7 +64,12 @@
             },
             "Cables Box": {
                 "wrenches": {
-                    "text": "Found a box of wrenches? They've all got numbers on them and it looks to me all the number wheels on that box have a differently sized bolt on the front."
+                    "text": "Found a box of wrenches? They've all got numbers on them and it looks to me all the number wheels on that box have a differently sized bolt on the front.",
+                    "image": "cheese board.png"
+                },
+                "how to open box": {
+                    "text": "There's a wooden board available to you with holes in it. There's a shelf tucked away in a corner with a puzzle on it. Place the board on the puzzle and read the result. Rotate the board to get the next number.",
+                    "image": "cheese board.png"
                 }
             }
         },
@@ -81,12 +99,14 @@
             },
             "Yellow Puzzle": {
                 "letters": {
-                    "text": "The pieces you found in the suitcase fit onto the table, and you'll notice they have letters on them too! If you try to fit the words together, so will the puzzle too!"
+                    "text": "The pieces you found in the suitcase fit onto the table, and you'll notice they have letters on them too! If you try to fit the words together, so will the puzzle too!",
+                    "image": "table 1.png"
                 }
             },
             "Family Portrait": {
                 "slide it up": {
-                    "text": "The family portrait does belong in that cabinet and it will fit right in that rectangular slot. Hold it up in there firmly."
+                    "text": "The family portrait does belong in that cabinet and it will fit right in that rectangular slot. Hold it up in there firmly.",
+                    "image": "family cabinet.png"
                 }
             },
             "Mirror": {
@@ -114,7 +134,8 @@
             },
             "Vanity Photos": {
                 "threadboard": {
-                    "text": "Have you found a black and white square with rope in it? What about a door with letters on both sides? If you follow the rope's path and match it to the door, you'll get names!"
+                    "text": "Have you found a black and white square with rope in it? What about a door with letters on both sides? If you follow the rope's path and match it to the door, you'll get names!",
+                    "image": "thread door.png"
                 }
             },
             "Diary/Cross": {
@@ -216,10 +237,12 @@
             },
             "Knocking Chest": {
                 "book": {
-                    "text": "There's a book on the wall that looks nothing like the rest. Press it and you will hear a pattern.\n\nSure sounds a lot like knocking."
+                    "text": "There's a book on the wall that looks nothing like the rest. Press it and you will hear a pattern.\n\nSure sounds a lot like knocking.",
+                    "image": "knock book.png"
                 },
                 "knock on the chest": {
-                    "text": "The book on the wall behind the wands, when pressed, plays a pattern of sounds. Knock the same pattern on the knocking chest to open it."
+                    "text": "The book on the wall behind the wands, when pressed, plays a pattern of sounds. Knock the same pattern on the knocking chest to open it.",
+                    "image": "knocking chest.png"
                 }
             },
             "Spell Chart": {
