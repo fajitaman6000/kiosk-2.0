@@ -2,8 +2,127 @@
     "rooms": {
         "1": {},
         "2": {},
-        "4": {},
-        "5": {},
+        "4": {
+            "Tools": {
+                "find them": {
+                    "text": "You're looking for three hand tools in the room. You might want to open some drawers."
+                },
+                "infinity loop": {
+                    "text": "The metal hoop on the wall has your key for the drawer. It's possible to pull it off with just a bit of creative rotation."
+                }
+            },
+            "Bench Lights": {
+                "timing": {
+                    "text": "The lights moving across the back of the workbench correspond to small buttons on the sides. Look for an illuminated button and press and HOLD it when it reaches the red line. HOLD it while you do the same for the next three."
+                }
+            },
+            "Motorcycle": {
+                "three things": {
+                    "text": "You need three components to get the bike started. A gas hose. A pair of jumper cables. And the antidote, before you leave, or this is all for nothing."
+                }
+            },
+            "TV": {
+                "license plate": {
+                    "text": "The license plate on the wall there isn't quite like the rest. What is GTE when converted to numbers? Check where G, T, and E are on the keypad of the phone. The phone isn't plugged in though. Where would these numbers go?"
+                }
+            },
+            "Zombie Loops": {
+                "watch tv": {
+                    "text": "The letters shown on the TV tell you which ZOMBIE chain to pull on the wall. Move fast and only pull the chain with the letter shown on the screen because they WON'T be in order."
+                }
+            },
+            "Microwave": {
+                "wheel": {
+                    "text": "To open that microwave you're going to have to come back to that wheel you saw in the first room."
+                }
+            },
+            "Breakers": {
+                "tools": {
+                    "text": "The toolbench has four rows of four tools, some missing, some not. Sixteen total.\n\nThe breaker box.. how many switches does it have?"
+                }
+            },
+            "Wagon Wheel": {
+                "trial and error": {
+                    "text": "The wheel is a trial and error puzzle, but the solution will always be the same. Try turning it left or right, but be slow and try to remember which directions worked each time."
+                },
+                "red hand red light": {
+                    "text": "The bloody handprint on the wheel corresponds with the light on the wall. Line it up with the light to input a left or right turn into the sequence."
+                }
+            },
+            "Cables Box": {
+                "wrenches": {
+                    "text": "Found a box of wrenches? They've all got numbers on them and it looks to me all the number wheels on that box have a differently sized bolt on the front."
+                }
+            }
+        },
+        "5": {
+            "Clock": {
+                "trial and error": {
+                    "text": "The clock is a trial and error puzzle, but the solution will always be the same. Try turning the red knob on the sun dial left or right, and try to remember which directions worked each time."
+                }
+            },
+            "Sun Dial": {
+                "trial and error": {
+                    "text": "The clock is a trial and error puzzle, but the solution will always be the same. Try turning the red knob on the sun dial left or right, and try to remember which directions worked each time."
+                },
+                "look at the clock": {
+                    "text": "That big clock responds to LEFT and RIGHT turns of the sun dial in a SPECIFIC ORDER. Keep an eye on it as you turn the dial and try to remember the sequence until you get it right!"
+                }
+            },
+            "Rope Braid": {
+                "get the key down": {
+                    "text": "There's a key at the top of those braided ropes. If you unbraid them a bit, I'm sure you could slide it down to the bottom."
+                }
+            },
+            "Symbol Maze": {
+                "trial and error": {
+                    "text": "The goal of the block maze in the corner  of the room is to slide the pieces past the gate on the left. Don't be afraid to slide them around a lot. Keep trying until you get it right."
+                }
+            },
+            "Yellow Puzzle": {
+                "letters": {
+                    "text": "The pieces you found in the suitcase fit onto the table, and you'll notice they have letters on them too! If you try to fit the words together, so will the puzzle too!"
+                }
+            },
+            "Family Portrait": {
+                "slide it up": {
+                    "text": "The family portrait does belong in that cabinet and it will fit right in that rectangular slot. Hold it up in there firmly."
+                }
+            },
+            "Mirror": {
+                "instruments": {
+                    "text": "The mirror is telling you a sequence of instruments. Look at those instruments closely and find out why they're so important!"
+                }
+            },
+            "Mouth Cabinet": {
+                "portraits inside": {
+                    "text": "Reach your hand inside the terrifying mouthes and you should find some pleasant family photos. How nice."
+                }
+            },
+            "Candles": {
+                "3 light 3 dark": {
+                    "text": "That burnt sheet on the table next to the candles will tell you how many candles should be lit and how many should be BLOWN out."
+                },
+                "if they still don't get it": {
+                    "text": "Three candles must be colored the three colors you've found in the room. Blue (instruments), Yellow (the table), and Pink (the cross). Three candles must be dark. Blow HARD on the candles until they match."
+                }
+            },
+            "Suitcase": {
+                "rope to open": {
+                    "text": "To get that suitcase open you have to complete something else in the room. Start with that braided rope there. That should be easy."
+                }
+            },
+            "Vanity Photos": {
+                "threadboard": {
+                    "text": "Have you found a black and white square with rope in it? What about a door with letters on both sides? If you follow the rope's path and match it to the door, you'll get names!"
+                }
+            },
+            "Diary/Cross": {
+                "put it in": {
+                    "text": "The diary belongs inside the drawers under the curtains. Open the drawer, put the book inside, and close it. If the spirits accept the offering, perhaps they'll give you something in return. Look inside again."
+                }
+            }
+        },
         "6": {
             "Color Buttons": {
                 "look above door": {
