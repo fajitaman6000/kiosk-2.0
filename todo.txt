@@ -7,6 +7,8 @@ in room assistance popup came up with image
 # pre-beta testing
 
 turning off listen should remove red overlay when disabling microphone
+saved hints don't refresh when added (and their contents)
+
 
 ##############################################################################################################################
 # todo
@@ -17,7 +19,7 @@ turning off listen should remove red overlay when disabling microphone
 no progress notification
 auto create folders for hint contents
 display hint image in new small window
-perhaps restart microphone detection when attempting every time (visual audio indicator on admin side too)
+perhaps restart microphone detection when attempting every time
 reboot kiosk application
 
 hint contents
