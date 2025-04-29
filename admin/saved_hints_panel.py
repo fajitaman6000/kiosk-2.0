@@ -18,7 +18,7 @@ class SavedHintsPanel:
             send_hint_callback: Callback function for sending hints, expects dict with 'text' and optional 'image'
         """
         self.frame = ttk.LabelFrame(parent, text="Saved Hints")
-        self.frame.pack(side='left', padx=5, pady=5)
+        self.frame.pack(side='right', padx=5, pady=5)
         
         # Store callback
         self.send_hint_callback = send_hint_callback
@@ -27,6 +27,7 @@ class SavedHintsPanel:
         self.list_container = ttk.Frame(self.frame)
         self.list_container.pack(padx=5, pady=5)
         
+
         # Create prop dropdown section
         self.prop_frame = ttk.Frame(self.list_container)
         self.prop_frame.pack(pady=(0, 5))
@@ -47,12 +48,27 @@ class SavedHintsPanel:
         # Create hint selection section
         self.hint_frame = ttk.Frame(self.list_container)
         self.hint_frame.pack(pady=5)
-        hint_label = ttk.Label(self.hint_frame, text="Available Hints:", font=('Arial', 10, 'bold'))
-        hint_label.pack(anchor='w')
-        
+
+        # --- Hint Header Frame (Label + Button) ---
+        hint_header_frame = ttk.Frame(self.hint_frame)
+        hint_header_frame.pack(fill='x') # Use fill='x' to make it span the width
+
+        hint_label = ttk.Label(hint_header_frame, text="Available Hints:", font=('Arial', 10, 'bold'))
+        hint_label.pack(side='left', anchor='w', padx=(0, 5)) # Pack label to the left
+
+        # --- Refresh Button ---
+        self.refresh_button = ttk.Button(
+            hint_header_frame, # Pack into the header frame
+            text="⟳",
+            command=self.refresh_hints,
+            width=2 # Small button
+        )
+        self.refresh_button.pack(side='right', anchor='e', padx=(5, 0)) # Pack button to the right
+        # --------------------
+
         # Create list view
         self.hint_listbox = tk.Listbox(
-            self.hint_frame,
+            self.hint_frame, # Pack listbox into self.hint_frame below the header
             height=6,
             width=40,
             selectmode=tk.SINGLE,
@@ -60,7 +76,7 @@ class SavedHintsPanel:
             bg='white',
             fg='black'
         )
-        self.hint_listbox.pack(pady=5)
+        self.hint_listbox.pack(pady=5, fill='x', expand=True) # Use fill='x' to make it span the width
         self.hint_listbox.bind('<<ListboxSelect>>', self.on_hint_select)
         
         # Load hints
@@ -142,6 +158,8 @@ class SavedHintsPanel:
     def show_list_view(self):
         """Make sure the list view is properly displayed"""
         # Ensure the prop frame and hint frame are packed
+        if not self.refresh_btn_frame.winfo_ismapped():
+            self.refresh_btn_frame.pack(fill='x', pady=(5,0))
         if not self.prop_frame.winfo_ismapped():
             self.prop_frame.pack(pady=(0, 5))
         if not self.hint_frame.winfo_ismapped():
@@ -678,3 +696,34 @@ class SavedHintsPanel:
             
             # Send hint through callback
             self.send_hint_callback(hint_data)
+
+    def refresh_hints(self):
+        """Reloads hints from the JSON file and updates the display."""
+        print("[saved hints panel] Refreshing hints...")
+        self.load_hints() # Reload data
+        
+        # Remember currently selected prop
+        selected_prop = self.prop_var.get()
+        
+        # Refresh prop list for current room (in case props changed)
+        if self.current_room:
+             self.update_room(self.current_room) # This clears hints too
+             
+             # Re-select the previously selected prop if it still exists
+             if selected_prop:
+                  props_list = self.prop_dropdown['values']
+                  if selected_prop in props_list:
+                       self.prop_var.set(selected_prop)
+                       self.on_prop_select(None) # Trigger hint list update
+                  else:
+                       # Prop no longer exists, clear selection and hints
+                       self.prop_var.set('')
+                       self.hint_listbox.delete(0, tk.END)
+                       print(f"[saved hints panel] Previously selected prop '{selected_prop}' no longer found after refresh.")
+        else:
+             # No room selected, just clear things
+             self.prop_dropdown['values'] = []
+             self.prop_var.set('')
+             self.hint_listbox.delete(0, tk.END)
+        
+        print("[saved hints panel] Hints refreshed.")

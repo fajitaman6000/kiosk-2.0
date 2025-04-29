@@ -487,7 +487,7 @@ def setup_stats_panel(interface_builder, computer_name):
     video_frame.pack(
         expand=False,   # Don't expand
         pady=1,         # Slight vertical padding
-        anchor='n'      # Anchor to top
+        anchor='ne'      # Anchor to top
     )
     video_frame.pack_propagate(False)  # Prevent frame from shrinking
 
@@ -512,7 +512,7 @@ def setup_stats_panel(interface_builder, computer_name):
         side='top',      # Pack at top of right panel
         fill='x',        # Fill horizontal space
         pady=0,          # Vertical padding
-        anchor='n',      # Anchor to top
+        anchor='ne',      # Anchor to top
         before=video_frame  # Ensure it stays above video frame
     )
     control_frame.pack_propagate(False)  # Prevent height collapse
@@ -849,7 +849,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # --- ADD IMAGE DISPLAY FRAME HERE ---
     #  Wrap stats_below_video and image_display_frame in a container
     stats_and_image_container = tk.Frame(right_panel)
-    stats_and_image_container.pack(side='left', anchor='nw', pady=3)  # Pack container at the top
+    stats_and_image_container.pack(side='right', anchor='ne', pady=3)  # Pack container at the top
 
 
     stats_below_video = tk.Frame(
