@@ -1604,7 +1604,7 @@ class AdminInterfaceBuilder:
 
                     # Set red background (only if this is the currently selected kiosk?)
                     if computer_name == self.selected_kiosk:
-                         self.app.root.configure(bg='#ffcccc')  # Light red
+                         self.app.root.configure(bg='#ff5252')  # Light red
                         # Potentially set more specific frames if needed
                         # for frame in [self.main_container, self.kiosk_frame, self.stats_frame]:
                         #     frame.configure(bg='#ffcccc')

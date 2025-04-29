@@ -470,8 +470,8 @@ def setup_stats_panel(interface_builder, computer_name):
         bg='systemButtonFace'
     )
     right_panel.pack(
-        side='left',     # Ensure it stays on right
-        fill='y',        # Fill vertical space
+        side='right',     # Ensure it stays on right
+        fill='both',        # Fill vertical space
         expand=True,     # Allow expansion to fill space
         padx=(10, 0)     # Padding only on left side
     )
