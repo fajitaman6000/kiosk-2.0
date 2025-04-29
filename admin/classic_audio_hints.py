@@ -32,11 +32,11 @@ class ClassicAudioHints:
         
         # Create main frame with fixed width
         self.frame = ttk.LabelFrame(parent, text="Audio Hints")
-        self.frame.pack(side='left', padx=5, pady=5)
+        self.frame.pack(side='left', padx=0, pady=0)
         
         # Create fixed-width inner container
         self.list_container = ttk.Frame(self.frame)
-        self.list_container.pack(padx=5, pady=5)  # Remove fill='x' to prevent expansion
+        self.list_container.pack(padx=5, pady=12)  # Remove fill='x' to prevent expansion
         
         # Create prop dropdown section with fixed width
         self.prop_frame = ttk.Frame(self.list_container)

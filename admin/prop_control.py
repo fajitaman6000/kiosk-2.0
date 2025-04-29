@@ -1129,7 +1129,7 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "reset"),
                     bg='#cc362b',
                     width=2,
-                    height=4,
+                    height=5,
                     cursor="hand2"
                 )
                 # Store prop name for hover events
@@ -1146,7 +1146,7 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "activate"),
                     bg='#ff8c00',
                     width=2,
-                    height=4,
+                    height=5,
                     cursor="hand2"
                 )
                 activate_btn.pack(side='left', padx=1)
@@ -1158,7 +1158,7 @@ class PropControl:
                     command=lambda: self.send_command(prop_id, "finish"),
                     bg='#28a745',
                     width=2,
-                    height=4,
+                    height=5,
                     cursor="hand2"
                 )
                 finish_btn.pack(side='left', padx=1)

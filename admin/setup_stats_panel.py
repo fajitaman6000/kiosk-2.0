@@ -18,7 +18,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Main container with grid layout
     stats_container = tk.Frame(interface_builder.stats_frame)
-    stats_container.pack(fill='both', expand=True, padx=10, pady=5)
+    stats_container.pack(fill='both', expand=True, padx=0, pady=5)
 
     # Left side panel for stats and controls
     left_panel = tk.Frame(stats_container, width=350)  # Reduced from ~500px default
@@ -345,7 +345,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Hint controls
     hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
-    hint_frame.pack(fill='x', pady=10)
+    hint_frame.pack(fill='x', pady=(3,3))
 
     # Create a frame for image selection and preview (Attach Image) at the top
     image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
@@ -473,21 +473,51 @@ def setup_stats_panel(interface_builder, computer_name):
         side='right',     # Ensure it stays on right
         fill='both',        # Fill vertical space
         expand=True,     # Allow expansion to fill space
-        padx=(10, 0)     # Padding only on left side
+        padx=(0, 0)     # Padding only on left side
     )
     right_panel.pack_propagate(False)  # Prevent panel from shrinking
 
-    # Video feed panel with reduced size (60% of original)
-    video_frame = tk.Frame(
+    # --- Create a container for video and controls, anchored top-right ---
+    video_controls_container = tk.Frame(
         right_panel,
+        bg=right_panel.cget('bg') # Match parent background
+    )
+    video_controls_container.pack(
+        side='top',
+        anchor='ne', # Anchor this container to the top-right
+        expand=False,
+        fill='none'
+    )
+    # -------------------------------------------------------------------
+
+    # Control frame for camera and audio buttons
+    # Place this BEFORE the video frame code to ensure it appears above
+    control_frame = tk.Frame(
+        video_controls_container, # *** PARENT IS NOW video_controls_container ***
+        bg='systemButtonFace',
+        height=32  # Fixed height
+    )
+    control_frame.pack(
+        side='top',      # Pack at top of the container
+        fill='x',        # Fill horizontal space of the container
+        pady=0,          # Vertical padding
+        anchor='ne',      # Anchor contents to top-right within the container
+        #before=video_frame # No longer needed, packing order handles this
+    )
+    control_frame.pack_propagate(False)  # Prevent height collapse
+
+    # Video feed panel
+    video_frame = tk.Frame(
+        video_controls_container, # *** PARENT IS NOW video_controls_container ***
         bg='black',
         width=300,      # Reduced from 500
         height=225      # Reduced from 375
     )
     video_frame.pack(
+        side='top',      # Pack below controls within the container
         expand=False,   # Don't expand
         pady=1,         # Slight vertical padding
-        anchor='ne'      # Anchor to top
+        anchor='ne'      # Anchor to top-right within the container
     )
     video_frame.pack_propagate(False)  # Prevent frame from shrinking
 
@@ -500,22 +530,6 @@ def setup_stats_panel(interface_builder, computer_name):
         fill='both',
         expand=True
     )
-
-    # Control frame for camera and audio buttons
-    # Place this BEFORE the video frame code to ensure it appears above
-    control_frame = tk.Frame(
-        right_panel,
-        bg='systemButtonFace',
-        height=32  # Fixed height
-    )
-    control_frame.pack(
-        side='top',      # Pack at top of right panel
-        fill='x',        # Fill horizontal space
-        pady=0,          # Vertical padding
-        anchor='ne',      # Anchor to top
-        before=video_frame  # Ensure it stays above video frame
-    )
-    control_frame.pack_propagate(False)  # Prevent height collapse
 
     # Load additional icons for video/audio controls
     try:
@@ -631,11 +645,11 @@ def setup_stats_panel(interface_builder, computer_name):
     # Video Solutions Section
     # ===========================================
     video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions")
-    video_solutions_frame.pack(fill='x', pady=10)
+    video_solutions_frame.pack(fill='x', pady=3)
 
     # Container for dropdown and play button
     solutions_container = tk.Frame(video_solutions_frame)
-    solutions_container.pack(fill='x', padx=5, pady=5)
+    solutions_container.pack(fill='x', padx=5, pady=10)
 
     # Load prop mappings
     try:
@@ -723,7 +737,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # SECTION: Other Controls
     # ===========================================
     other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
-    other_controls_frame.pack(fill='x', pady=10)
+    other_controls_frame.pack(fill='x', pady=5, side='top', anchor='n')
 
     # Container for the FIRST row of horizontal buttons
     button_container_row1 = tk.Frame(other_controls_frame)
@@ -849,14 +863,14 @@ def setup_stats_panel(interface_builder, computer_name):
     # --- ADD IMAGE DISPLAY FRAME HERE ---
     #  Wrap stats_below_video and image_display_frame in a container
     stats_and_image_container = tk.Frame(right_panel)
-    stats_and_image_container.pack(side='right', anchor='ne', pady=3)  # Pack container at the top
+    stats_and_image_container.pack(side='right', anchor='ne', pady=0)  # Pack container at the top
 
 
     stats_below_video = tk.Frame(
         stats_and_image_container,  # Parent is now the container
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', anchor='n', fill='x', pady=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
+    stats_below_video.pack(side='left', anchor='n', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
 
 
     image_display_frame = tk.Frame(
@@ -896,7 +910,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True)  # Crucial: fill='x' here, and expand = True
 
-    stats_panel_ypadding = 14
+    stats_panel_ypadding = 19
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
