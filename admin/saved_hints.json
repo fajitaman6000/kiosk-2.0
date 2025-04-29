@@ -277,6 +277,9 @@
                 "knock on the chest": {
                     "text": "The book on the wall behind the wands, when pressed, plays a pattern of sounds. Knock the same pattern on the knocking chest to open it.",
                     "image": "knocking chest.png"
+                },
+                "knocking pattern for the hearing impaired": {
+                    "text": "Knock firmly on the center of the chest. Knock pattern 1,2,1"
                 }
             },
             "Spell Chart": {
@@ -284,7 +287,7 @@
                     "text": "The bottles above the fireplace seem to have a smell! And they've got symbols on them that match that spell chart on the wall."
                 },
                 "scroll on desk": {
-                    "text": "The bottles smell like the flavors described on the scroll on the desk. Those bottles have symbols on them that should be tapped on the spell chart in the same order with your wand."
+                    "text": "The bottles smell like the scent described on the scroll on the desk. Those bottles have symbols on them that should be tapped on the spell chart in the same order with your wand."
                 }
             },
             "Chair": {
@@ -296,6 +299,12 @@
                 "put rods here": {
                     "text": "There are three square brown rods which fit within holes in the side of the bed.",
                     "image": "rod holes.png"
+                },
+                "how to align": {
+                    "text": "Set the rods from left to right to the colors of the crystal ball. Make sure the end with the yellow symbol is visible and the lines are facing up"
+                },
+                "rod solution": {
+                    "text": "Insert the blank end of the rod first into the bed then starting by the wall align them red, blue, green to the opening. the lines should be facing up"
                 }
             },
             "Fireplace": {
@@ -306,8 +315,14 @@
             },
             "Code Panel": {
                 "place planchette here": {
-                    "text": "Place the item you found inside the book on the center symbol on the table glyphs.",
+                    "text": "Place the item you found inside the book on the center symbol on the table glyphs with the arrow pointing north.",
                     "image": "center of table.png"
+                },
+                "code panel location": {
+                    "text": "When you sit down at my chair, look to your bottom right on the desk. You'll see a grid of symbols along with a set of buttons."
+                },
+                "connect the symbols": {
+                    "text": "The keypad corresponds to the table of symbols. Press the buttons according to where the planchette moves."
                 }
             },
             "Magic Shelf": {
@@ -325,17 +340,31 @@
                 "trial and error": {
                     "text": "Archimedes' puzzle is of trial and error. Place your hand on the side of the owl's log. Hoots are good, farts are bad. Remember what order made the hoots. If you got a fart, start over.",
                     "image": "owl hand.png"
+                },
+                "full hoot pattern": {
+                    "text": "Owl tap pattern:\n2 left\n2 right\n1 left\n1 right"
                 }
             },
             "Planet Colors": {
                 "look at the ornament": {
                     "text": "The ornament on the shelf will indicate to you two things for the planetary puzzle on the wall. Size and color. Match the sizes to their colors using your wand and the box will open for you.",
                     "image": "planets.png"
+                },
+                "circles are planets": {
+                    "text": "Those colored circles on the wall represent the planets, use your wands on the circles to change their colors."
+                },
+                "planet color solution": {
+                    "text": "From top to bottom, the planet circles should be: cyan, red, blue, green, purple, yellow, orange."
                 }
             },
             "Stone Pieces": {
                 "rotation matters": {
                     "text": "Ensure that all the black stone pieces on the desk are rotated to complete the picture of the potion bottle."
+                }
+            },
+            "Goblet Chest": {
+                "learn the taps": {
+                    "text": "Discover the correct pattern of left and right taps for my owl. A hoot is correct, a toot is not and you'll have to start over."
                 }
             }
         }
