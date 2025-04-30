@@ -18,7 +18,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Main container with grid layout
     stats_container = tk.Frame(interface_builder.stats_frame)
-    stats_container.pack(fill='both', expand=True, padx=0, pady=5)
+    stats_container.pack(fill='both', expand=True, padx=0, pady=0)
 
     # Left side panel for stats and controls
     left_panel = tk.Frame(stats_container, width=350)  # Reduced from ~500px default
@@ -27,7 +27,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Stats frame for hints
     stats_frame = tk.Frame(left_panel)
-    stats_frame.pack(fill='x', pady=(0, 2))
+    stats_frame.pack(fill='x', pady=(0, 0))
 
     # Create a frame for hints and reset button
     hints_frame = tk.Frame(stats_frame)
@@ -91,7 +91,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['auto_reset_label'].pack(side='left', padx=5)
 
     # Timer controls section
-    timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black')
+    timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black', font=('Arial', 9, 'bold'), labelanchor='ne')
     timer_frame.pack(fill='x', pady=1)
 
      # Timer and video controls combined
@@ -102,7 +102,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['current_time'] = tk.Label(
         control_buttons_frame,
         text="45:00",
-        font=('Arial', 20, 'bold'),
+        font=('Arial', 19, 'bold'),
         fg='black',
         highlightbackground='black',
         highlightthickness=1,
@@ -219,7 +219,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if video_icon:
         video_btn.image = video_icon
-    video_btn.pack(side='left', padx=2)
+    video_btn.pack(side='left', padx=(5,0))
 
     # Video options dropdown
     video_options = ['Intro', 'Late', 'Recent Player', 'Game']
@@ -231,7 +231,7 @@ def setup_stats_panel(interface_builder, computer_name):
         state='readonly',
         width=10
     )
-    video_dropdown.pack(side='left', padx=(3,5))
+    video_dropdown.pack(side='left', padx=(3,10))
 
     # Add skip button
     skip_btn = tk.Button(
@@ -247,12 +247,12 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if skip_icon:
         skip_btn.image = skip_icon
-    skip_btn.pack(side='left', padx=(0,10))
+    #skip_btn.pack(side='left', padx=(0,10))      # Uncomment to show skip button
 
     # PACK THE FRAMES IN THE NEW ORDER
     video_frame.pack(side='left', padx=(0,2))
-    button_frame.pack(side='left', padx=(10,0))
-    music_button_frame.pack(side='left', padx=4)
+    button_frame.pack(side='right', padx=(7,2))
+    music_button_frame.pack(side='right', padx=(0,3))
 
     # Time setting controls
     time_set_frame = tk.Frame(timer_frame)
@@ -344,7 +344,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
 
     # Hint controls
-    hint_frame = tk.LabelFrame(left_panel, text="Manual Hint")
+    hint_frame = tk.LabelFrame(left_panel, text="Manual Hint", fg='black', font=('Arial', 9, 'bold'), labelanchor='n')
     hint_frame.pack(fill='x', pady=(3,3))
 
     # Create a frame for image selection and preview (Attach Image) at the top
@@ -373,11 +373,12 @@ def setup_stats_panel(interface_builder, computer_name):
     prop_control_buttons = ttk.Frame(interface_builder.stats_elements['img_prop_frame'])
     interface_builder.stats_elements['prop_control_buttons'] = prop_control_buttons  # Store reference
 
-    interface_builder.stats_elements['prop_back_btn'] = ttk.Button(
+    interface_builder.stats_elements['prop_back_btn'] = tk.Button(
         prop_control_buttons,
         text="Back",
         command=interface_builder.show_manual_hint,
-        cursor="hand2"
+        cursor="hand2",
+        bg="#f7a1a1"
     )
 
     interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
@@ -427,25 +428,29 @@ def setup_stats_panel(interface_builder, computer_name):
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Send",
         command=lambda: interface_builder.send_hint(computer_name),
-        cursor="hand2"
+        cursor="hand2",
+        bg="lightblue",  # Add background color
+        #fg="darkblue"    # Add text color
     )
-    interface_builder.stats_elements['send_btn'].pack(side='left', padx=5)
+    interface_builder.stats_elements['send_btn'].pack(side='left', padx=5, pady=(10))
 
     interface_builder.stats_elements['save_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Save",
         command=interface_builder.save_manual_hint,
-        cursor="hand2"
+        cursor="hand2",
+        bg="#f7dfa1"
     )
-    interface_builder.stats_elements['save_btn'].pack(side='left', padx=5)
+    #interface_builder.stats_elements['save_btn'].pack(side='left', padx=5)                       #Uncomment to bring back save button
 
     interface_builder.stats_elements['clear_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
         text="Clear",
         command=interface_builder.clear_manual_hint,
-        cursor="hand2"
+        cursor="hand2",
+        bg="#f7a1a1"
     )
-    interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5)
+    interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5, pady=(10))
 
     # Set the base directory for image hints
     interface_builder.image_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files")
@@ -644,7 +649,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # Video Solutions Section
     # ===========================================
-    video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions")
+    video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
     video_solutions_frame.pack(fill='x', pady=3)
 
     # Container for dropdown and play button
@@ -736,7 +741,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # SECTION: Other Controls
     # ===========================================
-    other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls")
+    other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls", fg='black', font=('Arial', 9, 'bold'), labelanchor='se')
     other_controls_frame.pack(fill='x', pady=5, side='top', anchor='n')
 
     # Container for the FIRST row of horizontal buttons
@@ -749,8 +754,9 @@ def setup_stats_panel(interface_builder, computer_name):
         text="Clear Hints",
         command=lambda: interface_builder.clear_kiosk_hints(computer_name),
         cursor="hand2"
+        #bg="#bdffb0"
     )
-    clear_hints_btn.pack(side='left', padx=5)
+    clear_hints_btn.pack(side='left', padx=5, pady=(5,0))
 
     # Load hint sound and assistance icons
     try:
@@ -776,7 +782,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if hint_sound_icon:
         play_sound_btn.image = hint_sound_icon
-    play_sound_btn.pack(side='left', padx=5)
+    play_sound_btn.pack(side='left', padx=5, pady=(5,0))
 
     # Add offer assistance button with icon
     offer_assistance_btn = tk.Button(
@@ -795,7 +801,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if assistance_icon:
         offer_assistance_btn.image = assistance_icon
-    offer_assistance_btn.pack(side='left', padx=5)
+    offer_assistance_btn.pack(side='left', padx=5, pady=(5,0))
 
     # --- START: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
     # Create container for the SECOND row (just Check Screen button)
@@ -809,6 +815,7 @@ def setup_stats_panel(interface_builder, computer_name):
         # UPDATE THE COMMAND HERE:
         command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn),
         cursor="hand2"
+        #bg="#c7b2d6"
     )
     check_screen_btn.pack(side='left', padx=0, pady=(10,0)) # Pack left, remove side padding if needed
     # --- END: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
@@ -822,7 +829,7 @@ def setup_stats_panel(interface_builder, computer_name):
         sound_container,
         text="Issue Warning:",
         anchor='e'
-    ).pack(side='left', padx=(0, 5))
+    ).pack(side='left', padx=(0, 5), pady=(20,0))
 
     # Define warning sounds
     warning_sounds = {
@@ -843,7 +850,7 @@ def setup_stats_panel(interface_builder, computer_name):
         state='readonly',
         width=15
     )
-    warning_dropdown.pack(side='left')
+    warning_dropdown.pack(side='left', padx=(0, 5), pady=(20,0))
 
     # Add automatic trigger on selection
     def on_warning_select(event):

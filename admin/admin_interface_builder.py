@@ -1118,8 +1118,9 @@ class AdminInterfaceBuilder:
                 # Configure title with room-specific color
                 self.stats_frame.configure(
                     text=title,
-                    font=('Arial', 10, 'bold'),
-                    fg=room_color  # Add color to match room color scheme
+                    font=('Arial', 12, 'bold'),
+                    fg=room_color,  # Add color to match room color scheme
+                    labelanchor='n'
                 )
                 
                 # Map room number to directory name for audio hints

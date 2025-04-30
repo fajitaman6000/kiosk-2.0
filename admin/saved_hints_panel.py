@@ -17,7 +17,7 @@ class SavedHintsPanel:
             parent: Parent frame to attach to
             send_hint_callback: Callback function for sending hints, expects dict with 'text' and optional 'image'
         """
-        self.frame = ttk.LabelFrame(parent, text="Saved Hints")
+        self.frame = tk.LabelFrame(parent, text="Saved Hints", fg='black', font=('Arial', 9, 'bold'), labelanchor='s')
         self.frame.pack(side='right', padx=0, pady=5)
         
         # Store callback

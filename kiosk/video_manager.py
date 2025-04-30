@@ -140,17 +140,52 @@ class VideoManager:
              return
 
         with self._lock: # Ensure atomic operation for starting playback
+            print(f"[video manager][PLAY_VIDEO] Checking state. Current state: is_playing={self.is_playing}, should_stop={self.should_stop}, resetting={self.resetting}", flush=True)
             if self.is_playing:
-                print("[video manager] Warning: Playback already in progress. Stopping previous.", flush=True)
-                self.stop_video() # Signal stop
-                # Consider adding a short wait here if needed for transitions
-                time.sleep(0.3) # Give stop a moment
-
-            print(f"[video manager] Starting video playback process for: {video_path}", flush=True)
+                print("[video manager][PLAY_VIDEO] Warning: Playback already in progress. Forcing stop of previous video.", flush=True)
+                # Perform force_stop while holding the lock to ensure atomicity
+                bridge_exists = Overlay._bridge is not None
+                player_instance = self.video_player
+                
+                print("[video manager][PLAY_VIDEO] Setting state for cleanup...", flush=True)
+                self.resetting = True # Mark as resetting
+                self.should_stop = True # Signal any active player to stop
+                self.is_playing = False # Assume stopped state immediately
+                self.video_player = None # Clear player reference
+                self.completion_callback = None # Clear callback
+                
+                # Release lock before potentially blocking operations
+                self._lock.release()
+                try:
+                    # Stop player if it exists
+                    if player_instance:
+                        print(f"[video manager][PLAY_VIDEO] Force stopping video player instance: {player_instance}...", flush=True)
+                        player_instance.force_stop()
+                        print(f"[video manager][PLAY_VIDEO] Video player force_stop completed.", flush=True)
+                    
+                    # Force destroy video display
+                    if bridge_exists:
+                        print("[video manager][PLAY_VIDEO] Force destroying video display (Auto connection)...", flush=True)
+                        QMetaObject.invokeMethod(
+                            Overlay._bridge,
+                            "destroy_video_display_slot",
+                            Qt.AutoConnection  # CHANGED: Let Qt decide based on thread context
+                        )
+                        print("[video manager][PLAY_VIDEO] Video display destroy request sent.", flush=True)
+                        # Add a small delay to allow Qt events to process
+                        time.sleep(0.1)
+                        print("[video manager][PLAY_VIDEO] Waited for Qt event processing.", flush=True)
+                finally:
+                    # Re-acquire lock
+                    self._lock.acquire()
+                    
+            # Reset state for new playback (regardless of whether we had to force stop)
+            print(f"[video manager][PLAY_VIDEO] Starting new video playback process for: {video_path}", flush=True)
             self.is_playing = True
             self.should_stop = False
-            self.resetting = False
+            self.resetting = False # Ensure resetting is false for the new playback
             self.completion_callback = on_complete # Store the final callback
+            print(f"[video manager][PLAY_VIDEO] New state set: is_playing=True, should_stop=False, resetting=False", flush=True)
 
         try:
             # 1. Fade out background music (can run in this thread)
@@ -236,11 +271,14 @@ class VideoManager:
         """Callback received from VideoPlayer when its thread finishes/stops."""
         thread_id = threading.get_ident()
         print(f"[video manager][CALLBACK_{thread_id}] +++ _on_player_complete entered (Thread: {thread_id}) +++", flush=True)
-        current_should_stop = self.should_stop # Check state early
-        print(f"[video manager][CALLBACK_{thread_id}] Current state: should_stop = {current_should_stop}", flush=True)
+        
+        # Check both should_stop and resetting flags
+        current_should_stop = self.should_stop
+        current_resetting = self.resetting
+        print(f"[video manager][CALLBACK_{thread_id}] Current state: should_stop = {current_should_stop}, resetting = {current_resetting}", flush=True)
 
         # --- Cleanup Trigger Logic ---
-        if not current_should_stop:
+        if not current_should_stop and not current_resetting:
             print(f"[video manager][CALLBACK_{thread_id}] Natural Completion detected. Scheduling cleanup via invokeMethod.", flush=True)
             with self._lock:
                 callback = self.completion_callback
@@ -257,7 +295,8 @@ class VideoManager:
             else:
                 print(f"[video manager][CALLBACK_{thread_id}] !!! ERROR: Overlay._bridge is None, cannot schedule cleanup!", flush=True)
         else:
-            print(f"[video manager][CALLBACK_{thread_id}] Manual Stop detected. Cleanup should be handled by stop_video.", flush=True)
+            print(f"[video manager][CALLBACK_{thread_id}] Manual Stop or Reset detected (should_stop={current_should_stop}, resetting={current_resetting}). Skipping natural completion.", flush=True)
+            print(f"[video manager][CALLBACK_{thread_id}] Cleanup should be handled by stop_video or force_stop.", flush=True)
         # --- End Cleanup Trigger Logic ---
 
         print(f"[video manager][CALLBACK_{thread_id}] --- _on_player_complete finished (Thread: {thread_id}) ---", flush=True)
@@ -453,45 +492,54 @@ class VideoManager:
         bridge_exists = Overlay._bridge is not None
         player_instance = None
         with self._lock:
-            print("[video manager] Force stop: Setting state flags.", flush=True)
+            print(f"[video manager][FORCE_STOP] Setting state flags. Current state: is_playing={self.is_playing}, should_stop={self.should_stop}, resetting={self.resetting}", flush=True)
             self.resetting = True # Mark as resetting
             self.should_stop = True # Signal any active player to stop
             self.is_playing = False # Assume stopped state immediately
             player_instance = self.video_player # Grab reference before nulling
             self.video_player = None # Clear player reference
             self.completion_callback = None # Clear callback
+            print(f"[video manager][FORCE_STOP] State flags set. New state: is_playing=False, should_stop=True, resetting=True", flush=True)
         
         try:
             # Step 1: Stop the player thread if it exists
             if player_instance:
-                print("[video manager] Force stopping video player instance...", flush=True)
+                print(f"[video manager][FORCE_STOP] Force stopping video player instance: {player_instance}...", flush=True)
                 player_instance.force_stop() # Ask player thread to terminate and clean up
+                print(f"[video manager][FORCE_STOP] Video player force_stop completed.", flush=True)
             else:
-                print("[video manager] Force stop: No player instance found.", flush=True)
+                print("[video manager][FORCE_STOP] No player instance found.", flush=True)
             
             # Step 2: Restore music volume immediately
-            print("[video manager] Force restoring music volume...", flush=True)
+            print("[video manager][FORCE_STOP] Force restoring music volume...", flush=True)
             if mixer.get_init():
                  mixer.music.set_volume(1.0) # Set volume directly
+                 print("[video manager][FORCE_STOP] Music volume restored to 1.0", flush=True)
+            else:
+                 print("[video manager][FORCE_STOP] Mixer not initialized, cannot restore music volume", flush=True)
             
             # Step 3: Just destroy the video display, no need for other UI manipulation
             if bridge_exists:
-                print("[video manager] Force destroying video display (Queued)...", flush=True)
+                print("[video manager][FORCE_STOP] Force destroying video display (Auto connection)...", flush=True)
                 QMetaObject.invokeMethod(
                     Overlay._bridge,
                     "destroy_video_display_slot",
-                    Qt.QueuedConnection
+                    Qt.AutoConnection  # CHANGED: Let Qt decide based on thread context
                 )
-                print("[video manager] Video display destroy request queued.", flush=True)
+                print("[video manager][FORCE_STOP] Video display destroy request sent.", flush=True)
+                # Add a small delay to allow Qt events to process
+                time.sleep(0.1)
+                print("[video manager][FORCE_STOP] Waited for Qt event processing.", flush=True)
             else:
-                print("[video manager] Warning: Bridge missing, cannot destroy video display.", flush=True)
+                print("[video manager][FORCE_STOP] Warning: Bridge missing, cannot destroy video display.", flush=True)
 
         except Exception as e:
-            print(f"[video manager] Error during force_stop cleanup: {e}", flush=True)
+            print(f"[video manager][FORCE_STOP] Error during force_stop cleanup: {e}", flush=True)
             traceback.print_exc()
         finally:
             # Ensure state is definitely reset even if errors occurred
             with self._lock:
+                 print("[video manager][FORCE_STOP] Final state reset in finally block", flush=True)
                  self.is_playing = False
                  self.should_stop = True
                  self.resetting = False # Reset the resetting flag after cleanup attempt
