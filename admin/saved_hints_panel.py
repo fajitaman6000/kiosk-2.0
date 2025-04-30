@@ -251,7 +251,7 @@ class SavedHintsPanel:
             
         return sorted(hints)
 
-    def get_image_path(self, room_number, prop_display_name, image_filename):
+    def get_image_path(self, room_number, prop_name, image_filename):
         """Construct the full path to a hint image based on room and prop"""
         if not image_filename:
             return None
@@ -270,18 +270,56 @@ class SavedHintsPanel:
         room_folder = room_map.get(room_number, "").lower()
         if not room_folder:
             return None
-            
-        # Construct path: sync_directory/hint_image_files/room/prop/image
-        image_path = os.path.join(
-            os.path.dirname(__file__),
-            "sync_directory",
-            "hint_image_files",
-            room_folder,
-            prop_display_name,
-            image_filename
-        )
+
+        # Get mappings from props to display names
+        original_prop_name = None
+        display_name = None
         
-        return image_path if os.path.exists(image_path) else None
+        if room_number in room_map:
+            room_key = room_map[room_number]
+            if room_key in self.prop_name_mappings:
+                # Find the matching prop
+                for orig_name, prop_info in self.prop_name_mappings[room_key]['mappings'].items():
+                    prop_display = prop_info.get('display', orig_name)
+                    # Check if this matches the prop name passed in (ignoring case)
+                    if (prop_display.lower() == prop_name.lower() or 
+                        orig_name.lower() == prop_name.lower()):
+                        original_prop_name = orig_name
+                        display_name = prop_display
+                        print(f"[saved hints panel] Found mapping: '{orig_name}' => '{prop_display}'")
+                        break
+        
+        # If we didn't find it in mappings, just use what was passed in
+        if not original_prop_name:
+            original_prop_name = prop_name
+            display_name = prop_name
+            print(f"[saved hints panel] No mapping found, using: '{prop_name}'")
+            
+        # Try multiple path combinations
+        possible_paths = [
+            # 1. Original folder as in mapping file
+            os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files", 
+                         room_folder, original_prop_name, image_filename),
+            
+            # 2. Display name as folder
+            os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files", 
+                         room_folder, display_name, image_filename),
+            
+            # 3. Exact prop name as passed in
+            os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files", 
+                         room_folder, prop_name, image_filename)
+        ]
+        
+        # Try each path
+        for path in possible_paths:
+            print(f"[saved hints panel] Checking if image exists at: {path}")
+            if os.path.exists(path):
+                print(f"[saved hints panel] Found image at: {path}")
+                return path
+                
+        # If we get here, no image was found
+        print(f"[saved hints panel] No image found in any possible locations for {image_filename}")
+        return None
 
     def update_room(self, room_number):
         """Update the prop dropdown for the selected room"""
@@ -431,19 +469,26 @@ class SavedHintsPanel:
                             original_name,
                             hint_data['image']
                         )
+                        print(f"[saved hints panel] Trying to load image: {hint_data['image']}")
+                        print(f"[saved hints panel] Full image path: {image_path}")
                         if image_path and os.path.exists(image_path):
+                            print(f"[saved hints panel] Image found at path: {image_path}")
                             image = Image.open(image_path)
                             image.thumbnail((250, 150))
                             photo = ImageTk.PhotoImage(image)
                             image_label.configure(image=photo, text='')
                             image_label.image = photo
                             has_image = True
+                        else:
+                            print(f"[saved hints panel] Image not found at path: {image_path}")
+                            image_label.configure(text="No image", image='')
                     except Exception as e:
-                        print(f"[saved hints panel]Error loading hint image for popup: {e}")
+                        print(f"[saved hints panel] Error loading hint image for popup: {e}")
+                        image_label.configure(text="No image", image='')
+                else:
+                    print(f"[saved hints panel] No image specified for this hint")
+                    image_label.configure(text="No image", image='')
                 
-                if not has_image:
-                    image_label.configure(text="No attached image", image='')
-                    
                 # Update the text
                 text_widget.config(state='normal')
                 text_widget.delete('1.0', tk.END)
@@ -503,19 +548,25 @@ class SavedHintsPanel:
                     original_name,
                     hint_data['image']
                 )
+                print(f"[saved hints panel] Trying to load image: {hint_data['image']}")
+                print(f"[saved hints panel] Full image path: {image_path}")
                 if image_path and os.path.exists(image_path):
+                    print(f"[saved hints panel] Image found at path: {image_path}")
                     image = Image.open(image_path)
-                    # Use a fixed size for the image preview in the popup
-                    image.thumbnail((250, 150))  # Reduced size
+                    image.thumbnail((250, 150))
                     photo = ImageTk.PhotoImage(image)
-                    image_label.configure(image=photo)
+                    image_label.configure(image=photo, text='')
                     image_label.image = photo
                     has_image = True
+                else:
+                    print(f"[saved hints panel] Image not found at path: {image_path}")
+                    image_label.configure(text="No image", image='')
             except Exception as e:
-                print(f"[saved hints panel]Error loading hint image for popup: {e}")
-        
-        if not has_image:
-            image_label.configure(text="No attached image")
+                print(f"[saved hints panel] Error loading hint image for popup: {e}")
+                image_label.configure(text="No image", image='')
+        else:
+            print(f"[saved hints panel] No image specified for this hint")
+            image_label.configure(text="No image", image='')
         
         # Add text preview in scrollable text widget
         text_frame = ttk.Frame(popup)
@@ -611,19 +662,30 @@ class SavedHintsPanel:
         if hint_data.get('image'):
             try:
                 # Get path using room, prop display name, and image filename
+                prop_name = self.prop_var.get().split('(')[-1].rstrip(')').strip()
                 image_path = self.get_image_path(
                     self.current_room,
-                    self.prop_var.get().split('(')[-1].rstrip(')').strip(),
+                    prop_name,
                     hint_data['image']
                 )
+                print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
+                print(f"[saved hints panel] Full image path: {image_path}")
+                
                 if image_path and os.path.exists(image_path):
+                    print(f"[saved hints panel] Image found at path: {image_path}")
                     # Get relative path from sync_directory
                     rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
                     send_data['image_path'] = rel_path
+                    print(f"[saved hints panel] Using relative image path: {rel_path}")
+                else:
+                    print(f"[saved hints panel] Image not found at path: {image_path}")
             except Exception as e:
-                print(f"[saved hints panel]Error getting hint image path for sending: {e}")
+                print(f"[saved hints panel] Error getting hint image path for sending: {e}")
+        else:
+            print(f"[saved hints panel] No image specified for this hint")
         
         # Send hint through callback
+        print(f"[saved hints panel] Sending hint data: {send_data}")
         self.send_hint_callback(send_data)
         
         # Close popup
@@ -687,15 +749,27 @@ class SavedHintsPanel:
                         original_name,
                         selected_hint['image']
                     )
+                    print(f"[saved hints panel] Sending hint with image: {selected_hint['image']}")
+                    print(f"[saved hints panel] Full image path: {image_path}")
+                    
                     if image_path and os.path.exists(image_path):
+                        print(f"[saved hints panel] Image found at path: {image_path}")
                         # Get relative path from sync_directory
                         rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
                         hint_data['image_path'] = rel_path
+                        print(f"[saved hints panel] Using relative image path: {rel_path}")
+                    else:
+                        print(f"[saved hints panel] Image not found at path: {image_path}")
                 except Exception as e:
-                    print(f"[saved hints panel]Error getting hint image path for sending: {e}")
+                    print(f"[saved hints panel] Error getting hint image path for sending: {e}")
+            else:
+                print(f"[saved hints panel] No image specified for this hint")
             
             # Send hint through callback
+            print(f"[saved hints panel] Sending hint data: {hint_data}")
             self.send_hint_callback(hint_data)
+        else:
+            print(f"[saved hints panel] No hint data found for {hint_name} in {original_name}")
 
     def refresh_hints(self):
         """Reloads hints from the JSON file and updates the display."""
