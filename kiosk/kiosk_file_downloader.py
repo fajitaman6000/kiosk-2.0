@@ -86,6 +86,7 @@ print("[kiosk file downloader] Ending imports ...")
 
 class KioskFileDownloader:
     def __init__(self, kiosk_app, admin_ip=None):
+        print("[kiosk_file_downloader] Initializing KioskFileDownloader...", flush=True)
         self.kiosk_app = kiosk_app
         self.running = True
         self.download_thread = None
@@ -104,6 +105,7 @@ class KioskFileDownloader:
         self.stall_timeout = 30  # If no progress for 30 seconds, consider it stalled
         # Ensure data directory exists
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        print("[kiosk_file_downloader] KioskFileDownloader initialized.", flush=True)
 
     def _load_cache(self):
         """Load file hashes from cache file"""
@@ -214,14 +216,18 @@ class KioskFileDownloader:
 
     def start(self):
         """Start the file downloader thread."""
+        print("[kiosk_file_downloader] Starting downloader thread...", flush=True)
         self.download_thread = Thread(target=self._background_download_handler, daemon=True)
         self.download_thread.start()
+        print("[kiosk_file_downloader] Downloader thread started.", flush=True)
 
     def stop(self):
         """Stop the file downloader thread."""
+        print("[kiosk_file_downloader] Stopping downloader thread...", flush=True)
         self.running = False
         if self.download_thread and self.download_thread.is_alive():
             self.download_thread.join()
+        print("[kiosk_file_downloader] Downloader thread stopped.", flush=True)
 
     def _calculate_file_hash(self, file_path):
         """Calculate the SHA256 hash of a file."""

@@ -1,23 +1,73 @@
 # qt_overlay.py
-print("[qt overlay] Beginning imports ...")
+print("[qt overlay] Beginning imports ...", flush=True)
+print("[qt_overlay] Importing PyQt5.QtCore...", flush=True)
 from PyQt5.QtCore import Qt, QRectF, QThread, pyqtSignal, QMetaObject, Q_ARG, Qt, QPointF, pyqtSlot, QBuffer, QIODevice, QObject, QTimer
+print("[qt_overlay] Imported PyQt5.QtCore.", flush=True)
+
+print("[qt_overlay] Importing PyQt5.QtGui...", flush=True)
 from PyQt5.QtGui import QTransform, QFont, QPainter, QPixmap, QImage, QPen, QBrush, QColor
+print("[qt_overlay] Imported PyQt5.QtGui.", flush=True)
+
+print("[qt_overlay] Importing PyQt5.QtWidgets...", flush=True)
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGraphicsScene, QGraphicsView, QGraphicsTextItem, QGraphicsPixmapItem, QGraphicsRectItem, QGraphicsItem
+print("[qt_overlay] Imported PyQt5.QtWidgets.", flush=True)
+
+print("[qt_overlay] Importing PIL...", flush=True)
 from PIL import Image
+print("[qt_overlay] Imported PIL.", flush=True)
+
+print("[qt_overlay] Importing sys...", flush=True)
 import sys
+print("[qt_overlay] Imported sys.", flush=True)
+
+print("[qt_overlay] Importing win32gui...", flush=True)
 import win32gui
+print("[qt_overlay] Imported win32gui.", flush=True)
+
+print("[qt_overlay] Importing win32con...", flush=True)
 import win32con
+print("[qt_overlay] Imported win32con.", flush=True)
+
+print("[qt_overlay] Importing os...", flush=True)
 import os
+print("[qt_overlay] Imported os.", flush=True)
+
+print("[qt_overlay] Importing io...", flush=True)
 import io
+print("[qt_overlay] Imported io.", flush=True)
+
+print("[qt_overlay] Importing traceback...", flush=True)
 import traceback
+print("[qt_overlay] Imported traceback.", flush=True)
+
+print("[qt_overlay] Importing numpy...", flush=True)
 import numpy as np # Needed for type hints / checks potentially
+print("[qt_overlay] Imported numpy.", flush=True)
+
+print("[qt_overlay] Importing config...", flush=True)
 from config import ROOM_CONFIG
+print("[qt_overlay] Imported config.", flush=True)
+
+print("[qt_overlay] Importing cv2...", flush=True)
 import cv2
+print("[qt_overlay] Imported cv2.", flush=True)
+
+print("[qt_overlay] Importing base64...", flush=True)
 import base64
+print("[qt_overlay] Imported base64.", flush=True)
+
+print("[qt_overlay] Importing qt_classes...", flush=True)
 from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
+print("[qt_overlay] Imported qt_classes.", flush=True)
+
+print("[qt_overlay] Importing qt_init...", flush=True)
 from qt_init import init_fullscreen_hint, init_view_image_button, init_view_solution_button, init_video_display, init_hint_text_overlay, init_hint_request_text_overlay, init_gm_assistance_overlay, init_background, init_waiting_label, init_view_image_button, init_view_solution_button, init_timer, init_help_button
+print("[qt_overlay] Imported qt_init.", flush=True)
+
+print("[qt_overlay] Importing threading...", flush=True)
 import threading
-print("[qt overlay] Ending imports ...")
+print("[qt_overlay] Imported threading.", flush=True)
+print("[qt overlay] Ending imports ...", flush=True)
 
 class OverlayBridge(QObject):
     """Receives invocations from other threads and calls Overlay class methods."""
@@ -210,6 +260,7 @@ class Overlay:
     
     @classmethod
     def init(cls):
+        print("[qt_overlay] Initializing Overlay...", flush=True)
         """Initialize the Qt overlay system."""
         if cls._initialized:
             return
@@ -288,6 +339,7 @@ class Overlay:
         cls.hide_waiting_screen_label() # Hide waiting label on init
 
         print("[qt overlay] Initialization complete.")
+        print("[qt_overlay] Overlay initialized.", flush=True)
     
     @classmethod
     def set_kiosk_app(cls, kiosk_app):
@@ -297,8 +349,10 @@ class Overlay:
 
     @classmethod
     def _init_fullscreen_hint(cls):
+        print("[qt_overlay] Initializing fullscreen hint...", flush=True)
         """Initialize fullscreen hint display components."""
         init_fullscreen_hint(cls)
+        print("[qt_overlay] Fullscreen hint initialized.", flush=True)
     
     @classmethod
     def show_fullscreen_hint(cls, image_data_base64, ui_instance):
@@ -460,13 +514,17 @@ class Overlay:
 
     @classmethod
     def _init_view_image_button(cls):
+        print("[qt_overlay] Initializing view image button...", flush=True)
         """Initialize the 'View Image Hint' button components."""
         init_view_image_button(cls)
+        print("[qt_overlay] View image button initialized.", flush=True)
 
     @classmethod
     def _init_view_solution_button(cls):
+        print("[qt_overlay] Initializing view solution button...", flush=True)
         """Initialize the 'View Solution' button components."""
         init_view_solution_button(cls)
+        print("[qt_overlay] View solution button initialized.", flush=True)
 
     @classmethod
     def _on_view_image_button_clicked(cls):
@@ -620,8 +678,10 @@ class Overlay:
 
     @classmethod
     def _init_video_display(cls):
+        print("[qt_overlay] Initializing video display...", flush=True)
         """Initialize video display components (window, scene, view, item)."""
         init_video_display(cls)
+        print("[qt_overlay] Video display initialized.", flush=True)
 
     @classmethod
     def prepare_video_display(cls, is_skippable, click_callback):
@@ -830,18 +890,24 @@ class Overlay:
 
     @classmethod
     def _init_hint_text_overlay(cls):
+        print("[qt_overlay] Initializing hint text overlay...", flush=True)
         """Initialize hint text overlay components."""
         init_hint_text_overlay(cls)
+        print("[qt_overlay] Hint text overlay initialized.", flush=True)
 
     @classmethod
     def _init_hint_request_text_overlay(cls):
+        print("[qt_overlay] Initializing hint request text overlay...", flush=True)
         """Initialize hint request text overlay components."""
         init_hint_request_text_overlay(cls)
+        print("[qt_overlay] Hint request text overlay initialized.", flush=True)
 
     @classmethod
     def _init_gm_assistance_overlay(cls):
+        print("[qt_overlay] Initializing GM assistance overlay...", flush=True)
         """Initialize game master assistance overlay components."""
         init_gm_assistance_overlay(cls)
+        print("[qt_overlay] GM assistance overlay initialized.", flush=True)
 
     @classmethod
     def show_hint_text(cls, text, room_number=None, priority=False):
@@ -1188,8 +1254,10 @@ class Overlay:
 
     @classmethod
     def init_timer(cls):
+        print("[qt_overlay] Initializing timer...", flush=True)
         """Initialize the timer display components"""
         init_timer(cls)
+        print("[qt_overlay] Timer initialized.", flush=True)
 
     @classmethod
     def update_timer_display(cls, time_str):
@@ -1295,8 +1363,10 @@ class Overlay:
 
     @classmethod
     def init_help_button(cls):
+        print("[qt_overlay] Initializing help button...", flush=True)
         """Initialize the help button components."""
         init_help_button(cls)
+        print("[qt_overlay] Help button initialized.", flush=True)
 
     @classmethod
     def load_button_images(cls, room_number):
@@ -1814,8 +1884,10 @@ class Overlay:
     
     @classmethod
     def _init_background(cls):
+        print("[qt_overlay] Initializing background...", flush=True)
         """Initialize Qt components for displaying the background image"""
         init_background(cls)
+        print("[qt_overlay] Background initialized.", flush=True)
             
     @classmethod
     def hide_background(cls):
@@ -1927,8 +1999,10 @@ class Overlay:
 
     @classmethod
     def _init_waiting_label(cls):
+        print("[qt_overlay] Initializing waiting label...", flush=True)
         """Initialize the waiting screen label overlay."""
         init_waiting_label(cls)
+        print("[qt_overlay] Waiting label initialized.", flush=True)
 
     @classmethod
     def show_waiting_screen_label(cls, computer_name):
@@ -2090,6 +2164,7 @@ class Overlay:
 
     @classmethod
     def _init_loss_screen(cls):
+        print("[qt_overlay] Initializing loss screen...", flush=True)
         """Initializes the loss screen components."""
         if cls._loss_screen_initialized:
             return
@@ -2166,6 +2241,7 @@ class Overlay:
             print(f"[qt overlay] Loss screen initialized with {image_path}")
         else:
             print(f"[qt overlay] Failed to initialize loss screen.")
+        print("[qt_overlay] Loss screen initialized.", flush=True)
 
     @classmethod
     def show_loss_screen(cls):
@@ -2192,6 +2268,7 @@ class Overlay:
 
     @classmethod
     def _init_victory_screen(cls):
+        print("[qt_overlay] Initializing victory screen...", flush=True)
         """Initializes the victory screen components."""
         if cls._victory_screen_initialized:
             return
@@ -2267,6 +2344,7 @@ class Overlay:
             print(f"[qt overlay] Victory screen initialized with {image_path}")
         else:
             print(f"[qt overlay] Failed to initialize victory screen.")
+        print("[qt_overlay] Victory screen initialized.", flush=True)
 
     @classmethod
     def show_victory_screen(cls):

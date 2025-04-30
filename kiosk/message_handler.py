@@ -21,9 +21,11 @@ _timer_scheduler = None
 
 def init_timer_scheduler():
     """Initialize the timer scheduler in the Qt main thread"""
+    print("[message_handler] Initializing timer scheduler...", flush=True)
     global _timer_scheduler
     if _timer_scheduler is None:
         _timer_scheduler = QTimer()
+    print("[message_handler] Timer scheduler initialized.", flush=True)
     return _timer_scheduler
 
 class TimerScheduler(QObject):
@@ -39,6 +41,7 @@ class MessageHandler:
     COMMAND_ID_TIMEOUT = 120
 
     def __init__(self, kiosk_app, video_manager):
+        print("[message_handler] Initializing MessageHandler...", flush=True)
         self.kiosk_app = kiosk_app
         self.video_manager = video_manager
         self.file_downloader = None  # Initialize later when we have the admin IP
@@ -54,6 +57,7 @@ class MessageHandler:
         self._resetting_kiosk = False
         # Queue for victory messages that arrive during reset
         self._pending_victory_msg = None
+        print("[message_handler] MessageHandler initialized.", flush=True)
 
     def schedule_timer(self, delay_ms, callback):
         """Thread-safe way to schedule a timer"""
@@ -68,27 +72,29 @@ class MessageHandler:
 
     def _ensure_file_downloader(self, admin_ip):
         """Ensure we have a properly initialized file downloader with the correct admin IP."""
+        print(f"[message_handler] Ensuring file downloader with admin IP: {admin_ip}...", flush=True)
         try:
             if not admin_ip:
-                print("[message handler] Error: No admin IP provided")
+                print("[message_handler] Error: No admin IP provided", flush=True)
                 return False
 
             # If IP changed or downloader not initialized, create new one
             if self.file_downloader is None or self._last_admin_ip != admin_ip:
                 # Clean up old downloader if it exists
                 if self.file_downloader:
-                    print(f"[message handler] Stopping old file downloader (admin IP changed from {self._last_admin_ip} to {admin_ip})")
+                    print(f"[message_handler] Stopping old file downloader (admin IP changed from {self._last_admin_ip} to {admin_ip})", flush=True)
                     self.file_downloader.stop()
                     self.file_downloader = None
 
-                print(f"[message handler] Creating new file downloader for admin IP: {admin_ip}")
+                print(f"[message_handler] Creating new file downloader for admin IP: {admin_ip}", flush=True)
                 self.file_downloader = KioskFileDownloader(self.kiosk_app, admin_ip)
                 self.file_downloader.start()
                 self._last_admin_ip = admin_ip
+                print(f"[message_handler] File downloader created and started.", flush=True)
 
             return True
         except Exception as e:
-            print(f"[message handler] Error initializing file downloader: {e}")
+            print(f"[message_handler] Error initializing file downloader: {e}", flush=True)
             import traceback
             traceback.print_exc()
             return False

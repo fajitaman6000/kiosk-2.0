@@ -18,6 +18,7 @@ print("[qt init] Ending imports ...")
 
 
 def init_fullscreen_hint(cls):
+    print("[qt_init] Starting init_fullscreen_hint()...", flush=True)
     """Initialize fullscreen hint display components."""
     if cls._fullscreen_hint_initialized:
         return
@@ -77,10 +78,12 @@ def init_fullscreen_hint(cls):
         print(f"[qt init] Error initializing fullscreen hint display: {e}")
         traceback.print_exc()
         cls._fullscreen_hint_initialized = False
+    print("[qt_init] Completed init_fullscreen_hint().", flush=True)
 
 
 
 def init_view_image_button(cls):
+    print("[qt_init] Starting init_view_image_button()...", flush=True)
     """Initialize the 'View Image Hint' button components."""
     if cls._view_image_button_initialized:
         return
@@ -171,9 +174,11 @@ def init_view_image_button(cls):
         print(f"[qt init] Error initializing View Image Hint button: {e}")
         traceback.print_exc()
         cls._view_image_button_initialized = False
+    print("[qt_init] Completed init_view_image_button().", flush=True)
 
 
 def init_view_solution_button(cls):
+    print("[qt_init] Starting init_view_solution_button()...", flush=True)
     """Initialize the 'View Solution' button components."""
     if cls._view_solution_button_initialized:
         return
@@ -262,9 +267,11 @@ def init_view_solution_button(cls):
         print(f"[qt init] Error initializing View Solution button: {e}")
         traceback.print_exc()
         cls._view_solution_button_initialized = False
+    print("[qt_init] Completed init_view_solution_button().", flush=True)
 
 
 def init_video_display(cls):
+    print("[qt_init] Starting init_video_display()...", flush=True)
     """Initialize video display components (window, scene, view, item) as a top-level window."""
     if cls._video_is_initialized:
         return # Already initialized
@@ -316,9 +323,11 @@ def init_video_display(cls):
         print(f"[qt init] Error initializing video display: {e}")
         traceback.print_exc()
         cls._video_is_initialized = False
+    print("[qt_init] Completed init_video_display().", flush=True)
 
 
 def init_hint_text_overlay(cls):
+    print("[qt_init] Starting init_hint_text_overlay()...", flush=True)
     """Initialize hint text overlay components."""
     # Get the main window and content widget
     from qt_main import QtKioskApp
@@ -394,8 +403,11 @@ def init_hint_text_overlay(cls):
         cls._hint_text['bg_image_item'] = cls._hint_text['scene'].addPixmap(QPixmap())
         cls._hint_text['bg_image_item'].setZValue(-1) # Set the image to the background layer
 
+    print("[qt_init] Completed init_hint_text_overlay().", flush=True)
+
 
 def init_hint_request_text_overlay(cls):
+    print("[qt_init] Starting init_hint_request_text_overlay()...", flush=True)
     """Initialize hint request text overlay components."""
     # Get the main window and content widget
     from qt_main import QtKioskApp
@@ -468,8 +480,11 @@ def init_hint_request_text_overlay(cls):
         cls._hint_request_text['text_item'].setFont(font)
         cls._hint_request_text['scene'].addItem(cls._hint_request_text['text_item'])
 
+    print("[qt_init] Completed init_hint_request_text_overlay().", flush=True)
+
 
 def init_gm_assistance_overlay(cls):
+    print("[qt_init] Starting init_gm_assistance_overlay()...", flush=True)
     """Initialize game master assistance overlay components."""
     print("[qt init] Initializing GM assistance overlay...")
     print(f"[qt init] Has kiosk_app: {hasattr(cls, 'kiosk_app')}")
@@ -693,9 +708,11 @@ def init_gm_assistance_overlay(cls):
         #cls._gm_assistance_overlay['view'].show()
         #cls._gm_assistance_overlay['window'].raise_()
 
-    
+    print("[qt_init] Completed init_gm_assistance_overlay().", flush=True)
+
 
 def init_timer(cls):
+    print("[qt_init] Starting init_timer()...", flush=True)
     """Initialize the timer display components"""
     if not cls._initialized:
         print("[qt init]Warning: Attempting to init_timer before base initialization")
@@ -768,9 +785,12 @@ def init_timer(cls):
             
         print("[qt init]Timer initialization complete")
 
+    print("[qt_init] Completed init_timer().", flush=True)
+
 
 
 def init_help_button(cls):
+    print("[qt_init] Starting init_help_button()...", flush=True)
     if not cls._initialized:
         print("[qt init]Warning: Attempting to init_help_button before base initialization")
         return
@@ -828,9 +848,12 @@ def init_help_button(cls):
 
         print("[qt init]Help button initialization complete")
 
+    print("[qt_init] Completed init_help_button().", flush=True)
+
 
 
 def init_background(cls):
+    print("[qt_init] Starting init_background()...", flush=True)
     """Initialize Qt components for displaying the background image"""
     try:
         # Get the main window's content widget to parent to
@@ -887,6 +910,7 @@ def init_background(cls):
     # --- Waiting Screen Label Methods ---
 
 def init_waiting_label(cls):
+    print("[qt_init] Starting init_waiting_label()...", flush=True)
     """Initialize the waiting screen label overlay."""
     if hasattr(cls, '_waiting_label_initialized') and cls._waiting_label_initialized:
         return
@@ -945,3 +969,4 @@ def init_waiting_label(cls):
         traceback.print_exc()
         cls._waiting_label = None # Ensure it's None on error
         cls._waiting_label_initialized = False
+    print("[qt_init] Completed init_waiting_label().", flush=True)

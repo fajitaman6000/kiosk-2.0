@@ -1,38 +1,69 @@
 # video_player.py
+print("[video_player] Beginning imports...", flush=True)
+print("[video_player] Importing cv2...", flush=True)
 import cv2
+print("[video_player] Imported cv2.", flush=True)
+print("[video_player] Importing threading...", flush=True)
 import threading
+print("[video_player] Imported threading.", flush=True)
+print("[video_player] Importing time...", flush=True)
 import time
+print("[video_player] Imported time.", flush=True)
+print("[video_player] Importing traceback...", flush=True)
 import traceback
+print("[video_player] Imported traceback.", flush=True)
+print("[video_player] Importing os...", flush=True)
 import os
+print("[video_player] Imported os.", flush=True)
+print("[video_player] Importing subprocess...", flush=True)
 import subprocess
+print("[video_player] Imported subprocess.", flush=True)
+print("[video_player] Importing tempfile...", flush=True)
 import tempfile
+print("[video_player] Imported tempfile.", flush=True)
+print("[video_player] Importing imageio_ffmpeg...", flush=True)
 import imageio_ffmpeg
+print("[video_player] Imported imageio_ffmpeg.", flush=True)
+print("[video_player] Importing mixer from pygame...", flush=True)
 from pygame import mixer
+print("[video_player] Imported mixer from pygame.", flush=True)
+print("[video_player] Importing numpy...", flush=True)
 import numpy as np
+print("[video_player] Imported numpy.", flush=True)
+print("[video_player] Importing queue...", flush=True)
 import queue  # Added for thread-safe queue
+print("[video_player] Imported queue.", flush=True)
 
 try:
+    print("[video_player] Trying to import pyautogui...", flush=True)
     import pyautogui # For screen size detection
     PYAUTOGUI_AVAILABLE = True
+    print("[video_player] Imported pyautogui successfully.", flush=True)
 except ImportError:
     PYAUTOGUI_AVAILABLE = False
-    print("[video player] Warning: pyautogui not found. Screen size detection unavailable, assuming 1920x1080.")
+    print("[video player] Warning: pyautogui not found. Screen size detection unavailable, assuming 1920x1080.", flush=True)
 
+print("[video_player] Ending imports.", flush=True)
 
 class VideoPlayer:
     # --- Constants ---
     FRAME_QUEUE_SIZE = 30 # Number of frames to buffer ahead
 
     def __init__(self, ffmpeg_path):
-        print("[video player] Initializing VideoPlayer (Optimized)")
+        print("[video player] Initializing VideoPlayer (Optimized)", flush=True)
         self.ffmpeg_path = ffmpeg_path
         self.is_playing = False
         self.should_stop = False # Flag to signal threads to stop
         self.playback_complete = True # Indicates if the last playback finished normally
 
+        print("[video player] Getting mixer Channel 0...", flush=True)
         self.video_sound_channel = mixer.Channel(0)
+        print("[video player] Got mixer Channel 0.", flush=True)
         self.current_audio_path = None
+        
+        print("[video player] Creating temporary directory...", flush=True)
         self.temp_dir = tempfile.mkdtemp(prefix="vidplayer_")
+        print(f"[video player] Created temporary directory: {self.temp_dir}", flush=True)
 
         self.frame_rate = 30.0
         self.frame_time = 1.0 / self.frame_rate
@@ -49,48 +80,54 @@ class VideoPlayer:
         # Target dimensions (screen size)
         self.target_width = 1920
         self.target_height = 1080
+        print("[video player] Detecting target dimensions...", flush=True)
         self._update_target_dimensions() # Get screen size on init
+        print(f"[video player] Target dimensions set to {self.target_width}x{self.target_height}", flush=True)
 
         # State for resizing check
         self.source_width = 0
         self.source_height = 0
         self.needs_resizing = False # Will be True only if source > target
+        print("[video player] VideoPlayer initialization complete.", flush=True)
 
     def _update_target_dimensions(self):
         """Attempts to get screen size, falls back to default."""
         if PYAUTOGUI_AVAILABLE:
             try:
+                print("[video player] Getting screen size with pyautogui...", flush=True)
                 width, height = pyautogui.size()
                 if width > 100 and height > 100:
                      self.target_width, self.target_height = width, height
-                     print(f"[video player] Detected screen size: {self.target_width}x{self.target_height}")
+                     print(f"[video player] Detected screen size: {self.target_width}x{self.target_height}", flush=True)
                 else:
                     raise ValueError(f"pyautogui returned invalid size: {width}x{height}")
             except Exception as e:
-                 print(f"[video player] Error getting screen size via pyautogui: {e}. Using default {self.target_width}x{self.target_height}.")
+                 print(f"[video player] Error getting screen size via pyautogui: {e}. Using default {self.target_width}x{self.target_height}.", flush=True)
         else:
-             print(f"[video player] pyautogui not available. Using default screen size {self.target_width}x{self.target_height}.")
+             print(f"[video player] pyautogui not available. Using default screen size {self.target_width}x{self.target_height}.", flush=True)
 
     def _reader_thread_func(self, video_path):
         """
         Reads frames from video, resizes IF SOURCE IS LARGER than target,
         puts them in the queue.
         """
-        print(f"[video player] Reader thread starting for: {video_path}")
+        print(f"[video player] Reader thread starting for: {video_path}", flush=True)
         cap = None
         processed_frame_count = 0
         read_successful = False
 
         try:
+            print(f"[video player] Opening video file: {video_path}", flush=True)
             cap = cv2.VideoCapture(video_path) # Stick to default
 
             if not cap.isOpened():
-                print(f"[video player] CRITICAL: Failed to open video in reader thread: {video_path}")
+                print(f"[video player] CRITICAL: Failed to open video in reader thread: {video_path}", flush=True)
                 if self.frame_queue:
                     try: self.frame_queue.put(None, timeout=0.5)
                     except queue.Full: pass
                 return
 
+            print(f"[video player] Video opened successfully: {video_path}", flush=True)
             read_successful = True
 
             # --- Get Video Properties ---
@@ -99,13 +136,13 @@ class VideoPlayer:
             _fps = cap.get(cv2.CAP_PROP_FPS)
 
             if _fps is None or not (0.1 < _fps < 121.0):
-                print(f"[video player] Warning: Invalid/unreliable FPS ({_fps}) from video. Using default 30.")
+                print(f"[video player] Warning: Invalid/unreliable FPS ({_fps}) from video. Using default 30.", flush=True)
                 self.frame_rate = 30.0
             else:
                 self.frame_rate = float(_fps)
             self.frame_time = 1.0 / self.frame_rate
 
-            print(f"[video player] Video properties: {self.source_width}x{self.source_height} @ {self.frame_rate:.2f} FPS (Frame Time: {self.frame_time:.4f}s)")
+            print(f"[video player] Video properties: {self.source_width}x{self.source_height} @ {self.frame_rate:.2f} FPS (Frame Time: {self.frame_time:.4f}s)", flush=True)
 
             # --- Determine if resizing (downscaling) is needed ONCE ---
             # Resize *only* if the source dimensions are *larger* than the target dimensions.
@@ -113,23 +150,23 @@ class VideoPlayer:
                                    self.source_height > self.target_height)
 
             if self.needs_resizing:
-                print(f"[video player] Downscaling needed: Source {self.source_width}x{self.source_height} -> Target {self.target_width}x{self.target_height}")
+                print(f"[video player] Downscaling needed: Source {self.source_width}x{self.source_height} -> Target {self.target_width}x{self.target_height}", flush=True)
                 # Using INTER_LINEAR is a balance between speed and quality for downscaling.
                 resize_interpolation = cv2.INTER_LINEAR
             elif self.source_width == self.target_width and self.source_height == self.target_height:
-                 print("[video player] No resizing needed (source matches target).")
+                 print("[video player] No resizing needed (source matches target).", flush=True)
             else:
                  # Source is smaller or equal in both dimensions (but not exact match)
-                 print(f"[video player] No resizing needed (source {self.source_width}x{self.source_height} <= target {self.target_width}x{self.target_height}).")
+                 print(f"[video player] No resizing needed (source {self.source_width}x{self.source_height} <= target {self.target_width}x{self.target_height}).", flush=True)
                  # The frame_update_callback receiver will need to handle scaling if fullscreen display is desired.
 
-
+            print("[video player] Starting frame reading loop...", flush=True)
             # --- Frame Reading Loop ---
             while not self.should_stop:
                 ret, frame = cap.read()
 
                 if not ret:
-                    print("[video player] Reader: End of video stream reached.")
+                    print("[video player] Reader: End of video stream reached.", flush=True)
                     break
 
                 # --- Process Frame (Downscaling if needed) ---
@@ -155,39 +192,41 @@ class VideoPlayer:
                     self.frame_queue.put(processed_frame, block=True, timeout=1.0)
                     processed_frame_count += 1
                 except queue.Full:
-                    print("[video player] Reader: Frame queue full. Player might be lagging or stopped.")
+                    print("[video player] Reader: Frame queue full. Player might be lagging or stopped.", flush=True)
                 except Exception as q_err:
-                     print(f"[video player] Reader: Error putting frame in queue: {q_err}")
+                     print(f"[video player] Reader: Error putting frame in queue: {q_err}", flush=True)
                      self.should_stop = True # Signal stop on queue error
 
 
-            print(f"[video player] Reader: Processed {processed_frame_count} frames.")
+            print(f"[video player] Reader: Processed {processed_frame_count} frames.", flush=True)
 
         except Exception as e:
-            print("[video player] CRITICAL: Error in reader thread:")
+            print("[video player] CRITICAL: Error in reader thread:", flush=True)
             traceback.print_exc()
             self.should_stop = True
         finally:
-            print("[video player] Reader thread cleaning up...")
+            print("[video player] Reader thread cleaning up...", flush=True)
             if cap and cap.isOpened():
+                print("[video player] Releasing video capture...", flush=True)
                 cap.release()
-                print("[video player] Reader: Released video capture.")
+                print("[video player] Reader: Released video capture.", flush=True)
 
             if self.frame_queue:
                  try:
+                     print("[video player] Putting None sentinel in queue...", flush=True)
                      self.frame_queue.put(None, block=False)
-                     print("[video player] Reader: Put None sentinel in queue.")
+                     print("[video player] Reader: Put None sentinel in queue.", flush=True)
                  except queue.Full:
-                      print("[video player] Reader: Queue full when trying to put None sentinel (player likely stopped abruptly).")
+                      print("[video player] Reader: Queue full when trying to put None sentinel (player likely stopped abruptly).", flush=True)
                  except Exception as e:
-                     print(f"[video player] Reader: Error putting None sentinel: {e}")
+                     print(f"[video player] Reader: Error putting None sentinel: {e}", flush=True)
 
             if not read_successful:
-                print("[video player] Reader: Setting playback_complete to True as video never opened.")
+                print("[video player] Reader: Setting playback_complete to True as video never opened.", flush=True)
                 self.playback_complete = True
                 self.is_playing = False
 
-            print("[video player] Reader thread finished.")
+            print("[video player] Reader thread finished.", flush=True)
 
 
     def _player_thread_func(self, audio_path):
@@ -197,7 +236,7 @@ class VideoPlayer:
         NOTE: Frames received might be smaller than target dimensions and may
               need scaling by the callback receiver for fullscreen display.
         """
-        print("[video player] Player thread starting.")
+        print("[video player] Player thread starting.", flush=True)
         frame_count = 0
         playback_start_perf_counter = -1.0 # Initialize later
         audio_started = False

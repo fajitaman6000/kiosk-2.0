@@ -1,37 +1,80 @@
 # kiosk.py
-print("[kiosk main] Beginning imports ...")
+print("[kiosk main] Beginning imports ...", flush=True)
 # import tkinter as tk - removed
+print("[kiosk main] Importing socket, sys, os, traceback, ctypes...", flush=True)
 import socket, sys, os, traceback, ctypes # type: ignore
+print("[kiosk main] Imported socket, sys, os, traceback, ctypes.", flush=True)
+print("[kiosk main] Importing KioskNetwork from networking...", flush=True)
 from networking import KioskNetwork
+print("[kiosk main] Imported KioskNetwork from networking.", flush=True)
+print("[kiosk main] Importing QtManager from qt_manager...", flush=True)
 from qt_manager import QtManager
+print("[kiosk main] Imported QtManager from qt_manager.", flush=True)
+print("[kiosk main] Importing ROOM_CONFIG from config...", flush=True)
 from config import ROOM_CONFIG
+print("[kiosk main] Imported ROOM_CONFIG from config.", flush=True)
+print("[kiosk main] Importing VideoServer from video_server...", flush=True)
 from video_server import VideoServer
+print("[kiosk main] Imported VideoServer from video_server.", flush=True)
+print("[kiosk main] Importing VideoManager from video_manager...", flush=True)
 from video_manager import VideoManager
+print("[kiosk main] Imported VideoManager from video_manager.", flush=True)
+print("[kiosk main] Importing AudioServer from audio_server...", flush=True)
 from audio_server import AudioServer
+print("[kiosk main] Imported AudioServer from audio_server.", flush=True)
+print("[kiosk main] Importing MessageHandler, init_timer_scheduler from message_handler...", flush=True)
 from message_handler import MessageHandler, init_timer_scheduler
+print("[kiosk main] Imported MessageHandler, init_timer_scheduler from message_handler.", flush=True)
+print("[kiosk main] Importing Path from pathlib...", flush=True)
 from pathlib import Path
+print("[kiosk main] Imported Path from pathlib.", flush=True)
+print("[kiosk main] Importing RoomPersistence from room_persistence...", flush=True)
 from room_persistence import RoomPersistence
+print("[kiosk main] Imported RoomPersistence from room_persistence.", flush=True)
+print("[kiosk main] Importing KioskTimer from kiosk_timer...", flush=True)
 from kiosk_timer import KioskTimer
+print("[kiosk main] Imported KioskTimer from kiosk_timer.", flush=True)
+print("[kiosk main] Importing AudioManager from audio_manager...", flush=True)
 from audio_manager import AudioManager
+print("[kiosk main] Imported AudioManager from audio_manager.", flush=True)
+print("[kiosk main] Importing KioskFileDownloader from kiosk_file_downloader...", flush=True)
 from kiosk_file_downloader import KioskFileDownloader
+print("[kiosk main] Imported KioskFileDownloader from kiosk_file_downloader.", flush=True)
+print("[kiosk main] Importing Overlay from qt_overlay...", flush=True)
 from qt_overlay import Overlay
+print("[kiosk main] Imported Overlay from qt_overlay.", flush=True)
+print("[kiosk main] Importing QtKioskApp from qt_main...", flush=True)
 from qt_main import QtKioskApp  # Import the new QtKioskApp class
+print("[kiosk main] Imported QtKioskApp from qt_main.", flush=True)
+print("[kiosk main] Importing init_logging, log_exception from logger...", flush=True)
 from logger import init_logging, log_exception  # Import our new logger
+print("[kiosk main] Imported init_logging, log_exception from logger.", flush=True)
+print("[kiosk main] Importing windll from ctypes...", flush=True)
 from ctypes import windll
+print("[kiosk main] Imported windll from ctypes.", flush=True)
+print("[kiosk main] Importing signal...", flush=True)
 import signal
+print("[kiosk main] Imported signal.", flush=True)
+print("[kiosk main] Importing threading...", flush=True)
 import threading
+print("[kiosk main] Imported threading.", flush=True)
+print("[kiosk main] Importing time...", flush=True)
 import time
+print("[kiosk main] Imported time.", flush=True)
+print("[kiosk main] Importing PyQt5.QtCore...", flush=True)
 from PyQt5.QtCore import QMetaObject, Qt, QTimer, Q_ARG
-print("[kiosk main] Ending imports ...")
+print("[kiosk main] Imported PyQt5.QtCore.", flush=True)
+print("[kiosk main] Ending imports ...", flush=True)
 
 class KioskApp:
     def __init__(self):
-        print("[kiosk main]Starting KioskApp initialization...")
+        print("[kiosk main]Starting KioskApp initialization...", flush=True)
         os.chdir(os.path.dirname(os.path.abspath(__file__)))
         
         # Initialize logging
+        print("[kiosk main] Initializing logging...", flush=True)
         self.logger = init_logging()
-        print("[kiosk main] Console logging initialized.")
+        print("[kiosk main] Console logging initialized.", flush=True)
 
         #get_stats items to pass with info payload
         self.computer_name = socket.gethostname()
@@ -49,70 +92,105 @@ class KioskApp:
         self.room_started = False
 
         # Create Qt application first, before any other component
+        print("[kiosk main] Creating Qt application...", flush=True)
         self.qt_app = QtKioskApp(self)
+        print("[kiosk main] Qt application created.", flush=True)
         
         # Set the proper application ID for Windows taskbar grouping
         # This should be a registered application identifier for your app
+        print("[kiosk main] Setting Windows application ID...", flush=True)
         myappid = 'EscapeRoomKiosk.App.2.0'  # Use a consistent, specific app ID
         try:
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            print("[kiosk main] Windows application ID set successfully.", flush=True)
         except Exception as e:
-            print(f"[kiosk main] Failed to set app ID: {str(e)}")
+            print(f"[kiosk main] Failed to set app ID: {str(e)}", flush=True)
 
         # Initialize Qt overlay with explicit reference to the QApplication instance
         # We'll modify the Overlay.init method to accept a reference to the Qt application
+        print("[kiosk main] Setting up Qt overlay...", flush=True)
         Overlay._app = self.qt_app  # Set the app reference directly
         Overlay.init()
         
         # Set the kiosk_app reference directly
         Overlay.set_kiosk_app(self)
+        print("[kiosk main] Qt overlay initialized.", flush=True)
         
         # Now initialize other components
         self.current_video_process = None
+        print("[kiosk main] Initializing AudioManager...", flush=True)
         self.audio_manager = AudioManager(self)  # Pass the KioskApp instance
+        print("[kiosk main] AudioManager initialized.", flush=True)
+        
+        print("[kiosk main] Initializing VideoManager...", flush=True)
         self.video_manager = VideoManager(None)  # No longer need to pass root
+        print("[kiosk main] VideoManager initialized.", flush=True)
+        
+        print("[kiosk main] Initializing MessageHandler...", flush=True)
         self.message_handler = MessageHandler(self, self.video_manager)
+        print("[kiosk main] MessageHandler initialized.", flush=True)
         
         # Initialize components as before
+        print("[kiosk main] Initializing KioskNetwork...", flush=True)
         self.network = KioskNetwork(self.computer_name, self)
-        self.video_server = VideoServer()
-        print("[kiosk main]Starting video server...")
-        self.video_server.start()
+        print("[kiosk main] KioskNetwork initialized.", flush=True)
         
-        from kiosk_timer import KioskTimer
+        print("[kiosk main] Initializing VideoServer...", flush=True)
+        self.video_server = VideoServer()
+        print("[kiosk main] Starting video server...", flush=True)
+        self.video_server.start()
+        print("[kiosk main] VideoServer started.", flush=True)
+        
+        print("[kiosk main] Initializing KioskTimer...", flush=True)
         self.timer = KioskTimer(None, self)  # Pass self but no longer need root
-        self.timer.game_won = False 
+        self.timer.game_won = False
+        print("[kiosk main] KioskTimer initialized.", flush=True)
         
         # Create UI manager with QtManager instead of KioskUI
+        print("[kiosk main] Initializing QtManager...", flush=True)
         self.ui = QtManager(self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()
+        print("[kiosk main] QtManager initialized.", flush=True)
+        
+        print("[kiosk main] Starting network threads...", flush=True)
         self.network.start_threads()
+        print("[kiosk main] Network threads started.", flush=True)
 
+        print("[kiosk main] Initializing AudioServer...", flush=True)
         self.audio_server = AudioServer()
-        print("[kiosk main]Starting audio server...")
+        print("[kiosk main] Starting audio server...", flush=True)
         self.audio_server.start()
+        print("[kiosk main] AudioServer started.", flush=True)
 
-        print(f"[kiosk main]Computer name: {self.computer_name}")
-        print("[kiosk main]Creating RoomPersistence...")
+        print(f"[kiosk main] Computer name: {self.computer_name}", flush=True)
+        print("[kiosk main] Creating RoomPersistence...", flush=True)
         self.room_persistence = RoomPersistence()
         self.assigned_room = self.room_persistence.load_room_assignment()
-        print(f"[kiosk main]Loaded room assignment: {self.assigned_room}")
+        print(f"[kiosk main] Loaded room assignment: {self.assigned_room}", flush=True)
 
         #Initialize the file downloader
+        print("[kiosk main] Initializing KioskFileDownloader...", flush=True)
         self.file_downloader = KioskFileDownloader(self)
         self.file_downloader.start() # Start it immediately
+        print("[kiosk main] KioskFileDownloader started.", flush=True)
         
         # Initialize UI with saved room if available
         if self.assigned_room:
+            print(f"[kiosk main] Setting up room interface for room {self.assigned_room}...", flush=True)
             # Use QTimer.singleShot instead of root.after
             QTimer.singleShot(100, lambda: self.ui.setup_room_interface(self.assigned_room))
         else:
+            print("[kiosk main] Setting up waiting screen...", flush=True)
             self.ui.setup_waiting_screen()
 
         # Create a timer for the help button update
+        print("[kiosk main] Setting up help button update timer...", flush=True)
         self.help_button_timer = QTimer()
         self.help_button_timer.timeout.connect(self._actual_help_button_update)
         self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
+        print("[kiosk main] Help button update timer started.", flush=True)
+        
+        print("[kiosk main] KioskApp initialization complete.", flush=True)
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
@@ -127,7 +205,7 @@ class KioskApp:
 
     def get_stats(self):
         if self.is_closing:
-            print("[kiosk get_stats] Prevented stats update and screenshot: Kiosk is closing.")
+            print("[kiosk get_stats] Prevented stats update and screenshot: Kiosk is closing.", flush=True)
             return {} # Return empty dict to avoid issues if stats are expected
         stats = {
             'computer_name': self.computer_name,
@@ -159,10 +237,11 @@ class KioskApp:
     def send_screenshot(self):
         """Takes and sends a screenshot to the admin."""
         if self.is_closing:
-            print("[kiosk]Screenshot send prevented: Kiosk is closing.")
+            print("[kiosk]Screenshot send prevented: Kiosk is closing.", flush=True)
             return
 
         try:
+            print("[kiosk] Taking screenshot...", flush=True)
             from PIL import ImageGrab, Image
             import io, base64
 
@@ -170,7 +249,7 @@ class KioskApp:
             time.sleep(0.1)  # Wait 100ms.  Adjust as needed.
 
             if self.is_closing:  # Re-check after the delay.
-                print("[kiosk]Screenshot send prevented after delay: Kiosk is closing.")
+                print("[kiosk]Screenshot send prevented after delay: Kiosk is closing.", flush=True)
                 return
             
             # Take screenshot
@@ -194,9 +273,10 @@ class KioskApp:
                 'computer_name': self.computer_name,
                 'image_data': image_data
             })
+            print("[kiosk] Screenshot sent.", flush=True)
 
         except Exception as e:
-            print(f"[kiosk]Screenshot error: {e}")
+            print(f"[kiosk]Screenshot error: {e}", flush=True)
             traceback.print_exc()
     
     def handle_message(self, msg):

@@ -1,15 +1,23 @@
 # audio_manager.py
-print("[audio_manager] Beginning imports ...")
+print("[audio_manager] Beginning imports ...", flush=True)
+print("[audio_manager] Importing os...", flush=True)
 import os
+print("[audio_manager] Imported os.", flush=True)
 from os import environ
+print("[audio_manager] Importing pygame...", flush=True)
 environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "1"
 import pygame # type: ignore
+print("[audio_manager] Imported pygame.", flush=True)
+print("[audio_manager] Importing time...", flush=True)
 import time
-print("[audio_manager] Ending imports ...")
+print("[audio_manager] Imported time.", flush=True)
+print("[audio_manager] Ending imports ...", flush=True)
 
 class AudioManager:
     def __init__(self, kiosk_app):
+        print("[audio_manager] Initializing pygame.mixer...", flush=True)
         pygame.mixer.init()
+        print("[audio_manager] Initialized pygame.mixer.", flush=True)
         self.sound_dir = "kiosk_sounds"
         self.music_dir = "music"
         self._last_played = None
@@ -43,7 +51,7 @@ class AudioManager:
             # Only block if it's the same sound AND not enough time has passed
             if (sound_name == self._last_played and 
                 current_time - self._last_played_time < self.MIN_REPLAY_DELAY):
-                print(f"[audio manager]Skipping sound {sound_name} - too soon since last play")
+                print(f"[audio manager]Skipping sound {sound_name} - too soon since last play", flush=True)
                 return
                 
             sound_path = os.path.join(self.sound_dir, sound_name)
@@ -55,9 +63,9 @@ class AudioManager:
                 sound_channel.play(sound)
                 self._last_played = sound_name
                 self._last_played_time = current_time
-                print(f"[audio manager]Playing sound {sound_name} on channel 1")
+                print(f"[audio manager]Playing sound {sound_name} on channel 1", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error playing sound {sound_name}: {e}")
+            print(f"[audio manager]Error playing sound {sound_name}: {e}", flush=True)
 
     def play_hint_audio(self, audio_name):
         """Plays a sound file from the hint_audio_files directory."""
@@ -68,12 +76,12 @@ class AudioManager:
                 #Use channel 2 for audio hints (channel 0 is reserved for video and 1 for sfx)
                 sound_channel = pygame.mixer.Channel(2)
                 sound_channel.play(sound)
-                print(f"[audio manager]Playing audio hint {audio_name} on channel 2")
+                print(f"[audio manager]Playing audio hint {audio_name} on channel 2", flush=True)
 
             else:
-                    print(f"[audio manager]Audio hint file not found: {audio_path}")
+                    print(f"[audio manager]Audio hint file not found: {audio_path}", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error playing audio hint {audio_name}: {e}")
+            print(f"[audio manager]Error playing audio hint {audio_name}: {e}", flush=True)
 
     def play_background_music(self, room_number):
         """
@@ -83,7 +91,7 @@ class AudioManager:
             music_file = self.room_music_map.get(room_number)
             if music_file:
                 music_path = os.path.join(self.music_dir, music_file)
-                print(f"[audio manager]Attempting to play background music: {music_path}")
+                print(f"[audio manager]Attempting to play background music: {music_path}", flush=True)
 
                 if os.path.exists(music_path):
                     self.stop_background_music()  # Stop any existing music
@@ -91,14 +99,14 @@ class AudioManager:
                     pygame.mixer.music.play(-1)  # Loop indefinitely
                     self.current_music = music_file
                     self.is_playing = True
-                    print(f"[audio manager]Started playing background music: {music_file}")
+                    print(f"[audio manager]Started playing background music: {music_file}", flush=True)
                 else:
-                    print(f"[audio manager]Background music file not found: {music_path}")
+                    print(f"[audio manager]Background music file not found: {music_path}", flush=True)
             else:
-                print(f"[audio manager]No music defined for room number: {room_number}")
+                print(f"[audio manager]No music defined for room number: {room_number}", flush=True)
 
         except Exception as e:
-            print(f"[audio manager]Error playing background music: {e}")
+            print(f"[audio manager]Error playing background music: {e}", flush=True)
 
     def stop_background_music(self):
         """
@@ -110,9 +118,9 @@ class AudioManager:
                 pygame.mixer.music.unload()
                 self.current_music = None
                 self.is_playing = False
-                print("[audio manager]Stopped background music")
+                print("[audio manager]Stopped background music", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error stopping background music: {e}")
+            print(f"[audio manager]Error stopping background music: {e}", flush=True)
     def toggle_music(self):
         """
         Toggles the music on or off.  If off, turns on based on assigned room.
@@ -125,9 +133,9 @@ class AudioManager:
                 if self.kiosk_app.assigned_room:
                     self.play_background_music(self.kiosk_app.assigned_room)
                 else:
-                    print("[audio manager]No room assigned, cannot start music.")
+                    print("[audio manager]No room assigned, cannot start music.", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error toggling music: {e}")
+            print(f"[audio manager]Error toggling music: {e}", flush=True)
 
 
     def set_music_volume(self, volume):
@@ -139,7 +147,7 @@ class AudioManager:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.set_volume(volume)
         except Exception as e:
-            print(f"[audio manager]Error setting music volume: {e}")
+            print(f"[audio manager]Error setting music volume: {e}", flush=True)
 
     def play_loss_audio(self, room_number):
         """Plays the loss audio for the given room."""
@@ -153,13 +161,13 @@ class AudioManager:
                     sound = pygame.mixer.Sound(audio_path)
                     sound_channel = pygame.mixer.Channel(3)  # Dedicated channel
                     sound_channel.play(sound)
-                    print(f"[audio manager]Playing loss audio {audio_file} on channel 3")
+                    print(f"[audio manager]Playing loss audio {audio_file} on channel 3", flush=True)
                 else:
-                    print(f"[audio manager]Loss audio not found: {audio_path}")
+                    print(f"[audio manager]Loss audio not found: {audio_path}", flush=True)
             else:
-                print(f"[audio manager]No loss audio defined for room number: {room_number}")
+                print(f"[audio manager]No loss audio defined for room number: {room_number}", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error playing loss audio: {e}")
+            print(f"[audio manager]Error playing loss audio: {e}", flush=True)
 
     def stop_all_audio(self):
         """Stops all currently playing audio, including music and sound effects."""
@@ -171,6 +179,6 @@ class AudioManager:
                 channel = pygame.mixer.Channel(channel_id)
                 if channel.get_busy():
                     channel.stop()
-            print("[audio manager] Stopped all audio.")
+            print("[audio manager] Stopped all audio.", flush=True)
         except Exception as e:
-            print(f"[audio manager] Error stopping all audio: {e}")
+            print(f"[audio manager] Error stopping all audio: {e}", flush=True)
