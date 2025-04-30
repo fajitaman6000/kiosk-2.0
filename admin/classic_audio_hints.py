@@ -161,17 +161,11 @@ class ClassicAudioHints:
                         if f.lower().endswith('.mp3')]
             self.available_audio_files = sorted(audio_files)
         
-        # Enable/disable open button based on available audio files
-        if self.available_audio_files:
-            self.open_button.config(state='normal')
-        else:
-            self.open_button.config(state='disabled')
+        # Enable open button if a prop is selected, regardless of audio file availability
+        self.open_button.config(state='normal')
 
     def open_audio_browser(self):
         """Open popup window with audio files browser"""
-        if not self.available_audio_files:
-            return
-        
         selected_prop = self.prop_var.get()
         if not selected_prop:
             return
@@ -236,6 +230,34 @@ class ClassicAudioHints:
         list_scrollbar.pack(side='right', fill='y')
         audio_listbox.config(yscrollcommand=list_scrollbar.set)
         
+        # Create right panel for audio details and controls
+        right_panel = ttk.Frame(main_frame)
+        right_panel.pack(side='left', fill='both', expand=True)
+        
+        # Check if there are any audio files available
+        if not self.available_audio_files:
+            # Display message when no audio files are available
+            no_audio_label = ttk.Label(
+                right_panel, 
+                text="No audio files available for this prop",
+                font=('Arial', 12),
+                foreground='gray'
+            )
+            no_audio_label.pack(expand=True, pady=20)
+            
+            # Add close button at the bottom
+            button_frame = ttk.Frame(popup, height=50)
+            button_frame.pack(fill='x', padx=10, pady=10)
+            
+            close_button = ttk.Button(
+                button_frame,
+                text="Close",
+                command=popup.destroy
+            )
+            close_button.pack(side='right', padx=5)
+            
+            return
+        
         # Fill listbox with available audio files
         for audio_file in self.available_audio_files:
             audio_listbox.insert(tk.END, audio_file)
@@ -244,10 +266,6 @@ class ClassicAudioHints:
         if self.available_audio_files:
             audio_listbox.selection_set(0)
             audio_listbox.see(0)
-        
-        # Create right panel for audio details and controls
-        right_panel = ttk.Frame(main_frame)
-        right_panel.pack(side='left', fill='both', expand=True)
         
         # Add title label
         title_frame = ttk.Frame(right_panel)

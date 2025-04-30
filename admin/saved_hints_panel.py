@@ -352,11 +352,8 @@ class SavedHintsPanel:
             self.available_hints = self.get_hints_for_prop(original_name)
             #print(f"[saved hints panel]Found hints: {self.available_hints}")
             
-            # Enable the open button if hints are available
-            if self.available_hints:
-                self.open_button.config(state='normal')
-            else:
-                self.open_button.config(state='disabled')
+            # Enable the open button if a prop is selected, regardless of hints availability
+            self.open_button.config(state='normal')
         else:
             self.available_hints = []
             self.open_button.config(state='disabled')
@@ -384,20 +381,23 @@ class SavedHintsPanel:
     def open_hints_browser(self):
         """Open a browser window with all hints for the selected prop"""
         prop_display_name = self.prop_var.get()
-        if not prop_display_name or not self.available_hints:
+        if not prop_display_name:
             return
             
         # Extract original prop name from the combined format
         original_name = prop_display_name.split('(')[-1].rstrip(')')
         original_name = original_name.strip()
         
-        # Show popup with first hint
+        # Show popup with first hint or empty state
         if self.available_hints:
             first_hint = self.available_hints[0]
             hint_data, prop_key = self.get_hint_data(first_hint, original_name)
             if hint_data:
                 self.show_hint_popup(first_hint, original_name, prop_key, hint_data, 0)
-            
+        else:
+            # No hints available, show empty state popup
+            self.show_hint_popup(None, original_name, None, None, None)
+
     def get_hint_data(self, hint_name, original_name):
         """Get hint data for a specific hint and prop"""
         room_str = str(self.current_room)
@@ -573,7 +573,7 @@ class SavedHintsPanel:
         """Show popup window with hint preview"""
         # Create popup window
         popup = tk.Toplevel(self.frame)
-        popup.title(f"Hint: {hint_name}")
+        popup.title(f"Hints: {original_name}")
         popup.transient(self.frame)
         popup.grab_set()
         
@@ -618,6 +618,34 @@ class SavedHintsPanel:
         list_scrollbar.pack(side='right', fill='y')
         hint_listbox.config(yscrollcommand=list_scrollbar.set)
         
+        # Create right panel for hint details
+        right_panel = ttk.Frame(main_frame)
+        right_panel.pack(side='left', fill='both', expand=True)
+        
+        # Check if there are any hints available
+        if not self.available_hints:
+            # Display message when no hints are available
+            no_hints_label = ttk.Label(
+                right_panel, 
+                text="No hints available for this prop",
+                font=('Arial', 12),
+                foreground='gray'
+            )
+            no_hints_label.pack(expand=True, pady=20)
+            
+            # Add close button at the bottom
+            button_frame = ttk.Frame(popup, height=50)
+            button_frame.pack(fill='x', padx=10, pady=10)
+            
+            close_button = ttk.Button(
+                button_frame,
+                text="Close",
+                command=popup.destroy
+            )
+            close_button.pack(side='right', padx=5)
+            
+            return
+        
         # Fill listbox with available hints
         for hint in self.available_hints:
             hint_listbox.insert(tk.END, hint)
@@ -626,10 +654,6 @@ class SavedHintsPanel:
         if hint_index is not None:
             hint_listbox.selection_set(hint_index)
             hint_listbox.see(hint_index)
-        
-        # Create right panel for hint details
-        right_panel = ttk.Frame(main_frame)
-        right_panel.pack(side='left', fill='both', expand=True)
         
         # Add hint name label
         title_frame = ttk.Frame(right_panel)

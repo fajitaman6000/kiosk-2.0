@@ -6,6 +6,9 @@ play video while playing video results in crash instead of changing to selected 
 ##############################################################################################################################
 # pre-beta testing
 
+visual improvements to audio and saved hints (readability, bold on props with hints)
+ensure enough space for all rooms to be shown
+move reset kiosk to other controls
 
 ##############################################################################################################################
 # todo
