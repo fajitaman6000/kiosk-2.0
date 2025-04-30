@@ -910,7 +910,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True)  # Crucial: fill='x' here, and expand = True
 
-    stats_panel_ypadding = 19
+    stats_panel_ypadding = 14
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(

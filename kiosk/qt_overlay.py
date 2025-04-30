@@ -1749,22 +1749,7 @@ class Overlay:
                         cls._cooldown_window.hide()
 
             # --- Restore GM Assistance ---
-            # GM Assistance (only if it was previously visible and window available)
-            if hasattr(cls, '_gm_assistance_overlay') and cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
-                gm_window = cls._gm_assistance_overlay['window']
-                # Use get method with default False to avoid KeyError if _was_visible doesn't exist yet
-                was_visible_flag = cls._gm_assistance_overlay.get('_was_visible', False)
-                if was_visible_flag:
-                    # Show if not already visible
-                    if not gm_window.isVisible(): gm_window.show()
-                    gm_window.raise_() # Ensure it's on top
-                    # Reset flag after showing it once
-                    cls._gm_assistance_overlay['_was_visible'] = False
-                else:
-                    # Ensure it's hidden if it wasn't flagged as visible
-                    if gm_window.isVisible():
-                        gm_window.hide()
-
+            # REMOVED GM Assistance restore logic - its visibility is now solely controlled by explicit calls.
 
             # print("[qt overlay] Non-video overlay UI elements restored.") # Reduce noise
         except Exception as e:
@@ -1937,8 +1922,9 @@ class Overlay:
         """Hide the game master assistance overlay."""
         if cls._gm_assistance_overlay and cls._gm_assistance_overlay.get('window'):
             cls._gm_assistance_overlay['window'].hide()
-            # DO NOT reset _was_visible here. We want to remember it was shown.
-            
+            # Reset _was_visible flag when hiding
+            cls._gm_assistance_overlay['_was_visible'] = False
+
     @classmethod
     def _init_waiting_label(cls):
         """Initialize the waiting screen label overlay."""

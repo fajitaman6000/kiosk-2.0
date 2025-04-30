@@ -1,13 +1,9 @@
 ##############################################################################################################################
 # Test notes
 
-in room assistance popup came up with image
 
 ##############################################################################################################################
 # pre-beta testing
-
-turning off listen should remove red overlay when disabling microphone
-saved hints don't refresh when added (and their contents)
 
 
 ##############################################################################################################################
@@ -62,7 +58,7 @@ admin application instability resulting in/caused by mqtt disconnect codes 16 an
     MQTT_ERR_TLS = 8¶
     MQTT_ERR_UNKNOWN = 13
 
-hangup reliability: 
+kiosk hangup reliability: 
     kiosk doesn't retry/add itself back to queue after failed sync attempt
     kiosks don't always launch successfully, especially after the video feed check
         "Blocking Network Operations (Highest Probability): This is by far the most likely culprit. The code has multiple places where network operations (sockets, HTTP requests) occur without proper timeouts and error handling. SIGINT (Ctrl+C) often interrupts these blocking calls.
@@ -76,6 +72,7 @@ hangup reliability:
         [kiosk_file_downloader] Reset sync state
         ...
         [kiosk_file_downloader] Processing batch of 10 files
+
 ##############################################################################################################################
 # known low priority bugs
 
