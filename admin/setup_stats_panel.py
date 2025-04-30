@@ -143,11 +143,9 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Timer button frame
     button_frame = tk.Frame(control_buttons_frame)
-    button_frame.pack(side='left', padx=5)
 
     # Music button frame
     music_button_frame = tk.Frame(control_buttons_frame)
-    music_button_frame.pack(side='left', padx=5)
 
     # Create music toggle button with icon
     music_btn = tk.Button(
@@ -190,12 +188,11 @@ def setup_stats_panel(interface_builder, computer_name):
     if play_icon and stop_icon:
         timer_button.play_icon = play_icon
         timer_button.stop_icon = stop_icon
-    timer_button.pack(side='left', padx=(1, 1))
+    timer_button.pack(side='right', padx=(1, 1))
     interface_builder.stats_elements['timer_button'] = timer_button
 
    # Video frame with icon button and dropdown
     video_frame = tk.Frame(control_buttons_frame)
-    video_frame.pack(side='left', padx=(0,2))
 
     try:
         skip_icon = Image.open(os.path.join(icon_dir, "skip.png"))
@@ -207,7 +204,6 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Video frame with icon button, dropdown and skip button
     video_frame = tk.Frame(control_buttons_frame)
-    video_frame.pack(side='left', padx=(0,2))
 
     # Video button with icon
     video_btn = tk.Button(
@@ -235,7 +231,7 @@ def setup_stats_panel(interface_builder, computer_name):
         state='readonly',
         width=10
     )
-    video_dropdown.pack(side='left', padx=2)
+    video_dropdown.pack(side='left', padx=(3,5))
 
     # Add skip button
     skip_btn = tk.Button(
@@ -251,8 +247,12 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if skip_icon:
         skip_btn.image = skip_icon
-    skip_btn.pack(side='left', padx=(30,0))
+    skip_btn.pack(side='left', padx=(0,10))
 
+    # PACK THE FRAMES IN THE NEW ORDER
+    video_frame.pack(side='left', padx=(0,2))
+    button_frame.pack(side='left', padx=(10,0))
+    music_button_frame.pack(side='left', padx=4)
 
     # Time setting controls
     time_set_frame = tk.Frame(timer_frame)
