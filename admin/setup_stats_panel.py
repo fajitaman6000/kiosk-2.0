@@ -18,7 +18,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Main container with grid layout
     stats_container = tk.Frame(interface_builder.stats_frame)
-    stats_container.pack(fill='both', expand=True, padx=0, pady=0)
+    stats_container.pack(fill='both', expand=True, padx=0, pady=0, side='top', anchor='nw')
 
     # Left side panel for stats and controls
     left_panel = tk.Frame(stats_container, width=350)  # Reduced from ~500px default
@@ -33,65 +33,8 @@ def setup_stats_panel(interface_builder, computer_name):
     hints_frame = tk.Frame(stats_frame)
     hints_frame.pack(fill='x')
 
-    # Add reset button next to hints label with confirmation behavior
-    reset_btn = tk.Button(
-        hints_frame,
-        text="Reset Kiosk",
-        bg='#7897bf',
-        fg='white',
-        padx=10,
-        justify='left',
-        cursor="hand2"
-    )
-    # Track confirmation state
-    reset_btn.confirmation_pending = False
-    reset_btn.after_id = None
-
-    def reset_reset_button():
-        """Reset the button to its original state"""
-        reset_btn.confirmation_pending = False
-        reset_btn.config(text="Reset Kiosk")
-        reset_btn.after_id = None
-
-    def handle_reset_click():
-        """Handle reset button clicks with confirmation"""
-        if reset_btn.confirmation_pending:
-            # Second click - perform reset
-            interface_builder.reset_kiosk(computer_name)
-            reset_reset_button()
-
-            # CANCEL AUTO-RESET TIMER
-            if computer_name in interface_builder.auto_reset_timer_ids:
-                interface_builder.app.root.after_cancel(interface_builder.auto_reset_timer_ids[computer_name])
-                del interface_builder.auto_reset_timer_ids[computer_name]
-            if 'auto_reset_label' in interface_builder.stats_elements and interface_builder.stats_elements['auto_reset_label']:
-                 interface_builder.stats_elements['auto_reset_label'].config(text=" ")
-
-
-        else:
-            # First click - show confirmation
-            reset_btn.confirmation_pending = True
-            reset_btn.config(text="Confirm")
-
-            # Cancel any existing timer
-            if reset_btn.after_id:
-                reset_btn.after_cancel(reset_btn.after_id)
-
-            # Set timer to reset button after 2 seconds
-            reset_btn.after_id = reset_btn.after(2000, reset_reset_button)
-
-    reset_btn.config(command=handle_reset_click)
-    reset_btn.pack(side='left', padx=10)
-
-    # ADD AUTO-RESET TIMER LABEL
-    interface_builder.stats_elements['auto_reset_label'] = tk.Label(
-        hints_frame,
-        text=" "
-    )
-    interface_builder.stats_elements['auto_reset_label'].pack(side='left', padx=5)
-
     # Timer controls section
-    timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black', font=('Arial', 9, 'bold'), labelanchor='ne')
+    timer_frame = tk.LabelFrame(left_panel, text="Timer and Intros", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
     timer_frame.pack(fill='x', pady=1)
 
      # Timer and video controls combined
@@ -344,11 +287,11 @@ def setup_stats_panel(interface_builder, computer_name):
 
 
     # Hint controls
-    hint_frame = tk.LabelFrame(left_panel, text="Manual Hint", fg='black', font=('Arial', 9, 'bold'), labelanchor='n')
+    hint_frame = tk.LabelFrame(left_panel, text="Manual Hint", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
     hint_frame.pack(fill='x', pady=(3,3))
 
     # Create a frame for image selection and preview (Attach Image) at the top
-    image_frame = ttk.LabelFrame(hint_frame, text="Attach Image")
+    image_frame = ttk.LabelFrame(hint_frame, text="Attach Image", labelanchor='n')
     image_frame.pack(fill='x', pady=5, padx=5, expand=True)
 
     # Create prop selection frame
@@ -419,7 +362,7 @@ def setup_stats_panel(interface_builder, computer_name):
         height=4,  # Height in lines
         wrap=tk.WORD  # Word wrapping
     )
-    interface_builder.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
+    interface_builder.stats_elements['msg_entry'].pack(fill='x', pady=3, padx=5)
 
     interface_builder.stats_elements['hint_buttons_frame'] = tk.Frame(hint_frame)
     interface_builder.stats_elements['hint_buttons_frame'].pack(pady=5)
@@ -432,7 +375,7 @@ def setup_stats_panel(interface_builder, computer_name):
         bg="lightblue",  # Add background color
         #fg="darkblue"    # Add text color
     )
-    interface_builder.stats_elements['send_btn'].pack(side='left', padx=5, pady=(10))
+    interface_builder.stats_elements['send_btn'].pack(side='left', padx=5, pady=(5))
 
     interface_builder.stats_elements['save_btn'] = tk.Button(
         interface_builder.stats_elements['hint_buttons_frame'],
@@ -450,7 +393,7 @@ def setup_stats_panel(interface_builder, computer_name):
         cursor="hand2",
         bg="#f7a1a1"
     )
-    interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5, pady=(10))
+    interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5, pady=(5))
 
     # Set the base directory for image hints
     interface_builder.image_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files")
@@ -654,7 +597,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Container for dropdown and play button
     solutions_container = tk.Frame(video_solutions_frame)
-    solutions_container.pack(fill='x', padx=5, pady=10)
+    solutions_container.pack(fill='x', padx=5, pady=5)
 
     # Load prop mappings
     try:
@@ -741,8 +684,8 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # SECTION: Other Controls
     # ===========================================
-    other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls", fg='black', font=('Arial', 9, 'bold'), labelanchor='se')
-    other_controls_frame.pack(fill='x', pady=5, side='top', anchor='n')
+    other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
+    other_controls_frame.pack(fill='x', pady=3, side='top', anchor='n')
 
     # Container for the FIRST row of horizontal buttons
     button_container_row1 = tk.Frame(other_controls_frame)
@@ -863,6 +806,58 @@ def setup_stats_panel(interface_builder, computer_name):
             warning_dropdown.set('')  # Reset dropdown after playing
 
     warning_dropdown.bind('<<ComboboxSelected>>', on_warning_select)
+
+        # Add reset button next to hints label with confirmation behavior
+    reset_btn = tk.Button(
+        button_container_row2,
+        text="Reset Kiosk",
+        bg='#7897bf',
+        fg='white',
+        padx=5,
+        justify='right',
+        cursor="hand2"
+    )
+    # Track confirmation state
+    reset_btn.confirmation_pending = False
+    reset_btn.after_id = None
+
+    def reset_reset_button():
+        """Reset the button to its original state"""
+        reset_btn.confirmation_pending = False
+        reset_btn.config(text="Reset Kiosk")
+        reset_btn.after_id = None
+
+    def handle_reset_click():
+        """Handle reset button clicks with confirmation"""
+        if reset_btn.confirmation_pending:
+            # Second click - perform reset
+            interface_builder.reset_kiosk(computer_name)
+            reset_reset_button()
+
+            # CANCEL AUTO-RESET TIMER
+            if computer_name in interface_builder.auto_reset_timer_ids:
+                interface_builder.app.root.after_cancel(interface_builder.auto_reset_timer_ids[computer_name])
+                del interface_builder.auto_reset_timer_ids[computer_name]
+                
+                # Clear auto-reset countdown in dropdown if present
+                if computer_name in interface_builder.connected_kiosks and 'dropdown' in interface_builder.connected_kiosks[computer_name]:
+                    dropdown = interface_builder.connected_kiosks[computer_name]['dropdown']
+                    dropdown.set('')
+
+        else:
+            # First click - show confirmation
+            reset_btn.confirmation_pending = True
+            reset_btn.config(text="Confirm")
+
+            # Cancel any existing timer
+            if reset_btn.after_id:
+                reset_btn.after_cancel(reset_btn.after_id)
+
+            # Set timer to reset button after 2 seconds
+            reset_btn.after_id = reset_btn.after(2000, reset_reset_button)
+
+    reset_btn.config(command=handle_reset_click)
+    reset_btn.pack(side='right', padx=5, anchor='se')
 
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name

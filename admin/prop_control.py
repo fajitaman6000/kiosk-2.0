@@ -100,7 +100,7 @@ class PropControl:
 
         # Title label
         title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
-        title_label.pack(fill='x', pady=(0, 10))
+        #title_label.pack(fill='x', pady=(0, 10))
 
         # Global controls section
         self.global_controls = ttk.Frame(self.frame)

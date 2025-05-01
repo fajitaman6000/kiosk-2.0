@@ -70,32 +70,37 @@ class AdminInterfaceBuilder:
             self.reset_kiosk(computer_name)
             if computer_name in self.auto_reset_timer_ids:
                 del self.auto_reset_timer_ids[computer_name]
-            if self.stats_elements['auto_reset_label']:
-                self.stats_elements['auto_reset_label'].config(text=" ")
+            # Clear dropdown text instead of label
+            if computer_name in self.connected_kiosks and 'dropdown' in self.connected_kiosks[computer_name]:
+                dropdown = self.connected_kiosks[computer_name]['dropdown']
+                dropdown.set('')
 
         # Schedule the reset_kiosk call and store the after_id
         after_id = self.app.root.after(duration*1000, reset_and_clear)
         self.auto_reset_timer_ids[computer_name] = after_id
 
         # Start countdown
-        self.auto_reset_countdown(computer_name, duration) # Start the countdown   
+        self.auto_reset_countdown(computer_name, duration) # Start the countdown 
 
     def auto_reset_countdown(self, computer_name, remaining_seconds):
-        """Updates the auto-reset timer display every second"""
-        if computer_name in self.auto_reset_timer_ids:
+        """Countdown for auto-reset timer"""
+        if remaining_seconds > 0 and computer_name in self.auto_reset_timer_ids:
+            # Update the display
             self.update_auto_reset_timer_display(computer_name, remaining_seconds)
-
-            if remaining_seconds > 0:
-                self.app.root.after(1000, self.auto_reset_countdown, computer_name, remaining_seconds -1)
+            # Schedule next update
+            self.app.root.after(1000, 
+                lambda: self.auto_reset_countdown(computer_name, remaining_seconds - 1))
 
     def update_auto_reset_timer_display(self, computer_name, remaining_seconds):
-        """Updates the 'Auto resetting kiosk in...' label."""
-        if 'auto_reset_label' in self.stats_elements and self.stats_elements['auto_reset_label']:
-            minutes = remaining_seconds // 60
-            seconds = remaining_seconds % 60
-            self.stats_elements['auto_reset_label'].config(
-                text=f"Auto resetting kiosk in... {minutes:02d}:{seconds:02d}"
-            )
+        """Update the auto reset timer display"""
+        if computer_name in self.connected_kiosks:
+            # Get the dropdown from the connected kiosks frame
+            dropdown = self.connected_kiosks[computer_name].get('dropdown')
+            if dropdown:
+                # Format the countdown text
+                countdown_text = f"Auto-reset: {remaining_seconds}s"
+                # Set the dropdown text to show the countdown
+                dropdown.set(countdown_text)
 
     def setup_ui(self):
         # Create left panel that spans full height
@@ -131,11 +136,11 @@ class AdminInterfaceBuilder:
         
         # Create a horizontal container for kiosk frame and hints button
         kiosk_container = tk.Frame(left_frame)
-        kiosk_container.pack(fill='both', expand=True)
+        kiosk_container.pack(fill='x', expand=False, pady=(0,10))
         
         # Create kiosk frame on the left side of container
-        self.kiosk_frame = tk.LabelFrame(kiosk_container, text="Online Kiosk Computers", padx=10, pady=5)
-        self.kiosk_frame.pack(side='left', fill='both', expand=True)
+        self.kiosk_frame = tk.LabelFrame(kiosk_container, text="", padx=10, pady=3, labelanchor='ne')
+        self.kiosk_frame.pack(side='left', fill='x', expand=True, anchor='nw')
         
         # Load all required icons
         icon_dir = os.path.join("admin_icons")
@@ -149,7 +154,7 @@ class AdminInterfaceBuilder:
 
         # Create small frame for hints button on the right side of container
         hints_button_frame = tk.Frame(kiosk_container)
-        hints_button_frame.pack(side='left', anchor='n', padx=(10,0), pady=8)  # Anchor to top
+        hints_button_frame.pack(side='left', anchor='n', padx=(10,0), pady=4)  # Anchor to top
         
         # Add Hints Library button in its own frame - small and square
         self.settings_button = tk.Button(
@@ -230,7 +235,7 @@ class AdminInterfaceBuilder:
 
         # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
-        self.stats_frame.pack(fill='both', expand=True, pady=10)
+        self.stats_frame.pack(fill='both', expand=True, pady=0, anchor='nw', side='top')
 
     def show_hints_library(self):
         """Show the Hints Library interface"""
@@ -523,19 +528,27 @@ class AdminInterfaceBuilder:
         self.app.network_handler.send_timer_command(computer_name, "set", 45)
         self.app.network_handler.send_timer_command(computer_name, "stop")
 
-
         # Clear any pending help requests
         if computer_name in self.app.kiosk_tracker.help_requested:
             self.app.kiosk_tracker.help_requested.remove(computer_name)
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
-
+        
         # Stop GM assistance icon if it's blinking
         self.stop_gm_assistance_icon(computer_name)
 
         # Send reset message through network handler
         self.app.network_handler.send_reset_kiosk_command(computer_name)
-
+        
+        # Stop auto-reset timer if running
+        if computer_name in self.auto_reset_timer_ids:
+            self.app.root.after_cancel(self.auto_reset_timer_ids[computer_name])
+            del self.auto_reset_timer_ids[computer_name]
+        
+        # Clear auto-reset countdown in dropdown if present
+        if computer_name in self.connected_kiosks and 'dropdown' in self.connected_kiosks[computer_name]:
+            dropdown = self.connected_kiosks[computer_name]['dropdown']
+            dropdown.set('')
 
         # Force immediate UI update
         self.update_stats_display(computer_name)
@@ -861,15 +874,35 @@ class AdminInterfaceBuilder:
             # Get room color from mapping, default to black if not found
             room_color = self.ROOM_COLORS.get(room_num, "black")
             
+            # Create room name label
             name_label = tk.Label(frame, 
                 text=room_name,
                 font=('Arial', 12, 'bold'),
-                fg=room_color)  # Apply room-specific color
-            name_label.pack(side='left', padx=5)
+                fg=room_color,
+                width=15,
+                anchor='center')  # Apply room-specific color
+            
+            # Create dropdown first
+            room_var = tk.StringVar()
+            dropdown = ttk.Combobox(frame, textvariable=room_var, 
+                values=list(self.app.rooms.values()), state='readonly')
+            dropdown.pack(side='left', padx=5, anchor='e')
+            
+            # Pack room name after dropdown
+            name_label.pack(side='left', padx=(30,3))
         else:
+            # Create dropdown first  
+            room_var = tk.StringVar()
+            dropdown = ttk.Combobox(frame, textvariable=room_var, 
+                values=list(self.app.rooms.values()), state='readonly')
+            dropdown.pack(side='left', padx=5, anchor='e')
+            
+            # Pack unassigned label after dropdown
             name_label = tk.Label(frame, 
                 text="Unassigned",
-                font=('Arial', 12, 'bold'))
+                font=('Arial', 12, 'bold'),
+                width=15,
+                anchor='center')
             name_label.pack(side='left', padx=5)
         
         def click_handler(cn=computer_name):
@@ -878,14 +911,19 @@ class AdminInterfaceBuilder:
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
         
-        room_var = tk.StringVar()
-        dropdown = ttk.Combobox(frame, textvariable=room_var, 
-            values=list(self.app.rooms.values()), state='readonly')
-        dropdown.pack(side='left', padx=5)
+        # Store the dropdown reference in connected_kiosks for auto-reset display
+        if computer_name not in self.connected_kiosks:
+            self.connected_kiosks[computer_name] = {}
+        self.connected_kiosks[computer_name]['dropdown'] = dropdown
         
         def on_room_select(event):
             if not room_var.get():
                 return
+            
+            # Check if the text contains "Auto-reset" - don't process if it's the timer
+            if "Auto-reset:" in room_var.get():
+                return
+            
             selected_room = next(num for num, name in self.app.rooms.items() 
                             if name == room_var.get())
             self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room)
@@ -902,10 +940,11 @@ class AdminInterfaceBuilder:
         
         reboot_btn = tk.Button(
             frame, 
-            text="Reboot Kiosk Computer",
+            text="Reboot Computer",
             bg='#FF6B6B',
             fg='white',
-            cursor="hand2"
+            cursor="hand2",
+            anchor='e'
         )
         
         # Track confirmation state
@@ -937,14 +976,15 @@ class AdminInterfaceBuilder:
                 reboot_btn.after_id = reboot_btn.after(2000, lambda: reset_reboot_button()) # Changed to lambda
 
         reboot_btn.config(command=handle_reboot_click)
-        reboot_btn.pack(side='left', padx=(20, 5))
+        reboot_btn.pack(side='right', padx=(20, 5), anchor='e')
 
         # Add mini timer label at the end
         timer_label = tk.Label(frame,
             text="--:--",
             font=('Arial', 10, 'bold'),
-            width=6)
-        timer_label.pack(side='right', padx=5)
+            width=6,
+            anchor='center')
+        timer_label.pack(side='left', padx=5)
         
         self.connected_kiosks[computer_name] = {
             'frame': frame,
@@ -1118,7 +1158,7 @@ class AdminInterfaceBuilder:
                 # Configure title with room-specific color
                 self.stats_frame.configure(
                     text=title,
-                    font=('Arial', 12, 'bold'),
+                    font=('Arial', 7, 'bold'),
                     fg=room_color,  # Add color to match room color scheme
                     labelanchor='n'
                 )
