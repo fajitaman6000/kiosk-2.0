@@ -14,6 +14,7 @@ from config import ROOM_CONFIG
 import cv2
 import base64
 from qt_classes import ClickableHintView, ClickableVideoView, TimerThread, TimerDisplay, HelpButtonThread, HintTextThread, HintRequestTextThread, VideoFrameItem
+import threading # Add threading import for thread ID
 print("[qt init] Ending imports ...")
 
 
@@ -712,10 +713,10 @@ def init_gm_assistance_overlay(cls):
 
 
 def init_timer(cls):
-    print("[qt_init] Starting init_timer()...", flush=True)
+    print(f"[qt_init][{threading.get_ident()}] Starting init_timer()...")
     """Initialize the timer display components"""
     if not cls._initialized:
-        print("[qt init]Warning: Attempting to init_timer before base initialization")
+        print(f"[qt init][{threading.get_ident()}] Warning: Attempting to init_timer before base initialization")
         return
     
     # Get the main window if available
@@ -723,14 +724,16 @@ def init_timer(cls):
     main_window = QtKioskApp.instance.main_window if QtKioskApp.instance else None
     
     if not main_window:
-        print("[qt init] Warning: No main window available for timer")
+        print(f"[qt init][{threading.get_ident()}] Warning: No main window available for timer")
         parent = cls._window
     else:
         parent = main_window
             
     if not hasattr(cls, '_timer'):
-        print("[qt init]Initializing timer components...")
+        print(f"[qt init][{threading.get_ident()}] Initializing timer components...")
+        print(f"[qt init][{threading.get_ident()}] Creating TimerDisplay instance...")
         cls._timer = TimerDisplay()
+        print(f"[qt init][{threading.get_ident()}] TimerDisplay instance created.")
             
         # Create a separate window for the timer, parented to main window
         cls._timer_window = QWidget(parent)
@@ -753,12 +756,13 @@ def init_timer(cls):
         cls._timer_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
             
         # Set up background image first
-        print("[qt init]Setting up background placeholder...")
+        print(f"[qt init][{threading.get_ident()}] Setting up background placeholder...")
         cls._timer.bg_image_item = cls._timer.scene.addPixmap(QPixmap())
         
         # Create timer text and add it after background
-        print("[qt init]Setting up timer text...")
+        print(f"[qt init][{threading.get_ident()}] Setting up timer text (QGraphicsTextItem)...")
         cls._timer.text_item = QGraphicsTextItem()
+        print(f"[qt init][{threading.get_ident()}] QGraphicsTextItem created (associated QTextDocument implicitly created).")
         cls._timer.text_item.setDefaultTextColor(Qt.white)
         font = QFont('Arial', 120)
         font.setWeight(75)
@@ -783,9 +787,9 @@ def init_timer(cls):
         cls._timer.text_item.setTransform(QTransform())
         cls._timer.text_item.setRotation(90)
             
-        print("[qt init]Timer initialization complete")
+        print(f"[qt init][{threading.get_ident()}] Timer initialization complete")
 
-    print("[qt_init] Completed init_timer().", flush=True)
+    print(f"[qt_init][{threading.get_ident()}] Completed init_timer().")
 
 
 

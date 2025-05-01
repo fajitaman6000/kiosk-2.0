@@ -1,17 +1,54 @@
 ##############################################################################################################################
 # Test notes
 
-play video while playing video results in crash instead of changing to selected video
+clear hints while hint is being viewed doesn't work
+
+[networking.py] Decoding received data...
+[networking.py] Handling message of type: timer_command
+[message handler] Received message: {'type': 'timer_command', 'command_id': '39694528-337e-48e5-9162-1d6eb350d39b', 'computer_name': 'CASINO-KIOSK', 'command': 'set', 'minutes': 45, 'request_hash': '90ffd427-b731-4f24-89cd-dfd76f63a1aa'}
+[message handler][DEBUG] Processing timer command (Command ID: 39694528-337e-48e5-9162-1d6eb350d39b)
+[message handler][DEBUG] Setting timer to 45.0 minutes
+[kiosk timer] Handling timer command: set, minutes: 45.0
+[kiosk timer] Timer set to 45.0 minutes (maintaining current running state)
+[kiosk timer] Updating timer display to 45:00
+[qt_classes] Initializing TimerThread...
+[qt_classes] TimerThread initialized.
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QTextDocument(0x1eb15709bd0), parent's thread is QThread(0x1eb14aa9d70), current thread is QThread(0x1eb1ca8df20)
+Segmentation fault
+(when playing videos, crash)
+
+[qt overlay]Looking for background at: timer_backgrounds\casino_heist.png
+[message handler][DEBUG] Setting timer to 45.0 minutes
+[kiosk timer] Handling timer command: set, minutes: 45.0
+[qt overlay]Loading background image...
+[video server] Frame encoded.
+[kiosk timer] Timer set to 45.0 minutes (maintaining current running state)
+[video server] Sending frame size...
+[kiosk timer] Updating timer display to 45:00
+[qt_classes] Initializing TimerThread...
+[video server] Sending frame data...
+[qt_classes] TimerThread initialized.
+[video server] Frame sent successfully.
+QObject: Cannot create children for a parent that is in a different thread.
+(Parent is QTextDocument(0x138b2e5b510), parent's thread is QThread(0x138abd7f340), current thread is QThread(0x138b4d00b30)
+Segmentation fault
+(when game finish, crash)
 
 ##############################################################################################################################
 # pre-beta testing
 
 visual improvements to audio and saved hints (readability, bold on props with hints)
-ensure enough space for all rooms to be shown
-move reset kiosk to other controls
+"no kiosks online" screen
+sound has to be disabled to reenable microphone; symbols may be inaccurate to actual recording state
+stop all videos button
+prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers)
+renaming hint image needs to rename all instances of that prop in the saved_hints.json
 
 ##############################################################################################################################
 # todo
+
+launcher watchdog
 
 "Other" category as prop for hints
 "currently displayed hint"

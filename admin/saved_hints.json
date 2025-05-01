@@ -2,21 +2,31 @@
     "rooms": {
         "1": {
             "Memory Hotel": {
-                "hotel": {
+                "solution": {
                     "text": "There are five buttons which you must press in order. \n\nLeft bottom, back right, street, tower, left middle, front-left bottom.",
                     "image": "solution.png"
+                },
+                "in order": {
+                    "text": "As the story is being told, one light will turn on per location. Watch for them. They must be pressed in order, and ensure that when you hold the button down, it turns red before you proceed."
                 }
             },
             "Spinning Lamp": {
                 "spin the lamp": {
                     "text": "The lamp on the wall must be spun until it turns off.",
                     "image": "spin.png"
+                },
+                "was not on before": {
+                    "text": "That bulky lamp on the wall wasn't on before."
                 }
             },
             "Weight Game": {
                 "order them by weight": {
                     "text": "Order the bottles on the table by weight.",
                     "image": "weight order.png"
+                },
+                "they go here": {
+                    "text": "The bottles belong on this desk here. Notice that some seem to be quite a bit heavier than others.",
+                    "image": "bottles on puzzle.png"
                 }
             },
             "Computer": {
@@ -29,6 +39,76 @@
                 "solution": {
                     "text": "The bombs go in these positions in these orientations",
                     "image": "c4 positions.png"
+                },
+                "use clipboard": {
+                    "text": "The clipboard shows the location for the C4 packages. Follow the rotation and location precisely to activate them."
+                }
+            },
+            "Buzzwire": {
+                "operation": {
+                    "text": "Ever played \"Operation\"? Keep the buzzer away from the metal pipes and try to get it to the end. If the light turns red you must go all the way back to restart it.",
+                    "image": "buzzwire instructions.png"
+                },
+                "fast then slow": {
+                    "text": "The system resets every five seconds. You can make four errors before the alarm goes off. Go fast and hard but stop just before it alarms and just wait five seconds to refresh your chances.",
+                    "image": "buzzwire instructions.png"
+                }
+            },
+            "Clocks": {
+                "letters": {
+                    "text": "The clocks on the wall are forming letters, four of them to be specific. It will tell you what you should look for in the room."
+                },
+                "look for this symbol": {
+                    "text": "The clocks say \"MOON\". This symbol appears somewhere in the room.",
+                    "image": "moon symbol.png"
+                },
+                "hidden drawer location": {
+                    "text": "",
+                    "image": "ghgfjdfjfdk.png"
+                }
+            },
+            "Sliding Shelf": {
+                "need trophies": {
+                    "text": "That shelf is going to need three trophies placed upon it before you find this vault.",
+                    "image": "3 trophies.png"
+                }
+            },
+            "Drawers": {
+                "line it up": {
+                    "text": "The drawers have numbers on their fronts. There are also numbers inside. It's a giant combination lock: line up the drawers inner numbers according to their top outer numbers.",
+                    "image": "drawer.png"
+                }
+            },
+            "Case Code": {
+                "where to get it": {
+                    "text": "If you need a code for that keypad, I'd start with that computer. It's going to ask you for some information and you can definitely find it in the vault.",
+                    "image": "keypad.png"
+                }
+            },
+            "Painting 1": {
+                "put pieces on the pictures": {
+                    "text": "Those pieces you found in the drawer match the paintings on the walls. Line them up accordingly to proceed.",
+                    "image": "wave 1 piece.png"
+                },
+                "solution": {
+                    "text": "Two pieces go onto the ocean painting. Three go onto the bending lady.",
+                    "image": "all pieces.png"
+                },
+                "they are sticky": {
+                    "text": "Those \"puzzle\" pieces you found in the drawer won't fit together, but they are a lot stickier than you think!"
+                }
+            },
+            "Painting 2": {
+                "put pieces on the pictures": {
+                    "text": "Those pieces you found in the drawer match the paintings on the walls. Line them up accordingly to proceed.",
+                    "image": "wave complete.png"
+                },
+                "solution": {
+                    "text": "Two pieces go onto the ocean painting. Three go onto the bending lady.",
+                    "image": "all pieces.png"
+                },
+                "they are sticky": {
+                    "text": "Those \"puzzle\" pieces you found in the drawer won't fit together, but they are a lot stickier than you think!"
                 }
             }
         },
