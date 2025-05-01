@@ -428,15 +428,15 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # --- ADD IMAGE DISPLAY FRAME HERE ---
     #  Wrap stats_below_video and image_display_frame in a container
-    stats_and_image_container = tk.Frame(right_panel)
+    stats_and_image_container = tk.Frame(right_panel, borderwidth=1, relief='solid') # For border)
     stats_and_image_container.pack(side='top', anchor='ne', pady=0)  # Pack container at the top
 
 
     stats_below_video = tk.Frame(
-        stats_and_image_container,  # Parent is now the container
-        bg='systemButtonFace'
+        stats_and_image_container  # Parent is now the container
+        #bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', anchor='ne', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
+    stats_below_video.pack(side='left', anchor='ne', fill='both', padx=6, expand=False) # Pack to the LEFT inside the container, FILL and EXPAND
 
 
     image_display_frame = tk.Frame(
@@ -448,7 +448,7 @@ def setup_stats_panel(interface_builder, computer_name):
     image_display_frame.pack(
         side='right',  # Pack to the RIGHT inside the container
         anchor='ne',    # Anchor to the north-east (top-right relative to container)
-        pady=(2,0), # Some vertical padding
+        pady=(0,0), # Some vertical padding
         padx=(1,0),
 
     )
@@ -907,11 +907,11 @@ def setup_stats_panel(interface_builder, computer_name):
     # Create frame for vertical layout with a darker grey background
     stats_vertical_frame = tk.Frame(
         stats_below_video,
-        bg='#E0E0E0',  # Slightly darker grey
+        #bg='#E0E0E0',  # Slightly darker grey
         padx=2,
         pady=0,
-        borderwidth=1,
-        relief='solid' # For border
+        #borderwidth=1,
+        #relief='solid' # For border
     )
     stats_vertical_frame.pack(side='left', padx=(0,2), pady=0, fill='x', expand=True, anchor='e')  # Crucial: fill='x' here, and expand = True
 

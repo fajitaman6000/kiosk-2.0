@@ -48,7 +48,7 @@ try:
             screen_height = self.root.winfo_screenheight()
             
             # Calculate window size with manual adjustments:
-            window_width = screen_width // 2 - 40
+            window_width = screen_width // 2 - 45
             window_height = screen_height - 69 # nice
             x_position = -10
             y_position = 0
