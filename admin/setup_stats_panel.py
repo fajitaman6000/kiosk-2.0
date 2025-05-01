@@ -740,8 +740,8 @@ def setup_stats_panel(interface_builder, computer_name):
     # SECTION: Other Controls
     # ===========================================
     # Replace the LabelFrame with a regular Frame
-    other_controls_frame = tk.Frame(left_panel)
-    other_controls_frame.pack(fill='x', pady=3, side='left', anchor='nw')
+    other_controls_frame = tk.Frame(left_panel, borderwidth=1, relief='solid')
+    other_controls_frame.pack(fill='x', pady=10, side='right', anchor='ne')
     
     # Common button width for all buttons in this section
     button_width = 20
@@ -752,9 +752,11 @@ def setup_stats_panel(interface_builder, computer_name):
         text="Clear Hints",
         command=lambda: interface_builder.clear_kiosk_hints(computer_name),
         cursor="hand2",
-        width=button_width
+        width=button_width,
+        bg='#ff8c4a',
+        fg='white'
     )
-    clear_hints_btn.pack(side='top', pady=6)
+    clear_hints_btn.pack(side='top', pady=6, padx=20)
 
     # Load hint sound and assistance icons
     try:

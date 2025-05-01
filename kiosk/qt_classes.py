@@ -188,7 +188,7 @@ class HintTextThread(QThread):
     def update_text(self, text_data):
         try:
             # Print diagnostic info to help identify thread issues
-            print(f"[qt_classes] HintTextThread emitting update_signal with text: {text_data.get('text', '')[:30]}...", flush=True)
+            #print(f"[qt_classes] HintTextThread emitting update_signal with text: {text_data.get('text', '')[:30]}...", flush=True)
             self.update_signal.emit(text_data)
         except Exception as e:
             print(f"[qt_classes] Error in HintTextThread.update_text: {e}", flush=True)

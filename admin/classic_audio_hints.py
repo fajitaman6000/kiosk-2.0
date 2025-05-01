@@ -80,6 +80,9 @@ class ClassicAudioHints:
         # Store available audio files for the selected prop
         self.available_audio_files = []
         
+        # Add a mapping to store prop_key for each display item
+        self.prop_data_mapping = {}
+        
         #print("[classic audio hints]=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
 
         self.load_prop_name_mappings()
@@ -95,6 +98,9 @@ class ClassicAudioHints:
         self.prop_dropdown['values'] = ()
         self.available_audio_files = []
         self.open_button.config(state='disabled')
+        
+        # Clear previous mapping
+        self.prop_data_mapping = {}
 
         # Load prop mappings
         try:
@@ -127,25 +133,29 @@ class ClassicAudioHints:
                     audio_files = [f for f in os.listdir(prop_path) if f.lower().endswith('.mp3')]
                     audio_count = len(audio_files)
                 
-                # Add audio count to display name
-                props_list.append(f"{display_name} ({audio_count} audio) ({prop_key})")
+                # Create display string and store the mapping
+                display_string = f"({audio_count}) {display_name}"
+                props_list.append(display_string)
+                self.prop_data_mapping[display_string] = prop_key
 
-        # Update dropdown with the combined display name + original name format
+        # Update dropdown with display names
         self.prop_dropdown['values'] = props_list
         self.prop_dropdown.set('')  # Clear selection
 
     def on_prop_select(self, event):
         """Handle prop selection from dropdown"""
-        selected_item = self.prop_var.get()
+        selected_display_name = self.prop_var.get()
         
-        if not selected_item:
+        if not selected_display_name:
             self.available_audio_files = []
             self.open_button.config(state='disabled')
             return
             
-        # Extract ORIGINAL prop name from the combined format (now with audio count)
-        original_name = selected_item.split('(')[-1].rstrip(')')
-        original_name = original_name.strip()
+        # Get the original prop key from our mapping
+        original_name = self.prop_data_mapping.get(selected_display_name)
+        if not original_name:
+            print(f"[classic audio hints]No mapping found for {selected_display_name}")
+            return
         
         # Get the DISPLAY NAME for the selected prop 
         room_key = self.ROOM_MAP.get(self.current_room)
@@ -166,13 +176,15 @@ class ClassicAudioHints:
 
     def open_audio_browser(self):
         """Open popup window with audio files browser"""
-        selected_prop = self.prop_var.get()
-        if not selected_prop:
+        selected_display_name = self.prop_var.get()
+        if not selected_display_name:
             return
             
-        # Extract original prop name from the combined format
-        original_name = selected_prop.split('(')[-1].rstrip(')')
-        original_name = original_name.strip()
+        # Get original prop key using our mapping
+        original_name = self.prop_data_mapping.get(selected_display_name)
+        if not original_name:
+            print(f"[classic audio hints]No mapping found for {selected_display_name}")
+            return
         
         # Show popup with audio browser
         self.show_audio_popup(original_name)
@@ -391,35 +403,37 @@ class ClassicAudioHints:
             print(f"[classic audio hints]No room key for {self.current_room}")
             return
 
-        # Search for prop in dropdown items
-        for item in self.prop_dropdown['values']:
-            if f"({prop_name})" in item:  # Match by original name in parentheses
-                #print(f"[classic audio hints]Found matching prop: {item}")
-                self.prop_dropdown.set(item)
+        # Find display name that corresponds to this prop key
+        for display_name, key in self.prop_data_mapping.items():
+            if key.lower() == prop_name.lower():
+                #print(f"[classic audio hints]Found matching prop: {display_name}")
+                self.prop_dropdown.set(display_name)
                 self.on_prop_select(None)
                 return
+        
+        print(f"[classic audio hints]No matching prop found for {prop_name}")
 
     def refresh_audio_files(self):
         """Refresh audio files for the selected prop"""
         # Remember currently selected prop
-        selected_prop = self.prop_var.get()
+        selected_display_name = self.prop_var.get()
         
         # Refresh prop list for current room
         if self.current_room:
             self.update_room(self.current_room)
             
             # Re-select the previously selected prop if it still exists
-            if selected_prop:
+            if selected_display_name:
                 props_list = self.prop_dropdown['values']
-                if selected_prop in props_list:
-                    self.prop_dropdown.set(selected_prop)
+                if selected_display_name in props_list:
+                    self.prop_dropdown.set(selected_display_name)
                     self.on_prop_select(None) # Trigger audio files update
                 else:
                     # Prop no longer exists, clear selection
                     self.prop_var.set('')
                     self.available_audio_files = []
                     self.open_button.config(state='disabled')
-                    print(f"[classic audio hints] Previously selected prop '{selected_prop}' no longer found after refresh.")
+                    print(f"[classic audio hints] Previously selected prop '{selected_display_name}' no longer found after refresh.")
 
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""

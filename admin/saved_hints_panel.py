@@ -82,6 +82,9 @@ class SavedHintsPanel:
         # Register for prop selection notifications if parent has prop_control
         if hasattr(parent, 'app') and hasattr(parent.app, 'prop_control'):
             parent.app.prop_control.add_prop_select_callback(self.select_prop_by_name)
+        
+        # Add a mapping to store prop_key for each display item
+        self.prop_data_mapping = {}
     
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
@@ -150,33 +153,33 @@ class SavedHintsPanel:
             self.hints_data = {}
 
     def get_props_for_room(self, room_number):
-        """Get available props for the current room from hints data"""
-        # Load prop mappings
-        try:
-            with open('prop_name_mapping.json', 'r') as f:
-                prop_mappings = json.load(f)
-        except Exception as e:
-            print(f"[saved hints panel]Error loading prop mappings: {e}")
-            prop_mappings = {}
-            
-        # Get room-specific props if room is assigned
+        """Get available props for the selected room"""
         props_list = []
+        # Clear the previous mapping
+        self.prop_data_mapping = {}
+        
+        if not room_number:
+            return props_list
+            
+        # Map room numbers to their folder names
         room_map = {
-            3: "wizard",
             1: "casino",
-            2: "ma",
-            5: "haunted",
+            2: "ma", 
+            3: "wizard",
             4: "zombie",
+            5: "haunted",
             6: "atlantis",
             7: "time"
         }
         
-        room_str = str(room_number)
+        # Get prop name mappings for this room
+        prop_mappings = self.prop_name_mappings
         
         if room_number in room_map:
             room_key = room_map[room_number]
+            room_str = str(room_number)
+            
             if room_key in prop_mappings:
-                # Sort props by order
                 props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
                 props.sort(key=lambda x: x[1]["order"])
                 
@@ -193,8 +196,10 @@ class SavedHintsPanel:
                                 hint_count = len(self.hints_data[room_str][saved_prop_key])
                                 break
                     
-                    # Add hint count to display name
-                    props_list.append(f"{display_name} ({hint_count} hints) ({prop_key})")
+                    # Create display string and store the mapping
+                    display_string = f"({hint_count}) {display_name} "
+                    props_list.append(display_string)
+                    self.prop_data_mapping[display_string] = prop_key
         
         # Sort by display names
         sorted_display_names = sorted(props_list)
@@ -208,10 +213,13 @@ class SavedHintsPanel:
         #print(f"[saved hints panel]Getting hints for room {room_str} and prop {prop_display_name}")
         #print(f"[saved hints panel]Available hints data: {self.hints_data}")
         
-        # Extract original prop name from the combined format
-        original_name = prop_display_name.split('(')[-1].rstrip(')')
-        original_name = original_name.strip()  # Remove any whitespace
-        #print(f"[saved hints panel]Extracted original name: '{original_name}'")
+        # Get the original prop key using our mapping
+        original_name = self.prop_data_mapping.get(prop_display_name)
+        if not original_name:
+            print(f"[saved hints panel]Could not find original key for {prop_display_name}")
+            return hints
+            
+        #print(f"[saved hints panel]Found original key: '{original_name}'")
         
         # Get the display name mapping for this prop
         room_map = {
@@ -345,11 +353,14 @@ class SavedHintsPanel:
         #print(f"[saved hints panel]Selected prop from dropdown: {selected_display_name}")
         
         if selected_display_name:
-            # Extract original prop name from the combined format (now includes hint count)
-            original_name = selected_display_name.split('(')[-1].rstrip(')')
+            # Get the original prop key from our mapping
+            original_name = self.prop_data_mapping.get(selected_display_name)
+            if not original_name:
+                print(f"[saved hints panel]No mapping found for {selected_display_name}")
+                return
             
             # Get available hints for this prop
-            self.available_hints = self.get_hints_for_prop(original_name)
+            self.available_hints = self.get_hints_for_prop(selected_display_name)
             #print(f"[saved hints panel]Found hints: {self.available_hints}")
             
             # Enable the open button if a prop is selected, regardless of hints availability
@@ -366,13 +377,13 @@ class SavedHintsPanel:
             
         #print(f"[saved hints panel]Trying to select prop: {prop_name}")
         #print(f"[saved hints panel]Available dropdown values: {self.prop_dropdown['values']}")
-            
-        # Find the display name that matches this prop name in parentheses
-        for formatted_name in self.prop_dropdown['values']:
-            if f"({prop_name})" in formatted_name:
-                #print(f"[saved hints panel]Found matching prop in dropdown: {formatted_name}")
+        
+        # Find display name that corresponds to this prop key
+        for display_name, key in self.prop_data_mapping.items():
+            if key.lower() == prop_name.lower():
+                #print(f"[saved hints panel]Found matching prop in dropdown: {display_name}")
                 # Set the dropdown value
-                self.prop_dropdown.set(formatted_name)
+                self.prop_dropdown.set(display_name)
                 self.on_prop_select(None)  # Trigger hint list update
                 break
         else:
@@ -384,9 +395,11 @@ class SavedHintsPanel:
         if not prop_display_name:
             return
             
-        # Extract original prop name from the combined format
-        original_name = prop_display_name.split('(')[-1].rstrip(')')
-        original_name = original_name.strip()
+        # Get original prop key using our mapping
+        original_name = self.prop_data_mapping.get(prop_display_name)
+        if not original_name:
+            print(f"[saved hints panel]No mapping found for {prop_display_name}")
+            return
         
         # Show popup with first hint or empty state
         if self.available_hints:
@@ -448,9 +461,11 @@ class SavedHintsPanel:
         hint_name = self.available_hints[hint_index]
         prop_display_name = self.prop_var.get()
         
-        # Extract original prop name from the combined format
-        original_name = prop_display_name.split('(')[-1].rstrip(')')
-        original_name = original_name.strip()
+        # Get original prop key using our mapping
+        original_name = self.prop_data_mapping.get(prop_display_name)
+        if not original_name:
+            print(f"[saved hints panel]No mapping found for {prop_display_name}")
+            return
         
         # Get hint data
         hint_data, prop_key = self.get_hint_data(hint_name, original_name)
@@ -494,8 +509,9 @@ class SavedHintsPanel:
             text_widget.insert('1.0', hint_data.get('text', ''))
             text_widget.config(state='disabled')
             
-            # Update send button command
-            send_button.config(command=lambda: self.send_hint_from_popup(hint_data))
+            # Update send button command - get the popup widget from image_label's parent
+            popup = image_label.winfo_toplevel()
+            send_button.config(command=lambda: self.send_hint_from_popup(popup, hint_data))
 
     def navigate_to_hint(self, popup, current_index, direction, image_label, text_widget, title_label, prev_button, next_button, listbox):
         """Navigate to the previous or next hint and update the current popup"""
@@ -514,8 +530,10 @@ class SavedHintsPanel:
             # Get the new hint data
             new_hint_name = self.available_hints[new_index]
             prop_display_name = self.prop_var.get()
-            original_name = prop_display_name.split('(')[-1].rstrip(')')
-            original_name = original_name.strip()
+            original_name = self.prop_data_mapping.get(prop_display_name)
+            if not original_name:
+                print(f"[saved hints panel]No mapping found for {prop_display_name}")
+                return
             
             hint_data, prop_key = self.get_hint_data(new_hint_name, original_name)
             
@@ -796,24 +814,29 @@ class SavedHintsPanel:
         # Add image path if present
         if hint_data.get('image'):
             try:
-                # Get path using room, prop display name, and image filename
-                prop_name = self.prop_var.get().split('(')[-1].rstrip(')').strip()
-                image_path = self.get_image_path(
-                    self.current_room,
-                    prop_name,
-                    hint_data['image']
-                )
-                print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
-                print(f"[saved hints panel] Full image path: {image_path}")
+                # Get the proper prop key from our mapping
+                prop_display_name = self.prop_var.get()
+                original_name = self.prop_data_mapping.get(prop_display_name)
                 
-                if image_path and os.path.exists(image_path):
-                    print(f"[saved hints panel] Image found at path: {image_path}")
-                    # Get relative path from sync_directory
-                    rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
-                    send_data['image_path'] = rel_path
-                    print(f"[saved hints panel] Using relative image path: {rel_path}")
+                if not original_name:
+                    print(f"[saved hints panel] No mapping found for {prop_display_name}, cannot locate image")
                 else:
-                    print(f"[saved hints panel] Image not found at path: {image_path}")
+                    image_path = self.get_image_path(
+                        self.current_room,
+                        original_name,
+                        hint_data['image']
+                    )
+                    print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
+                    print(f"[saved hints panel] Full image path: {image_path}")
+                    
+                    if image_path and os.path.exists(image_path):
+                        print(f"[saved hints panel] Image found at path: {image_path}")
+                        # Get relative path from sync_directory
+                        rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                        send_data['image_path'] = rel_path
+                        print(f"[saved hints panel] Using relative image path: {rel_path}")
+                    else:
+                        print(f"[saved hints panel] Image not found at path: {image_path}")
             except Exception as e:
                 print(f"[saved hints panel] Error getting hint image path for sending: {e}")
         else:
