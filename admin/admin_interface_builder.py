@@ -38,6 +38,7 @@ class AdminInterfaceBuilder:
         self.current_hint_image = None
         self.hint_manager = ManagerSettings(app, self)  # Initialize hint manager
         self.auto_reset_timer_ids = {}
+        self.no_kiosks_label = None  # Initialize reference to no kiosks label
         self.setup_ui()
         
         # Start timer update loop using app's root
@@ -141,6 +142,17 @@ class AdminInterfaceBuilder:
         # Create kiosk frame on the left side of container
         self.kiosk_frame = tk.LabelFrame(kiosk_container, text="", padx=10, pady=3, labelanchor='ne')
         self.kiosk_frame.pack(side='left', fill='x', expand=True, anchor='nw')
+        
+        # Create "No kiosks" label but don't pack it yet
+        self.no_kiosks_label = tk.Label(
+            self.kiosk_frame,
+            text="No kiosk computers found online on this network",
+            font=('Arial', 11),
+            fg='#555555',
+            pady=20
+        )
+        # Show no kiosks message initially if there are no kiosks
+        self.update_no_kiosks_message()
         
         # Load all required icons
         icon_dir = os.path.join("admin_icons")
@@ -820,6 +832,9 @@ class AdminInterfaceBuilder:
                 for widget in self.stats_frame.winfo_children():
                     widget.destroy()
                 self.stats_elements = {key: None for key in self.stats_elements}
+            
+            # After removing a kiosk, update the "No kiosks" message visibility
+            self.update_no_kiosks_message()
 
     def update_stats_timer(self):
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
@@ -1008,6 +1023,9 @@ class AdminInterfaceBuilder:
         
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
+        
+        # After adding a kiosk, update the "No kiosks" message visibility
+        self.update_no_kiosks_message()
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
@@ -1668,3 +1686,13 @@ class AdminInterfaceBuilder:
             except Exception as e:
                 print(f"[interface builder] Error enabling microphone for {computer_name}: {e}")
                 self.speaking[computer_name] = False # Ensure state is false on error
+
+    def update_no_kiosks_message(self):
+        """Show or hide the 'No kiosks found' message based on connection status"""
+        if not self.connected_kiosks:
+            # No kiosks connected, show the message
+            self.no_kiosks_label.pack(fill='x', expand=True)
+        else:
+            # Kiosks are connected, hide the message
+            if self.no_kiosks_label.winfo_manager():
+                self.no_kiosks_label.pack_forget()

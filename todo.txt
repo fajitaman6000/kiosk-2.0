@@ -5,8 +5,6 @@
 ##############################################################################################################################
 # pre-beta testing
 
-visual improvements to audio and saved hints (readability, bold on props with hints)
-"no kiosks online" screen
 sound has to be disabled to reenable microphone; symbols may be inaccurate to actual recording state
 stop all videos button
 prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers)
