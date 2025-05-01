@@ -429,7 +429,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # --- ADD IMAGE DISPLAY FRAME HERE ---
     #  Wrap stats_below_video and image_display_frame in a container
     stats_and_image_container = tk.Frame(right_panel, borderwidth=1, relief='solid') # For border)
-    stats_and_image_container.pack(side='top', anchor='ne', pady=0)  # Pack container at the top
+    stats_and_image_container.pack(side='top', anchor='ne', pady=1)  # Pack container at the top
 
 
     stats_below_video = tk.Frame(
@@ -476,7 +476,7 @@ def setup_stats_panel(interface_builder, computer_name):
         anchor='ne',    # Maintain top-right anchor
         expand=False,
         fill='none',
-        pady=(5, 0)
+        pady=(13, 0)
     )
     # -------------------------------------------------------------------
 
