@@ -421,20 +421,62 @@ def setup_stats_panel(interface_builder, computer_name):
         side='right',     # Ensure it stays on right
         fill='both',        # Fill vertical space
         expand=True,     # Allow expansion to fill space
-        padx=(0, 0)     # Padding only on left side
+        padx=(0, 0),
+        pady=(9, 0)
     )
     right_panel.pack_propagate(False)  # Prevent panel from shrinking
 
-    # --- Create a container for video and controls, anchored top-right ---
+    # --- ADD IMAGE DISPLAY FRAME HERE ---
+    #  Wrap stats_below_video and image_display_frame in a container
+    stats_and_image_container = tk.Frame(right_panel)
+    stats_and_image_container.pack(side='top', anchor='ne', pady=0)  # Pack container at the top
+
+
+    stats_below_video = tk.Frame(
+        stats_and_image_container,  # Parent is now the container
+        bg='systemButtonFace'
+    )
+    stats_below_video.pack(side='left', anchor='ne', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
+
+
+    image_display_frame = tk.Frame(
+        stats_and_image_container,  # Parent is now the container
+        bg='black',  # Black background when empty
+        width=112*1.65,   #  9:16 aspect ratio, scaled down (e.g., 112.5 x 200)
+        height=200*1.65  #  Adjust as needed, maintaining 9:16
+    )
+    image_display_frame.pack(
+        side='right',  # Pack to the RIGHT inside the container
+        anchor='ne',    # Anchor to the north-east (top-right relative to container)
+        pady=(2,0), # Some vertical padding
+        padx=(1,0),
+
+    )
+    image_display_frame.pack_propagate(False)  # Prevent frame from shrinking
+
+    # Image display label (initially empty)
+    interface_builder.stats_elements['image_display_label'] = tk.Label(
+        image_display_frame,
+        bg='black'
+    )
+    interface_builder.stats_elements['image_display_label'].pack(
+        fill='both',
+        expand=True
+    )
+
+    # --- Create a container for video and controls, anchored below stats/image ---
     video_controls_container = tk.Frame(
         right_panel,
-        bg=right_panel.cget('bg') # Match parent background
+        bg=right_panel.cget('bg'), # Match parent background
+        bd=1,
+        relief='solid'
     )
     video_controls_container.pack(
-        side='top',
-        anchor='ne', # Anchor this container to the top-right
+        side='top',  # Changed from 'top' to 'bottom' to place it below stats
+        anchor='ne',    # Maintain top-right anchor
         expand=False,
-        fill='none'
+        fill='none',
+        pady=(5, 0)
     )
     # -------------------------------------------------------------------
 
@@ -446,10 +488,10 @@ def setup_stats_panel(interface_builder, computer_name):
         height=32  # Fixed height
     )
     control_frame.pack(
-        side='top',      # Pack at top of the container
+        side='bottom',      # Pack at top of the container
         fill='x',        # Fill horizontal space of the container
         pady=0,          # Vertical padding
-        anchor='ne',      # Anchor contents to top-right within the container
+        anchor='se',      # Anchor contents to top-right within the container
         #before=video_frame # No longer needed, packing order handles this
     )
     control_frame.pack_propagate(False)  # Prevent height collapse
@@ -464,7 +506,7 @@ def setup_stats_panel(interface_builder, computer_name):
     video_frame.pack(
         side='top',      # Pack below controls within the container
         expand=False,   # Don't expand
-        pady=1,         # Slight vertical padding
+        pady=0,         # Slight vertical padding
         anchor='ne'      # Anchor to top-right within the container
     )
     video_frame.pack_propagate(False)  # Prevent frame from shrinking
@@ -580,7 +622,7 @@ def setup_stats_panel(interface_builder, computer_name):
         width=18, # Adjust width as needed
         anchor='w' # Align text left
     )
-    mic_select_button.pack(side='top', pady=(5,0)) # Add some top padding
+    mic_select_button.pack(side='top', pady=(0,0)) # Add some top padding
     interface_builder.stats_elements['mic_select_button'] = mic_select_button # Store reference
     # --- END: Microphone Device Selector Button ---
 
@@ -862,57 +904,18 @@ def setup_stats_panel(interface_builder, computer_name):
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name
 
-    # --- ADD IMAGE DISPLAY FRAME HERE ---
-    #  Wrap stats_below_video and image_display_frame in a container
-    stats_and_image_container = tk.Frame(right_panel)
-    stats_and_image_container.pack(side='right', anchor='ne', pady=0)  # Pack container at the top
-
-
-    stats_below_video = tk.Frame(
-        stats_and_image_container,  # Parent is now the container
-        bg='systemButtonFace'
-    )
-    stats_below_video.pack(side='left', anchor='ne', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
-
-
-    image_display_frame = tk.Frame(
-        stats_and_image_container,  # Parent is now the container
-        bg='black',  # Black background when empty
-        width=112*1.65,   #  9:16 aspect ratio, scaled down (e.g., 112.5 x 200)
-        height=200*1.65  #  Adjust as needed, maintaining 9:16
-    )
-    image_display_frame.pack(
-        side='right',  # Pack to the RIGHT inside the container
-        anchor='ne',    # Anchor to the north-east (top-right relative to container)
-        pady=(2,0), # Some vertical padding
-        padx=(2,0),
-
-    )
-    image_display_frame.pack_propagate(False)  # Prevent frame from shrinking
-
-    # Image display label (initially empty)
-    interface_builder.stats_elements['image_display_label'] = tk.Label(
-        image_display_frame,
-        bg='black'
-    )
-    interface_builder.stats_elements['image_display_label'].pack(
-        fill='both',
-        expand=True
-    )
-
-
     # Create frame for vertical layout with a darker grey background
     stats_vertical_frame = tk.Frame(
         stats_below_video,
         bg='#E0E0E0',  # Slightly darker grey
-        padx=5,
+        padx=2,
         pady=0,
         borderwidth=1,
         relief='solid' # For border
     )
-    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True, anchor='e')  # Crucial: fill='x' here, and expand = True
+    stats_vertical_frame.pack(side='left', padx=(0,2), pady=0, fill='x', expand=True, anchor='e')  # Crucial: fill='x' here, and expand = True
 
-    stats_panel_ypadding = 19
+    stats_panel_ypadding = 18
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
