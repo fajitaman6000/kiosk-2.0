@@ -464,6 +464,19 @@ def setup_stats_panel(interface_builder, computer_name):
         expand=True
     )
 
+    # Add check screen button OVER the image display frame
+    check_screen_btn = tk.Button(
+        image_display_frame, # Parent is the image frame
+        text="Check Screen",
+        command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn),
+        cursor="hand2",
+        # Consider making the button smaller or using an icon
+        bg="lightblue",
+        fg="black"
+    )
+    # Place the button in the top-right corner of the image frame
+    check_screen_btn.place(relx=1.0, rely=0.0, anchor='ne', x=-5, y=5)
+
     # --- Create a container for video and controls, anchored below stats/image ---
     video_controls_container = tk.Frame(
         right_panel,
@@ -726,22 +739,22 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # SECTION: Other Controls
     # ===========================================
-    other_controls_frame = tk.LabelFrame(left_panel, text="Other Controls", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
-    other_controls_frame.pack(fill='x', pady=3, side='top', anchor='n')
-
-    # Container for the FIRST row of horizontal buttons
-    button_container_row1 = tk.Frame(other_controls_frame)
-    button_container_row1.pack(fill='x', padx=5, pady=(5, 0)) # Pad bottom 0
+    # Replace the LabelFrame with a regular Frame
+    other_controls_frame = tk.Frame(left_panel)
+    other_controls_frame.pack(fill='x', pady=3, side='left', anchor='nw')
+    
+    # Common button width for all buttons in this section
+    button_width = 20
 
     # Add clear hints button
     clear_hints_btn = tk.Button(
-        button_container_row1, # Parent is now row 1
+        other_controls_frame,
         text="Clear Hints",
         command=lambda: interface_builder.clear_kiosk_hints(computer_name),
-        cursor="hand2"
-        #bg="#bdffb0"
+        cursor="hand2",
+        width=button_width
     )
-    clear_hints_btn.pack(side='left', padx=5, pady=(5,0))
+    clear_hints_btn.pack(side='top', pady=6)
 
     # Load hint sound and assistance icons
     try:
@@ -758,20 +771,21 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Add play sound button with icon
     play_sound_btn = tk.Button(
-        button_container_row1, # Parent is now row 1
+        other_controls_frame,
         text="Play Hint Sound ",
         image=hint_sound_icon if hint_sound_icon else None,
         compound=tk.RIGHT,
         command=lambda: interface_builder.play_hint_sound(computer_name),
-        cursor="hand2"
+        cursor="hand2",
+        width=button_width + 120
     )
     if hint_sound_icon:
         play_sound_btn.image = hint_sound_icon
-    play_sound_btn.pack(side='left', padx=5, pady=(5,0))
+    play_sound_btn.pack(side='top', pady=6)
 
     # Add offer assistance button with icon
     offer_assistance_btn = tk.Button(
-        button_container_row1, # Parent is now row 1
+        other_controls_frame,
         text="Offer Assistance ",
         image=assistance_icon if assistance_icon else None,
         compound=tk.RIGHT,
@@ -782,82 +796,21 @@ def setup_stats_panel(interface_builder, computer_name):
             }).encode(),
             ('255.255.255.255', 12346)
         ),
-        cursor="hand2"
+        cursor="hand2",
+        width=button_width + 120
     )
     if assistance_icon:
         offer_assistance_btn.image = assistance_icon
-    offer_assistance_btn.pack(side='left', padx=5, pady=(5,0))
+    offer_assistance_btn.pack(side='top', pady=6)
 
-    # --- START: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
-    # Create container for the SECOND row (just Check Screen button)
-    button_container_row2 = tk.Frame(other_controls_frame)
-    button_container_row2.pack(fill='x', padx=5, pady=(2, 5)) # Adjust padding
-
-    # Add check screen button
-    check_screen_btn = tk.Button(
-        button_container_row2, # Parent is now row 2
-        text="Check Screen",
-        # UPDATE THE COMMAND HERE:
-        command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn),
-        cursor="hand2"
-        #bg="#c7b2d6"
-    )
-    check_screen_btn.pack(side='left', padx=0, pady=(10,0)) # Pack left, remove side padding if needed
-    # --- END: ADD CHECK SCREEN BUTTON CONTAINER (ROW 2) ---
-
-    # Sound controls container (Now packed below the second button row)
-    sound_container = tk.Frame(other_controls_frame)
-    sound_container.pack(fill='x', padx=5, pady=5)
-
-    # Add "Issue Warning:" label
-    tk.Label(
-        sound_container,
-        text="Issue Warning:",
-        anchor='e'
-    ).pack(side='left', padx=(0, 5), pady=(20,0))
-
-    # Define warning sounds
-    warning_sounds = {
-        "No drinks on props": "drinks_props.mp3",
-        "Be gentle": "be_gentle.mp3",
-        "No photos": "no_photos.mp3",
-        "Please stop": "please_stop.mp3"
-    }
-
-    # Create variable for dropdown
-    interface_builder.stats_elements['warning_sound'] = tk.StringVar()
-
-    # Create and configure dropdown
-    warning_dropdown = ttk.Combobox(
-        sound_container,
-        textvariable=interface_builder.stats_elements['warning_sound'],
-        values=list(warning_sounds.keys()),
-        state='readonly',
-        width=15
-    )
-    warning_dropdown.pack(side='left', padx=(0, 5), pady=(20,0))
-
-    # Add automatic trigger on selection
-    def on_warning_select(event):
-        selected = interface_builder.stats_elements['warning_sound'].get()
-        if selected:  # Only trigger if something is actually selected
-            interface_builder.play_hint_sound(
-                computer_name,
-                warning_sounds[selected]
-            )
-            warning_dropdown.set('')  # Reset dropdown after playing
-
-    warning_dropdown.bind('<<ComboboxSelected>>', on_warning_select)
-
-        # Add reset button next to hints label with confirmation behavior
+    # Add reset button with confirmation behavior (Restoring this block)
     reset_btn = tk.Button(
-        button_container_row2,
+        other_controls_frame,
         text="Reset Kiosk",
         bg='#7897bf',
         fg='white',
-        padx=5,
-        justify='right',
-        cursor="hand2"
+        cursor="hand2",
+        width=button_width
     )
     # Track confirmation state
     reset_btn.confirmation_pending = False
@@ -899,7 +852,51 @@ def setup_stats_panel(interface_builder, computer_name):
             reset_btn.after_id = reset_btn.after(2000, reset_reset_button)
 
     reset_btn.config(command=handle_reset_click)
-    reset_btn.pack(side='right', padx=5, anchor='se')
+    reset_btn.pack(side='top', pady=6)
+
+    # Sound controls container 
+    sound_container = tk.Frame(other_controls_frame)
+    sound_container.pack(fill='x', pady=5)
+
+    # Add "Issue Warning:" label
+    tk.Label(
+        sound_container,
+        text="Issue Warning:",
+        anchor='e'
+    ).pack(side='top', pady=(5,2))
+
+    # Define warning sounds
+    warning_sounds = {
+        "No drinks on props": "drinks_props.mp3",
+        "Be gentle": "be_gentle.mp3",
+        "No photos": "no_photos.mp3",
+        "Please stop": "please_stop.mp3"
+    }
+
+    # Create variable for dropdown
+    interface_builder.stats_elements['warning_sound'] = tk.StringVar()
+
+    # Create and configure dropdown
+    warning_dropdown = ttk.Combobox(
+        sound_container,
+        textvariable=interface_builder.stats_elements['warning_sound'],
+        values=list(warning_sounds.keys()),
+        state='readonly',
+        width=button_width
+    )
+    warning_dropdown.pack(side='top', pady=2)
+
+    # Add automatic trigger on selection
+    def on_warning_select(event):
+        selected = interface_builder.stats_elements['warning_sound'].get()
+        if selected:  # Only trigger if something is actually selected
+            interface_builder.play_hint_sound(
+                computer_name,
+                warning_sounds[selected]
+            )
+            warning_dropdown.set('')  # Reset dropdown after playing
+
+    warning_dropdown.bind('<<ComboboxSelected>>', on_warning_select)
 
     # Store the computer name for video/audio updates
     interface_builder.stats_elements['current_computer'] = computer_name
