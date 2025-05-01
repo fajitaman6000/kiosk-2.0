@@ -17,19 +17,19 @@ class SavedHintsPanel:
             parent: Parent frame to attach to
             send_hint_callback: Callback function for sending hints, expects dict with 'text' and optional 'image'
         """
-        self.frame = tk.LabelFrame(parent, text="Saved Hints", fg='black', font=('Arial', 9, 'bold'), labelanchor='s')
-        self.frame.pack(side='right', padx=0, pady=5)
+        self.frame = tk.LabelFrame(parent, text="Saved Hints", fg='black', font=('Arial', 10, 'bold'), labelanchor='nw')
+        self.frame.pack(side='right', padx=10, pady=0, anchor='se')
         
         # Store callback
         self.send_hint_callback = send_hint_callback
         
         # Create fixed-width inner container
         self.list_container = ttk.Frame(self.frame)
-        self.list_container.pack(padx=5, pady=5)
+        self.list_container.pack(padx=10, pady=5)
 
         # Create prop dropdown section with refresh and open buttons
         self.prop_control_frame = ttk.Frame(self.list_container)
-        self.prop_control_frame.pack(pady=(0, 5), fill='x')
+        self.prop_control_frame.pack(pady=(0, 0), fill='x')
         
         # Row 1: Prop dropdown with label
         self.prop_frame = ttk.Frame(self.prop_control_frame)

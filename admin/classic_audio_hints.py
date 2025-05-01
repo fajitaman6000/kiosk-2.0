@@ -31,12 +31,12 @@ class ClassicAudioHints:
         pygame.mixer.init()
         
         # Create main frame with fixed width
-        self.frame = tk.LabelFrame(parent, text="Audio Hints", fg='black', font=('Arial', 9, 'bold'), labelanchor='s')
-        self.frame.pack(side='left', padx=0, pady=0, anchor='se')
+        self.frame = tk.LabelFrame(parent, text="Audio Hints", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
+        self.frame.pack(side='left', padx=10, pady=0, anchor='sw')
         
         # Create fixed-width inner container
         self.list_container = ttk.Frame(self.frame)
-        self.list_container.pack(padx=5, pady=12)  # Remove fill='x' to prevent expansion
+        self.list_container.pack(padx=10, pady=5)  # Remove fill='x' to prevent expansion
         
         # Create prop dropdown section with fixed width
         self.prop_frame = ttk.Frame(self.list_container)
@@ -57,7 +57,7 @@ class ClassicAudioHints:
         
         # Create buttons row
         self.button_frame = ttk.Frame(self.list_container)
-        self.button_frame.pack(fill='x', pady=5)
+        self.button_frame.pack(fill='x')
         
         # Refresh Button
         self.refresh_button = ttk.Button(

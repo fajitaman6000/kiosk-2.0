@@ -872,7 +872,7 @@ def setup_stats_panel(interface_builder, computer_name):
         stats_and_image_container,  # Parent is now the container
         bg='systemButtonFace'
     )
-    stats_below_video.pack(side='left', anchor='n', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
+    stats_below_video.pack(side='left', anchor='ne', fill='both', padx=3, expand=True) # Pack to the LEFT inside the container, FILL and EXPAND
 
 
     image_display_frame = tk.Frame(
@@ -883,7 +883,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     image_display_frame.pack(
         side='right',  # Pack to the RIGHT inside the container
-        anchor='e',    # Anchor to the north-east (top-right relative to container)
+        anchor='ne',    # Anchor to the north-east (top-right relative to container)
         pady=(2,0), # Some vertical padding
         padx=(2,0),
 
@@ -910,9 +910,9 @@ def setup_stats_panel(interface_builder, computer_name):
         borderwidth=1,
         relief='solid' # For border
     )
-    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True)  # Crucial: fill='x' here, and expand = True
+    stats_vertical_frame.pack(side='left', padx=0, pady=1, fill='x', expand=True, anchor='e')  # Crucial: fill='x' here, and expand = True
 
-    stats_panel_ypadding = 14
+    stats_panel_ypadding = 19
 
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
@@ -1039,7 +1039,8 @@ def setup_stats_panel(interface_builder, computer_name):
             max_len = 15
             display_name = (current_device_name[:max_len] + '...') if len(current_device_name) > max_len else current_device_name
             # Update the button text
-            mic_button.config(text=f"Mic: {display_name}") 
+            mic_button.config(text=f"Mic: {display_name}", width=100)
+            mic_button.pack(side='right', padx=(50,0), anchor='e')
 
         except Exception as e:
             print(f"[stats panel] Error setting initial mic label for {computer_name}: {e}")
