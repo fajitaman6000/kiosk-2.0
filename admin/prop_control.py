@@ -109,7 +109,7 @@ class PropControl:
         # Create Start Game and Reset All buttons
         self.start_button = tk.Button(
             self.global_controls,
-            text="START GAME",
+            text="START PROPS",
             command=self.start_game,
             bg='#2898ED',   # Blue
             fg='white',
@@ -161,13 +161,13 @@ class PropControl:
 
         # Scrollable props section
         self.canvas = tk.Canvas(self.frame)
-        self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
+        #self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.props_frame = ttk.Frame(self.canvas)
 
-        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        #self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
         # Pack scrolling components
-        self.scrollbar.pack(side="right", fill="y")
+        #self.scrollbar.pack(side="right", fill="y")
         self.canvas.pack(side="left", fill="both", expand=True)
 
         # Create window in canvas for props

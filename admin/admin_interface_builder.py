@@ -126,7 +126,7 @@ class AdminInterfaceBuilder:
             side='left',      # Place to right of left panel
             fill='both',      # Fill remaining space
             expand=True,      # Expand to fill space
-            padx=10,
+            padx=(0,9),
             pady=5
         )
         
