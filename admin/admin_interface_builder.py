@@ -1135,7 +1135,7 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
         try:
-            #print(f"[interface builder]=== KIOSK SELECTION START: {computer_name} ===")
+            print(f"[interface builder] === KIOSK SELECTION START: {computer_name} ===")
 
             # --- Clean up existing streams before switching ---
             # Check if a kiosk was previously selected AND it's a different kiosk
@@ -1144,152 +1144,180 @@ class AdminInterfaceBuilder:
                 print(f"[interface builder] Switching kiosk from {previous_kiosk_name} to {computer_name}. Cleaning up previous.")
 
                 # --- Stop Camera if active for the previous kiosk ---
-                # We need to check if the camera was active *for the previous kiosk*
-                # The camera_active flag is global, but the current_computer in stats_elements
-                # tells us WHICH kiosk had the camera active.
                 if getattr(self, 'camera_active', False) and \
                    self.stats_elements.get('current_computer') == previous_kiosk_name:
                     print(f"[interface builder] Disconnecting camera for {previous_kiosk_name} due to kiosk switch.")
-                    self.video_client.disconnect()
-                    self.camera_active = False
-                    # Note: UI buttons for the OLD kiosk are no longer visible, so no need to update them here.
+                    try:
+                        self.video_client.disconnect()
+                        self.camera_active = False
+                    except Exception as e:
+                        print(f"[interface builder] Error disconnecting video for {previous_kiosk_name}: {e}")
+                    # No need to update old UI buttons as they are destroyed/recreated
 
                 # --- Stop Audio if active for the previous kiosk ---
-                # Get the specific AudioClient instance for the previous kiosk
                 audio_client = self.audio_clients.get(previous_kiosk_name)
-                # Check if that specific client exists AND its state was active
                 if audio_client and self.audio_active.get(previous_kiosk_name, False):
                     print(f"[interface builder] Disconnecting audio for {previous_kiosk_name} due to kiosk switch.")
-                    
-                    # Stop speaking first if active for the previous kiosk
-                    if self.speaking.get(previous_kiosk_name, False):
-                         print(f"[interface builder] Stopping speaking for {previous_kiosk_name}.")
-                         audio_client.stop_speaking() # Use client method
-                         self.speaking[previous_kiosk_name] = False # Update local state
-                         # Reset UI background color if the previous kiosk was the one currently speaking
-                         # This check is based on the *previous_kiosk_name*
-                         if previous_kiosk_name == self.selected_kiosk: # This is true inside this block
-                             self.app.root.configure(bg='systemButtonFace') # Reset root background
+                    try:
+                        # Stop speaking first if active
+                        if self.speaking.get(previous_kiosk_name, False):
+                             print(f"[interface builder] Stopping speaking for {previous_kiosk_name}.")
+                             audio_client.stop_speaking()
+                             self.speaking[previous_kiosk_name] = False
+                             # Reset root background only if it was the one actively speaking visually
+                             # if previous_kiosk_name == self.selected_kiosk: # This check might be tricky now
+                             #    self.app.root.configure(bg='systemButtonFace')
 
-                    print(f"[interface builder] Disconnecting audio client for {previous_kiosk_name}.")
-                    audio_client.disconnect() # Disconnect the audio client
-                    self.audio_active[previous_kiosk_name] = False # Update local state
+                        print(f"[interface builder] Disconnecting audio client for {previous_kiosk_name}.")
+                        audio_client.disconnect()
+                        self.audio_active[previous_kiosk_name] = False
+                    except Exception as e:
+                        print(f"[interface builder] Error disconnecting audio for {previous_kiosk_name}: {e}")
+                print(f"[interface builder] Cleanup finished for {previous_kiosk_name}.")
 
-                # Note: The UI elements (buttons, labels) for the old kiosk's stats frame
-                # will be destroyed and recreated for the new kiosk below, so no need
-                # to explicitly update their state (like button text/icons) here.
             elif self.selected_kiosk is not None and self.selected_kiosk == computer_name:
-                 # Selecting the same kiosk - do nothing for cleanup
-                 print(f"[interface builder] Re-selecting the same kiosk: {computer_name}. No cleanup needed.")
+                 # Selecting the same kiosk - allow refresh
+                 print(f"[interface builder] Re-selecting the same kiosk: {computer_name}. Refreshing UI.")
+                 # Execution will continue below, effectively refreshing the UI
             else:
                  # No kiosk was previously selected, or it's the very first selection
-                 print(f"[interface builder] No previous kiosk selected. Setting up {computer_name}.")
+                 print(f"[interface builder] No previous kiosk selected or first selection. Setting up {computer_name}.")
 
-            # Setup stats panel and audio hints first (for the NEW kiosk)
-            self.setup_stats_panel(computer_name)
 
-            # NOW update the selected kiosk variable
+            # ***** MODIFICATION START *****
+            # Set the selected kiosk state *before* setting up the new UI
+            # This ensures subsequent functions/callbacks have the correct context.
+            print(f"[interface builder] Setting self.selected_kiosk from '{self.selected_kiosk}' to '{computer_name}'")
             self.selected_kiosk = computer_name
-            
-            if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-                room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+            # ***** MODIFICATION END *****
+
+
+            # Setup stats panel (this clears and rebuilds the stats frame)
+            print(f"[interface builder] Calling setup_stats_panel for {computer_name}")
+            self.setup_stats_panel(computer_name) # Pass computer_name explicitly
+            print(f"[interface builder] setup_stats_panel finished for {computer_name}")
+
+            # Now update the UI elements based on the NEWLY selected kiosk
+            # Use self.selected_kiosk (or computer_name, they are now the same)
+
+            # Update stats frame title, hints, etc.
+            room_num = None # Initialize room_num
+            if self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
+                room_num = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
                 room_name = self.app.rooms[room_num]
-                title = f"{room_name} ({computer_name})"
-                print(f"[interface builder]Room assigned: {room_name} (#{room_num})")
-                
-                # Get room color from mapping, default to black if not found
+                title = f"{room_name} ({self.selected_kiosk})"
+                print(f"[interface builder] Room assigned: {room_name} (#{room_num})")
                 room_color = self.ROOM_COLORS.get(room_num, "black")
-                
-                # Configure title with room-specific color
                 self.stats_frame.configure(
                     text=title,
-                    font=('Arial', 7, 'bold'),
-                    fg=room_color,  # Add color to match room color scheme
+                    font=('Arial', 7, 'bold'), # Reduced font size slightly
+                    fg=room_color,
                     labelanchor='n'
                 )
-                
-                # Map room number to directory name for audio hints
-                room_dirs = {
-                    6: "atlantis",
-                    1: "casino",
-                    5: "haunted",
-                    2: "ma",
-                    7: "time",
-                    3: "wizard",
-                    4: "zombie"
-                }
-                
+
+                # Map room number to directory name for audio hints and image props
+                room_dirs = { 6: "atlantis", 1: "casino", 5: "haunted", 2: "ma", 7: "time", 3: "wizard", 4: "zombie" }
                 if room_num in room_dirs:
                     room_dir = room_dirs[room_num]
                     if hasattr(self, 'audio_hints'):
+                        print(f"[interface builder] Updating audio hints for room: {room_dir}")
                         self.audio_hints.update_room(room_dir)
-                        # Update image props when room changes
-                        self.update_image_props()
+                    print(f"[interface builder] Updating image props dropdown")
+                    self.update_image_props() # Update image props when room changes
+                else:
+                     print(f"[interface builder] Room number {room_num} not found in room_dirs mapping.")
+
             else:
-                title = f"Unassigned ({computer_name})"
+                title = f"Unassigned ({self.selected_kiosk})"
+                print(f"[interface builder] Kiosk {self.selected_kiosk} is unassigned.")
                 self.stats_frame.configure(
                     text=title,
                     font=('Arial', 10, 'bold'),
-                    fg='black'
+                    fg='black',
+                    labelanchor='n'
                 )
-            
+                # Clear hints/props if unassigned
+                if hasattr(self, 'audio_hints'): self.audio_hints.clear_hints()
+                self.update_image_props() # Update to show empty props
+
+
+            # Update Saved Hints Panel (if it exists)
             if hasattr(self, 'saved_hints'):
-                if room_num:
+                print(f"[interface builder] Updating saved hints panel for room: {room_num}")
+                if room_num is not None: # Check if room_num was assigned
                     self.saved_hints.update_room(room_num)
                 else:
-                    self.saved_hints.clear_preview()
-            
+                    self.saved_hints.clear_preview() # Clear if no room assigned
+
             # Update highlighting with dotted border
+            print(f"[interface builder] Updating kiosk highlighting...")
             for cn, data in self.connected_kiosks.items():
-                if cn == computer_name:
-                    # Create dotted border effect
-                    data['frame'].configure(
-                        relief='solid',  # Solid relief creates border base
-                        borderwidth=0,   # Border thickness
-                        highlightthickness=0,  # Additional highlight border
-                        highlightbackground='#363636',  # Color of dotted border
-                        highlightcolor='#363636'  # Color when focused
+                frame_widget = data.get('frame')
+                if not frame_widget or not frame_widget.winfo_exists(): # Check if widget exists
+                    continue
+
+                if cn == self.selected_kiosk:
+                    frame_widget.configure(
+                        relief='solid',
+                        borderwidth=1, # Use a thin solid border
+                        highlightthickness=1, # Highlight thickness
+                        highlightbackground='#363636', # Color of border when not focused
+                        highlightcolor='#0078D7'  # A standard selection color
                     )
-                    # Create dotted border effect using character spacing
-                    border_pattern = '. ' * 20  # Alternating dot and space
-                    data['frame'].configure(bd=2, relief='solid')
-                    # Keep button colors consistent
-                    for widget in data['frame'].winfo_children():
+                    # --- Keep original button colors ---
+                    # (This loop seems redundant if setup_stats_panel handles button colors,
+                    #  but keeping it for safety unless confirmed unnecessary)
+                    for widget in frame_widget.winfo_children():
+                        if not widget.winfo_exists(): continue
                         if isinstance(widget, tk.Button):
-                            if widget == data['reboot_btn']:
-                                widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
-                            elif widget == data['assign_btn']:
-                                widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
+                             # Example: find specific buttons if needed by text or name
+                             if 'reboot_btn' in data and widget == data['reboot_btn']:
+                                 widget.configure(bg='#FF6B6B', fg='white')
+                             # Add other specific button styling if needed
                 else:
-                    # Remove highlighting for unselected kiosks
-                    data['frame'].configure(
+                     frame_widget.configure(
                         relief='flat',
                         borderwidth=0,
                         highlightthickness=0
                     )
-                    # Keep button colors consistent for unselected kiosks
-                    for widget in data['frame'].winfo_children():
+                    # --- Keep original button colors ---
+                    # (Same redundancy note as above)
+                for widget in frame_widget.winfo_children():
+                        if not widget.winfo_exists(): continue
                         if isinstance(widget, tk.Button):
-                            if widget == data['reboot_btn']:
-                                widget.configure(bg='#FF6B6B', fg='white')  # Keep reboot button red
-                            elif widget == data['assign_btn']:
-                                widget.configure(bg='#90EE90', fg='black')  # Light green for assign button
-            
-            self.update_stats_display(computer_name)
-            
+                            if 'reboot_btn' in data and widget == data['reboot_btn']:
+                                widget.configure(bg='#FF6B6B', fg='white')
+                            # Add other specific button styling if needed
+            print(f"[interface builder] Highlighting updated.")
+
+
+            # Update the actual stats display content for the selected kiosk
+            print(f"[interface builder] Calling update_stats_display for {self.selected_kiosk}")
+            self.update_stats_display(self.selected_kiosk)
+            print(f"[interface builder] update_stats_display finished.")
+
             # Notify PropControl about room change (with safety check)
             if hasattr(self.app, 'prop_control') and self.app.prop_control:
-                if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-                    room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
-                    print(f"[interface builder]Notifying prop control about room change to {room_num}")
-                    self.app.root.after(100, lambda: self.app.prop_control.connect_to_room(room_num))
+                if self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
+                    # room_num is already defined above if assigned
+                    if room_num is not None:
+                        print(f"[interface builder] Notifying prop control about room change to {room_num}")
+                        # Use after to ensure UI updates settle before potential prop comms
+                        self.app.root.after(100, lambda rn=room_num: self.app.prop_control.connect_to_room(rn)) # Pass room_num via lambda default
+                    else:
+                        print("[interface builder] Prop control notification skipped: Room number not resolved.")
                 else:
-                    print("[interface builder]No room assignment, skipping prop control notification")
-                    
-            #print(f"[interface builder]=== KIOSK SELECTION END: {computer_name} ===\n")
-            
+                    print("[interface builder] No room assignment, skipping prop control notification")
+                    # Consider disconnecting prop control if previously connected
+                    self.app.prop_control.disconnect_current_room()
+
+
+            print(f"[interface builder] === KIOSK SELECTION END: {self.selected_kiosk} ===\n")
+
         except Exception as e:
-            print(f"[interface builder]Error in select_kiosk: {e}")
+            print(f"[interface builder] CRITICAL Error in select_kiosk for {computer_name}: {e}")
+            import traceback
+            traceback.print_exc() # Print full traceback for easier debugging
             
     def update_stats_display(self, computer_name):
         if computer_name not in self.app.kiosk_tracker.kiosk_stats:
