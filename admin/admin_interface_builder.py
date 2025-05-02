@@ -1136,32 +1136,59 @@ class AdminInterfaceBuilder:
         """Handle selection of a kiosk and setup of its interface"""
         try:
             #print(f"[interface builder]=== KIOSK SELECTION START: {computer_name} ===")
-            
-            # Clean up existing audio/video streams before switching
-            if hasattr(self, 'camera_active') and self.camera_active:
-                self.video_client.disconnect()
-                self.camera_active = False
-                if 'camera_btn' in self.stats_elements:
-                    self.stats_elements['camera_btn'].config(text="Start Camera")
-                if 'video_label' in self.stats_elements:
-                    self.stats_elements['video_label'].config(image='')
+
+            # --- Clean up existing streams before switching ---
+            # Check if a kiosk was previously selected AND it's a different kiosk
+            if self.selected_kiosk is not None and self.selected_kiosk != computer_name:
+                previous_kiosk_name = self.selected_kiosk
+                print(f"[interface builder] Switching kiosk from {previous_kiosk_name} to {computer_name}. Cleaning up previous.")
+
+                # --- Stop Camera if active for the previous kiosk ---
+                # We need to check if the camera was active *for the previous kiosk*
+                # The camera_active flag is global, but the current_computer in stats_elements
+                # tells us WHICH kiosk had the camera active.
+                if getattr(self, 'camera_active', False) and \
+                   self.stats_elements.get('current_computer') == previous_kiosk_name:
+                    print(f"[interface builder] Disconnecting camera for {previous_kiosk_name} due to kiosk switch.")
+                    self.video_client.disconnect()
+                    self.camera_active = False
+                    # Note: UI buttons for the OLD kiosk are no longer visible, so no need to update them here.
+
+                # --- Stop Audio if active for the previous kiosk ---
+                # Get the specific AudioClient instance for the previous kiosk
+                audio_client = self.audio_clients.get(previous_kiosk_name)
+                # Check if that specific client exists AND its state was active
+                if audio_client and self.audio_active.get(previous_kiosk_name, False):
+                    print(f"[interface builder] Disconnecting audio for {previous_kiosk_name} due to kiosk switch.")
                     
-            if hasattr(self, 'audio_active') and self.audio_active:
-                if hasattr(self, 'speaking') and self.speaking:
-                    self.audio_clients[computer_name].stop_speaking()
-                    self.speaking = {}
-                    if 'speak_btn' in self.stats_elements:
-                        self.stats_elements['speak_btn'].config(text="Enable Microphone")
-                self.audio_clients[computer_name].disconnect()
-                self.audio_active = {}
-                if 'listen_btn' in self.stats_elements:
-                    self.stats_elements['listen_btn'].config(text="Start Listening")
-                if 'speak_btn' in self.stats_elements:
-                    self.stats_elements['speak_btn'].config(state='disabled')
-            
-            # Setup stats panel and audio hints first
+                    # Stop speaking first if active for the previous kiosk
+                    if self.speaking.get(previous_kiosk_name, False):
+                         print(f"[interface builder] Stopping speaking for {previous_kiosk_name}.")
+                         audio_client.stop_speaking() # Use client method
+                         self.speaking[previous_kiosk_name] = False # Update local state
+                         # Reset UI background color if the previous kiosk was the one currently speaking
+                         # This check is based on the *previous_kiosk_name*
+                         if previous_kiosk_name == self.selected_kiosk: # This is true inside this block
+                             self.app.root.configure(bg='systemButtonFace') # Reset root background
+
+                    print(f"[interface builder] Disconnecting audio client for {previous_kiosk_name}.")
+                    audio_client.disconnect() # Disconnect the audio client
+                    self.audio_active[previous_kiosk_name] = False # Update local state
+
+                # Note: The UI elements (buttons, labels) for the old kiosk's stats frame
+                # will be destroyed and recreated for the new kiosk below, so no need
+                # to explicitly update their state (like button text/icons) here.
+            elif self.selected_kiosk is not None and self.selected_kiosk == computer_name:
+                 # Selecting the same kiosk - do nothing for cleanup
+                 print(f"[interface builder] Re-selecting the same kiosk: {computer_name}. No cleanup needed.")
+            else:
+                 # No kiosk was previously selected, or it's the very first selection
+                 print(f"[interface builder] No previous kiosk selected. Setting up {computer_name}.")
+
+            # Setup stats panel and audio hints first (for the NEW kiosk)
             self.setup_stats_panel(computer_name)
-            
+
+            # NOW update the selected kiosk variable
             self.selected_kiosk = computer_name
             
             if computer_name in self.app.kiosk_tracker.kiosk_assignments:
