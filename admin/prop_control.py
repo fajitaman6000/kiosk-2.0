@@ -76,6 +76,7 @@ class PropControl:
         self.INACTIVE_UPDATE_INTERVAL = 2000  # Update interval for non-selected rooms
         self.last_progress_times = {} # last progress events for rooms
         self.last_mqtt_updates = {} # room_number -> {prop_id -> last_mqtt_update_time}
+        self.retry_timer_ids = {}  # Tracks pending retry timers for each room
         for room_number in self.ROOM_CONFIGS: # Initialize timestamps for all rooms upon starting, or when switching
             self.last_progress_times[room_number] = time.time() # initialize to now
             self.all_props[room_number] = {} # Initialize the dictionary for each room
@@ -380,7 +381,7 @@ class PropControl:
                 self.mqtt_clients[room_number] = client
                 
                 # Schedule timeout check
-                self.app.root.after(5000, lambda: self._check_connection_timeout_callback(room_number)) # changed to use the helper
+                self._schedule_retry(room_number, 5000, lambda: self._check_connection_timeout_callback(room_number))
                 
             except Exception as e:
                 print(f"[prop control]Failed to connect to room {room_number}: {e}")
@@ -391,7 +392,7 @@ class PropControl:
                     self.app.root.after(0, lambda: self.status_label.config(text=error_msg, fg='red'))
                 
                 # Schedule retry using after()
-                self.app.root.after(10000, lambda: self.retry_connection(room_number))
+                self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
         
         # Start connection attempt in separate thread
         self.app.root.after(0, lambda: threading.Thread(target=connect_async, daemon=True).start()) # wrap the thread creation in after
@@ -423,7 +424,7 @@ class PropControl:
                 threading.Thread(target=cleanup, daemon=True).start()
                 
                 # Schedule retry using after()
-                self.app.root.after(10000, lambda: self.retry_connection(room_number))
+                self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
     def _check_connection_timeout_callback(self, room_number): # new helper method
          self.check_connection_timeout(room_number)
@@ -894,6 +895,12 @@ class PropControl:
             if room_number == self.current_room and hasattr(self, 'status_label'):
                 self.status_label.config(text="")
                 
+            # Cancel the timer on successful connection
+            if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
+                # print(f"[prop control]Cancelling pending retry {self.retry_timer_ids[room_number]} for room {room_number} on success") # Optional debug
+                self.app.root.after_cancel(self.retry_timer_ids[room_number])
+                self.retry_timer_ids[room_number] = None
+
             # Subscribe to topics
             topics = [
                 "/er/ping", "/er/name", "/er/cmd", "/er/riddles/info",
@@ -917,7 +924,7 @@ class PropControl:
                 self.status_label.config(text=error_msg, fg='red')
             
             # Schedule retry
-            self.app.root.after(10000, lambda: self.retry_connection(room_number))
+            self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
     def update_connection_state(self, room_number, state):
         """Update the connection state display - only shows error states"""
@@ -1057,8 +1064,8 @@ class PropControl:
         if rc != 0:  # Unexpected disconnect
             self.update_connection_state(room_number, 
                 f"Connection to {room_name} props lost. Retrying in 10 seconds...")
-            # Schedule retry
-            self.app.root.after(10000, lambda: self.retry_connection(room_number))
+            # Schedule retry using the new helper method
+            self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
     def handle_prop_update(self, prop_data):
         """Handle updates to prop data with widget safety checks"""
@@ -1637,3 +1644,14 @@ class PropControl:
             print(f"[prop control]Quest command '{quest_type}' sent successfully to room {self.current_room}")
         except Exception as e:
             print(f"[prop control]Failed to send quest command: {e}")
+
+    def _schedule_retry(self, room_number, delay, callback):
+        """Cancels any pending retry for the room and schedules a new one."""
+        if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
+            # print(f"[prop control]Cancelling existing timer {self.retry_timer_ids[room_number]} for room {room_number}") # Optional debug
+            self.app.root.after_cancel(self.retry_timer_ids[room_number])
+            self.retry_timer_ids[room_number] = None  # Clear the old ID
+
+        timer_id = self.app.root.after(delay, callback)
+        self.retry_timer_ids[room_number] = timer_id
+        # print(f"[prop control]Scheduled new timer {timer_id} for room {room_number}") # Optional debug
