@@ -2,9 +2,21 @@
 # Test notes
 
 
+
 ##############################################################################################################################
 # pre-beta testing
 
+"[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'"
+
+
+selecting rooms inconsistent with clicking
+audio stream doesn't automatically end when switching rooms
+props reloading repeatedly
+view image debounce for double taps
 sound has to be disabled to reenable microphone; symbols may be inaccurate to actual recording state
 stop all videos button
 renaming hint image needs to rename all instances of that prop in the saved_hints.json

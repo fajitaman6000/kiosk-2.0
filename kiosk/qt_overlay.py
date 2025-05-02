@@ -474,18 +474,20 @@ class Overlay:
             # Apply rotation after positioning
             cls._fullscreen_hint_pixmap_item.setRotation(90)
 
-            # 6. Connect click handler
+            # 6. Initially disconnect any previous click handler
             try:
                 cls._fullscreen_hint_view.clicked.disconnect() # Disconnect previous
             except TypeError:
                 pass # No connection existed
-            cls._fullscreen_hint_view.clicked.connect(cls.hide_fullscreen_hint)
 
-            # 7. Show window
-            # Window geometry already set above
+            # 7. Show window (without click handler connected)
             cls._fullscreen_hint_window.show()
             cls._fullscreen_hint_window.raise_()
             QApplication.processEvents() # Process pending events
+            
+            # 8. Connect click handler after 1.5 second delay
+            print("[qt overlay] Setting 1.5 second delay before enabling click-to-close")
+            QTimer.singleShot(1500, lambda: cls._enable_fullscreen_hint_close())
 
         except Exception as e:
             print(f"[qt overlay] Error showing fullscreen hint: {e}")
@@ -495,6 +497,18 @@ class Overlay:
                 cls._fullscreen_hint_ui_instance = None
             cls.hide_fullscreen_hint() # Try to hide potentially broken overlay
             cls.show_all_overlays()    # Try to restore other overlays
+            
+    @classmethod
+    def _enable_fullscreen_hint_close(cls):
+        """Enable the click-to-close functionality for fullscreen hint after delay"""
+        print("[qt overlay] Enabling click-to-close for fullscreen hint")
+        try:
+            if cls._fullscreen_hint_window and cls._fullscreen_hint_window.isVisible():
+                # Now connect the click handler to allow closing
+                cls._fullscreen_hint_view.clicked.connect(cls.hide_fullscreen_hint)
+        except Exception as e:
+            print(f"[qt overlay] Error enabling fullscreen hint close: {e}")
+            traceback.print_exc()
 
     @classmethod
     def hide_fullscreen_hint(cls):
