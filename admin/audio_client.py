@@ -5,37 +5,69 @@ import threading
 import struct
 import numpy as np
 import math
+import time
+import traceback
 
 class AudioClient:
     def __init__(self):
+        """Initializes the AudioClient."""
         self.running = False
         self.current_socket = None
-        self.audio = pyaudio.PyAudio()
+        self.audio = None
         self.input_stream = None
         self.output_stream = None
         self.speaking = False
         self.current_volume = 0.0
         self.selected_input_device_index = None
-        
+        self._pyaudio_initialized = False
+        self._lock = threading.Lock() # Lock for protecting stream/speaking state
+
         # Audio parameters
         self.CHUNK = 1024
         self.FORMAT = pyaudio.paFloat32
         self.CHANNELS = 1
         self.RATE = 44100
-        
+
+        try:
+            print("[audio client] Attempting to initialize PyAudio...")
+            self.audio = pyaudio.PyAudio()
+            self._pyaudio_initialized = True
+            print("[audio client] PyAudio initialized successfully.")
+        except Exception as e:
+            print(f"[audio client] FATAL ERROR: Failed to initialize PyAudio: {e}")
+            traceback.print_exc()
+            self.audio = None
+            self._pyaudio_initialized = False
+            print("[audio client] Audio functionality is disabled.")
+
     def connect(self, host, port=8090):
+        """Connects to the audio server and starts the receiving stream."""
+        if not self._pyaudio_initialized or self.audio is None:
+             print("[audio client] PyAudio was not initialized or instance is missing. Cannot connect.")
+             return False
+
         if self.current_socket:
+            print("[audio client] Already connected. Disconnecting existing connection first.")
             self.disconnect()
-            
+            time.sleep(0.2) # Give a moment for resources to clear after disconnect
+
+        print(f"[audio client] Attempting to connect to {host}:{port}")
         try:
             self.current_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.current_socket.settimeout(3)  # 3 second timeout
+            self.current_socket.settimeout(3)  # 3 second timeout for connection
             self.current_socket.connect((host, port))
-            self.current_socket.settimeout(None)
+            self.current_socket.settimeout(None) # Reset to blocking for regular operations
             self.current_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-            self.running = True
-            
+            self.running = True # Set running flag only after successful socket connection
+            print("[audio client] Socket connected successfully.")
+
             # Initialize output stream for receiving audio
+            if self.audio is None: # Double check audio instance
+                print("[audio client] PyAudio instance is None after socket connect. Critical error.")
+                self.disconnect()
+                return False
+
+            print("[audio client] Opening output stream...")
             self.output_stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -43,253 +75,532 @@ class AudioClient:
                 output=True,
                 frames_per_buffer=self.CHUNK
             )
-            
+            print("[audio client] Output stream opened.")
+
             # Start receiving thread
-            def safe_receive():
-                try:
-                    self.receive_audio()
-                except Exception as e:
-                    print(f"[audio client]Receive thread error: {e}")
-                    self.disconnect()
-            
-            threading.Thread(target=safe_receive, daemon=True).start()
+            print("[audio client] Starting receive thread...")
+            threading.Thread(target=self._safe_receive_loop, daemon=True).start()
+            print("[audio client] Receive thread started.")
             return True
-        except Exception as e:
-            print(f"[audio client]Audio connection failed: {e}")
-            self.disconnect()
+
+        except socket.timeout:
+            print(f"[audio client] Audio connection timed out to {host}:{port}.")
+            self.disconnect() # Ensure cleanup on timeout
             return False
-            
+        except Exception as e:
+            print(f"[audio client] Audio connection failed: {e}")
+            traceback.print_exc()
+            self.disconnect() # Ensure cleanup on other errors
+            return False
+
+    def _safe_receive_loop(self):
+        """Wrapper for receive_audio to handle exceptions within the thread."""
+        try:
+            self.receive_audio()
+        except Exception as e:
+            print(f"[audio client] Receive thread CRASHED: {e}")
+            traceback.print_exc()
+            # Trigger disconnect if the thread crashes while running
+            if self.running:
+                 self.disconnect()
+        finally:
+             print("[audio client] Receive thread finished.")
+
     def receive_audio(self):
-        print("[audio client]Starting audio reception")
+        """Listens for and plays incoming audio data."""
+        print("[audio client] Starting audio reception loop.")
         while self.running:
             try:
-                # Get frame size
+                # 1. Receive chunk size (blocking with timeout via _recv_exactly)
                 size_data = self._recv_exactly(struct.calcsize("Q"))
                 if not size_data:
-                    print("[audio client]No size data received")
-                    break
+                    if self.running: # Avoid log noise if disconnect was intentional
+                        print("[audio client] Receive loop: Failed to get size data (connection closed?).")
+                    break # Exit loop
+
                 chunk_size = struct.unpack("Q", size_data)[0]
-                
-                # Get audio data
+                if chunk_size <= 0 or chunk_size > self.CHUNK * 20: # Sanity check size
+                     print(f"[audio client] Receive loop: Invalid chunk size received ({chunk_size}). Closing.")
+                     break
+
+                # 2. Receive audio data (blocking with timeout via _recv_exactly)
                 audio_data = self._recv_exactly(chunk_size)
                 if not audio_data:
-                    print("[audio client]No audio data received")
-                    break
-                
-                # Always play received audio through output stream
-                if self.output_stream and self.output_stream.is_active():
+                    if self.running:
+                        print("[audio client] Receive loop: Failed to get audio data (connection closed?).")
+                    break # Exit loop
+
+                # 3. Play audio data
+                current_output_stream = self.output_stream # Local ref for safety
+                if current_output_stream and self.running:
                     try:
-                        self.output_stream.write(bytes(audio_data))
+                        # Check if stream is active *before* writing
+                        if current_output_stream.is_active():
+                             current_output_stream.write(bytes(audio_data))
+                        # else: # Optional: Log if stream inactive? Can be noisy.
+                        #    print("[audio client] Receive loop: Output stream inactive, dropping packet.")
+                    except OSError as e:
+                         # Common error if stream is closed unexpectedly
+                         print(f"[audio client] Receive loop: OSError writing to output stream: {e}")
+                         # Consider attempting to reopen the output stream here if needed, or just break.
+                         break # Exit loop on stream write errors
                     except Exception as e:
-                        print(f"[audio client]Error playing audio: {e}")
-                        continue
-                        
+                         print(f"[audio client] Receive loop: Error playing audio chunk: {e}")
+                         # Continue for minor errors, but break could be safer
+                         # break
+
             except socket.error as e:
-                print(f"[audio client]Socket error in receive loop: {e}")
-                break
+                if self.running: # Only log if not intentionally stopped
+                    print(f"[audio client] Receive loop: Socket error: {e}")
+                break # Exit loop on socket errors
             except Exception as e:
-                print(f"[audio client]Error in receive loop: {e}")
-                if not self.running:
-                    break
-                continue
-                
-        print("[audio client]Audio reception ended")
-        
+                if self.running:
+                    print(f"[audio client] Receive loop: Unexpected error: {e}")
+                    traceback.print_exc()
+                break # Exit loop on other major errors
+
+        print("[audio client] Audio reception loop ended.")
+        # Consider calling disconnect here if the loop exits unexpectedly while running
+        # if self.running:
+        #     self.disconnect()
+
     def start_speaking(self):
-        """Start capturing and sending audio from admin to kiosk"""
+        """Starts capturing and sending audio. Protected by lock."""
+        print("[audio client] Attempting to start speaking...")
         if not self.running:
-            print("[audio client]Cannot start speaking: Not connected.")
+            print("[audio client] Cannot start speaking: Not connected.")
             return False
-        if self.speaking:
-            print("[audio client]Already speaking.")
-            return True # Already running
 
-        # Ensure default device is selected if none is explicitly set
-        if self.selected_input_device_index is None:
-            self.get_input_devices() # This attempts to set a default
+        # Acquire lock to ensure atomic start operation
+        with self._lock:
+            if self.speaking:
+                print("[audio client] Already speaking (lock acquired).")
+                return True # Already running, nothing to do
+
+            # --- Pre-checks (within lock) ---
+            if not self._pyaudio_initialized or self.audio is None:
+                print("[audio client] PyAudio not available. Cannot start speaking.")
+                return False
+
             if self.selected_input_device_index is None:
-                 print("[audio client]Error: No input device selected or available.")
-                 return False
+                print("[audio client] No input device selected. Attempting to find default.")
+                self.get_input_devices() # Sets default if possible (also uses lock briefly)
+                if self.selected_input_device_index is None:
+                    print("[audio client] Error: No input device available or selected.")
+                    return False # Still no device after checking
 
-        print(f"[audio client]Starting microphone using device index: {self.selected_input_device_index}")
-        try:
-            # Create input stream for microphone using selected device
-            self.input_stream = self.audio.open(
-                format=self.FORMAT,
-                channels=self.CHANNELS,
-                rate=self.RATE,
-                input=True,
-                frames_per_buffer=self.CHUNK,
-                input_device_index=self.selected_input_device_index # Use selected device
-            )
+            print(f"[audio client] Starting microphone on device {self.selected_input_device_index} (lock acquired).")
 
-            self.speaking = True
-            self.current_volume = 0.0 # Reset volume on start
-
-            # Start sending thread
-            def safe_send():
-                try:
-                    self.send_audio()
-                except Exception as e:
-                    print(f"[audio client]Send thread error: {e}")
-                    self.stop_speaking()
-            
-            threading.Thread(target=safe_send, daemon=True).start()
-            return True
-        except Exception as e:
-            print(f"[audio client]Error starting microphone: {e}")
-            self.speaking = False
-            return False
-        
-    def stop_speaking(self):
-        """Stop capturing and sending audio"""
-        print("[audio client]Stopping microphone")
-        self.speaking = False
-        self.current_volume = 0.0 # Reset volume
-        
-        if self.input_stream:
+            # --- Attempt to open stream ---
             try:
-                self.input_stream.stop_stream()
-                self.input_stream.close()
-                self.input_stream = None
-            except Exception as e:
-                print(f"[audio client]Error closing input stream: {e}")
-        
-    def send_audio(self):
-        """Send audio data to kiosk"""
-        print("[audio client]Starting audio transmission")
-        while self.running and self.speaking and self.input_stream:
-            try:
-                # Check if stream is active before reading
-                if not self.input_stream or not self.input_stream.is_active():
-                    print("[audio client]Input stream is not active. Stopping send loop.")
-                    break
-
-                data = self.input_stream.read(self.CHUNK, exception_on_overflow=False)
-                if data:
-                    # Calculate volume (RMS)
-                    self.current_volume = self._calculate_volume(data)
-
-                    # Send data
-                    size = len(data)
+                # Ensure any previous stream reference is definitely cleared before opening
+                if self.input_stream is not None:
+                    print("[audio client] Warning: input_stream was not None before opening. Cleaning up.")
                     try:
-                        self.current_socket.sendall(struct.pack("Q", size))
-                        self.current_socket.sendall(data)
-                    except Exception as e:
-                        print(f"[audio client]Error sending audio packet: {e}")
-                        break
+                        # No need to check is_active here, just try close
+                        self.input_stream.close()
+                    except Exception as e_clean:
+                         print(f"[audio client] Info: Error during pre-cleanup: {e_clean}")
+                    finally:
+                         self.input_stream = None
+
+                print("[audio client] Opening input stream...")
+                self.input_stream = self.audio.open(
+                    format=self.FORMAT,
+                    channels=self.CHANNELS,
+                    rate=self.RATE,
+                    input=True,
+                    frames_per_buffer=self.CHUNK,
+                    input_device_index=self.selected_input_device_index
+                )
+                print("[audio client] Input stream opened successfully.")
+
+                # --- Stream opened successfully ---
+                self.speaking = True # Set flag *after* stream is confirmed open
+                self.current_volume = 0.0
+                print("[audio client] Starting send thread...")
+                threading.Thread(target=self._safe_send_loop, daemon=True).start()
+                print("[audio client] Send thread started. Microphone active.")
+                return True # Success
+
             except Exception as e:
-                print(f"[audio client]Error reading audio: {e}")
+                # --- Failed to open stream ---
+                print(f"[audio client] Failed to open input stream on device {self.selected_input_device_index}: {e}")
+                traceback.print_exc()
+                # Clean up potentially partially opened stream
+                if self.input_stream:
+                    try: self.input_stream.close()
+                    except: pass
+                self.input_stream = None
+                self.speaking = False # Ensure flag is false
+                print("[audio client] Microphone start failed.")
+                # Removed remediation logic for simplicity and stability
+                return False # Failure
+        # Lock released automatically here
+
+    def _safe_send_loop(self):
+        """Wrapper for send_audio to handle exceptions within the thread."""
+        try:
+            self.send_audio()
+        except Exception as e:
+            print(f"[audio client] Send thread CRASHED: {e}")
+            traceback.print_exc()
+            # If the send thread crashes, we should probably stop the speaking state
+            if self.speaking:
+                 self.stop_speaking() # Attempt graceful stop
+        finally:
+             print("[audio client] Send thread finished.")
+
+
+    def stop_speaking(self):
+        """Stops capturing and sending audio. Protected by lock."""
+        print("[audio client] Attempting to stop microphone...")
+        # Acquire lock to ensure atomic stop operation
+        with self._lock:
+            if not self.speaking:
+                print("[audio client] Already stopped (lock acquired).")
+                return # Already stopped
+
+            print("[audio client] Stopping microphone (lock acquired).")
+            self.speaking = False # Signal send thread to stop *first*
+            self.current_volume = 0.0
+
+            stream_to_close = self.input_stream # Get reference
+            self.input_stream = None # Clear the shared reference immediately
+
+        # --- Close stream (outside primary lock section, closing can block) ---
+        if stream_to_close:
+            print("[audio client] Closing input stream...")
+            try:
+                # Check activity before stopping, might prevent some errors on some platforms
+                if stream_to_close.is_active():
+                     stream_to_close.stop_stream()
+                     print("[audio client] Input stream stopped.")
+                stream_to_close.close()
+                print("[audio client] Input stream closed.")
+            except Exception as e:
+                print(f"[audio client] Error closing input stream: {e}")
+                # traceback.print_exc() # Can be noisy, error is common if closed abruptly
+        else:
+             # This case shouldn't happen if self.speaking was true, but log if it does
+             print("[audio client] Warning: stop_speaking called but input_stream was already None.")
+
+        print("[audio client] Stop speaking finished.")
+        # Lock was released after clearing self.input_stream and self.speaking
+
+
+    def send_audio(self):
+        """Reads audio from the input stream and sends it over the socket."""
+        print("[audio client] Starting audio transmission loop.")
+
+        # Check initial state
+        with self._lock: # Briefly lock to get consistent initial stream reference
+            initial_stream = self.input_stream
+
+        if not initial_stream:
+             print("[audio client] Send loop: Started with no input stream. Exiting.")
+             return
+
+        while True: # Loop relies on self.speaking flag and stream state
+            # --- Check state before blocking read ---
+            # Read speaking flag without lock (volatile read is okay here)
+            if not self.speaking:
+                 print("[audio client] Send loop: speaking flag is false. Exiting.")
+                 break
+            # Read stream ref without lock (it's set to None atomically in stop_speaking)
+            current_stream = self.input_stream
+            if current_stream is None:
+                 print("[audio client] Send loop: input_stream is None. Exiting.")
+                 break
+
+            # --- Blocking Read ---
+            try:
+                # Use the stream reference captured at the start of the loop iteration
+                # print("[audio client] Send loop: Reading chunk...") # DEBUG: Very noisy
+                data = current_stream.read(self.CHUNK, exception_on_overflow=False)
+                # print(f"[audio client] Send loop: Read {len(data)} bytes.") # DEBUG: Very noisy
+            except IOError as e:
+                # This is the *expected* way to exit when stop_speaking closes the stream
+                # Check the speaking flag again to differentiate expected vs unexpected IOErrors
+                if not self.speaking:
+                    print(f"[audio client] Send loop: IOError reading audio (expected on stop): {e}")
+                else:
+                    # If speaking is still true, this might be an unexpected error
+                    print(f"[audio client] Send loop: IOError reading audio unexpectedly: {e}")
+                break # Exit loop on IOError
+            except AttributeError as e:
+                # Handles case where current_stream becomes None *between* check and read (rare)
+                 print(f"[audio client] Send loop: AttributeError (stream likely became None): {e}")
+                 break
+            except Exception as e:
+                print(f"[audio client] Send loop: Unexpected error reading audio stream: {e}")
+                traceback.print_exc()
+                break # Exit loop on other errors
+
+            # --- Process and Send Data ---
+            if data:
+                # Calculate volume
+                self.current_volume = self._calculate_volume(data)
+
+                # Send data - check socket existence too
+                current_sock = self.current_socket
+                if current_sock and self.running:
+                    try:
+                        size = len(data)
+                        # Pack size and data together for efficiency
+                        packet = struct.pack("Q", size) + data
+                        current_sock.sendall(packet)
+                    except socket.error as e:
+                        print(f"[audio client] Send loop: Socket error sending audio packet: {e}")
+                        # Assume connection is lost, trigger disconnect
+                        if self.running: self.disconnect()
+                        break # Exit send loop
+                    except Exception as e:
+                        print(f"[audio client] Send loop: Unexpected error sending audio packet: {e}")
+                        traceback.print_exc()
+                        if self.running: self.disconnect() # Assume fatal error
+                        break # Exit send loop
+                else:
+                    # Socket closed or client stopped during send attempt
+                    print("[audio client] Send loop: Socket closed or client stopped. Cannot send.")
+                    break # Exit send loop
+            else:
+                # read() returned empty data without error? Should not happen with blocking read.
+                print("[audio client] Send loop: Read returned empty data. Exiting.")
                 break
-        print("[audio client]Audio transmission ended")
-        self.current_volume = 0.0 # Ensure reset when loop finishes
-        
+
+        print("[audio client] Audio transmission loop ended.")
+        self.current_volume = 0.0 # Reset volume when transmission stops
+
     def _recv_exactly(self, size):
-        """Helper to receive exact number of bytes"""
+        """Helper to receive exactly 'size' bytes or return None on failure/timeout."""
         data = bytearray()
+        current_sock = self.current_socket # Capture reference
+        if not current_sock or not self.running:
+             return None
+
+        # Implement overall timeout for receiving the whole message
+        start_time = time.time()
+        timeout_duration = 5.0 # E.g., 5 seconds to receive the full chunk + size
+
         while len(data) < size:
-            packet = self.current_socket.recv(min(size - len(data), 4096))
-            if not packet:
+            if not self.running: return None # Check running flag each iteration
+            if time.time() - start_time > timeout_duration:
+                print(f"[audio client] _recv_exactly: Timeout waiting for {size} bytes (got {len(data)}).")
                 return None
-            data.extend(packet)
-        return data
-        
+
+            try:
+                remaining = size - len(data)
+                # Use a short timeout for individual recv calls to keep it responsive
+                current_sock.settimeout(0.2) # Shorter timeout for responsiveness
+                packet = current_sock.recv(min(remaining, 4096))
+                current_sock.settimeout(None) # Reset to default blocking behavior (or previous state if needed)
+
+                if not packet:
+                    # print(f"[audio client] _recv_exactly: Connection closed by peer gracefully.") # Can be noisy
+                    return None # Peer closed connection
+
+                data.extend(packet)
+
+            except socket.timeout:
+                 # It's okay to timeout on the short individual recv, just continue the outer loop
+                 continue
+            except socket.error as e:
+                 print(f"[audio client] _recv_exactly: Socket error: {e}")
+                 return None # Failure
+            except Exception as e:
+                 print(f"[audio client] _recv_exactly: Unexpected error: {e}")
+                 traceback.print_exc()
+                 return None # Failure
+
+        return data # Return the complete data
+
     def disconnect(self):
-        """Clean up resources"""
-        print("[audio client]Disconnecting audio client...")
-        self.running = False
-        self.speaking = False
-        
-        if self.input_stream:
+        """Disconnects, closes streams, and cleans up resources."""
+        print("[audio client] Disconnecting audio client...")
+        self.running = False # Signal all loops to stop *first*
+
+        # Close socket - triggers threads blocked on socket ops to exit
+        socket_to_close = self.current_socket
+        self.current_socket = None # Clear reference
+        if socket_to_close:
+            print("[audio client] Shutting down and closing socket...")
             try:
-                self.input_stream.stop_stream()
-                self.input_stream.close()
-            except:
-                pass
-            self.input_stream = None
-            
-        if self.output_stream:
+                socket_to_close.shutdown(socket.SHUT_RDWR)
+            except: pass # Ignore errors, socket might already be closed
             try:
-                self.output_stream.stop_stream()
-                self.output_stream.close()
-            except:
-                pass
-            self.output_stream = None
-                
-        if self.current_socket:
+                socket_to_close.close()
+                print("[audio client] Socket closed.")
+            except Exception as e:
+                 print(f"[audio client] Error closing socket: {e}")
+
+        # Use lock to handle input stream shutdown safely with speaking flag
+        with self._lock:
+            self.speaking = False # Ensure speaking is off
+            input_stream_to_close = self.input_stream
+            self.input_stream = None # Clear reference within lock
+
+        # Close input stream (outside lock)
+        if input_stream_to_close:
+            print("[audio client] Closing input stream during disconnect...")
             try:
-                self.current_socket.shutdown(socket.SHUT_RDWR)
-            except:
-                pass
+                if input_stream_to_close.is_active(): input_stream_to_close.stop_stream()
+                input_stream_to_close.close()
+                print("[audio client] Input stream closed.")
+            except Exception as e:
+                print(f"[audio client] Error closing input stream during disconnect: {e}")
+
+        # Close output stream (doesn't need the input stream lock)
+        output_stream_to_close = self.output_stream
+        self.output_stream = None # Clear reference
+        if output_stream_to_close:
+            print("[audio client] Closing output stream during disconnect...")
             try:
-                self.current_socket.close()
-            except:
-                pass
-            self.current_socket = None
-            
+                if output_stream_to_close.is_active(): output_stream_to_close.stop_stream()
+                output_stream_to_close.close()
+                print("[audio client] Output stream closed.")
+            except Exception as e:
+                print(f"[audio client] Error closing output stream during disconnect: {e}")
+
+        print("[audio client] Audio client disconnected.")
+
     def __del__(self):
-        """Cleanup on deletion"""
-        self.disconnect()
-        if hasattr(self, 'audio'):
+        """Destructor, attempts cleanup."""
+        print(f"[audio client] AudioClient __del__ called (ID: {id(self)}).")
+        # Ensure disconnect is called if not already stopped
+        if self.running or self.current_socket or self.input_stream or self.output_stream:
+             print("[audio client] __del__: Performing cleanup via disconnect().")
+             self.disconnect()
+
+        # Terminate PyAudio only if initialized and not already None
+        audio_instance = self.audio # Local ref
+        if audio_instance and self._pyaudio_initialized:
+            print("[audio client] __del__: Terminating PyAudio instance...")
             try:
-                self.audio.terminate()
-            except:
-                pass
+                audio_instance.terminate()
+                print("[audio client] PyAudio terminated.")
+            except Exception as e:
+                print(f"[audio client] Error terminating PyAudio in __del__: {e}")
+            finally:
+                 self.audio = None
+                 self._pyaudio_initialized = False
 
     def get_input_devices(self):
-        """Returns a list of available input audio devices."""
+        """Returns a list of available input devices. Briefly uses lock for default setting."""
+        if not self._pyaudio_initialized or self.audio is None:
+            # print("[audio client] PyAudio not initialized. Cannot get input devices.") # Noisy
+            return []
+
         devices = []
         try:
-            for i in range(self.audio.get_device_count()):
-                dev_info = self.audio.get_device_info_by_index(i)
-                if dev_info['maxInputChannels'] > 0:
-                    devices.append({'index': i, 'name': dev_info['name']})
-            # Set default if none selected
-            if self.selected_input_device_index is None and devices:
-                 default_device_info = self.audio.get_default_input_device_info()
-                 self.selected_input_device_index = default_device_info['index']
+            num_devices = self.audio.get_device_count()
+            if num_devices <= 0:
+                 print("[audio client] No audio devices found by PyAudio.")
+                 return []
+
+            for i in range(num_devices):
+                try:
+                    dev_info = self.audio.get_device_info_by_index(i)
+                    # Check if it's an input device AND supports our format/rate (optional but good)
+                    # For now, just check maxInputChannels
+                    if dev_info.get('maxInputChannels', 0) > 0:
+                        devices.append({'index': i, 'name': dev_info['name']})
+                except Exception as e_dev:
+                     print(f"[audio client] Error getting info for device index {i}: {e_dev}")
+                     # Continue to next device
+
+            # Set default if none selected and devices were found (use lock for this part)
+            with self._lock:
+                 if self.selected_input_device_index is None and devices:
+                     print("[audio client] Setting default input device...")
+                     try:
+                         default_info = self.audio.get_default_input_device_info()
+                         default_index = default_info.get('index')
+                         # Verify default index is in our list of usable devices
+                         if any(d['index'] == default_index for d in devices):
+                             self.selected_input_device_index = default_index
+                             print(f"[audio client] Default input device set to: index {default_index} Name: {default_info.get('name')}")
+                         elif devices: # Default not usable, pick first from our list
+                             self.selected_input_device_index = devices[0]['index']
+                             print(f"[audio client] Default device unusable, set to first available: index {self.selected_input_device_index} Name: {devices[0]['name']}")
+                     except Exception as e_default:
+                         print(f"[audio client] Error getting default device ({e_default}), selecting first.")
+                         if devices: # Fallback if default query fails
+                             self.selected_input_device_index = devices[0]['index']
+                             print(f"[audio client] Set to first available: index {self.selected_input_device_index} Name: {devices[0]['name']}")
+                     if self.selected_input_device_index is None:
+                           print("[audio client] No suitable input device found.")
+
+
         except Exception as e:
-            print(f"[audio client]Error getting input devices: {e}")
+            print(f"[audio client] Error getting input devices list: {e}")
+            traceback.print_exc()
         return devices
 
     def set_input_device(self, index):
-        """Sets the input device and restarts the stream if currently speaking."""
-        print(f"[audio client]Setting input device to index: {index}")
-        if self.selected_input_device_index == index:
-            return # No change needed
+        """Sets the input device. Restarts the stream if currently speaking."""
+        print(f"[audio client] Request to set input device to index: {index}")
+        if not self._pyaudio_initialized or self.audio is None:
+            print("[audio client] PyAudio not available. Cannot set input device.")
+            return
 
-        self.selected_input_device_index = index
-        if self.speaking:
-            print("[audio client]Restarting microphone for new device...")
-            # Temporarily store speaking state
+        # Consider validating index against get_input_devices() here if needed
+
+        # Use lock to check/change index and manage speaking state transition
+        with self._lock:
+            if self.selected_input_device_index == index:
+                print(f"[audio client] Device index {index} already selected.")
+                return # No change needed
+
+            print(f"[audio client] Changing selected input device index to {index} (lock acquired).")
             was_speaking = self.speaking
-            # Stop current stream
-            self.stop_speaking()
-            # Restart stream with new device if it was previously active
-            if was_speaking:
-                self.start_speaking() # This will now use the new index
+            old_index = self.selected_input_device_index
+            self.selected_input_device_index = index # Change index
+
+        # Perform stop/start outside the main index change lock section
+        # Stop/Start methods acquire the lock themselves.
+        if was_speaking:
+            print(f"[audio client] Restarting microphone for new device {index} (was {old_index})...")
+            self.stop_speaking() # This will acquire lock, stop stream, release lock
+            # Give a moment for OS/driver to release the old device handle
+            time.sleep(0.1) # Adjust delay if needed
+            self.start_speaking() # This will acquire lock, start stream, release lock
+        else:
+             print(f"[audio client] Input device set to {index}. Not restarting as microphone was off.")
 
     def get_current_volume(self):
         """Returns the current normalized microphone volume (0.0 to 1.0)."""
+        # Reading a float is generally atomic, no lock needed
         return self.current_volume
 
     def _calculate_volume(self, data):
         """Calculates normalized volume from audio data chunk."""
         try:
             audio_data = np.frombuffer(data, dtype=np.float32)
-            rms = np.sqrt(np.mean(audio_data**2))
-            # Normalize volume (logarithmic scale)
-            if rms > 0:
-                # Reduced sensitivity: Lower amplification factor (was 30)
-                scaled_rms = rms * 8 # ADJUST THIS for sensitivity (lower = less sensitive)
-                db_volume = 20 * math.log10(scaled_rms + 1e-9) # Epsilon avoids log(0)
-                # Normalize dB range (e.g., -60dB to 0dB mapped to 0.0 to 1.0)
-                min_db = -40 # ADJUST THIS lower threshold (less negative = less sensitive)
-                max_db = 0   # Upper threshold (usually 0 dBFS)
-                normalized_volume = max(0.0, min(1.0, (db_volume - min_db) / (max_db - min_db)))
+            # RMS calculation using numpy
+            rms = np.sqrt(np.mean(np.square(audio_data)))
+
+            # Parameters for logarithmic normalization (adjust sensitivity here)
+            scaling_factor = 10  # Amplification before log conversion
+            min_db = -35         # The dB level corresponding to 0.0 output
+            max_db = 0           # The dB level corresponding to 1.0 output (0 dBFS)
+            epsilon = 1e-9       # To avoid log10(0)
+
+            if rms > epsilon:
+                # Apply scaling factor
+                scaled_rms = rms * scaling_factor
+                # Convert RMS to dB relative to full scale
+                db_volume = 20 * math.log10(max(scaled_rms, epsilon)) # Ensure arg > 0
+                # Clamp dB value to the defined range [min_db, max_db]
+                clamped_db = max(min_db, min(db_volume, max_db))
+                # Normalize the clamped dB value to the range [0.0, 1.0]
+                normalized_volume = (clamped_db - min_db) / (max_db - min_db)
             else:
                 normalized_volume = 0.0
-            return normalized_volume
-        except Exception as vol_e:
-            print(f"[audio client]Error calculating volume: {vol_e}")
+
+            # Final safety clamp (shouldn't be necessary if logic above is correct)
+            return max(0.0, min(1.0, normalized_volume))
+
+        except Exception:
+            # print(f"[audio client] Error calculating volume: {e}") # Avoid log spam
             return 0.0 # Return 0 on error
