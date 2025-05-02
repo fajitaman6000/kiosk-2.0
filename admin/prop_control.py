@@ -99,6 +99,9 @@ class PropControl:
         style = ttk.Style()
         style.configure('Circuit.TFrame', background='#ffe6e6', borderwidth=2, relief='solid')
         style.configure('Circuit.TLabel', background='#ffe6e6', font=('Arial', 8, 'bold'))
+        # Add cousin highlighting style
+        style.configure('Cousin.TFrame', background='#e6ffe6', borderwidth=2, relief='solid')
+        style.configure('Cousin.TLabel', background='#e6ffe6', font=('Arial', 8, 'bold'))
 
         # Title label
         title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
@@ -581,6 +584,10 @@ class PropControl:
             name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
         else:
             name_label.config(font=('Arial', 8, 'bold'))
+
+        # Ensure hover events for cousin highlighting are set
+        name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
+        name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
 
     def clean_up_room_props(self, room_number):
         """
@@ -1252,6 +1259,10 @@ class PropControl:
                 name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
                 name_label.config(cursor="hand2")
 
+                # Add hover events for cousin highlighting
+                name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
+                name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
+
                 status_label = tk.Label(prop_frame)
                 status_label.pack(side='right', padx=5)
 
@@ -1396,6 +1407,10 @@ class PropControl:
             name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
             name_label.config(cursor="hand2")
             
+            # Add hover events for cousin highlighting
+            name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
+            name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
+            
             status_label = tk.Label(prop_frame)
             status_label.pack(side='right', padx=5)
             
@@ -1439,6 +1454,21 @@ class PropControl:
         prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
         return prop_info.get('circuit')
 
+    def get_prop_cousin(self, prop_name):
+        """Get the cousin value for a prop if it exists"""
+        if self.current_room not in self.ROOM_MAP:
+            return None
+            
+        room_key = self.ROOM_MAP[self.current_room]
+        if not hasattr(self, 'prop_name_mappings'):
+            self.load_prop_name_mappings()
+            
+        if room_key not in self.prop_name_mappings:
+            return None
+            
+        prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
+        return prop_info.get('cousin')
+
     def highlight_circuit_props(self, prop_name, highlight):
         """Highlight or unhighlight props that share the same circuit"""
         # Get the circuit value for the hovered prop
@@ -1467,6 +1497,40 @@ class PropControl:
                             # Add visual highlighting
                             prop_frame.configure(style='Circuit.TFrame')
                             name_label.configure(style='Circuit.TLabel')
+                        else:
+                            # Remove visual highlighting
+                            prop_frame.configure(style='TFrame')
+                            name_label.configure(style='TLabel')
+                except tk.TclError:
+                    continue
+
+    def highlight_cousin_props(self, prop_name, highlight):
+        """Highlight or unhighlight props that are cousins"""
+        # Get the cousin value for the hovered prop
+        cousin = self.get_prop_cousin(prop_name)
+        if not cousin:
+            return
+            
+        # Find all props with the same cousin value
+        room_key = self.ROOM_MAP[self.current_room]
+        cousin_props = []
+        
+        # Get all props that share this cousin value
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
+            if info.get('cousin') == cousin:
+                cousin_props.append(name)
+                
+        # Find and highlight/unhighlight the name labels for these props
+        for prop_id, prop_data in self.props.items():
+            if prop_data['info']['strName'] in cousin_props:
+                try:
+                    prop_frame = prop_data.get('frame')
+                    name_label = prop_data.get('name_label')
+                    if prop_frame and prop_frame.winfo_exists() and name_label and name_label.winfo_exists():
+                        if highlight:
+                            # Add visual highlighting with pale green
+                            prop_frame.configure(style='Cousin.TFrame')
+                            name_label.configure(style='Cousin.TLabel')
                         else:
                             # Remove visual highlighting
                             prop_frame.configure(style='TFrame')

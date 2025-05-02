@@ -5,7 +5,8 @@
             "Ice goblet chest": {
                 "display": "Goblet Chest",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "7"
             },
             "Potion pot": {
                 "display": "Potion Pot",
@@ -16,7 +17,8 @@
             "Owl": {
                 "display": "Fart Owl",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "7"
             },
             "Planets": {
                 "display": "Planet Colors",
