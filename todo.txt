@@ -7,8 +7,42 @@
 
 sound has to be disabled to reenable microphone; symbols may be inaccurate to actual recording state
 stop all videos button
-prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers)
 renaming hint image needs to rename all instances of that prop in the saved_hints.json
+
+prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers) (hover prop cousins for special highlight)
+    casino
+        topleft drawer, painting 1, painting 2
+        center drawer, lamp
+        blast open, place the c4
+        case code, computer
+    morning after
+        blast open, place the c4
+        case code, computer
+    wizard
+        code panel, spirits board
+        potion pot, dragon to cat
+        galaxy globe, shelf
+        veiny orb, rod game
+        mirror, fireplace
+    haunted
+        clock, sun dial
+        rope braid, suitcase
+        candles, mouth cabinets
+        radio drawer, yellow puzzle
+    zombie
+        wheel, microwave
+    atlantis
+        none!
+    time machine
+        skull button, cylinders
+        clock, door
+        valves, book keys
+        desk fan(rename prop just "fan"?), inverse vault
+        
+
+
+
+    
 
 ##############################################################################################################################
 # todo

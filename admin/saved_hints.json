@@ -112,7 +112,54 @@
                 }
             }
         },
-        "2": {},
+        "2": {
+            "Dildo Game": {
+                "feel inside the hole": {
+                    "text": "The gloryhole contains a wide selection of sizes and shapes! Feel them all, share your favorites, and then put the ones you found in the cabinet onto the top of the desk in the same order you felt them."
+                }
+            },
+            "Spinning Lamp": {
+                "spin the lamp": {
+                    "text": "That funky lamp on the wall, weren't we messing with that last night?"
+                }
+            },
+            "Case Code": {
+                "deleted files": {
+                    "text": "I think when I tried to use the computer I deleted a whole lot of files. I hope it wasn't anything important!"
+                }
+            },
+            "Weight Game": {
+                "notice their weight": {
+                    "text": "This cocaine can't be the real deal. Are we sure they're not fake? Feel how light some of them are!"
+                },
+                "organize by weight": {
+                    "text": "Surely at least one of the blocks of cocaine they sold the batch with would be real.. Organize them by weight on that corner table over there and we'll figure this out."
+                }
+            },
+            "Buzzwire": {
+                "operation": {
+                    "text": "Ever played \"Operation\"? Keep the buzzer away from the metal pipes and try to get it to the end. If the light turns red you must go all the way back to restart it."
+                },
+                "fast then slow": {
+                    "text": "The system resets every five seconds. You can make four errors before the alarm goes off. Go fast and hard but stop just before it alarms and just wait five seconds to refresh your chances."
+                }
+            },
+            "Sliding Shelf": {
+                "need trophies": {
+                    "text": "That shelf is going to need three naughty trophies placed upon it before you find this vault."
+                }
+            },
+            "Memory Hotel": {
+                "in order": {
+                    "text": "As the story is being told, one light will turn on per location. Watch for them. They must be pressed in order, and ensure that when you hold the button down, it turns red before you proceed."
+                }
+            },
+            "Drawers": {
+                "line it up": {
+                    "text": "The drawers have numbers on their fronts. There are also numbers inside. It's a giant combination lock: line up the drawers inner numbers according to their top outer numbers."
+                }
+            }
+        },
         "4": {
             "Tools": {
                 "find them": {
@@ -330,7 +377,58 @@
                 }
             }
         },
-        "7": {},
+        "7": {
+            "Clock": {
+                "goggles tv": {
+                    "text": "That clock on the side of the time machine must be set to the time of day shown on the screen on the desk. You must need some sort of lens to look through to see the screen though."
+                }
+            },
+            "Professor Doors": {
+                "close them": {
+                    "text": "The professor told us we have to close the doors on the corpse before we move forward."
+                }
+            },
+            "Ignition": {
+                "timing": {
+                    "text": "The ignition coils must fire at a precise timing to lock in. The green sections indicate proper ignition timing for each coil. Press the button and press it again when the coil fills up to the green line."
+                }
+            },
+            "Skull Button": {
+                "look inside skull": {
+                    "text": "That skull is more than decoration. I hope you're not afraid to get your fingers bitten off, because you'll need to hold them down in there for a couple seconds."
+                }
+            },
+            "Footprints": {
+                "all four": {
+                    "text": "All four footprints must be held down simultaneously to wake up the calculometer's power supply matrix."
+                }
+            },
+            "Liquid Cylinders": {
+                "pig": {
+                    "text": "The liquid cylinders have a three letter lock on their drain sequence. \n\nThe vision portal on the bookshelf shows an animal when the button inside the skull is held down. It's a pig."
+                }
+            },
+            "Wall Valves": {
+                "numbers and cylinders": {
+                    "text": "Each valve wheel has a number near it. 1, 2, 3, and 4. Ignore 5.\n\nThe four liquid cylinders contain numbers that correspond to each valve. The one on the left is #1. Rotate the valves until they match."
+                }
+            },
+            "Desk Fan": {
+                "rotate until readable": {
+                    "text": "Rotate the knob on the fan in the same direction as the arrow around it. Keep rotating until something happens to the fan blades inside."
+                }
+            },
+            "Inverse Vault": {
+                "trial and error": {
+                    "text": "Press the buttons on the keypad while looking through the peephole on the front of the desk. Press them all and find the sequence that matches the 4 digit number found on the fan."
+                }
+            },
+            "Desk Ball": {
+                "skull ball drop in desk": {
+                    "text": "Have the ball from the skull? Drop it into the DESK and use the tool found in the left drawer to move it around the course."
+                }
+            }
+        },
         "3": {
             "Mirror": {
                 "mirror has symbols": {
