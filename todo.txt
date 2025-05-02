@@ -12,11 +12,6 @@
 [prop control]Error in check_prop_status: 'lamp'
 [prop control]Error in check_prop_status: 'lamp'"
 
-
-selecting rooms inconsistent with clicking
-stop all videos button
-renaming hint image needs to rename all instances of that prop in the saved_hints.json
-
 prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers) (hover prop cousins for special highlight)
     casino
         topleft drawer, painting 1, painting 2

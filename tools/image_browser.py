@@ -5,10 +5,12 @@ import shutil
 import platform # Added for OS-specific actions
 import subprocess # Added for Linux/Mac
 from pathlib import Path
+import json # Added for handling JSON hint files
 from PIL import Image, ImageTk
 
 # --- Constants ---
 BASE_IMAGE_DIR = Path("admin/sync_directory/hint_image_files")
+HINTS_FILE = Path("admin/saved_hints.json")
 # THUMBNAIL_SIZE = (64, 64) # Old thumbnail size
 PROP_BLOCK_THUMBNAIL_SIZE = (100, 75) # Thumbnail size for the prop block
 POPUP_PREVIEW_SIZE = (600, 400)
@@ -36,6 +38,120 @@ def create_thumbnail(image_path: Path, size: tuple[int, int]) -> ImageTk.PhotoIm
     except Exception as e:
         print(f"Error creating thumbnail for {image_path}: {e}")
         return None
+
+def get_room_id_from_folder(room_folder: str) -> str:
+    """Convert a room folder name to its room ID."""
+    room_map = {
+        "casino": "1",
+        "ma": "2", 
+        "wizard": "3",
+        "zombie": "4",
+        "haunted": "5",
+        "atlantis": "6",
+        "time": "7"
+    }
+    return room_map.get(room_folder, "")
+
+def update_image_references(old_filename: str, new_filename: str, prop_dir: Path) -> int:
+    """
+    Updates all hint references to an image in saved_hints.json when the image is renamed.
+    Returns the number of references updated.
+    """
+    if not HINTS_FILE.exists():
+        print(f"Hints file not found: {HINTS_FILE}")
+        return 0
+
+    try:
+        # Load the hints file
+        with open(HINTS_FILE, 'r') as f:
+            hints_data = json.load(f)
+        
+        # Determine room and prop from prop_dir
+        # Path format is BASE_IMAGE_DIR/room_folder/prop_name
+        room_folder = prop_dir.parent.name
+        prop_name = prop_dir.name
+        room_id = get_room_id_from_folder(room_folder)
+        
+        if not room_id:
+            print(f"Could not determine room ID for folder: {room_folder}")
+            return 0
+            
+        update_count = 0
+        
+        # Check if this room exists in the hints data
+        if room_id in hints_data.get('rooms', {}):
+            # Check if this prop exists in the room
+            if prop_name in hints_data['rooms'][room_id]:
+                # Go through all hints for this prop
+                for hint_name, hint_data in hints_data['rooms'][room_id][prop_name].items():
+                    # If this hint uses the renamed image, update it
+                    if hint_data.get('image') == old_filename:
+                        hint_data['image'] = new_filename
+                        update_count += 1
+                        print(f"Updated image reference in hint: {room_id}/{prop_name}/{hint_name}")
+                
+                # If any updates were made, save the file
+                if update_count > 0:
+                    with open(HINTS_FILE, 'w') as f:
+                        json.dump(hints_data, f, indent=4)
+                    print(f"Saved {update_count} image reference updates to {HINTS_FILE}")
+                
+        return update_count
+        
+    except Exception as e:
+        print(f"Error updating image references: {e}")
+        return 0
+
+def remove_image_references(filename: str, prop_dir: Path) -> int:
+    """
+    Removes all hint references to an image in saved_hints.json when the image is deleted.
+    Returns the number of references removed.
+    """
+    if not HINTS_FILE.exists():
+        print(f"Hints file not found: {HINTS_FILE}")
+        return 0
+
+    try:
+        # Load the hints file
+        with open(HINTS_FILE, 'r') as f:
+            hints_data = json.load(f)
+        
+        # Determine room and prop from prop_dir
+        # Path format is BASE_IMAGE_DIR/room_folder/prop_name
+        room_folder = prop_dir.parent.name
+        prop_name = prop_dir.name
+        room_id = get_room_id_from_folder(room_folder)
+        
+        if not room_id:
+            print(f"Could not determine room ID for folder: {room_folder}")
+            return 0
+            
+        remove_count = 0
+        
+        # Check if this room exists in the hints data
+        if room_id in hints_data.get('rooms', {}):
+            # Check if this prop exists in the room
+            if prop_name in hints_data['rooms'][room_id]:
+                # Go through all hints for this prop
+                for hint_name, hint_data in hints_data['rooms'][room_id][prop_name].items():
+                    # If this hint uses the deleted image, remove the image reference
+                    if hint_data.get('image') == filename:
+                        if 'image' in hint_data:
+                            del hint_data['image']
+                            remove_count += 1
+                            print(f"Removed image reference in hint: {room_id}/{prop_name}/{hint_name}")
+                
+                # If any updates were made, save the file
+                if remove_count > 0:
+                    with open(HINTS_FILE, 'w') as f:
+                        json.dump(hints_data, f, indent=4)
+                    print(f"Saved {remove_count} image reference removals to {HINTS_FILE}")
+                
+        return remove_count
+        
+    except Exception as e:
+        print(f"Error removing image references: {e}")
+        return 0
 
 # --- Application Class ---
 
@@ -454,6 +570,7 @@ class ImageViewerPopup(tk.Toplevel):
             return
 
         old_path = self.image_files[self.current_index]
+        old_name = old_path.name
         old_name_stem = old_path.stem
         old_suffix = old_path.suffix
 
@@ -483,6 +600,14 @@ class ImageViewerPopup(tk.Toplevel):
             os.rename(old_path, new_path)
             print(f"Renamed '{old_path.name}' to '{new_path.name}'")
 
+            # Update references in saved_hints.json
+            updated_count = update_image_references(old_name, new_name, self.prop_dir)
+            if updated_count > 0:
+                print(f"Updated {updated_count} hint references to this image")
+                messagebox.showinfo("References Updated", 
+                                   f"Updated {updated_count} hint references to point to the renamed image.", 
+                                   parent=self)
+
             # Update internal list and refresh viewer
             self.load_image_list() # Reload the list to get sorted order potentially
             # Find the new index (should be same position if sorted)
@@ -510,13 +635,55 @@ class ImageViewerPopup(tk.Toplevel):
             return
 
         img_path = self.image_files[self.current_index]
+        img_name = img_path.name
 
-        if not messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{img_path.name}'?", parent=self):
+        if not messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{img_name}'?", parent=self):
             return
 
         try:
+            # Check for references in saved hints before deletion
+            reference_count = 0
+            try:
+                # Load the hints file to check references
+                if HINTS_FILE.exists():
+                    with open(HINTS_FILE, 'r') as f:
+                        hints_data = json.load(f)
+                    
+                    # Get room ID
+                    room_folder = self.prop_dir.parent.name
+                    prop_name = self.prop_dir.name
+                    room_id = get_room_id_from_folder(room_folder)
+                    
+                    # Count references
+                    if room_id and room_id in hints_data.get('rooms', {}):
+                        if prop_name in hints_data['rooms'][room_id]:
+                            for hint_name, hint_data in hints_data['rooms'][room_id][prop_name].items():
+                                if hint_data.get('image') == img_name:
+                                    reference_count += 1
+            except Exception as e:
+                print(f"Error checking hint references: {e}")
+            
+            # Warn if references exist
+            if reference_count > 0:
+                confirm = messagebox.askyesno(
+                    "References Found",
+                    f"This image is used in {reference_count} hint(s). Delete anyway and remove all references?",
+                    parent=self
+                )
+                if not confirm:
+                    return
+
+            # Delete the file
             os.remove(img_path)
-            print(f"Deleted '{img_path.name}'")
+            print(f"Deleted '{img_name}'")
+
+            # Remove references from saved_hints.json
+            removed_count = remove_image_references(img_name, self.prop_dir)
+            if removed_count > 0:
+                print(f"Removed {removed_count} hint references to the deleted image")
+                messagebox.showinfo("References Removed",
+                                   f"Removed {removed_count} hint references to the deleted image.",
+                                   parent=self)
 
             # Update internal list
             del self.image_files[self.current_index]
