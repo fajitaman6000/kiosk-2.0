@@ -849,14 +849,18 @@ class PropControl:
         if rc == 0:
             print(f"[prop control]Room {room_number} connected.")
             # Clear history on successful connection
-            if room_number in self.disconnect_rc7_history:
-                del self.disconnect_rc7_history[room_number]
+            # if room_number in self.disconnect_rc7_history:
+            #     print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} due to successful connect.") # Optional debug
+            #     del self.disconnect_rc7_history[room_number]
 
             # Clear any status messages on successful connection
             if room_number == self.current_room and hasattr(self, 'status_label'):
-                self.status_label.config(text="")
+                try:  # Add try-except for safety
+                    self.status_label.config(text="")
+                except tk.TclError:
+                    print(f"[prop control]Error clearing status label for room {room_number} on connect (widget destroyed?).")
 
-            # Cancel the timer on successful connection
+            # Cancel the timeout check timer on successful connection
             if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
                 self.app.root.after_cancel(self.retry_timer_ids[room_number])
                 self.retry_timer_ids[room_number] = None
@@ -867,8 +871,12 @@ class PropControl:
                 "/er/music/info", "/er/music/soundlist", "/game/period",
                 "/unixts", "/stat/games/count"
             ]
-            for topic in topics:
-                client.subscribe(topic)
+            try:
+                for topic in topics:
+                    client.subscribe(topic)
+            except Exception as e:
+                print(f"[prop control]Error subscribing to topics for room {room_number} on connect: {e}")
+
         else:
             # Show error messages
             status = {
@@ -880,9 +888,8 @@ class PropControl:
             }.get(rc, f"Unknown error (code {rc})")
             
             error_msg = f"Connection failed: {status}. Retrying in 10 seconds..."
-            if room_number == self.current_room and hasattr(self, 'status_label'):
-                self.status_label.config(text=error_msg, fg='red')
-            
+            self.update_connection_state(room_number, error_msg)  # Use the helper
+
             # Schedule retry
             self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
@@ -1019,9 +1026,9 @@ class PropControl:
 
     def on_disconnect(self, client, userdata, rc, room_number):
         """Handle disconnection for a specific room's client, with aggressive retry for rc=7."""
-        print(f"[prop control]Room {room_number} disconnected with code: {rc}")
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
         current_time = time.time()
+        print(f"[prop control]Room {room_number} disconnected with code: {rc} at {current_time}")  # Added timestamp
 
         # --- Aggressive Retry Logic for rc=7 ---
         if rc == 7:
@@ -1031,40 +1038,51 @@ class PropControl:
 
             # Add current disconnect timestamp
             self.disconnect_rc7_history[room_number].append(current_time)
+            #print(f"[prop control] DEBUG: Added rc=7 timestamp for room {room_number}. History: {self.disconnect_rc7_history[room_number]}")  # Debug
 
             # Filter out timestamps older than 10 seconds
             self.disconnect_rc7_history[room_number] = [
                 ts for ts in self.disconnect_rc7_history[room_number]
                 if current_time - ts <= 10
             ]
+            disconnect_count = len(self.disconnect_rc7_history[room_number])  # Store count
+            #print(f"[prop control] DEBUG: Filtered rc=7 history for room {room_number}. Count = {disconnect_count}. History: {self.disconnect_rc7_history[room_number]}")  # Debug
 
             # Check if threshold is met (4 or more disconnects in the last 10 seconds)
-            if len(self.disconnect_rc7_history[room_number]) >= 4:
-                print(f"[prop control]Detected >= 4 rc=7 disconnects in 10s for room {room_number}. Triggering aggressive retry.")
+            if disconnect_count >= 2:
+                print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room {room_number}. Triggering aggressive retry.")  # More specific log
                 # Trigger the aggressive retry
                 self.aggressive_retry(room_number)
-                # Clear history so this sequence doesn't trigger aggressive retry repeatedly
+                # Clear history *after* triggering aggressive retry
+                #print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} after triggering aggressive retry.")  # Debug
                 self.disconnect_rc7_history[room_number] = []
-                return  # Stop here, aggressive_retry handles the next step (reconnect)
+                return  # Stop here, aggressive_retry handles the next step
 
-            # If threshold not met, proceed with standard retry logic below for rc=7
-            # Fall through to the standard retry path
+            else:
+                # If threshold not met, proceed with standard retry logic below for rc=7
+                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room {room_number} is below threshold (4). Scheduling standard retry.")  # Debug log
+                # Fall through to the standard retry path below
 
-        else:
+        else:  # rc is not 7
             # For any other disconnect code (not rc=7), clear the rc=7 specific history
             if room_number in self.disconnect_rc7_history:
+                print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} due to non-rc=7 disconnect (code {rc}).")  # Debug
                 del self.disconnect_rc7_history[room_number]
 
-        # --- Standard Retry Logic (for non-zero rc or rc=7 below threshold) ---
+        # --- Standard Retry Logic (for non-zero rc OR rc=7 below threshold) ---
         if rc != 0:  # Unexpected disconnect
-            status_msg = f"Connection to {room_name} props lost (Code {rc}). Retrying in 10 seconds..."
             if rc == 7:
-                status_msg = f"Connection to {room_name} props lost (Repeated Code 7). Retrying in 10 seconds..."  # Can customize message slightly
+                # Use the count we calculated earlier if available
+                count_info = f" (Count: {disconnect_count})" if 'disconnect_count' in locals() else ""
+                status_msg = f"Connection to {room_name} props lost (Code 7{count_info}). Retrying in 10 seconds..."
+            else:
+                status_msg = f"Connection to {room_name} props lost (Code {rc}). Retrying in 10 seconds..."
 
-            self.update_connection_state(room_number, status_msg)
+            self.update_connection_state(room_number, status_msg)  # Use helper
 
             # Schedule standard retry using the helper method
             self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
+        # else: rc == 0 (expected disconnect, e.g., client.disconnect() called) - do nothing
 
     def aggressive_retry(self, room_number):
         """Performs a more aggressive retry for a room after repeated failures."""
