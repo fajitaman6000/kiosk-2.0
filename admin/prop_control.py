@@ -468,55 +468,6 @@ class PropControl:
         if room_number == self.current_room:
             return
 
-        # Special handling for 1<->2 switch (CASINO<->MA)
-        if (self.current_room in [1, 2] and room_number in [1, 2]):
-            print(f"[prop control]Switching between rooms 1 and 2; skipping connection refresh.")
-            # View change only
-            self.current_room = room_number
-
-            # Clear UI (except prop section)
-            for widget in self.special_frame.winfo_children():
-                widget.destroy()
-
-            self.setup_special_buttons(room_number)
-
-            # Update the prop names/view based on room number AND re-sort
-            if room_number in self.all_props:
-                for prop_id, prop_data in self.all_props[room_number].items():
-                    self.update_prop_ui_elements(prop_id, prop_data['info'])  # Update only the UI elements
-
-                # Re-sort props after updating UI
-                self.sort_and_repack_props()
-
-
-            if room_number in self.connection_states and hasattr(self, 'status_label'):
-                try:
-                    self.status_label.config(
-                        text=self.connection_states[room_number],
-                        fg='black' if "Connected" in self.connection_states[room_number] else 'red'
-                    )
-                except tk.TclError:
-                    print("[prop control]Status label was destroyed, skipping update")
-            else:
-                self.status_label.config(text="")  # Clear error messages, if any
-
-            return  # Early return
-
-        if self.current_room is not None:
-            # Store current props but preserve their last_status values
-            self.all_props[self.current_room] = {
-                prop_id: {
-                    'info': prop_data['info'].copy(),
-                    'last_status': prop_data.get('last_status'),
-                    'last_update': prop_data.get('last_update')
-                }
-                for prop_id, prop_data in self.props.items()
-            }
-            self.clean_up_room_props(self.current_room)
-
-        old_room = self.current_room
-        self.current_room = room_number
-
         # Clear UI
         for widget in self.props_frame.winfo_children():
             widget.destroy()
@@ -529,9 +480,13 @@ class PropControl:
             for prop_id, prop_data in self.all_props[room_number].items():
                 if 'last_status' not in prop_data:
                     prop_data['last_status'] = None
-                self.handle_prop_update(prop_data['info'])
+                # *** MODIFY THIS CALL ***
+                self.handle_prop_update(prop_data['info'], room_number)  # Pass the new room number
         else:
             self.all_props[room_number] = {}
+
+        old_room = self.current_room
+        self.current_room = room_number
 
         if room_number not in self.last_progress_times:
             self.last_progress_times[room_number] = time.time()
@@ -1050,9 +1005,9 @@ class PropControl:
                     else:
                         self.all_props[room_number][prop_id]['info'] = payload.copy()
 
-                    if room_number == self.current_room:
-                        self.app.root.after(0, lambda: self.handle_prop_update(payload))
-                        
+                    _payload_copy = payload.copy()  # Ensure we use a copy in the lambda
+                    self.app.root.after(0, lambda pdata=_payload_copy, rn=room_number: self.handle_prop_update(pdata, rn))
+
                     self.app.root.after(0, lambda: self.check_prop_status(
                         room_number, prop_id, self.all_props[room_number][prop_id]
                     ))
@@ -1144,15 +1099,24 @@ class PropControl:
         # Start the aggressive retry process in a new thread
         threading.Thread(target=do_aggressive_retry, daemon=True).start()
 
-    def handle_prop_update(self, prop_data):
+    def handle_prop_update(self, prop_data, originating_room_number):  # <-- ADD ARGUMENT
         """Handle updates to prop data with widget safety checks"""
         prop_id = prop_data.get("strId")
         if not prop_id:
-                return
-        self.app.root.after(0, lambda: self._handle_prop_update_ui(prop_id, prop_data))
+            return
+        # Modify the lambda to pass the originating_room_number
+        self.app.root.after(0, lambda pid=prop_id, pdata=prop_data, rn=originating_room_number:  # <-- PASS ARGUMENT
+                             self._handle_prop_update_ui(pid, pdata, rn))
 
-    def _handle_prop_update_ui(self, prop_id, prop_data):
+    def _handle_prop_update_ui(self, prop_id, prop_data, originating_room_number):  # <-- ADD ARGUMENT
         """Actual implementation of handle_prop_update, using after."""
+
+        # *** ADD THIS CHECK AT THE BEGINNING ***
+        if originating_room_number != self.current_room:
+            # This update is for a room that is not currently displayed.
+            return
+        # *** END ADDED CHECK ***
+
         # Load status icons (Correct)
         if not hasattr(self, 'status_icons'):
             try:
