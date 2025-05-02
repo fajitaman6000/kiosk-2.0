@@ -206,7 +206,7 @@ class SavedHintsPanel:
         return sorted_display_names
 
     def get_hints_for_prop(self, prop_display_name):
-        """Get hints for the selected prop"""
+        """Get hints for the selected prop and its cousins"""
         hints = []
         room_str = str(self.current_room)
         
@@ -232,6 +232,24 @@ class SavedHintsPanel:
             7: "time"
         }
         
+        # Get all props to check (the selected prop and its cousins)
+        props_to_check = [original_name]
+        
+        # Check if this prop has cousins and add them to the list
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                # Get the cousin value for the selected prop
+                prop_info = self.prop_name_mappings[room_key]['mappings'].get(original_name, {})
+                cousin_value = prop_info.get('cousin')
+                
+                # If this prop has a cousin value, find all props with the same cousin value
+                if cousin_value:
+                    for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
+                        if info.get('cousin') == cousin_value and prop_key != original_name:
+                            props_to_check.append(prop_key)
+                    print(f"[saved hints panel]Found cousin props: {props_to_check}")
+        
         # Build a mapping of original names to display names
         name_mapping = {}
         if self.current_room in room_map:
@@ -242,19 +260,21 @@ class SavedHintsPanel:
                     name_mapping[orig_name.lower()] = display_name
                     name_mapping[display_name.lower()] = display_name
         
+        # Check for hints for each prop (original and cousins)
         if room_str in self.hints_data:
             #print(f"[saved hints panel]Props in room {room_str}: {list(self.hints_data[room_str].keys())}")
-            # Try to find hints using either the original name or its display name
-            for prop_key in self.hints_data[room_str]:
-                # Check if this prop matches either the original name or its mapped display name
-                if (prop_key.lower() == original_name.lower() or 
-                    (original_name.lower() in name_mapping and 
-                     prop_key.lower() == name_mapping[original_name.lower()].lower())):
-                    print(f"[saved hints panel]Found hints for prop: {list(self.hints_data[room_str][prop_key].keys())}")
-                    hints = list(self.hints_data[room_str][prop_key].keys())
-                    break
-            else:
-                print(f"[saved hints panel]No hints found for prop '{original_name}'")
+            
+            # For each prop to check
+            for prop_to_check in props_to_check:
+                # Try to find hints using either the original name or its display name
+                for prop_key in self.hints_data[room_str]:
+                    # Check if this prop matches either the original name or its mapped display name
+                    if (prop_key.lower() == prop_to_check.lower() or 
+                        (prop_to_check.lower() in name_mapping and 
+                         prop_key.lower() == name_mapping[prop_to_check.lower()].lower())):
+                        prop_hints = list(self.hints_data[room_str][prop_key].keys())
+                        print(f"[saved hints panel]Found hints for prop '{prop_to_check}': {prop_hints}")
+                        hints.extend(prop_hints)
         else:
             print(f"[saved hints panel]No hints found for room {room_str}")
             
@@ -326,6 +346,37 @@ class SavedHintsPanel:
                 print(f"[saved hints panel] Found image at: {path}")
                 return path
                 
+        # If no image was found, try looking in cousin prop folders
+        # Get cousin value for this prop
+        cousin_value = None
+        if room_number in room_map:
+            room_key = room_map[room_number]
+            if room_key in self.prop_name_mappings:
+                # Get cousin value for the prop
+                prop_info = self.prop_name_mappings[room_key]['mappings'].get(original_prop_name, {})
+                cousin_value = prop_info.get('cousin')
+                
+                # If this prop has a cousin value, find all props with the same cousin value
+                if cousin_value:
+                    for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
+                        if info.get('cousin') == cousin_value and prop_key != original_prop_name:
+                            cousin_display = info.get('display', prop_key)
+                            # Try paths for this cousin prop
+                            cousin_paths = [
+                                # 1. Cousin's original name
+                                os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files", 
+                                           room_folder, prop_key, image_filename),
+                                # 2. Cousin's display name
+                                os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files", 
+                                           room_folder, cousin_display, image_filename)
+                            ]
+                            
+                            for path in cousin_paths:
+                                print(f"[saved hints panel] Checking cousin path: {path}")
+                                if os.path.exists(path):
+                                    print(f"[saved hints panel] Found image in cousin folder: {path}")
+                                    return path
+        
         # If we get here, no image was found
         print(f"[saved hints panel] No image found in any possible locations for {image_filename}")
         return None
@@ -426,6 +477,23 @@ class SavedHintsPanel:
             7: "time"
         }
         
+        # Get all props to check (the selected prop and its cousins)
+        props_to_check = [original_name]
+        
+        # Check if this prop has cousins and add them to the list
+        if self.current_room in room_map:
+            room_key = room_map[self.current_room]
+            if room_key in self.prop_name_mappings:
+                # Get the cousin value for the selected prop
+                prop_info = self.prop_name_mappings[room_key]['mappings'].get(original_name, {})
+                cousin_value = prop_info.get('cousin')
+                
+                # If this prop has a cousin value, find all props with the same cousin value
+                if cousin_value:
+                    for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
+                        if info.get('cousin') == cousin_value and prop_key != original_name:
+                            props_to_check.append(prop_key)
+        
         name_mapping = {}
         if self.current_room in room_map:
             room_key = room_map[self.current_room]
@@ -440,14 +508,17 @@ class SavedHintsPanel:
         matched_prop_key = None
         
         if room_str in self.hints_data:
-            for prop_key in self.hints_data[room_str]:
-                if (prop_key.lower() == original_name.lower() or 
-                    (original_name.lower() in name_mapping and 
-                     prop_key.lower() == name_mapping[original_name.lower()].lower())):
-                    if hint_name in self.hints_data[room_str][prop_key]:
-                        hint_data = self.hints_data[room_str][prop_key][hint_name]
-                        matched_prop_key = prop_key
-                        break
+            # For each prop to check
+            for prop_to_check in props_to_check:
+                for prop_key in self.hints_data[room_str]:
+                    if (prop_key.lower() == prop_to_check.lower() or 
+                        (prop_to_check.lower() in name_mapping and 
+                         prop_key.lower() == name_mapping[prop_to_check.lower()].lower())):
+                        if hint_name in self.hints_data[room_str][prop_key]:
+                            hint_data = self.hints_data[room_str][prop_key][hint_name]
+                            matched_prop_key = prop_key
+                            print(f"[saved hints panel] Found hint '{hint_name}' for prop '{prop_to_check}' (key: {prop_key})")
+                            return hint_data, matched_prop_key
         
         return hint_data, matched_prop_key
 
@@ -821,24 +892,66 @@ class SavedHintsPanel:
                 if not original_name:
                     print(f"[saved hints panel] No mapping found for {prop_display_name}, cannot locate image")
                 else:
-                    image_path = self.get_image_path(
-                        self.current_room,
-                        original_name,
-                        hint_data['image']
-                    )
-                    print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
-                    print(f"[saved hints panel] Full image path: {image_path}")
+                    # Get the current selected hint name from title
+                    selection = None
+                    # Find all titles in the popup window
+                    titles = [w for w in popup.winfo_children() if isinstance(w, ttk.Frame)]
+                    for frame in titles:
+                        for child in frame.winfo_children():
+                            if isinstance(child, ttk.Label) and child.cget('font') == ('Arial', 12, 'bold'):
+                                hint_name = child.cget('text')
+                                print(f"[saved hints panel] Found selected hint: {hint_name}")
+                                selection = hint_name
+                                break
+                        if selection:
+                            break
+                                
+                    # Get the actual prop_key that the hint belongs to
+                    _, matched_prop_key = self.get_hint_data(selection, original_name)
                     
-                    if image_path and os.path.exists(image_path):
-                        print(f"[saved hints panel] Image found at path: {image_path}")
-                        # Get relative path from sync_directory
-                        rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
-                        send_data['image_path'] = rel_path
-                        print(f"[saved hints panel] Using relative image path: {rel_path}")
+                    if matched_prop_key:
+                        # Get display name for matched prop key to find the correct folder
+                        room_key = None
+                        room_map = {
+                            3: "wizard",
+                            1: "casino",
+                            2: "ma",
+                            5: "haunted",
+                            4: "zombie",
+                            6: "atlantis",
+                            7: "time"
+                        }
+                        if self.current_room in room_map:
+                            room_key = room_map[self.current_room]
+                        
+                        prop_name_to_use = matched_prop_key
+                        if room_key and room_key in self.prop_name_mappings:
+                            if matched_prop_key in self.prop_name_mappings[room_key]['mappings']:
+                                display_name = self.prop_name_mappings[room_key]['mappings'][matched_prop_key].get('display', matched_prop_key)
+                                prop_name_to_use = display_name
+                    
+                        image_path = self.get_image_path(
+                            self.current_room,
+                            prop_name_to_use,
+                            hint_data['image']
+                        )
+                        print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
+                        print(f"[saved hints panel] Full image path: {image_path}")
+                        
+                        if image_path and os.path.exists(image_path):
+                            print(f"[saved hints panel] Image found at path: {image_path}")
+                            # Get relative path from sync_directory
+                            rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                            send_data['image_path'] = rel_path
+                            print(f"[saved hints panel] Using relative image path: {rel_path}")
+                        else:
+                            print(f"[saved hints panel] Image not found at path: {image_path}")
                     else:
-                        print(f"[saved hints panel] Image not found at path: {image_path}")
+                        print(f"[saved hints panel] No matching prop key found for hint")
             except Exception as e:
                 print(f"[saved hints panel] Error getting hint image path for sending: {e}")
+                import traceback
+                traceback.print_exc()
         else:
             print(f"[saved hints panel] No image specified for this hint")
         

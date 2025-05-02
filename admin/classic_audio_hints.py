@@ -157,19 +157,42 @@ class ClassicAudioHints:
             print(f"[classic audio hints]No mapping found for {selected_display_name}")
             return
         
-        # Get the DISPLAY NAME for the selected prop 
+        # Get the room key
         room_key = self.ROOM_MAP.get(self.current_room)
-        display_name = self.get_display_name(room_key, original_name)
         
-        prop_path = os.path.join(self.audio_root, self.current_room, display_name)
+        # Get all props to check (the selected prop and its cousins)
+        props_to_check = [original_name]
         
-        # Update available audio files
+        # Check if this prop has cousins and add them to the list
+        if room_key and room_key in self.prop_name_mappings:
+            # Get the cousin value for the selected prop
+            prop_info = self.prop_name_mappings[room_key]['mappings'].get(original_name, {})
+            cousin_value = prop_info.get('cousin')
+            
+            # If this prop has a cousin value, find all props with the same cousin value
+            if cousin_value:
+                for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
+                    if info.get('cousin') == cousin_value and prop_key != original_name:
+                        props_to_check.append(prop_key)
+                print(f"[classic audio hints]Found cousin props: {props_to_check}")
+        
+        # Update available audio files from all props
         self.available_audio_files = []
         
-        if os.path.exists(prop_path):
-            audio_files = [f for f in os.listdir(prop_path) 
-                        if f.lower().endswith('.mp3')]
-            self.available_audio_files = sorted(audio_files)
+        # Check for audio files for each prop (original and cousins)
+        for prop_to_check in props_to_check:
+            # Get the display name for this prop
+            display_name = self.get_display_name(room_key, prop_to_check)
+            prop_path = os.path.join(self.audio_root, self.current_room, display_name)
+            
+            if os.path.exists(prop_path):
+                audio_files = [f"{display_name}:{audio_file}" for audio_file in os.listdir(prop_path) 
+                              if audio_file.lower().endswith('.mp3')]
+                self.available_audio_files.extend(audio_files)
+                print(f"[classic audio hints]Found audio files for prop '{prop_to_check}': {len(audio_files)}")
+        
+        # Sort the combined list
+        self.available_audio_files = sorted(self.available_audio_files)
         
         # Enable open button if a prop is selected, regardless of audio file availability
         self.open_button.config(state='normal')
@@ -270,9 +293,16 @@ class ClassicAudioHints:
             
             return
         
-        # Fill listbox with available audio files
+        # Fill listbox with available audio files - extract just the filename
         for audio_file in self.available_audio_files:
-            audio_listbox.insert(tk.END, audio_file)
+            # Split the prop display name from the filename
+            parts = audio_file.split(':', 1)
+            if len(parts) > 1:
+                prop_display, filename = parts
+                # Add the prop display name as a prefix to distinguish cousin files
+                audio_listbox.insert(tk.END, f"{prop_display}: {filename}")
+            else:
+                audio_listbox.insert(tk.END, audio_file)
         
         # Select the first audio file
         if self.available_audio_files:
@@ -334,14 +364,21 @@ class ClassicAudioHints:
                 file_name_label.config(text="")
                 return
                 
-            audio_name = audio_listbox.get(selection[0])
-            file_name_label.config(text=audio_name)
+            display_audio_name = audio_listbox.get(selection[0])
+            file_name_label.config(text=display_audio_name)
+            
+            # Extract prop display name and filename
+            if ": " in display_audio_name:
+                prop_display, audio_name = display_audio_name.split(": ", 1)
+            else:
+                prop_display = display_name
+                audio_name = display_audio_name
             
             # Set current audio file path
             current_audio_file = os.path.join(
                 self.audio_root,
                 self.current_room,
-                display_name,
+                prop_display,
                 audio_name
             )
             
@@ -384,9 +421,14 @@ class ClassicAudioHints:
             computer_name = self.app.interface_builder.selected_kiosk
             if computer_name: # check to make sure there is even a selected computer
                 self.app.network_handler.send_audio_hint_command(computer_name, relative_path)
+                print(f"[classic audio hints]Sent audio hint to {computer_name}: {relative_path}")
+            else:
+                print(f"[classic audio hints]No kiosk selected, cannot send audio hint")
 
             # Close the popup
             popup.destroy()
+        else:
+            print(f"[classic audio hints]Cannot send audio hint - file does not exist: {audio_file}")
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its name"""
