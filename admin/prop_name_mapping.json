@@ -10,7 +10,8 @@
             "Potion pot": {
                 "display": "Potion Pot",
                 "order": 66,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Owl": {
                 "display": "Fart Owl",
@@ -25,28 +26,33 @@
             "Mirror": {
                 "display": "Mirror",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Rod compartment": {
                 "display": "Rod Game",
                 "order": 12,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "4"
             },
             "Spining globe": {
                 "display": "Spin Globe",
                 "order": 9,
                 "finishing_prop": false,
-				"ignore_progress": true
+				"ignore_progress": true,
+                "cousin": "2"
             },
             "Magic ball": {
                 "display": "Veiny Orb",
                 "order": 8,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "4"
             },
             "Fireplace": {
                 "display": "Fireplace",
                 "order": 7,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Sit on chair": {
                 "display": "Chair",
@@ -58,7 +64,8 @@
                 "display": "Code Panel",
                 "order": 4,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "5"
             },
             "Stone piece": {
                 "display": "Stone Pieces",
@@ -69,18 +76,21 @@
             "Dragon to cat": {
                 "display": "Dragon to Cat",
                 "order": 99,
-                "finishing_prop": true
+                "finishing_prop": true,
+                "cousin": "1"
             },
             "Wizards shelf": {
                 "display": "Magic Shelf",
                 "order": 13,
                 "finishing_prop": false,
-                "standby_prop": true
+                "standby_prop": true,
+                "cousin": "2"
             },
             "Spirits board": {
                 "display": "Spirits Board",
                 "order": 4,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "5"
             },
             "Spell chart": {
                 "display": "Spell Chart",
@@ -110,7 +120,8 @@
             "Lamp": {
                 "display": "Spinning Lamp",
                 "order": 2,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "2"
             },
             "Memory": {
                 "display": "Memory Hotel",
@@ -128,7 +139,8 @@
                 "display": "Case Code",
                 "order": 13,
                 "finishing_prop": true,
-                "circuit": "lockers"
+                "circuit": "lockers",
+                "cousin": "4"
             },
             "Weight game": {
                 "display": "Weight Game",
@@ -138,19 +150,22 @@
             "Painting 1": {
                 "display": "Painting 1",
                 "order": 5,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Cache in table": {
                 "display": "Center Drawer",
                 "order": 7,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "2"
             },
             "Painting cache": {
                 "display": "Topleft Drawer",
                 "order": 6,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "1"
             },
             "Dildo": {
                 "display": "[Dildo Game]",
@@ -161,25 +176,29 @@
             "Painting 2": {
                 "display": "Painting 2",
                 "order": 5,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Cameras": {
                 "display": "Computer",
                 "order": 11,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "4"
             },
             "Planting bomb": {
                 "display": "Plant Bombs",
                 "order": 9,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "3"
             },
             "Blast": {
                 "display": "Blast Open",
                 "order": 10,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "3"
             },
             "Clocks": {
                 "display": "Clocks",
@@ -223,7 +242,8 @@
                 "display": "Case Code",
                 "order": 13,
                 "finishing_prop": true,
-                "circuit": "lockers"
+                "circuit": "lockers",
+                "cousin": "2"
             },
             "Weight game": {
                 "display": "Weight Game",
@@ -262,19 +282,22 @@
                 "display": "Computer",
                 "order": 11,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "2"
             },
             "Planting bomb": {
                 "display": "Plant Bombs",
                 "order": 9,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "1"
             },
             "Blast": {
                 "display": "Blast Open",
                 "order": 10,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "1"
             },
             "Clocks": {
                 "display": "Clocks",
@@ -290,7 +313,8 @@
             "Clock": {
                 "display": "Clock",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Change the object": {
                 "display": "Diary/Cross",
@@ -307,7 +331,8 @@
             "Ghost puzzle": {
                 "display": "Yellow Puzzle",
                 "order": 2,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "4"
             },
             "Family portrait": {
                 "display": "Family Portrait",
@@ -322,32 +347,38 @@
             "Rotate the sun": {
                 "display": "Sun Dial",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Escape the rope": {
                 "display": "Rope Braid",
                 "order": 1,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "2"
             },
             "Cabinet": {
                 "display": "Mouth Cabinet",
                 "order": 9,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Antique radio": {
                 "display": "Radio Drawer",
                 "order": 10,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "4"
             },
             "Blow the candles": {
                 "display": "Candles",
                 "order": 11,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Suitcase": {
                 "display": "Suitcase",
                 "order": 2,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "2"
             },
             "Place the photos": {
                 "display": "Vanity Photos",
@@ -389,7 +420,8 @@
             "Microwave": {
                 "display": "Microwave",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Breaker box": {
                 "display": "Breakers",
@@ -404,7 +436,8 @@
             "Wood wheel": {
                 "display": "Wagon Wheel",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Wrench Size Game": {
                 "display": "Cables Box",
@@ -496,7 +529,8 @@
                 "display": "Clock",
                 "order": 1,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "2"
             },
             "Control panel": {
                 "display": "Control Panel",
@@ -522,12 +556,14 @@
                 "display": "Door",
                 "order": 99,
                 "finishing_prop": false,
-                "circuit": "door"
+                "circuit": "door",
+                "cousin": "2"
             },
             "Skull button": {
                 "display": "Skull Button",
                 "order": 2,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Footprints": {
                 "display": "Footprints",
@@ -537,7 +573,8 @@
             "Cylinders": {
                 "display": "Liquid Cylinders",
                 "order": 39,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "1"
             },
             "Prism": {
                 "display": "Color Prism",
@@ -559,23 +596,27 @@
             "Energy key": {
                 "display": "Book Keys",
                 "order": 5,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Valves": {
                 "display": "Wall Valves",
                 "order": 4,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "3"
             },
             "Air flow filter": {
                 "display": "Desk Fan",
                 "order": 2,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "4"
             },
             "Inverse vault": {
                 "display": "Inverse Vault",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "4"
             },
             "Radium cog": {
                 "display": "Desk Ball",

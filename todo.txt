@@ -42,7 +42,10 @@ prop "cousins" in prop name mapping to automatically duplicate hints (needs a ch
         valves, book keys
         desk fan(rename prop just "fan"?), inverse vault
         
-
+prompt:
+"Please open prop_name_mapping.json and add the "cousin" value to all these props.
+Props that are grouped together will have the same "cousin" value.
+So, prop "knocking chest" will have no "cousin" value. Prop "code panel" will have a cousin value of some number, e.g, "1", and "spirit board" will have the same value as its cousin. "potion pot" and "dragon to cat" are another pair of cousins in the room but not related to spirit board or code panel, so they will have a different matching value such as "2". Please apply this to all stated cousin props in the todo file."
 
 
     
