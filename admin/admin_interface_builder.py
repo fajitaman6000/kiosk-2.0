@@ -1570,6 +1570,15 @@ class AdminInterfaceBuilder:
                 print(f"[interface builder] Disconnecting audio for {computer_name}")
                 audio_client.disconnect() # Use the specific client
                 self.audio_active[computer_name] = False
+                self.app.root.configure(bg='systemButtonFace')
+                if speak_btn:
+                    if hasattr(speak_btn, 'enable_mic_icon'):
+                        speak_btn.config(
+                            image=speak_btn.enable_mic_icon,
+                            text="Enable Microphone",
+                            #bg='systemButtonFace', # Reset background
+                            activebackground='systemButtonFace'
+                        )
                 # Ensure speaking state is also false
                 if self.speaking.get(computer_name, False):
                      self.toggle_speaking(computer_name) # Stop speaking if active
@@ -1701,13 +1710,13 @@ class AdminInterfaceBuilder:
                             speak_btn.config(
                                 image=speak_btn.disable_mic_icon,
                                 text="Disable Microphone",
-                                bg='#ffcccc', # Red background for button too
+                                #bg='#ffcccc', # Red background for button too
                                 activebackground='#ffcccc'
                             )
                         else:
                             speak_btn.config(
                                 text="Disable Microphone",
-                                bg='#ffcccc',
+                                #bg='#ffcccc',
                                 activebackground='#ffcccc'
                             )
             except Exception as e:
