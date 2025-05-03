@@ -197,7 +197,7 @@ class SavedHintsPanel:
                                 break
                     
                     # Create display string and store the mapping
-                    display_string = f"({hint_count}) {display_name} "
+                    display_string = f"{display_name}"
                     props_list.append(display_string)
                     self.prop_data_mapping[display_string] = prop_key
         

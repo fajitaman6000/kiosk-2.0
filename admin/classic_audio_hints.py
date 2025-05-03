@@ -134,7 +134,7 @@ class ClassicAudioHints:
                     audio_count = len(audio_files)
                 
                 # Create display string and store the mapping
-                display_string = f"({audio_count}) {display_name}"
+                display_string = f"{display_name}"
                 props_list.append(display_string)
                 self.prop_data_mapping[display_string] = prop_key
 
