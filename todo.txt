@@ -2,53 +2,9 @@
 # Test notes
 
 
-
 ##############################################################################################################################
 # pre-beta testing
-
-"[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'"
-
-prop "cousins" in prop name mapping to automatically duplicate hints (needs a chosen parent, grey out on prop editor browsers) (hover prop cousins for special highlight)
-    casino
-        topleft drawer, painting 1, painting 2
-        center drawer, lamp
-        blast open, place the c4
-        case code, computer
-    morning after
-        blast open, place the c4
-        case code, computer
-    wizard
-        code panel, spirits board
-        potion pot, dragon to cat
-        galaxy globe, shelf
-        veiny orb, rod game
-        mirror, fireplace
-    haunted
-        clock, sun dial
-        rope braid, suitcase
-        candles, mouth cabinets
-        radio drawer, yellow puzzle
-    zombie
-        wheel, microwave
-    atlantis
-        none!
-    time machine
-        skull button, cylinders
-        clock, door
-        valves, book keys
-        desk fan(rename prop just "fan"?), inverse vault
-        
-prompt:
-"Please open prop_name_mapping.json and add the "cousin" value to all these props.
-Props that are grouped together will have the same "cousin" value.
-So, prop "knocking chest" will have no "cousin" value. Prop "code panel" will have a cousin value of some number, e.g, "1", and "spirit board" will have the same value as its cousin. "potion pot" and "dragon to cat" are another pair of cousins in the room but not related to spirit board or code panel, so they will have a different matching value such as "2". Please apply this to all stated cousin props in the todo file."
-
-
-    
+ 
 
 ##############################################################################################################################
 # todo
@@ -123,6 +79,15 @@ kiosk hangup reliability:
 # known low priority bugs
 
 mqtt connections get crippled while running file sync
+
+
+"[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'
+[prop control]Error in check_prop_status: 'lamp'"
+
+
 
 ##############################################################################################################################
 # ambitious extra ideas:
