@@ -303,6 +303,11 @@ class ImageBrowserApp:
         thumb_label = widgets['thumb_label']
         name_label = widgets['name_label']
 
+        # Always clear the label's current image reference before updating.
+        thumb_label.configure(image='')
+        thumb_label.image = None
+        self.thumbnail_references[prop_dir] = None # Also clear our internal reference tracking
+
         image_files = sorted(get_image_files(prop_dir))
         image_count = len(image_files)
 
@@ -310,25 +315,17 @@ class ImageBrowserApp:
         prop_name = prop_dir.name
         name_label.configure(text=f"{prop_name} ({image_count})")
 
-        # Clear previous thumbnail reference if it exists
-        self.thumbnail_references[prop_dir] = None
-        thumb_label.image = None # Clear previous image explicitly
-
         if image_count == 0:
-            thumb_label.configure(text="NO IMAGES", image=None, compound=tk.CENTER, foreground="red")
-             # Optionally set a fixed size/min size for empty blocks?
-            # thumb_label.config(height=PROP_BLOCK_THUMBNAIL_SIZE[1]//10) # REMOVED Invalid option
+            thumb_label.configure(text="NO IMAGES", compound=tk.CENTER, foreground="red")
         else:
             first_image_path = image_files[0]
             thumb = create_thumbnail(first_image_path, PROP_BLOCK_THUMBNAIL_SIZE)
             if thumb:
-                thumb_label.configure(image=thumb, text="", compound=tk.NONE) # Show only image
+                thumb_label.configure(image=thumb, compound=tk.NONE) # Show only image
                 thumb_label.image = thumb # Keep reference
                 self.thumbnail_references[prop_dir] = thumb # Store reference
             else:
-                # Error creating thumbnail
-                thumb_label.configure(text="IMG ERR", image=None, compound=tk.CENTER, foreground="orange")
-                # thumb_label.config(height=PROP_BLOCK_THUMBNAIL_SIZE[1]//10) # REMOVED Invalid option
+                thumb_label.configure(text="IMG ERR", compound=tk.CENTER, foreground="orange")
 
 
     def add_images(self, prop_dir: Path, file_paths: list[str]) -> int:
@@ -677,6 +674,13 @@ class ImageViewerPopup(tk.Toplevel):
             os.remove(img_path)
             print(f"[image browser] Deleted '{img_name}'")
 
+            # --- Keep the popup's image clearing ---
+            # Clear the image from the popup's display immediately
+            self.image_label.configure(image='')
+            self.image_label.image = None # Explicitly clear the reference
+            self.image_label.update_idletasks() # Force the UI update now
+            # --- End popup clearing ---
+
             # Remove references from saved_hints.json
             removed_count = remove_image_references(img_name, self.prop_dir)
             if removed_count > 0:
@@ -688,18 +692,16 @@ class ImageViewerPopup(tk.Toplevel):
             # Update internal list
             del self.image_files[self.current_index]
 
-            # Refresh thumbnails in the main app *before* loading next image in popup
+            # Refresh thumbnails in the main app *before* determining next image in popup
             self.app_controller.update_prop_block(self.prop_dir)
 
             # Determine next image to show in popup
             new_index = self.current_index
             if new_index >= len(self.image_files):
-                # If we deleted the last one, move to the new last one
                 new_index = len(self.image_files) - 1
 
             if new_index < 0:
-                # List is now empty
-                 self.show_no_image()
+                self.show_no_image()
             else:
                 self.load_image(new_index)
 
