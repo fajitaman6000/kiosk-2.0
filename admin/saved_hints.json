@@ -97,19 +97,6 @@
                 "they are sticky": {
                     "text": "Those \"puzzle\" pieces you found in the drawer won't fit together, but they are a lot stickier than you think!"
                 }
-            },
-            "Painting 2": {
-                "put pieces on the pictures": {
-                    "text": "Those pieces you found in the drawer match the paintings on the walls. Line them up accordingly to proceed.",
-                    "image": "wave complete.png"
-                },
-                "solution": {
-                    "text": "Two pieces go onto the ocean painting. Three go onto the bending lady.",
-                    "image": "all pieces.png"
-                },
-                "they are sticky": {
-                    "text": "Those \"puzzle\" pieces you found in the drawer won't fit together, but they are a lot stickier than you think!"
-                }
             }
         },
         "2": {

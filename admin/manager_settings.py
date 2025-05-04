@@ -20,6 +20,7 @@ class ManagerSettings:
         self.hint_map = {}
         self.tree_items = {}
         self.current_prop_info = None
+        self.highlighted_cousin_items = set()
         
         # Full room names mapping
         self.room_full_names = {
@@ -149,8 +150,12 @@ class ManagerSettings:
         # Configure tags for coloring props
         self.hint_tree.tag_configure('has_hints', foreground='green')
         self.hint_tree.tag_configure('no_hints', foreground='red')
+        self.hint_tree.tag_configure('room', font=('Arial', 10, 'bold'))
+        self.hint_tree.tag_configure('cousin_highlight', background='lightgreen')
         self.hint_tree.pack(side="left", fill="both", expand=True)
         self.hint_tree.bind('<<TreeviewSelect>>', self.on_hint_select)
+        self.hint_tree.bind('<Motion>', self.on_item_motion)
+        self.hint_tree.bind('<Leave>', self.on_tree_leave)
 
         scrollbar = ttk.Scrollbar(self.hint_list_frame, orient="vertical", command=self.hint_tree.yview)
         scrollbar.pack(side="right", fill="y")
@@ -1248,6 +1253,77 @@ class ManagerSettings:
         self.show_image_selector(room_id, prop_display_name, hint_name, selected_image)
         self.status_label.config(text="Images refreshed.", foreground='green')
         self.status_label.after(2000, lambda: self.status_label.config(text=""))
+
+    def clear_cousin_highlights(self):
+        """Removes the cousin highlight tag from previously highlighted items."""
+        if not self.hint_tree: return  # Safety check
+        try:
+            for item_id in self.highlighted_cousin_items:
+                if self.hint_tree.exists(item_id):  # Check if item still exists
+                    current_tags = list(self.hint_tree.item(item_id, 'tags'))
+                    if 'cousin_highlight' in current_tags:
+                        current_tags.remove('cousin_highlight')
+                        self.hint_tree.item(item_id, tags=tuple(current_tags))
+        except tk.TclError as e:
+            print(f"[Hint Manager] Mild TclError during highlight clear: {e}")
+        except Exception as e:
+            print(f"[Hint Manager] Error clearing highlights: {e}")
+        finally:
+            self.highlighted_cousin_items.clear()
+
+    def on_item_motion(self, event):
+        """Handles mouse motion over the tree, detecting entering new items."""
+        if not self.hint_tree: return
+        try:
+            item_id = self.hint_tree.identify_row(event.y)
+        except tk.TclError:
+            item_id = None  # Error identifying row
+
+        if not item_id:
+            self.clear_cousin_highlights()
+            return
+
+        if item_id in self.highlighted_cousin_items:
+            return
+
+        self.clear_cousin_highlights()
+
+        item_info = self.tree_items.get(item_id)
+        if not item_info or item_info.get('type') != 'prop':
+            return
+
+        room_id = item_info.get('room_id')
+        prop_internal_name = item_info.get('prop_name')
+
+        if not room_id or not prop_internal_name:
+            return
+
+        prop_details = self.get_prop_details(room_id, prop_internal_name)
+        target_cousin_id = prop_details.get('cousin') if prop_details else None
+
+        if target_cousin_id is None:
+            return
+
+        for other_item_id, other_info in self.tree_items.items():
+            if (other_info.get('type') == 'prop' and
+                other_info.get('room_id') == room_id):
+                other_prop_internal_name = other_info.get('prop_name')
+                if not other_prop_internal_name: continue
+
+                other_prop_details = self.get_prop_details(room_id, other_prop_internal_name)
+                other_cousin_id = other_prop_details.get('cousin') if other_prop_details else None
+
+                if other_cousin_id == target_cousin_id:
+                    if self.hint_tree.exists(other_item_id):
+                        current_tags = list(self.hint_tree.item(other_item_id, 'tags'))
+                        if 'cousin_highlight' not in current_tags:
+                            current_tags.append('cousin_highlight')
+                            self.hint_tree.item(other_item_id, tags=tuple(current_tags))
+                        self.highlighted_cousin_items.add(other_item_id)
+
+    def on_tree_leave(self, event):
+        """Clears highlights when the mouse leaves the Treeview widget entirely."""
+        self.clear_cousin_highlights()
 
 class AdminPasswordManager:
     def __init__(self, app):
