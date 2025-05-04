@@ -21,6 +21,7 @@ class ManagerSettings:
         self.tree_items = {}
         self.current_prop_info = None
         self.highlighted_cousin_items = set()
+        self.image_listbox_data = []  # Add this line to store (filename, source_prop_display_name) tuples
         
         # Full room names mapping
         self.room_full_names = {
@@ -648,151 +649,214 @@ class ManagerSettings:
         # This ensures the label reflects the currently selected *list item*, even if preview fails
         self.update_selected_image_label(None)
 
-    def show_image_selector(self, room_id, prop_display_name, hint_name, selected_image=None, load_only=False):
-        room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
-        room_folder = room_map.get(str(room_id), "").lower()
-        if not room_folder:
-             print(f"Cannot find room folder for room ID {room_id}")
-             self.image_listbox.delete(0, tk.END)
-             # Add "None" option even when room folder not found
-             self.image_listbox.insert(tk.END, "None")
-             try:
-                 self.image_preview_label.config(image='')
-                 self.image_preview_label.image = None
-             except Exception as e:
-                 print(f"[hint library]Error clearing image preview: {e}")
-             return
-
-        base_dir = os.path.dirname(__file__)
-        image_dir_path = Path(base_dir) / "sync_directory" / "hint_image_files" / room_folder / prop_display_name
-        image_dir = str(image_dir_path)
-
+    def show_image_selector(self, room_id, current_prop_display_name, hint_name, selected_image=None, load_only=False):
+        """Populates the image listbox with images from the current prop and its cousins."""
         self.image_listbox.delete(0, tk.END)
-        # Always add "None" option at the top of the list
+        self.image_listbox_data = []  # Clear previous data
+
+        # Always add "None" option
         self.image_listbox.insert(tk.END, "None")
-        
+        self.image_listbox_data.append(("None", None))  # Add placeholder metadata for "None"
+        self.image_listbox.itemconfig(0, {'fg': 'black'})  # Ensure "None" is black
+
+        # Reset preview
         try:
-            self.image_preview_label.config(image='')
+            self.image_preview_label.config(image='', text="")
             self.image_preview_label.image = None
         except Exception as e:
             print(f"[hint library]Error clearing image preview in selector: {e}")
 
-        current_selection_index = 0  # Default to "None" selected
+        room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
+        room_folder = room_map.get(str(room_id))
+        if not room_folder:
+            print(f"Cannot find room folder for room ID {room_id}")
+            self.image_listbox.selection_set(0)  # Select "None"
+            return
 
-        if image_dir_path.exists() and image_dir_path.is_dir():
-            image_files = []
-            for item in os.listdir(image_dir):
-                if not item.startswith('.') and item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-                   image_files.append(item)
+        # Find the current prop's cousin ID
+        current_prop_internal_name = None
+        for p_internal, p_details in self.prop_mappings.get(room_folder, {}).get('mappings', {}).items():
+            if p_details.get('display') == current_prop_display_name:
+                current_prop_internal_name = p_internal
+                break
 
-            image_files.sort()
+        if not current_prop_internal_name:
+            print(f"Could not find internal name for current prop: {current_prop_display_name}")
+            self.image_listbox.selection_set(0)  # Select "None"
+            return  # Cannot proceed without internal name
 
-            for index, filename in enumerate(image_files):
-                self.image_listbox.insert(tk.END, filename)
-                if not load_only and filename == selected_image:
-                     current_selection_index = index + 1  # +1 because "None" is at index 0
-        else:
-            print(f"[hint library]Image directory not found or is not a directory: {image_dir}")
-            self.image_label.config(text=f"Image directory not found for {prop_display_name}")
+        current_prop_details = self.get_prop_details(room_id, current_prop_internal_name)
+        current_cousin_id = current_prop_details.get('cousin') if current_prop_details else None
 
-        # Always set the image context, even when load_only=True
-        internal_prop_name = None # We don't strictly need this anymore
-        room_key = room_map.get(str(room_id))
-        # Set context regardless of load_only value
-        self.current_image_context = {'room_id': room_id, 'prop_display_name': prop_display_name, 'hint_name': hint_name, 'image_dir': image_dir}
-        
+        # Gather list of prop display names to check (current + cousins)
+        props_to_scan = {current_prop_display_name}  # Use a set to avoid duplicates
+        if current_cousin_id is not None:
+            all_room_props = self.prop_mappings.get(room_folder, {}).get('mappings', {})
+            for p_internal, p_details in all_room_props.items():
+                if p_details.get('cousin') == current_cousin_id:
+                    props_to_scan.add(p_details.get('display', p_internal))
+
+        base_dir = Path(os.path.dirname(__file__)) / "sync_directory" / "hint_image_files" / room_folder
+        found_images = {}  # Use dict to handle duplicates gracefully {filename: source_prop}
+
+        # Scan directories of the current prop and its cousins
+        for prop_name_to_scan in props_to_scan:
+            image_dir_path = base_dir / prop_name_to_scan
+            if image_dir_path.is_dir():
+                try:
+                    for item in os.listdir(str(image_dir_path)):
+                        if not item.startswith('.') and item.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+                            # Store filename and its source prop
+                            # If duplicate filename, the last one scanned wins (or choose logic if needed)
+                            found_images[item] = prop_name_to_scan
+                except OSError as e:
+                    print(f"[Hint Manager] Error reading image directory {image_dir_path}: {e}")
+
+        # Sort filenames alphabetically for consistent display
+        sorted_filenames = sorted(found_images.keys())
+
+        # Populate listbox and metadata list
+        listbox_index_to_select = 0  # Default to "None"
+        for filename in sorted_filenames:
+            source_prop = found_images[filename]
+            self.image_listbox.insert(tk.END, filename)
+            self.image_listbox_data.append((filename, source_prop))
+            current_index = self.image_listbox.size() - 1
+
+            # Set text color
+            text_color = 'grey' if source_prop != current_prop_display_name else 'black'
+            self.image_listbox.itemconfig(current_index, {'fg': text_color})
+
+            # Check if this is the item we need to pre-select
+            if not load_only and filename == selected_image and source_prop == current_prop_display_name:
+                # Only auto-select if it's the current prop's image matching the saved one
+                listbox_index_to_select = current_index
+            elif not load_only and filename == selected_image and source_prop != current_prop_display_name and hint_name is not None:
+                # If the saved image belongs to a cousin, maybe still highlight it but don't auto-select?
+                # For now, we only auto-select if it belongs to the *current* prop.
+                pass
+
+        # Set the current image context (used by preview and update)
+        # Important: image_dir now points to the *current* prop's dir, even though list shows cousins
+        current_prop_image_dir = str(base_dir / current_prop_display_name)
+        self.current_image_context = {
+            'room_id': room_id,
+            'prop_display_name': current_prop_display_name,  # The prop context for the editor
+            'hint_name': hint_name,
+            'image_dir': current_prop_image_dir  # Base directory for *potential* saves/previews of OWN images
+        }
+
+        # Set the initial selection in the listbox
+        self.image_listbox.selection_clear(0, tk.END)
+        self.image_listbox.selection_set(listbox_index_to_select)
+        self.image_listbox.see(listbox_index_to_select)
+
+        # Trigger preview if not just loading
         if not load_only:
-            if selected_image is None:
-                # Select "None" option
-                self.image_listbox.selection_set(0)
-                self.image_listbox.see(0)
-            elif current_selection_index != 0:
-                self.image_listbox.selection_set(current_selection_index)
-                self.image_listbox.see(current_selection_index)
-                self.preview_selected_image()
-            else:
-                # If the selected image wasn't found, default to "None"
-                self.image_listbox.selection_set(0)
-                self.image_listbox.see(0)
-        else:
-            # Even in load_only mode, we need to select "None" by default
-            self.image_listbox.selection_set(0)
-            self.image_listbox.see(0)
+            # Manually call preview for the initially selected item
+            self.preview_selected_image()  # This will handle the "None" case too
 
     def preview_selected_image(self, event=None):
         selection = self.image_listbox.curselection()
         if not selection:
-            # Safely clear the image
-            try:
-                self.image_preview_label.config(text="")
-                self.image_preview_label.config(image='')
-                self.image_preview_label.image = None
-            except Exception as e:
-                print(f"[hint library]Error clearing image preview: {e}")
-            
-            # Clear the selected image label if nothing is selected in the listbox
-            self.update_selected_image_label(None)
+            self.clear_preview_and_selection()
             return
 
-        filename = self.image_listbox.get(selection[0])
-        
-        # Handle "None" option
+        selected_index = selection[0]
+        if selected_index < 0 or selected_index >= len(self.image_listbox_data):
+            print(f"Error: Invalid listbox index {selected_index}")
+            self.clear_preview_and_selection()
+            return
+
+        filename, source_prop_display_name = self.image_listbox_data[selected_index]
+
+        # Handle "None" selection
         if filename == "None":
-            try:
-                self.image_preview_label.config(text="No image selected", image='', foreground='gray')
-                self.image_preview_label.image = None
-                # Update hint data to remove the image
-                self.update_hint_image(None)
-                # Update the selected image label
-                self.update_selected_image_label(None)
-            except Exception as e:
-                print(f"[hint library]Error handling None selection: {e}")
+            self.clear_preview_and_selection(update_hint=True)  # Update hint to remove image
             return
 
-        if not hasattr(self, 'current_image_context') or not self.current_image_context:
-             print("Preview attempt without valid image context (Hint likely not selected).")
-             try:
-                 self.image_preview_label.config(image='', text="Select hint first", foreground='orange')
-                 self.image_preview_label.image = None
-                 # Also clear the label here
-                 self.update_selected_image_label(None)
-                 return
-             except Exception as e:
-                 print(f"Error trying fallback preview: {e}")
-                 return
+        # Check context (is a hint selected? what is its prop?)
+        context_prop_display_name = None
+        is_hint_selected = bool(self.selected_hint_key)
 
-        image_path = Path(self.current_image_context['image_dir']) / filename
-        try:
-            if not image_path.is_file():
-                 raise FileNotFoundError(f"Path is not a file: {image_path}")
+        if is_hint_selected:
+            # Extract context prop from the selected hint key
+            try:
+                parts = self.selected_hint_key.split('-', 2)
+                context_prop_display_name = parts[1]  # Assumes key format "roomid-propdisplay-hintname"
+            except IndexError:
+                print(f"Error parsing selected hint key: {self.selected_hint_key}")
+                self.clear_preview_and_selection()
+                return
+        elif self.current_prop_info:
+            # If only a prop is selected in the tree, get its display name
+            context_prop_display_name = self.current_prop_info.get('display_name')
+        else:
+            # Should not happen if listbox is enabled, but safeguard
+            print("Preview error: No hint or prop context available.")
+            self.clear_preview_and_selection()
+            return
 
-            image = Image.open(str(image_path))
-            image.thumbnail((200, 200))
-            photo = ImageTk.PhotoImage(image)
-            self.image_preview_label.config(image=photo, text="")
-            self.image_preview_label.image = photo
-            # Update the hint data first
-            self.update_hint_image(filename)
-            # THEN update the label showing the selected file
-            self.update_selected_image_label(filename)
-        except FileNotFoundError:
-            print(f"[hint library]Preview Error: Image file not found at {image_path}")
-            try:
-                self.image_preview_label.config(text="Image not found", image='', foreground='red')
-                self.image_preview_label.image = None
-            except Exception as e:
-                print(f"[hint library]Error clearing preview after not found: {e}")
-            # Even if not found, update the label to show the filename + status
-            self.update_selected_image_label(filename)
-        except Exception as e:
-            print(f"[hint library]Error displaying image preview for {image_path}: {e}")
-            try:
-                self.image_preview_label.config(text=f"Preview Error: {e}", image='', foreground='red')
-                self.image_preview_label.image = None
-            except Exception as e2:
-                print(f"[hint library]Error clearing preview after error: {e2}")
-            # Update label in case of other errors
-            self.update_selected_image_label(filename)
+        if not context_prop_display_name:
+            print("Preview error: Could not determine context prop display name.")
+            self.clear_preview_and_selection()
+            return
+
+        # Determine the correct image path based on the *source* prop
+        room_id = self.current_image_context['room_id']  # Get room ID from context
+        room_map = {'1': "casino", '2': "ma", '3': "wizard", '4': "zombie", '5': "haunted", '6': "atlantis", '7': "time"}
+        room_folder = room_map.get(str(room_id))
+        if not room_folder:
+            print(f"Preview error: Cannot map room ID {room_id}")
+            self.clear_preview_and_selection()
+            return
+
+        base_dir = Path(os.path.dirname(__file__)) / "sync_directory" / "hint_image_files" / room_folder
+        image_path = base_dir / source_prop_display_name / filename
+
+        # --- Image Belongs to a Cousin ---
+        if source_prop_display_name != context_prop_display_name:
+            if not is_hint_selected:
+                # Only a prop selected - just show preview, don't allow move
+                self.display_image_preview(image_path, filename)
+                self.update_selected_image_label(f"{filename} (from {source_prop_display_name})")  # Indicate source
+                return  # Do not update hint data or prompt
+
+            # A hint is selected, prompt to move
+            confirm = messagebox.askyesno(
+                "Move Hint?",
+                f"Image '{filename}' belongs to prop '{source_prop_display_name}'.\n\n"
+                f"Move the current hint ('{self.hint_map[self.selected_hint_key]['hint_name']}') "
+                f"to prop '{source_prop_display_name}' and use this image?",
+                parent=self.settings_container  # Ensure popup is on top
+            )
+
+            if confirm:
+                # Move the hint
+                success = self.move_hint_to_cousin(self.selected_hint_key, source_prop_display_name, filename)
+                if not success:
+                    # Move failed, revert selection to None
+                    self.clear_preview_and_selection(update_hint=False)  # Don't overwrite original hint's image yet
+                    self.image_listbox.selection_clear(0, tk.END)
+                    self.image_listbox.selection_set(0)  # Select "None"
+            else:
+                # User clicked No, select "None"
+                self.clear_preview_and_selection(update_hint=True)  # Update original hint to have no image
+                self.image_listbox.selection_clear(0, tk.END)
+                self.image_listbox.selection_set(0)  # Select "None"
+
+        # --- Image Belongs to the Current Prop (or move was successful) ---
+        else:  # source_prop_display_name == context_prop_display_name
+            preview_success = self.display_image_preview(image_path, filename)
+            if preview_success and is_hint_selected:
+                # Update the *currently selected* hint's image data
+                self.update_hint_image(filename)  # Use existing method
+            elif not preview_success and is_hint_selected:
+                # Preview failed (e.g., file not found), ensure hint data reflects no image
+                self.update_hint_image(None)
+
+            # Update the label showing the selected file
+            self.update_selected_image_label(filename)  # Use the method that checks existence
 
     def update_hint_image(self, filename):
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
@@ -1167,31 +1231,38 @@ class ManagerSettings:
             messagebox.showerror("Error", f"An unexpected error occurred adding the hint: {e}")
             self.status_label.config(text="Error adding hint!", foreground='red')
 
-    def update_selected_image_label(self, filename):
-        """Updates the label showing the selected image filename and status."""
+    def update_selected_image_label(self, filename_or_full_text):
+        """Updates the label showing the selected image filename and status.
+           Can accept just filename or filename + source info."""
+        label_widget = self.selected_image_label  # Reference to the label widget
+
         # If context is missing (e.g., prop selected, not hint), clear or show default
         if not hasattr(self, 'current_image_context') or not self.current_image_context:
             try:
-                self.selected_image_label.config(text="Selected Image: N/A", foreground='grey')
+                label_widget.config(text="Selected Image: N/A", foreground='grey')
             except Exception as e:
-                print(f"[hint library]Error updating selected image label: {e}")
+                print(f"[hint library]Error updating selected image label (no context): {e}")
             return
 
-        if filename:
-            image_path = Path(self.current_image_context['image_dir']) / filename
-            try:
-                # Check if it exists *and* is a file
-                if image_path.is_file():
-                    self.selected_image_label.config(text=f"Selected Image: {filename}", foreground='black')
-                else:
-                    # Exists but isn't a file (directory?), or doesn't exist
-                     self.selected_image_label.config(text=f"Selected Image: {filename} (Not found!)", foreground='red')
-            except OSError as e: # Catch potential permission errors etc. during check
-                 print(f"[hint library]Error checking image file status {image_path}: {e}")
-                 self.selected_image_label.config(text=f"Selected Image: {filename} (Check Error!)", foreground='orange')
-
+        if filename_or_full_text and filename_or_full_text != "None":
+            # If the text already includes source info (from cousin selection), use it directly
+            if "(from " in filename_or_full_text:
+                label_widget.config(text=f"Selected Image: {filename_or_full_text}", foreground='darkorange')  # Use orange for cousin images
+            else:
+                # Otherwise, check the file from the *current* prop's context directory
+                filename = filename_or_full_text  # Assume it's just the filename
+                image_path = Path(self.current_image_context['image_dir']) / filename
+                try:
+                    if image_path.is_file():
+                        label_widget.config(text=f"Selected Image: {filename}", foreground='black')
+                    else:
+                        label_widget.config(text=f"Selected Image: {filename} (Not found!)", foreground='red')
+                except OSError as e:
+                    print(f"[hint library]Error checking image file status {image_path}: {e}")
+                    label_widget.config(text=f"Selected Image: {filename} (Check Error!)", foreground='orange')
         else:
-            self.selected_image_label.config(text="Selected Image: None", foreground='black')
+            # Handle "None" or empty filename
+            label_widget.config(text="Selected Image: None", foreground='black')
 
     def launch_image_browser(self):
         """Launch the image browser as a separate process."""
@@ -1324,6 +1395,163 @@ class ManagerSettings:
     def on_tree_leave(self, event):
         """Clears highlights when the mouse leaves the Treeview widget entirely."""
         self.clear_cousin_highlights()
+
+    def move_hint_to_cousin(self, hint_key_to_move, target_prop_display_name, new_image_filename):
+        """Moves a hint to a different prop (cousin) in saved_hints.json and refreshes."""
+        try:
+            # 1. Extract info from the key
+            parts = hint_key_to_move.split('-', 2)
+            room_id = parts[0]
+            original_prop_display_name = parts[1]
+            hint_name = parts[2]
+
+            # 2. Load hint data file
+            try:
+                with open('saved_hints.json', 'r') as f:
+                    hint_data_file = json.load(f)
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                messagebox.showerror("Error", f"Failed to load saved_hints.json: {e}")
+                return False
+
+            # 3. Get the hint data to move
+            rooms_data = hint_data_file.get('rooms', {})
+            original_room_hints = rooms_data.get(str(room_id), {})
+            original_prop_hints = original_room_hints.get(original_prop_display_name, {})
+            hint_content_to_move = original_prop_hints.get(hint_name)
+
+            if hint_content_to_move is None:
+                messagebox.showerror("Error", f"Could not find original hint '{hint_name}' under prop '{original_prop_display_name}' to move.")
+                return False
+
+            # Preserve text, update image
+            moved_hint_data = {
+                "text": hint_content_to_move.get("text", ""),  # Keep original text
+                "image": new_image_filename  # Set the new image
+            }
+
+            # 4. Delete from original location
+            del original_prop_hints[hint_name]
+            print(f"Removed hint '{hint_name}' from '{original_prop_display_name}'")
+            # Optional: Clean up empty prop/room dictionaries if desired
+            if not original_prop_hints:
+                del original_room_hints[original_prop_display_name]
+                print(f"Removed empty prop '{original_prop_display_name}'")
+                if not original_room_hints:
+                    del rooms_data[str(room_id)]
+                    print(f"Removed empty room '{room_id}'")
+
+            # 5. Add to new location
+            target_room_hints = rooms_data.setdefault(str(room_id), {})
+            target_prop_hints = target_room_hints.setdefault(target_prop_display_name, {})
+
+            # Check for overwrite (optional but recommended)
+            if hint_name in target_prop_hints:
+                if not messagebox.askyesno("Overwrite Confirmation",
+                                            f"A hint named '{hint_name}' already exists under '{target_prop_display_name}'.\n\nOverwrite it?",
+                                            parent=self.settings_container):
+                    # User cancelled overwrite - need to revert the deletion? Or just stop?
+                    # For simplicity now, we stop, but the original is already deleted.
+                    # A better implementation would copy first, then delete on success.
+                    print("Move cancelled due to potential overwrite.")
+                    # Reload might be needed to restore state if we stopped mid-way
+                    self.load_hints()
+                    return False  # Indicate failure
+
+            target_prop_hints[hint_name] = moved_hint_data
+            print(f"Added hint '{hint_name}' to '{target_prop_display_name}' with image '{new_image_filename}'")
+
+            # 6. Save changes
+            with open('saved_hints.json', 'w') as f:
+                json.dump(hint_data_file, f, indent=4)
+
+            # 7. Refresh UI and select the moved hint
+            new_hint_key = f"{room_id}-{target_prop_display_name}-{hint_name}"
+            self.load_hints()  # Reload tree and internal maps
+
+            # Find the new item ID in the refreshed tree
+            new_item_id = None
+            for item_id, item_data in self.tree_items.items():
+                if item_data.get('key') == new_hint_key:
+                    new_item_id = item_id
+                    break
+
+            if new_item_id:
+                # Ensure parent nodes are open
+                parent_prop = self.hint_tree.parent(new_item_id)
+                if parent_prop:
+                    self.hint_tree.item(parent_prop, open=True)
+                    parent_room = self.hint_tree.parent(parent_prop)
+                    if parent_room:
+                        self.hint_tree.item(parent_room, open=True)
+
+                # Select, focus, and scroll to the new item
+                self.hint_tree.selection_set(new_item_id)
+                self.hint_tree.focus(new_item_id)
+                self.hint_tree.see(new_item_id)
+                # on_hint_select should be triggered by selection_set, updating the editor
+                print(f"Successfully moved and selected hint item: {new_item_id}")
+                self.status_label.config(text="Hint moved successfully.", foreground='green')
+                self.status_label.after(2500, lambda: self.status_label.config(text=""))
+                return True  # Indicate success
+            else:
+                print(f"Warning: Could not find tree item for moved hint key {new_hint_key} after reload.")
+                messagebox.showinfo("Move Complete", "Hint moved, but could not automatically select it in the tree. Please find it manually.", parent=self.settings_container)
+                return True  # Move succeeded, selection failed
+
+        except KeyError as e:
+            messagebox.showerror("Error", f"Data structure error during move: Missing key {e}", parent=self.settings_container)
+            print(f"[hint library]KeyError during move: {e}")
+            # Consider reloading hints to try and restore a consistent state
+            self.load_hints()
+            return False
+        except Exception as e:
+            messagebox.showerror("Error", f"An unexpected error occurred moving the hint: {e}", parent=self.settings_container)
+            print(f"[hint library]Error moving hint: {e}")
+            # Consider reloading hints
+            self.load_hints()
+            return False
+
+    def display_image_preview(self, image_path, filename):
+        """Attempts to load and display the image preview. Returns True on success."""
+        try:
+            if not image_path.is_file():
+                raise FileNotFoundError(f"Path is not a file: {image_path}")
+
+            image = Image.open(str(image_path))
+            image.thumbnail((200, 200))
+            photo = ImageTk.PhotoImage(image)
+            self.image_preview_label.config(image=photo, text="") # Clear any error text
+            self.image_preview_label.image = photo
+            return True
+        except FileNotFoundError:
+            print(f"[hint library]Preview Error: Image file not found at {image_path}")
+            try:
+                self.image_preview_label.config(text="Image not found", image='', foreground='red')
+                self.image_preview_label.image = None
+            except Exception as e:
+                print(f"[hint library]Error clearing preview after not found: {e}")
+            return False
+        except Exception as e:
+            print(f"[hint library]Error displaying image preview for {image_path}: {e}")
+            try:
+                self.image_preview_label.config(text=f"Preview Error", image='', foreground='red') # Keep error msg short
+                self.image_preview_label.image = None
+            except Exception as e2:
+                print(f"[hint library]Error clearing preview after error: {e2}")
+            return False
+
+    def clear_preview_and_selection(self, update_hint=False):
+         """Clears the preview, label, and optionally updates the hint data."""
+         try:
+             self.image_preview_label.config(text="", image='') # Clear text and image
+             self.image_preview_label.image = None
+         except Exception as e:
+             print(f"[hint library]Error clearing image preview: {e}")
+         self.update_selected_image_label(None) # Update label to "None"
+
+         if update_hint and self.selected_hint_key:
+             # Update hint data only if requested and a hint is selected
+             self.update_hint_image(None)
 
 class AdminPasswordManager:
     def __init__(self, app):

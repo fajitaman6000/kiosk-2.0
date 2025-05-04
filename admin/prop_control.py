@@ -406,7 +406,7 @@ class PropControl:
         if room_number in self.mqtt_clients:
             client = self.mqtt_clients[room_number]
             if not client.is_connected():
-                print(f"[prop control]Connection to room {room_number} timed out")
+                #print(f"[prop control]Connection to room {room_number} timed out")
                 room_name = self.app.rooms.get(room_number, f"Room {room_number}")
                 timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
                 self.connection_states[room_number] = timeout_msg
@@ -447,7 +447,7 @@ class PropControl:
 
     def retry_connection(self, room_number):
         """Retry connecting to a room's MQTT server without blocking"""
-        print(f"[prop control]Retrying connection to room {room_number}")
+        #print(f"[prop control]Retrying connection to room {room_number}")
         
         # Start a new connection attempt in a separate thread
         def do_retry():
