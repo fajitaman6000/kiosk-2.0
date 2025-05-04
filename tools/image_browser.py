@@ -36,7 +36,7 @@ def create_thumbnail(image_path: Path, size: tuple[int, int]) -> ImageTk.PhotoIm
         img.thumbnail(size, Image.Resampling.LANCZOS)
         return ImageTk.PhotoImage(img)
     except Exception as e:
-        print(f"Error creating thumbnail for {image_path}: {e}")
+        print(f"[image browser] Error creating thumbnail for {image_path}: {e}")
         return None
 
 def get_room_id_from_folder(room_folder: str) -> str:
@@ -58,7 +58,7 @@ def update_image_references(old_filename: str, new_filename: str, prop_dir: Path
     Returns the number of references updated.
     """
     if not HINTS_FILE.exists():
-        print(f"Hints file not found: {HINTS_FILE}")
+        print(f"[image browser] Hints file not found: {HINTS_FILE}")
         return 0
 
     try:
@@ -73,7 +73,7 @@ def update_image_references(old_filename: str, new_filename: str, prop_dir: Path
         room_id = get_room_id_from_folder(room_folder)
         
         if not room_id:
-            print(f"Could not determine room ID for folder: {room_folder}")
+            print(f"[image browser] Could not determine room ID for folder: {room_folder}")
             return 0
             
         update_count = 0
@@ -88,18 +88,18 @@ def update_image_references(old_filename: str, new_filename: str, prop_dir: Path
                     if hint_data.get('image') == old_filename:
                         hint_data['image'] = new_filename
                         update_count += 1
-                        print(f"Updated image reference in hint: {room_id}/{prop_name}/{hint_name}")
+                        print(f"[image browser] Updated image reference in hint: {room_id}/{prop_name}/{hint_name}")
                 
                 # If any updates were made, save the file
                 if update_count > 0:
                     with open(HINTS_FILE, 'w') as f:
                         json.dump(hints_data, f, indent=4)
-                    print(f"Saved {update_count} image reference updates to {HINTS_FILE}")
+                    print(f"[image browser] Saved {update_count} image reference updates to {HINTS_FILE}")
                 
         return update_count
         
     except Exception as e:
-        print(f"Error updating image references: {e}")
+        print(f"[image browser] Error updating image references: {e}")
         return 0
 
 def remove_image_references(filename: str, prop_dir: Path) -> int:
@@ -108,7 +108,7 @@ def remove_image_references(filename: str, prop_dir: Path) -> int:
     Returns the number of references removed.
     """
     if not HINTS_FILE.exists():
-        print(f"Hints file not found: {HINTS_FILE}")
+        print(f"[image browser] Hints file not found: {HINTS_FILE}")
         return 0
 
     try:
@@ -123,7 +123,7 @@ def remove_image_references(filename: str, prop_dir: Path) -> int:
         room_id = get_room_id_from_folder(room_folder)
         
         if not room_id:
-            print(f"Could not determine room ID for folder: {room_folder}")
+            print(f"[image browser] Could not determine room ID for folder: {room_folder}")
             return 0
             
         remove_count = 0
@@ -139,18 +139,18 @@ def remove_image_references(filename: str, prop_dir: Path) -> int:
                         if 'image' in hint_data:
                             del hint_data['image']
                             remove_count += 1
-                            print(f"Removed image reference in hint: {room_id}/{prop_name}/{hint_name}")
+                            print(f"[image browser] Removed image reference in hint: {room_id}/{prop_name}/{hint_name}")
                 
                 # If any updates were made, save the file
                 if remove_count > 0:
                     with open(HINTS_FILE, 'w') as f:
                         json.dump(hints_data, f, indent=4)
-                    print(f"Saved {remove_count} image reference removals to {HINTS_FILE}")
+                    print(f"[image browser] Saved {remove_count} image reference removals to {HINTS_FILE}")
                 
         return remove_count
         
     except Exception as e:
-        print(f"Error removing image references: {e}")
+        print(f"[image browser] Error removing image references: {e}")
         return 0
 
 # --- Application Class ---
@@ -296,7 +296,7 @@ class ImageBrowserApp:
     def update_prop_block(self, prop_dir: Path):
         """Updates the content (thumbnail or text) of a specific prop block."""
         if prop_dir not in self.prop_widgets:
-            print(f"Warning: Cannot update block for {prop_dir.name}, widgets not found.")
+            print(f"[image browser] Warning: Cannot update block for {prop_dir.name}, widgets not found.")
             return
 
         widgets = self.prop_widgets[prop_dir]
@@ -344,22 +344,22 @@ class ImageBrowserApp:
                 source_path = Path(file_path)
                 destination_path = prop_dir / source_path.name
                 if destination_path.exists():
-                   print(f"Skipping copy: {destination_path} already exists.")
+                   print(f"[image browser] Skipping copy: {destination_path} already exists.")
                    # Future: Could ask user to overwrite/rename via dialog
                    continue
                 shutil.copy2(source_path, destination_path)
-                print(f"Copied {source_path.name} to {prop_dir.name}")
+                print(f"[image browser] Copied {source_path.name} to {prop_dir.name}")
                 copied_count += 1
             except Exception as e:
                 err_msg = f"Failed to copy {Path(file_path).name}:\n{e}"
-                print(f"Error copying {file_path} to {prop_dir}: {e}")
+                print(f"[image browser] Error copying {file_path} to {prop_dir}: {e}")
                 errors.append(err_msg)
 
         if errors:
             messagebox.showerror("Copy Error(s)", "\n\n".join(errors))
 
         if copied_count > 0:
-            print(f"Successfully copied {copied_count} image(s) to {prop_dir.name}. Refreshing block...")
+            print(f"[image browser] Successfully copied {copied_count} image(s) to {prop_dir.name}. Refreshing block...")
             # Refresh ONLY the affected prop's block
             self.update_prop_block(prop_dir)
             # Update main scroll region in case block size changed (e.g., NO IMAGES -> thumb)
@@ -378,7 +378,7 @@ class ImageBrowserApp:
             else:  # Linux and other Unix-like
                 subprocess.Popen(["xdg-open", str(folder_path)])
         except Exception as e:
-            print(f"Error opening folder {folder_path}: {e}")
+            print(f"[image browser] Error opening folder {folder_path}: {e}")
             # Optionally show an error message in the UI
 
     def open_image_viewer(self, prop_dir: Path, initial_index: int):
@@ -531,7 +531,7 @@ class ImageViewerPopup(tk.Toplevel):
             self.image_label.configure(image=photo, text='') # Clear text if image loads
             self.image_label.image = photo # Keep reference
         except Exception as e:
-            print(f"Error loading image {img_path} for preview: {e}")
+            print(f"[image browser] Error loading image {img_path} for preview: {e}")
             self.image_label.configure(image='', text=f"Error loading\n{img_path.name}")
             self.image_label.image = None
             messagebox.showerror("Image Load Error", f"Could not load image:\n{img_path.name}\n\nError: {e}")
@@ -598,12 +598,12 @@ class ImageViewerPopup(tk.Toplevel):
 
         try:
             os.rename(old_path, new_path)
-            print(f"Renamed '{old_path.name}' to '{new_path.name}'")
+            print(f"[image browser] Renamed '{old_path.name}' to '{new_path.name}'")
 
             # Update references in saved_hints.json
             updated_count = update_image_references(old_name, new_name, self.prop_dir)
             if updated_count > 0:
-                print(f"Updated {updated_count} hint references to this image")
+                print(f"[image browser] Updated {updated_count} hint references to this image")
                 messagebox.showinfo("References Updated", 
                                    f"Updated {updated_count} hint references to point to the renamed image.", 
                                    parent=self)
@@ -614,7 +614,7 @@ class ImageViewerPopup(tk.Toplevel):
             try:
                  new_index = self.image_files.index(new_path)
             except ValueError:
-                 print("Warning: Renamed file not found in refreshed list?")
+                 print(f"[image browser] Warning: Renamed file not found in refreshed list?")
                  new_index = 0 # Fallback or handle error
 
             self.load_image(new_index) # Load the renamed image (same index)
@@ -623,10 +623,10 @@ class ImageViewerPopup(tk.Toplevel):
             self.app_controller.update_prop_block(self.prop_dir)
 
         except OSError as e:
-            print(f"Error renaming file {old_path} to {new_path}: {e}")
+            print(f"[image browser] Error renaming file {old_path} to {new_path}: {e}")
             messagebox.showerror("Rename Error", f"Could not rename file:\n{e}", parent=self)
         except Exception as e:
-            print(f"Unexpected error during rename: {e}")
+            print(f"[image browser] Unexpected error during rename: {e}")
             messagebox.showerror("Rename Error", f"An unexpected error occurred:\n{e}", parent=self)
 
     def delete_image(self):
@@ -661,7 +661,7 @@ class ImageViewerPopup(tk.Toplevel):
                                 if hint_data.get('image') == img_name:
                                     reference_count += 1
             except Exception as e:
-                print(f"Error checking hint references: {e}")
+                print(f"[image browser] Error checking hint references: {e}")
             
             # Warn if references exist
             if reference_count > 0:
@@ -675,12 +675,12 @@ class ImageViewerPopup(tk.Toplevel):
 
             # Delete the file
             os.remove(img_path)
-            print(f"Deleted '{img_name}'")
+            print(f"[image browser] Deleted '{img_name}'")
 
             # Remove references from saved_hints.json
             removed_count = remove_image_references(img_name, self.prop_dir)
             if removed_count > 0:
-                print(f"Removed {removed_count} hint references to the deleted image")
+                print(f"[image browser] Removed {removed_count} hint references to the deleted image")
                 messagebox.showinfo("References Removed",
                                    f"Removed {removed_count} hint references to the deleted image.",
                                    parent=self)
@@ -704,10 +704,10 @@ class ImageViewerPopup(tk.Toplevel):
                 self.load_image(new_index)
 
         except OSError as e:
-            print(f"Error deleting file {img_path}: {e}")
+            print(f"[image browser] Error deleting file {img_path}: {e}")
             messagebox.showerror("Delete Error", f"Could not delete file:\n{e}", parent=self)
         except Exception as e:
-            print(f"Unexpected error during delete: {e}")
+            print(f"[image browser] Unexpected error during delete: {e}")
             messagebox.showerror("Delete Error", f"An unexpected error occurred:\n{e}", parent=self)
 
     # --- New methods for relocated buttons ---
@@ -762,14 +762,14 @@ if __name__ == "__main__":
 
     # Ensure base directory exists
     if not BASE_IMAGE_DIR.exists():
-         print(f"Warning: Base image directory '{BASE_IMAGE_DIR}' does not exist. Creating it.")
+         print(f"[image browser] Warning: Base image directory '{BASE_IMAGE_DIR}' does not exist. Creating it.")
          try:
             BASE_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
          except Exception as e:
-             print(f"Error: Could not create base directory '{BASE_IMAGE_DIR}': {e}")
+             print(f"[image browser] Error: Could not create base directory '{BASE_IMAGE_DIR}': {e}")
              exit(1)
     elif not BASE_IMAGE_DIR.is_dir():
-        print(f"Error: The path '{BASE_IMAGE_DIR}' exists but is not a directory.")
+        print(f"[image browser] Error: The path '{BASE_IMAGE_DIR}' exists but is not a directory.")
         exit(1)
 
 
