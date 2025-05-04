@@ -432,6 +432,16 @@ class ManagerSettings:
         except Exception as e:
             print(f"[hint library] Error creating empty hints file: {e}")
 
+    def get_prop_details(self, room_id, internal_prop_name):
+        """Gets the full details for a prop from prop_mappings."""
+        # Corrected mapping based on admin_main.py
+        room_mapping = {'1': 'casino', '2': 'ma', '3': 'wizard', '4': 'zombie', '5': 'haunted', '6': 'atlantis', '7': 'time'} # Corrected
+        room_key = room_mapping.get(str(room_id))
+        if not room_key or room_key not in self.prop_mappings:
+            return None # Room key not found or not in mappings
+        room_mappings = self.prop_mappings[room_key].get('mappings', {})
+        return room_mappings.get(internal_prop_name) # Returns details or None if prop_name not found
+
     def on_hint_select(self, event):
         selection = self.hint_tree.selection()
         if not selection:
@@ -459,19 +469,53 @@ class ManagerSettings:
             self.add_hint_button.config(state=tk.NORMAL)
             self.current_prop_info = item_info
             prop_display_name = item_info['display_name']
+            prop_internal_name = item_info['prop_name'] # Get internal name
+            room_id = item_info['room_id']
+
+            # Get cousin ID
+            prop_details = self.get_prop_details(room_id, prop_internal_name)
+            cousin_id = prop_details.get('cousin', 'None') if prop_details else 'N/A'
+
+            # Update the main label
+            self.selected_hint_name_label.config(text=f"{prop_display_name} - Cousin ID: {cousin_id}")
+
             self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
             # Enable the image listbox for prop selection too
             self.image_listbox.config(state=tk.NORMAL)
-            self.show_image_selector(item_info['room_id'], prop_display_name, None, load_only=True)
+            self.show_image_selector(room_id, prop_display_name, None, load_only=True)
             self.refresh_images_button.config(state=tk.NORMAL)
 
         elif item_type == 'hint':
             self.add_hint_button.config(state=tk.DISABLED)
-            self.current_prop_info = None
+            self.current_prop_info = None # Clear prop info when hint is selected
             hint_key = item_info['key']
             if hint_key in self.hint_map:
                 hint_full_info = self.hint_map[hint_key]
+                hint_name = hint_full_info['hint_name']
+                room_id = hint_full_info['room_id']
+                prop_display_name = hint_full_info['prop_display_name']
+
+                # Find the parent prop to get its internal name and cousin ID
+                parent_prop_item = self.hint_tree.parent(selected_item)
+                parent_prop_info = self.tree_items.get(parent_prop_item)
+                cousin_id = 'N/A' # Default if parent info is missing
+                if parent_prop_info and parent_prop_info['type'] == 'prop':
+                    prop_internal_name = parent_prop_info['prop_name']
+                    prop_details = self.get_prop_details(room_id, prop_internal_name)
+                    cousin_id = prop_details.get('cousin', 'None') if prop_details else 'N/A'
+                    # Configure image label text using parent prop display name
+                    self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
+                else:
+                    print(f"Warning: Could not find parent prop info for hint {hint_key}")
+                    self.image_label.config(text="Images available:", font=('Arial', 10, 'bold'))
+
+                # Update the main label according to the request format
+                self.selected_hint_name_label.config(text=f"Editing Hint: {hint_name} - Cousin ID: {cousin_id}")
+
+                # Populate editor fields (calls select_hint which updates image selector etc.)
                 self.select_hint(hint_key, hint_full_info)
+
+                # Enable controls
                 self.rename_entry.config(state=tk.NORMAL)
                 self.rename_button.config(state=tk.NORMAL)
                 self.text_widget.config(state=tk.NORMAL)
@@ -479,18 +523,11 @@ class ManagerSettings:
                 self.delete_button.config(state=tk.NORMAL)
                 self.refresh_images_button.config(state=tk.NORMAL)
 
-                parent_prop_item = self.hint_tree.parent(selected_item)
-                parent_prop_info = self.tree_items.get(parent_prop_item)
-                if parent_prop_info:
-                     prop_display_name = parent_prop_info['display_name']
-                     self.image_label.config(text=f"Images available for {prop_display_name}:", font=('Arial', 10, 'bold'))
-                else:
-                     self.image_label.config(text="Images available:", font=('Arial', 10, 'bold'))
-
             else:
                 print(f"Error: Could not find hint key {hint_key} in hint map.")
                 self.clear_editor_and_disable()
                 self.refresh_images_button.config(state=tk.DISABLED)
+                self.selected_hint_name_label.config(text="") # Clear label on error
 
     def clear_editor_and_disable(self):
         """Clears hint editor fields and disables controls."""
