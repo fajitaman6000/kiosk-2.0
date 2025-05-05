@@ -12,7 +12,6 @@
 "Other" category as prop for hints
 "currently displayed hint"
 "please select nudge frequency"
-no progress notification
 auto create folders for hint contents
 perhaps restart microphone detection when attempting every time
 reboot kiosk application

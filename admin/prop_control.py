@@ -64,6 +64,9 @@ class PropControl:
         }
     }
 
+    # Add this constant at the beginning of the class
+    STALE_THRESHOLD = 60  # 10 minutes in seconds
+
     def __init__(self, app):
         self.app = app
         self.props = {}  # strId -> prop info
@@ -78,15 +81,12 @@ class PropControl:
         self.last_mqtt_updates = {} # room_number -> {prop_id -> last_mqtt_update_time}
         self.retry_timer_ids = {}  # Tracks pending retry timers for each room
         self.disconnect_rc7_history = {}  # room_number -> list of timestamps for rc=7 disconnects
-        for room_number in self.ROOM_CONFIGS: # Initialize timestamps for all rooms upon starting, or when switching
-            self.last_progress_times[room_number] = time.time() # initialize to now
-            self.all_props[room_number] = {} # Initialize the dictionary for each room
-            self.last_mqtt_updates[room_number] = {} # Initialize MQTT update tracking
         self.last_prop_finished = {} # prop status strings
         self.flagged_props = {}  # room_number -> {prop_id: True/False}
         self.victory_sent = {}  # room_number -> bool
         self.finish_sound_played = {}  # room_number -> bool ADDED FINISH TRACKING
         self.standby_played = {} #standby tracking
+        self.stale_sound_played = {}  # <-- **ENSURE THIS LINE EXISTS HERE**
 
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -191,8 +191,15 @@ class PropControl:
 
         # Initialize MQTT clients for all rooms
         for room_number in self.ROOM_CONFIGS:
-            self.initialize_mqtt_client(room_number)
-            self.flagged_props[room_number] = {} #initialize the flag props dict
+            self.last_progress_times[room_number] = time.time()  # initialize to now
+            self.all_props[room_number] = {}  # Initialize the dictionary for each room
+            self.last_mqtt_updates[room_number] = {}  # Initialize MQTT update tracking
+            self.flagged_props[room_number] = {}  # initialize the flag props dict
+            self.stale_sound_played[room_number] = False  # <-- INITIALIZE FLAG (This line is fine)
+            self.victory_sent.setdefault(room_number, False)  # Use setdefault for cleaner init
+            self.finish_sound_played.setdefault(room_number, False)
+            self.standby_played.setdefault(room_number, False)
+            self.initialize_mqtt_client(room_number)  # Moved MQTT init to end of loop body
 
     def update_prop_status(self, prop_id):
         """Update the status display, including flagged status."""
@@ -620,12 +627,20 @@ class PropControl:
             status = prop_info['info'].get('strStatus')
             last_status = self.all_props[room_number][prop_id].get('last_status')
 
+            # --- MODIFIED PROGRESS CHECK ---
             if (last_status is not None and
                 status != last_status and
                 status != "offline" and
                 not self.should_ignore_progress(room_number, prop_info['info'].get('strName', ''))):
-                self.last_progress_times[room_number] = time.time()
 
+                # Progress detected! Reset the stale sound flag.
+                if room_number in self.stale_sound_played:
+                    self.stale_sound_played[room_number] = False
+
+                self.last_progress_times[room_number] = time.time()
+            # --- END MODIFIED PROGRESS CHECK ---
+
+            self.all_props[room_number][prop_id]['last_status'] = status
 
             if (status == "finished" or status == "finish" or status == "Finished" or status == "Finish"):
                 if room_number not in self.last_prop_finished:
@@ -636,8 +651,6 @@ class PropControl:
                     mapped_name = self.get_mapped_prop_name(prop_name, room_number)
 
                     self.last_prop_finished[room_number] = mapped_name
-
-            self.all_props[room_number][prop_id]['last_status'] = status
 
             # Check if the prop is flagged AND finished
             if (room_number in self.flagged_props and
@@ -804,6 +817,23 @@ class PropControl:
         if room_number in self.prop_update_intervals:
             interval = self.prop_update_intervals[room_number]
             self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
+
+        # --- ADDED: Check for Stale Game ---
+        if room_number in self.last_progress_times:
+            time_since_last_progress = time.time() - self.last_progress_times[room_number]
+
+            if (is_activated and not is_finished and not timer_expired and
+                time_since_last_progress >= self.STALE_THRESHOLD and
+                not self.stale_sound_played.get(room_number, False)):
+
+                room_key = self.ROOM_MAP.get(room_number)
+                if room_key:
+                    sound_id = f"{room_key}_stale"
+                    print(f"[prop_control] Room {room_number} ({room_key}) has been stale for {int(time_since_last_progress)}s. Playing sound.")
+                    audio_manager = AdminAudioManager()
+                    audio_manager.play_sound(sound_id)
+                    self.stale_sound_played[room_number] = True  # Mark as played for this period
+        # --- END ADDED: Check for Stale Game ---
 
     def standby(self, room_number):
         """Plays the room-specific standby sound."""
@@ -1737,6 +1767,9 @@ class PropControl:
         try:
             client.publish("/er/cmd", "start")
             print(f"[prop control]Start game command sent to room {self.current_room}")
+            # Reset progress/state tracking for the started room
+            self.last_progress_times[self.current_room] = time.time()
+            self.stale_sound_played[self.current_room] = False  # <-- RESET FLAG
         except Exception as e:
             print(f"[prop control]Failed to send start game command: {e}")
 
@@ -1750,6 +1783,9 @@ class PropControl:
         try:
             client.publish("/er/cmd", "reset")
             print(f"[prop control]Reset all command sent to room {self.current_room}")
+            # Also reset progress/state tracking for the reset room
+            self.last_progress_times[self.current_room] = time.time()  # Reset progress time
+            self.stale_sound_played[self.current_room] = False  # <-- RESET FLAG
         except Exception as e:
             print(f"[prop control]Failed to send reset all command: {e}")
 
