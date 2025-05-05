@@ -542,7 +542,8 @@
             "Skull eye": {
                 "display": "Skull Eye",
                 "order": 3,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "10"
             },
             "Professors": {
                 "display": "Professor Doors",
@@ -588,7 +589,8 @@
                 "display": "Wall Ball",
                 "order": 11,
                 "finishing_prop": false,
-                "circuit": "desk"
+                "circuit": "desk",
+                "cousin": "10"
             },
             "Time capacitor": {
                 "display": "Time Capacitor",
