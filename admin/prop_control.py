@@ -65,7 +65,7 @@ class PropControl:
     }
 
     # Add this constant at the beginning of the class
-    STALE_THRESHOLD = 60  # 10 minutes in seconds
+    STALE_THRESHOLD = 600  # 10 minutes in seconds
 
     def __init__(self, app):
         self.app = app
