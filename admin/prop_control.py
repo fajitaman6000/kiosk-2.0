@@ -64,7 +64,6 @@ class PropControl:
         }
     }
 
-    # Add this constant at the beginning of the class
     STALE_THRESHOLD = 600  # 10 minutes in seconds
 
     def __init__(self, app):
@@ -695,6 +694,18 @@ class PropControl:
         audio_manager._load_sound(f"{room_name}_standby", sound_file)  # Ensure sound is loaded
         audio_manager.play_sound(f"{room_name}_standby")
 
+    def play_stale_sound(self, room_number):
+        """Plays the room-specific stale sound."""
+        print("[prop_control].play_stale_sound")
+        if room_number not in self.ROOM_MAP:
+            return
+
+        room_name = self.ROOM_MAP[room_number]
+        sound_file = f"{room_name}_stale.mp3"
+        audio_manager = AdminAudioManager()  # Get the singleton instance
+        audio_manager._load_sound(f"{room_name}_stale", sound_file)  # Ensure sound is loaded
+        audio_manager.play_sound(f"{room_name}_stale")
+
     def play_finish_sound(self, room_number):
         """Plays the room-specific finish sound."""
         audio_manager = AdminAudioManager()
@@ -828,10 +839,8 @@ class PropControl:
 
                 room_key = self.ROOM_MAP.get(room_number)
                 if room_key:
-                    sound_id = f"{room_key}_stale"
                     print(f"[prop_control] Room {room_number} ({room_key}) has been stale for {int(time_since_last_progress)}s. Playing sound.")
-                    audio_manager = AdminAudioManager()
-                    audio_manager.play_sound(sound_id)
+                    self.play_stale_sound(room_number)
                     self.stale_sound_played[room_number] = True  # Mark as played for this period
         # --- END ADDED: Check for Stale Game ---
 
