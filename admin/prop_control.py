@@ -64,7 +64,7 @@ class PropControl:
         }
     }
 
-    STALE_THRESHOLD = 600  # 10 minutes in seconds
+    STALE_THRESHOLD = 6  # 10 minutes in seconds
 
     def __init__(self, app):
         self.app = app
@@ -609,14 +609,10 @@ class PropControl:
                     del self.all_props[room_number][prop_id]['frame']
 
     def update_prop_tracking_interval(self, room_number, is_selected=False):
-        """Update the tracking interval for a room's props and ensure tracking is active"""
-        if room_number not in self.prop_update_intervals:
-            self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
-            # Start tracking for this room
-            self.update_all_props_status(room_number)
-        else:
-            # Update existing interval
-            self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
+        """Update the tracking interval for a room's props. The periodic update loop is started on connect."""
+        # Update the interval setting. The periodic update loop is started by on_connect.
+        self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
+        # The update_all_props_status method will use this interval for the next scheduled call.
 
     def check_prop_status(self, room_number, prop_id, prop_info):
         if not prop_info or 'info' not in prop_info:
@@ -895,13 +891,12 @@ class PropControl:
         if rc == 0:
             print(f"[prop control]Room {room_number} connected.")
             # Clear history on successful connection
-            # if room_number in self.disconnect_rc7_history:
-            #     print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} due to successful connect.") # Optional debug
-            #     del self.disconnect_rc7_history[room_number]
+            if room_number in self.disconnect_rc7_history:
+                del self.disconnect_rc7_history[room_number]
 
             # Clear any status messages on successful connection
             if room_number == self.current_room and hasattr(self, 'status_label'):
-                try:  # Add try-except for safety
+                try:
                     self.status_label.config(text="")
                 except tk.TclError:
                     print(f"[prop control]Error clearing status label for room {room_number} on connect (widget destroyed?).")
@@ -911,7 +906,19 @@ class PropControl:
                 self.app.root.after_cancel(self.retry_timer_ids[room_number])
                 self.retry_timer_ids[room_number] = None
 
-            # Subscribe to topics
+            # --- ADD THESE LINES ---
+            # Ensure interval is set for periodic updates before scheduling the first one.
+            # Set default interval (inactive) if not already set by selecting the room.
+            if room_number not in self.prop_update_intervals:
+                self.prop_update_intervals[room_number] = self.INACTIVE_UPDATE_INTERVAL
+
+            # Schedule the first periodic status update call on the main thread.
+            # This ensures the check loop runs for all connected rooms.
+            # update_all_props_status will reschedule itself using the correct interval.
+            self.app.root.after(0, lambda rn=room_number: self.update_all_props_status(rn))
+            # --- END ADDED LINES ---
+
+            # Subscribe to topics (EXISTING CODE BELOW)
             topics = [
                 "/er/ping", "/er/name", "/er/cmd", "/er/riddles/info",
                 "/er/music/info", "/er/music/soundlist", "/game/period",
@@ -919,6 +926,7 @@ class PropControl:
             ]
             try:
                 for topic in topics:
+                    # Subscribe on the MQTT thread loop
                     client.subscribe(topic)
             except Exception as e:
                 print(f"[prop control]Error subscribing to topics for room {room_number} on connect: {e}")
