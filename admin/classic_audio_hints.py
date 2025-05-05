@@ -31,7 +31,7 @@ class ClassicAudioHints:
         pygame.mixer.init()
         
         # Create main frame with fixed width
-        self.frame = tk.LabelFrame(parent, text="Audio Hints (Work in progress, audio files not added yet!)", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
+        self.frame = tk.LabelFrame(parent, text="Audio Hints", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
         self.frame.pack(side='left', padx=10, pady=0, anchor='sw')
         
         # Create fixed-width inner container
