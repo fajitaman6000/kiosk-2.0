@@ -5,11 +5,14 @@
 ##############################################################################################################################
 # pre-beta testing
  
+morning after stability testing
+
 watchdog launcher blocks message_handler communications
 
 ##############################################################################################################################
 # todo
 
+Hint text doesn't respect newlines
 "Other" category as prop for hints
 "currently displayed hint"
 "please select nudge frequency"

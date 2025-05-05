@@ -647,7 +647,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # Video Solutions Section
     # ===========================================
-    video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
+    video_solutions_frame = tk.LabelFrame(left_panel, text="Video Solutions (Work in progress, videos not recorded yet!)", fg='black', font=('Arial', 9, 'bold'), labelanchor='nw')
     video_solutions_frame.pack(fill='x', pady=3)
 
     # Container for dropdown and play button
@@ -919,7 +919,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # Time to Completion (TTC) label
     interface_builder.stats_elements['ttc_label'] = tk.Label(
         stats_vertical_frame,
-        text="TTC:\n--:--",
+        text="Escape Time:\n--:--",
         font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
@@ -936,7 +936,7 @@ def setup_stats_panel(interface_builder, computer_name):
     # Hints requested label
     interface_builder.stats_elements['hints_label_below'] = tk.Label(
         stats_vertical_frame,
-        text=f"Hints requested:\n{current_hints}",
+        text=f"Hints Requested:\n{current_hints}",
         font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',
@@ -952,7 +952,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     interface_builder.stats_elements['hints_received_label'] = tk.Label(
         stats_vertical_frame,
-        text=f"Hints received:\n{current_hints_received}",
+        text=f"Hints Received:\n{current_hints_received}",
         font=('Arial', 7, 'bold'),
         fg='black',
         bg='#E0E0E0',

@@ -706,7 +706,7 @@ class AdminInterfaceBuilder:
                     ttc_minutes = minutes_remaining
                     ttc_seconds = 0
 
-                ttc_text = f"TTC:\n{ttc_minutes:02d}:{ttc_seconds:02d}"
+                ttc_text = f"Escape Time:\n{ttc_minutes:02d}:{ttc_seconds:02d}"
                 self.stats_elements['ttc_label'].config(text=ttc_text)
         
         for computer_name, kiosk_data in self.connected_kiosks.items():
@@ -1331,13 +1331,13 @@ class AdminInterfaceBuilder:
         if self.stats_elements.get('hints_label_below'):
             total_hints = stats.get('total_hints', 0)
             self.stats_elements['hints_label_below'].config(
-                text=f"Hints requested:\n{total_hints}"
+                text=f"Hints Requested:\n{total_hints}"
             )
             
         if self.stats_elements.get('hints_received_label'):
             hints_received = stats.get('hints_received', 0)
             self.stats_elements['hints_received_label'].config(
-                text=f"Hints received:\n{hints_received}"
+                text=f"Hints Received:\n{hints_received}"
             )
 
         # Music button state update

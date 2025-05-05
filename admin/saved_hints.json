@@ -63,8 +63,8 @@
                     "image": "moon symbol.png"
                 },
                 "hidden drawer location": {
-                    "text": "",
-                    "image": "ghgfjdfjfdk.png"
+                    "text": "A drawer is hidden on the side of the mirror table, close to the clear wall.",
+                    "image": "hidden_drawer.png"
                 }
             },
             "Sliding Shelf": {
@@ -113,6 +113,9 @@
             "Case Code": {
                 "deleted files": {
                     "text": "I think when I tried to use the computer I deleted a whole lot of files. I hope it wasn't anything important!"
+                },
+                "check recycling bin": {
+                    "text": "Open the recycling bin on the computer in the top right of the screen and double click the icon inside."
                 }
             },
             "Weight Game": {
@@ -120,7 +123,8 @@
                     "text": "This cocaine can't be the real deal. Are we sure they're not fake? Feel how light some of them are!"
                 },
                 "organize by weight": {
-                    "text": "Surely at least one of the blocks of cocaine they sold the batch with would be real.. Organize them by weight on that corner table over there and we'll figure this out."
+                    "text": "Surely at least one of the blocks of cocaine they sold the batch with would be real.. Organize them by weight on that corner table over there and we'll figure this out.",
+                    "image": "weight.png"
                 }
             },
             "Buzzwire": {
@@ -144,6 +148,27 @@
             "Drawers": {
                 "line it up": {
                     "text": "The drawers have numbers on their fronts. There are also numbers inside. It's a giant combination lock: line up the drawers inner numbers according to their top outer numbers."
+                }
+            },
+            "Plant Bombs": {
+                "solution": {
+                    "text": "The bombs are to be placed in these positions with respect to rotation",
+                    "image": "c4 positions.png"
+                },
+                "clipboard": {
+                    "text": "The clipboard you found inside the box on the wall shows a diagram. Place the C4 on the vault accordingly and pay close attention to precise position and rotation."
+                }
+            },
+            "Clocks": {
+                "letters": {
+                    "text": "The clocks on the wall are forming letters, four of them to be specific. It will tell you what you should look for in the room."
+                },
+                "moon": {
+                    "text": "The clocks say \"MOON\". This symbol appears somewhere in the room."
+                },
+                "hidden drawer location": {
+                    "text": "The hidden drawer is located on the side of the black mirror table, close to the clear/gold wall.",
+                    "image": "hidden_drawer.png"
                 }
             }
         },
@@ -413,6 +438,23 @@
             "Desk Ball": {
                 "skull ball drop in desk": {
                     "text": "Have the ball from the skull? Drop it into the DESK and use the tool found in the left drawer to move it around the course."
+                }
+            },
+            "Time Capacitor": {
+                "timing": {
+                    "text": "The time capacitor is a game of timing. Press your button when the two illuminated dots become one. Press the left button if it's going clockwise. Press the button by the door if it's going counter-clockwise.\n\nPress the HAND when you've reached your desired number."
+                }
+            },
+            "Control Panel": {
+                "voltage and fluctuation": {
+                    "text": "On the control panel, set the voltage, pressure, and fluctuation to the levels shown in the book.",
+                    "image": "control panel.png"
+                }
+            },
+            "Skull Eye": {
+                "small ball goes in table": {
+                    "text": "The ball that came from the skull goes into the DESK.",
+                    "image": "skull with eye.png"
                 }
             }
         },

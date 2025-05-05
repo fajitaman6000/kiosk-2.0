@@ -158,7 +158,7 @@ def remove_image_references(filename: str, prop_dir: Path) -> int:
 class ImageBrowserApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Hint Image Browser")
+        self.root.title("Hint Image Browser (FILES MUST BE SYNCED BEFORE IMAGES CAN BE SHOWN ON KIOSK-SIDE)")
         self.root.geometry("800x600")
 
         # Keep track of thumbnail image objects to prevent garbage collection
