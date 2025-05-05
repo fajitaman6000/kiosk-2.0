@@ -300,7 +300,7 @@ class ClassicAudioHints:
             if len(parts) > 1:
                 prop_display, filename = parts
                 # Add the prop display name as a prefix to distinguish cousin files
-                audio_listbox.insert(tk.END, f"{prop_display}: {filename}")
+                audio_listbox.insert(tk.END, f"{filename}")
             else:
                 audio_listbox.insert(tk.END, audio_file)
         

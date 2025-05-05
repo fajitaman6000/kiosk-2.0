@@ -1,3 +1,4 @@
+
 import tkinter as tk
 from tkinter import ttk, simpledialog, messagebox, Frame, Label, Button, filedialog
 import os
@@ -41,7 +42,9 @@ class AudioSorterApp:
             return # Exit if no directory chosen
 
         # --- Define the path for the processed files tracking file (relative to source dir) ---
+        # Use a path relative to the source_audio_dir for portability
         self.processed_files_path = self.source_audio_dir / "processed_files.json"
+
 
         self.master.geometry("600x750") # Adjust size slightly for source dir display
         self.master.deiconify() # Show main window now
@@ -62,7 +65,7 @@ class AudioSorterApp:
 
         self.current_file_index = 0 # Index within the files_to_process list
         self.current_file_path = None
-        self.selected_room_key = None
+        self.selected_room_key = None # Track selected room for prop view
 
         # --- Initialize Pygame Mixer ---
         try:
@@ -135,7 +138,8 @@ class AudioSorterApp:
              return # Should not happen if app initialized correctly
         try:
             with open(self.processed_files_path, 'w', encoding='utf-8') as f:
-                json.dump(list(self.processed_files), f, indent=4)
+                # Convert set to list for JSON serialization
+                json.dump(sorted(list(self.processed_files)), f, indent=4)
         except Exception as e:
             messagebox.showerror("Save Error", f"Could not save progress to {self.processed_files_path}: {e}", parent=self.master)
 
@@ -225,6 +229,7 @@ class AudioSorterApp:
 
     def update_filename_display(self):
         """Updates the label showing the current filename and progress."""
+        # Re-calculate totals based on the current state of all_audio_files and processed_files
         total_files_initially = len(self.all_audio_files)
         processed_count_total = len(self.processed_files)
         files_remaining = total_files_initially - processed_count_total
@@ -234,22 +239,36 @@ class AudioSorterApp:
             display_name = self.current_file_path.name
             self.filename_label.config(text=display_name)
         else:
-            self.filename_label.config(text="No file loaded.") # Or "All files processed!"
+            # This happens when files_to_process is empty
+            self.filename_label.config(text="All files processed!")
 
 
         # Update progress display
         if total_files_initially == 0:
             self.progress_label.config(text="No files found")
         elif files_remaining == 0:
-             self.progress_label.config(text="All files processed!")
+             self.progress_label.config(text="Done!") # Shorter when finished
         else:
-            self.progress_label.config(text=f"{files_remaining} files remain")
+            # Display index within the *original* full list for clearer progress
+            # Find the original index of the current file
+            try:
+                 original_index = self.all_audio_files.index(self.current_file_path) if self.current_file_path else -1
+                 # Calculate how many *original* files have been processed + current one
+                 processed_so_far_including_current = len([f for f in self.all_audio_files[:original_index+1] if f.name in self.processed_files or f == self.current_file_path])
+                 # Note: This isn't quite right if files were skipped then processed later.
+                 # A simpler progress is remaining files vs total files. Let's stick to that.
+
+                 self.progress_label.config(text=f"{files_remaining} files left ({processed_count_total}/{total_files_initially})")
+
+            except ValueError:
+                 # Should not happen if current_file_path is valid and in all_audio_files
+                 self.progress_label.config(text=f"{files_remaining} files left")
 
 
     def play_current_audio(self):
         """Plays the audio file currently selected."""
         if not self.current_file_path or not self.current_file_path.is_file():
-            print(f"Warning: Audio file not found or not selected: {self.current_file_path}")
+            # print(f"Warning: Audio file not found or not selected: {self.current_file_path}") # Avoid console spam
             return
 
         try:
@@ -276,67 +295,87 @@ class AudioSorterApp:
             pass # Ignore if mixer wasn't playing
 
         # Add to processed set and save
+        # IMPORTANT: Skip means 'processed by skipping', we don't show it again.
         self.processed_files.add(self.current_file_path.name)
         self.save_processed_files()
 
         # Re-calculate files_to_process list to exclude the skipped file
+        # Note: We don't need to reset current_file_index to 0 here.
+        # We just move to the *next* file in the *original* list of files_to_process.
+        # The next_file method handles checking index against the *new* list length.
         self.files_to_process = [f for f in self.all_audio_files if f.name not in self.processed_files]
-        self.current_file_index = 0 # Reset index as we have a new list
+        # current_file_index stays the same, but points to the next item in the shorter list IF it exists
 
         self.next_file()
 
     def clear_button_frame(self):
-        """Removes all widgets from the dynamic button frame."""
+        """Removes all widgets from the dynamic button frame, except the label."""
         for widget in self.button_frame.winfo_children():
             # Keep the label
             if widget != self.button_area_label:
                  widget.destroy()
 
     def show_room_buttons(self):
-        """Displays buttons for selecting a room."""
+        """Displays buttons for selecting a room or the 'Other' category."""
         self.clear_button_frame()
-        self.button_area_label.config(text="Select Room:")
+        self.button_area_label.config(text="Select Room or Category:")
         self.selected_room_key = None # Reset selection
 
         room_keys = sorted(self.prop_data.keys())
-        for room_key in room_keys:
-            if room_key == "ma":
-                btn = ttk.Button(self.button_frame, text="Morning After",
-                                command=lambda rk=room_key: self.select_room(rk),
-                                width=20)
-                btn.pack(pady=3)
-            elif room_key == "time":
-                btn = ttk.Button(self.button_frame, text="Time Machine",
-                                command=lambda rk=room_key: self.select_room(rk),
-                                width=20)
-                btn.pack(pady=3)
+
+        # Add the special "Other" category key
+        all_options = room_keys + ["other_category"]
+
+        for key in all_options:
+            if key == "other_category":
+                btn_text = "Other"
+                # This button directly calls the processing function for 'Other'
+                command = self.process_file_for_other
+            elif key == "ma":
+                btn_text = "Morning After"
+                command = lambda rk=key: self.select_room(rk)
+            elif key == "time":
+                btn_text = "Time Machine"
+                command = lambda rk=key: self.select_room(rk)
             else:
-                btn = ttk.Button(self.button_frame, text=room_key.capitalize(),
-                                command=lambda rk=room_key: self.select_room(rk),
-                                width=20)
-                btn.pack(pady=3)
+                btn_text = key.capitalize()
+                command = lambda rk=key: self.select_room(rk)
+
+            btn = ttk.Button(self.button_frame, text=btn_text,
+                             command=command,
+                             width=25) # Slightly wider buttons
+            btn.pack(pady=3) # Consistent padding
 
     def select_room(self, room_key):
         """Handles room selection and displays prop buttons."""
         print(f"Room selected: {room_key}")
-        self.selected_room_key = room_key
-        self.show_prop_buttons()
+        self.selected_room_key = room_key # Store the selected room key
+        self.show_prop_buttons() # Proceed to showing prop buttons for this room
 
     def show_prop_buttons(self):
         """Displays buttons for props within the selected room."""
         if not self.selected_room_key:
-            return
-
-        self.clear_button_frame()
-        self.button_area_label.config(text=f"'{self.selected_room_key.capitalize()}' - Select Prop:")
-
-        room_mappings = self.prop_data.get(self.selected_room_key, {}).get("mappings", {})
-        if not room_mappings:
-             messagebox.showwarning("No Props", f"No props found for room '{self.selected_room_key}' in the mapping file.", parent=self.master)
+             # This state shouldn't be reachable if flow is correct, but good safeguard
+             print("Error: show_prop_buttons called without a selected room.")
              self.show_room_buttons()
              return
 
+        self.clear_button_frame()
+        # Update label to show the selected room context
+        display_room_name = "Morning After" if self.selected_room_key == "ma" else \
+                            "Time Machine" if self.selected_room_key == "time" else \
+                            self.selected_room_key.capitalize()
+        self.button_area_label.config(text=f"'{display_room_name}' - Select Prop:")
+
+        room_mappings = self.prop_data.get(self.selected_room_key, {}).get("mappings", {})
+        if not room_mappings:
+             # This means the mapping file has a room key but no "mappings" key or it's empty
+             messagebox.showwarning("No Props", f"No props defined for room '{display_room_name}' in the mapping file.", parent=self.master)
+             self.show_room_buttons() # Go back to room selection
+             return
+
         def get_order(item):
+            """Helper to sort props by 'order' field."""
             try:
                 return int(item[1].get('order', 9999))
             except (ValueError, TypeError):
@@ -344,7 +383,8 @@ class AudioSorterApp:
 
         sorted_props = sorted(room_mappings.items(), key=get_order)
 
-        # --- Create a scrollable area ---
+        # --- Create a scrollable area for props ---
+        # This needs to be done dynamically within this function
         canvas = tk.Canvas(self.button_frame)
         scrollbar = ttk.Scrollbar(self.button_frame, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
@@ -356,31 +396,36 @@ class AudioSorterApp:
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         # --- Place scrollable area ---
+        # Pack canvas and scrollbar *after* the label within the button_frame
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
+
 
         # Add prop buttons to the scrollable frame
         for prop_key, prop_details in sorted_props:
             display_name = prop_details.get("display", prop_key)
-            # Ensure the target directory name matches the button text EXACTLY
-            target_dir_name = display_name
+            # Ensure the target directory name matches the display name (this is what the copy function uses)
+            target_dir_name = display_name # Use display name for the folder name
             btn = ttk.Button(scrollable_frame, text=display_name,
                              command=lambda rk=self.selected_room_key, pk=prop_key, tdn=target_dir_name: self.select_prop(rk, pk, tdn),
-                             width=30)
+                             width=30) # Wider buttons for prop names
             btn.pack(pady=2, padx=10)
 
-        # Add "Back" button
+        # Add "Back" button below the scrollable area, potentially in a separate frame or after packing scroll elements
+        # Placing it in the scrollable frame means it scrolls with the buttons
         back_button = ttk.Button(scrollable_frame, text="< Back to Rooms", command=self.show_room_buttons, width=30)
         back_button.pack(pady=(15, 2), padx=10)
 
 
     def select_prop(self, room_key, prop_key, target_dir_name):
-        """Handles prop selection, asks for filename, and copies the file."""
+        """Handles prop selection, asks for filename, and copies the file for a specific room/prop."""
         if not self.current_file_path:
             messagebox.showwarning("No File", "No file is currently loaded.", parent=self.master)
+            # Maybe go back to room selection? Let's just return for now.
             return
 
         original_filename = self.current_file_path.name
+        # Ask for renaming
         new_filename_base = simpledialog.askstring(
             "Rename File (Optional)",
             f"Enter new name for:\n'{original_filename}'\n\n(Leave blank or cancel to keep original name)\nTarget: {room_key} / {target_dir_name}",
@@ -388,15 +433,16 @@ class AudioSorterApp:
         )
 
         if new_filename_base is None:
-            print("Rename cancelled.")
-            return
+            print(f"Rename cancelled for {room_key}/{prop_key}.")
+            # Stay on the current file, stay in the prop selection view
+            return # Do nothing, let user pick prop again or go back
 
         # --- Replace spaces with hyphens ---
-        new_filename_base = new_filename_base.replace(' ', '-')
+        new_filename_base = new_filename_base.strip().replace(' ', '-')
         # --- End space replacement ---
 
 
-        if not new_filename_base.strip():
+        if not new_filename_base: # Check after stripping
             final_filename = original_filename
         else:
             # Sanitize filename (remove invalid characters if any) - rudimentary
@@ -405,12 +451,14 @@ class AudioSorterApp:
             sanitized_name = "".join(c for c in new_filename_base if c not in invalid_chars)
             if not sanitized_name:
                  messagebox.showwarning("Invalid Filename", "The entered name contained only invalid characters after space replacement. Please try again.", parent=self.master)
+                 # Stay on the current file, stay in the prop selection view
                  return # Stay on the current file
 
+            # Ensure it ends with .mp3
             final_filename = sanitized_name + ".mp3" if not sanitized_name.lower().endswith(".mp3") else sanitized_name
 
 
-        # Construct target path using the exact target_dir_name from the button
+        # Construct target path using the exact target_dir_name (display name)
         target_prop_dir = self.target_base_dir / room_key / target_dir_name
         target_filepath = target_prop_dir / final_filename
 
@@ -419,24 +467,90 @@ class AudioSorterApp:
         if self.copy_file(self.current_file_path, target_filepath):
             try:
                 pygame.mixer.music.stop()
-            except pygame.error: pass
+            except pygame.error: pass # Ignore if mixer wasn't playing
 
             # Add the *original* filename to the processed set
             self.processed_files.add(self.current_file_path.name)
             self.save_processed_files()
 
-            # Re-calculate files_to_process list to exclude the newly processed file
+            # Re-calculate files_to_process list and move to the next file
             self.files_to_process = [f for f in self.all_audio_files if f.name not in self.processed_files]
             self.current_file_index = 0 # Reset index as we have a new list
 
             self.next_file()
+        # If copy failed, stay on the current file and stay in prop selection view
+        # The copy_file function shows an error message.
+
+    def process_file_for_other(self):
+        """Handles processing the current file for the special 'Other' category (renaming and copying)."""
+        if not self.current_file_path:
+            messagebox.showwarning("No File", "No file is currently loaded.", parent=self.master)
+            # Go back to room/category selection
+            self.show_room_buttons()
+            return
+
+        original_filename = self.current_file_path.name
+        # Ask for renaming, specifically for the 'Other' category
+        new_filename_base = simpledialog.askstring(
+            "Rename File (Optional)",
+            f"Enter new name for:\n'{original_filename}'\n\n(Leave blank or cancel to keep original name)\nTarget: Other",
+            parent=self.master
+        )
+
+        if new_filename_base is None:
+            print("Rename cancelled for 'Other' category.")
+            # Stay on the current file, but go back to room/category selection
+            self.show_room_buttons()
+            return
+
+        # --- Replace spaces with hyphens ---
+        new_filename_base = new_filename_base.strip().replace(' ', '-')
+        # --- End space replacement ---
+
+        if not new_filename_base: # Check after stripping
+            final_filename = original_filename
+        else:
+            # Sanitize filename (remove invalid characters if any) - rudimentary
+            invalid_chars = '<>:"/\\|?*'
+            sanitized_name = "".join(c for c in new_filename_base if c not in invalid_chars)
+            if not sanitized_name:
+                 messagebox.showwarning("Invalid Filename", "The entered name contained only invalid characters after space replacement. Please try again.", parent=self.master)
+                 # Stay on the current file, go back to room/category selection
+                 self.show_room_buttons()
+                 return # Stay on the current file
+
+            # Ensure it ends with .mp3
+            final_filename = sanitized_name + ".mp3" if not sanitized_name.lower().endswith(".mp3") else sanitized_name
+
+        # Construct target path for the "other" category
+        target_other_dir = self.target_base_dir / "other" # Hardcoded directory name
+        target_filepath = target_other_dir / final_filename
+
+        print(f"Attempting copy to 'Other': {target_filepath}")
+
+        if self.copy_file(self.current_file_path, target_filepath):
+            try:
+                pygame.mixer.music.stop()
+            except pygame.error: pass # Ignore if mixer wasn't playing
+
+            # Add the *original* filename to the processed set
+            self.processed_files.add(self.current_file_path.name)
+            self.save_processed_files()
+
+            # Re-calculate files_to_process list and move to the next file
+            self.files_to_process = [f for f in self.all_audio_files if f.name not in self.processed_files]
+            self.current_file_index = 0 # Reset index as we have a new list
+
+            self.next_file()
+        else:
+            # If copy failed, stay on the current file and go back to room/category selection
+            self.show_room_buttons()
 
 
     def copy_file(self, source_path, target_path):
         """Copies the source file to the target path, creating directories."""
         try:
             # Ensure the target directory exists. It will be created if it doesn't.
-            # This relies on the prop_dir_name (display name) matching the actual folder name.
             target_path.parent.mkdir(parents=True, exist_ok=True)
 
             if target_path.exists():
@@ -459,23 +573,29 @@ class AudioSorterApp:
         """Loads and plays the next unprocessed file."""
         # Before moving to the next file, ensure the list of files to process is up-to-date
         # based on the current state of self.processed_files.
-        # This is done in skip_file and select_prop now.
+        # This recalculation is done in skip_file, select_prop, and process_file_for_other
 
-        self.selected_room_key = None
-        self.show_room_buttons() # Always go back to Room selection for the next file
+        # Always go back to Room/Category selection for the next file
+        self.selected_room_key = None # Clear room selection state
+        self.show_room_buttons() # Display room/category buttons
 
-        if self.current_file_index < len(self.files_to_process):
+        # Check if there are files left in the *updated* list
+        if self.files_to_process:
              # Get the actual file path from the *current* list of files_to_process
+             # Use index 0 because the list is re-calculated and we start from the beginning of the new list
+            self.current_file_index = 0 # Always process the first file in the remaining list
             self.current_file_path = self.files_to_process[self.current_file_index]
             self.update_filename_display()
             self.play_current_audio()
+             # self.current_file_index is NOT incremented here; it stays 0 for the *next* call to next_file
+             # where files_to_process will be shorter if a file was processed.
         else:
             # Reached the end of the current list of unprocessed files
             # This means all files initially found have been processed
-            self.current_file_path = None
-            self.update_filename_display() # Will now show "All files processed!"
+            self.current_file_path = None # Clear the current file path
+            self.update_filename_display() # Will now show "All files processed!" or similar
             try: pygame.mixer.music.stop()
-            except pygame.error: pass
+            except pygame.error: pass # Ignore if mixer wasn't playing
             messagebox.showinfo("Finished", "All audio files in the selected directory have been processed!", parent=self.master)
             self.filename_label.config(text="All files processed!")
             self.replay_button.config(state=tk.DISABLED)
@@ -499,11 +619,12 @@ class AudioSorterApp:
 if __name__ == "__main__":
     root = tk.Tk()
     # Check if target structure's parent exists (sanity check)
-    if not TARGET_BASE_DIR_CONST.parent.parent.is_dir(): # Checks if 'admin/sync_directory' exists
-        print(f"WARNING: Expected 'admin/sync_directory' not found relative to the script's location.")
-        print(f"Script expects to be in 'tools' next to 'admin'.")
-        print(f"Target base path will be {TARGET_BASE_DIR_CONST}")
-        # Allow script to continue, it will try to create dirs later via copy_file
+    # Check if 'admin' directory exists relative to BASE_DIR
+    if not BASE_DIR / "admin":
+         print(f"WARNING: Expected 'admin' directory not found relative to the script's location.")
+         print(f"Script expects to be in 'tools' next to 'admin'.")
+         print(f"Target base path will be {TARGET_BASE_DIR_CONST}")
+         # Allow script to continue, it will try to create dirs later via copy_file
 
     if not PROP_MAPPING_FILE.is_file():
          print(f"ERROR: Prop mapping file not found: {PROP_MAPPING_FILE}")
@@ -513,7 +634,8 @@ if __name__ == "__main__":
 
     app = AudioSorterApp(root)
     # Check if app initialization failed (e.g., user cancelled dir selection or mapping load failed)
-    if app and app.master and app.master.winfo_exists():
+    # app will be None if prompt_for_source_dir returned None and app.master was destroyed
+    if app and hasattr(app, 'master') and app.master and app.master.winfo_exists():
          app.run()
     else:
         # Ensure root window is destroyed if app init failed early
