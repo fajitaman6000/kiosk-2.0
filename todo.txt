@@ -1,7 +1,7 @@
 ##############################################################################################################################
 # Test notes
 
-"View image hint" clearly isn't attractive enough to click or isn't readily apparent that it is a button
+
 Adding time should add to TTC value
 fix misplaced audio files
     atlantis help in general Other
@@ -18,6 +18,8 @@ video solutions will have to take into account cousin props as well
 
 ##############################################################################################################################
 # todo
+
+watchdog send errors to admin
 
 "currently displayed hint"
 "please select nudge frequency"

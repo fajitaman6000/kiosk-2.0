@@ -190,6 +190,12 @@ class KioskApp:
         self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
         print("[kiosk main] Help button update timer started.", flush=True)
         
+        print("[kiosk main] Initializing heartbeat thread...", flush=True)
+        self.heartbeat_stop_event = threading.Event()
+        self.heartbeat_thread = threading.Thread(target=self._send_heartbeats, daemon=True)
+        self.heartbeat_thread.start()
+        print("[kiosk main] Heartbeat thread started.", flush=True)
+        
         print("[kiosk main] KioskApp initialization complete.", flush=True)
 
     def _actual_help_button_update(self):
@@ -525,6 +531,18 @@ class KioskApp:
             print(f"[kiosk main] Error handling video process: {e}")
             log_exception(e, "Error handling video process")
         
+        try:
+            if hasattr(self, 'heartbeat_stop_event') and self.heartbeat_stop_event:
+                print("[kiosk main] Stopping heartbeat thread...", flush=True)
+                self.heartbeat_stop_event.set()  # Signal the thread to stop
+            if hasattr(self, 'heartbeat_thread') and self.heartbeat_thread.is_alive():
+                self.heartbeat_thread.join(timeout=2.0)  # Wait for thread to finish
+                if self.heartbeat_thread.is_alive():
+                    print("[kiosk main] Warning: Heartbeat thread did not terminate cleanly.", flush=True)
+        except Exception as e:
+            print(f"[kiosk main] Error stopping heartbeat thread: {e}", flush=True)
+            # log_exception(e, "Error stopping heartbeat thread")  # If logger is still active
+        
         # Stop the logger last to catch all cleanup messages
         try:
             if hasattr(self, 'logger') and self.logger:
@@ -564,6 +582,27 @@ class KioskApp:
         print("[kiosk main]run() called")
         # Run the Qt event loop 
         self.qt_app.run()
+
+    def _send_heartbeats(self):
+        # This interval should be noticeably SHORTER than HEARTBEAT_TIMEOUT_SECONDS in the watchdog
+        HEARTBEAT_INTERVAL_SECONDS = 5 
+        HEARTBEAT_MESSAGE = "[HEARTBEAT_KIOSK_ALIVE]"  # Must match HEARTBEAT_MARKER in watchdog
+
+        # Optional: Initial small delay to ensure watchdog is ready if kiosk starts super fast
+        # time.sleep(1) 
+        
+        print(f"[kiosk heartbeat] Thread started. Sending '{HEARTBEAT_MESSAGE}' every {HEARTBEAT_INTERVAL_SECONDS}s.", flush=True)
+        try:
+            while not self.heartbeat_stop_event.wait(HEARTBEAT_INTERVAL_SECONDS):  # wait returns True if event set
+                if self.is_closing:  # Check if application is closing
+                    break
+                # We print directly to stdout. The watchdog will capture this.
+                print(HEARTBEAT_MESSAGE, flush=True)
+                # print(f"[kiosk heartbeat] Sent heartbeat.", flush=True)  # Optional: for kiosk's own logs
+        except Exception as e:
+            print(f"[kiosk heartbeat] Error in heartbeat loop: {e}", flush=True)
+        finally:
+            print("[kiosk heartbeat] Thread stopping.", flush=True)
 
 def main():
     """Main entry point for the kiosk application."""
