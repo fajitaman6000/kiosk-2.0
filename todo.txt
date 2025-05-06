@@ -3,11 +3,15 @@
 
 
 ##############################################################################################################################
-# pre-beta testing
+# beta testing
  
 audio hints don't have cousin handling for previewing and sending
 
 watchdog launcher blocks message_handler communications
+
+hint contents
+    add images to the manual hint library
+    !film video solutions
 
 ##############################################################################################################################
 # todo
@@ -18,13 +22,7 @@ Hint text doesn't respect newlines
 "please select nudge frequency"
 auto create folders for hint contents
 perhaps restart microphone detection when attempting every time
-reboot kiosk application
-
-hint contents
-    import/move over audio hints
-    add image hints as custom hints
-    add images to the manual hint library
-    !film video solutions
+reboot kiosk application (watchdog command if it listens to message_handler)
 
 rebooter added to kiosk app
 

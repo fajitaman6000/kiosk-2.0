@@ -538,7 +538,7 @@ class SavedHintsPanel:
             print(f"[saved hints panel]No mapping found for {prop_display_name}")
             return
         
-        # Get hint data
+        # Get hint data and the prop_key where it was found
         hint_data, prop_key = self.get_hint_data(hint_name, original_name)
                 
         if hint_data:
@@ -551,7 +551,7 @@ class SavedHintsPanel:
                 try:
                     image_path = self.get_image_path(
                         self.current_room,
-                        original_name,
+                        prop_key,
                         hint_data['image']
                     )
                     print(f"[saved hints panel] Trying to load image: {hint_data['image']}")
@@ -580,11 +580,11 @@ class SavedHintsPanel:
             text_widget.insert('1.0', hint_data.get('text', ''))
             text_widget.config(state='disabled')
             
-            # Update send button command - get the popup widget from image_label's parent
+            # Update send button command
             popup = image_label.winfo_toplevel()
-            send_button.config(command=lambda: self.send_hint_from_popup(popup, hint_data))
+            send_button.config(command=lambda: self.send_hint_from_popup(popup, hint_data, prop_key))
 
-    def navigate_to_hint(self, popup, current_index, direction, image_label, text_widget, title_label, prev_button, next_button, listbox):
+    def navigate_to_hint(self, popup, current_index, direction, image_label, text_widget, title_label, prev_button, next_button, listbox, send_button):
         """Navigate to the previous or next hint and update the current popup"""
         if direction == "prev":
             new_index = current_index - 1
@@ -619,7 +619,7 @@ class SavedHintsPanel:
                     try:
                         image_path = self.get_image_path(
                             self.current_room,
-                            original_name,
+                            prop_key,
                             hint_data['image']
                         )
                         print(f"[saved hints panel] Trying to load image: {hint_data['image']}")
@@ -654,9 +654,12 @@ class SavedHintsPanel:
                 
                 # Update the buttons' commands to use the new index
                 prev_button.config(command=lambda: self.navigate_to_hint(
-                    popup, new_index, "prev", image_label, text_widget, title_label, prev_button, next_button, listbox))
+                    popup, new_index, "prev", image_label, text_widget, title_label, prev_button, next_button, listbox, send_button))
                 next_button.config(command=lambda: self.navigate_to_hint(
-                    popup, new_index, "next", image_label, text_widget, title_label, prev_button, next_button, listbox))
+                    popup, new_index, "next", image_label, text_widget, title_label, prev_button, next_button, listbox, send_button))
+
+                # UPDATE THE SEND BUTTON'S COMMAND for the new hint
+                send_button.config(command=lambda: self.send_hint_from_popup(popup, hint_data, prop_key))
 
     def show_hint_popup(self, hint_name, original_name, prop_key, hint_data, hint_index=None):
         """Show popup window with hint preview"""
@@ -764,7 +767,7 @@ class SavedHintsPanel:
             try:
                 image_path = self.get_image_path(
                     self.current_room,
-                    original_name,
+                    prop_key,
                     hint_data['image']
                 )
                 print(f"[saved hints panel] Trying to load image: {hint_data['image']}")
@@ -841,7 +844,7 @@ class SavedHintsPanel:
             text="<",
             width=2,
             command=lambda: self.navigate_to_hint(
-                popup, hint_index, "prev", image_label, text_widget, title_label, prev_button, next_button, hint_listbox
+                popup, hint_index, "prev", image_label, text_widget, title_label, prev_button, next_button, hint_listbox, send_button
             )
         )
         prev_button.pack(side='left', padx=2)
@@ -852,7 +855,7 @@ class SavedHintsPanel:
             text=">",
             width=2,
             command=lambda: self.navigate_to_hint(
-                popup, hint_index, "next", image_label, text_widget, title_label, prev_button, next_button, hint_listbox
+                popup, hint_index, "next", image_label, text_widget, title_label, prev_button, next_button, hint_listbox, send_button
             )
         )
         next_button.pack(side='left', padx=2)
@@ -868,7 +871,7 @@ class SavedHintsPanel:
         send_button = ttk.Button(
             button_frame,
             text="Send Hint",
-            command=lambda: self.send_hint_from_popup(popup, hint_data)
+            command=lambda: self.send_hint_from_popup(popup, hint_data, prop_key)
         )
         send_button.pack(side='right', padx=5)
         
@@ -877,7 +880,7 @@ class SavedHintsPanel:
                           lambda event: self.on_hint_listbox_select(
                               event, image_label, text_widget, title_label, hint_listbox, send_button))
 
-    def send_hint_from_popup(self, popup, hint_data):
+    def send_hint_from_popup(self, popup, hint_data, matched_prop_key):
         """Send hint from popup and close the window"""
         # Prepare hint data
         send_data = {'text': hint_data.get('text', '')}
@@ -885,69 +888,25 @@ class SavedHintsPanel:
         # Add image path if present
         if hint_data.get('image'):
             try:
-                # Get the proper prop key from our mapping
-                prop_display_name = self.prop_var.get()
-                original_name = self.prop_data_mapping.get(prop_display_name)
-                
-                if not original_name:
-                    print(f"[saved hints panel] No mapping found for {prop_display_name}, cannot locate image")
-                else:
-                    # Get the current selected hint name from title
-                    selection = None
-                    # Find all titles in the popup window
-                    titles = [w for w in popup.winfo_children() if isinstance(w, ttk.Frame)]
-                    for frame in titles:
-                        for child in frame.winfo_children():
-                            if isinstance(child, ttk.Label) and child.cget('font') == ('Arial', 12, 'bold'):
-                                hint_name = child.cget('text')
-                                print(f"[saved hints panel] Found selected hint: {hint_name}")
-                                selection = hint_name
-                                break
-                        if selection:
-                            break
-                                
-                    # Get the actual prop_key that the hint belongs to
-                    _, matched_prop_key = self.get_hint_data(selection, original_name)
+                # We now directly use the passed matched_prop_key.
+                if matched_prop_key:
+                    image_path = self.get_image_path(
+                        self.current_room,
+                        matched_prop_key,
+                        hint_data['image']
+                    )
+                    print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
+                    print(f"[saved hints panel] Full image path: {image_path}")
                     
-                    if matched_prop_key:
-                        # Get display name for matched prop key to find the correct folder
-                        room_key = None
-                        room_map = {
-                            3: "wizard",
-                            1: "casino",
-                            2: "ma",
-                            5: "haunted",
-                            4: "zombie",
-                            6: "atlantis",
-                            7: "time"
-                        }
-                        if self.current_room in room_map:
-                            room_key = room_map[self.current_room]
-                        
-                        prop_name_to_use = matched_prop_key
-                        if room_key and room_key in self.prop_name_mappings:
-                            if matched_prop_key in self.prop_name_mappings[room_key]['mappings']:
-                                display_name = self.prop_name_mappings[room_key]['mappings'][matched_prop_key].get('display', matched_prop_key)
-                                prop_name_to_use = display_name
-                    
-                        image_path = self.get_image_path(
-                            self.current_room,
-                            prop_name_to_use,
-                            hint_data['image']
-                        )
-                        print(f"[saved hints panel] Sending hint with image: {hint_data['image']}")
-                        print(f"[saved hints panel] Full image path: {image_path}")
-                        
-                        if image_path and os.path.exists(image_path):
-                            print(f"[saved hints panel] Image found at path: {image_path}")
-                            # Get relative path from sync_directory
-                            rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
-                            send_data['image_path'] = rel_path
-                            print(f"[saved hints panel] Using relative image path: {rel_path}")
-                        else:
-                            print(f"[saved hints panel] Image not found at path: {image_path}")
+                    if image_path and os.path.exists(image_path):
+                        print(f"[saved hints panel] Image found at path: {image_path}")
+                        rel_path = os.path.relpath(image_path, os.path.join(os.path.dirname(__file__), "sync_directory"))
+                        send_data['image_path'] = rel_path
+                        print(f"[saved hints panel] Using relative image path: {rel_path}")
                     else:
-                        print(f"[saved hints panel] No matching prop key found for hint")
+                        print(f"[saved hints panel] Image not found at path: {image_path}")
+                else:
+                    print(f"[saved hints panel] No matched_prop_key provided for hint, cannot locate image.")
             except Exception as e:
                 print(f"[saved hints panel] Error getting hint image path for sending: {e}")
                 import traceback
