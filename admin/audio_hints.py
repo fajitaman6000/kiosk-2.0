@@ -114,7 +114,7 @@ class AudioHints:
         props_list = []
         
         room_key = self.ROOM_MAP.get(room_name)
-        print(f"[audio hints]Room name: {room_name}, Room key: {room_key}")
+        # print(f"[audio hints]Room name: {room_name}, Room key: {room_key}") # Minor debug print
         
         if room_key and room_key in prop_mappings:
             # Sort props by order like in video solutions
@@ -171,25 +171,25 @@ class AudioHints:
             
             # If this prop has a cousin value, find all props with the same cousin value
             if cousin_value:
-                for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
-                    if info.get('cousin') == cousin_value and prop_key != original_name:
-                        props_to_check.append(prop_key)
-                print(f"[audio hints]Found cousin props: {props_to_check}")
+                for prop_key_iter, info_iter in self.prop_name_mappings[room_key]['mappings'].items():
+                    if info_iter.get('cousin') == cousin_value and prop_key_iter != original_name:
+                        props_to_check.append(prop_key_iter)
+                # print(f"[audio hints]Found cousin props: {props_to_check}") # Minor debug print
         
         # Update available audio files from all props
         self.available_audio_files = []
         
         # Check for audio files for each prop (original and cousins)
         for prop_to_check in props_to_check:
-            # Get the display name for this prop
-            display_name = self.get_display_name(room_key, prop_to_check)
-            prop_path = os.path.join(self.audio_root, self.current_room, display_name)
+            # Get the display name for this prop (this is the owner's display name)
+            owner_display_name = self.get_display_name(room_key, prop_to_check)
+            prop_path = os.path.join(self.audio_root, self.current_room, owner_display_name)
             
             if os.path.exists(prop_path):
-                audio_files = [f"{display_name}:{audio_file}" for audio_file in os.listdir(prop_path) 
-                              if audio_file.lower().endswith('.mp3')]
-                self.available_audio_files.extend(audio_files)
-                print(f"[audio hints]Found audio files for prop '{prop_to_check}': {len(audio_files)}")
+                audio_files_for_owner = [f"{owner_display_name}:{audio_filename}" for audio_filename in os.listdir(prop_path) 
+                              if audio_filename.lower().endswith('.mp3')]
+                self.available_audio_files.extend(audio_files_for_owner)
+                # print(f"[audio hints]Found audio files for prop '{prop_to_check}' (owner: {owner_display_name}): {len(audio_files_for_owner)}") # Minor debug print
         
         # Sort the combined list
         self.available_audio_files = sorted(self.available_audio_files)
@@ -214,19 +214,20 @@ class AudioHints:
     
     def show_audio_popup(self, original_name):
         """Show popup window with audio files browser"""
-        # Get the display name for the selected prop
+        # Get the display name for the selected prop (the one chosen in the main UI dropdown)
+        # This 'selected_prop_display_name_for_title' is for the popup's title and potential fallback.
         room_key = self.ROOM_MAP.get(self.current_room)
-        display_name = self.get_display_name(room_key, original_name)
-        
+        selected_prop_display_name_for_title = self.get_display_name(room_key, original_name)
+
         # Create popup window
         popup = tk.Toplevel(self.frame)
-        popup.title(f"Audio Files: {display_name}")
+        popup.title(f"Audio Files: {selected_prop_display_name_for_title}") # Title uses the prop selected in dropdown
         popup.transient(self.frame)
         popup.grab_set()
-        
+
         # Make it modal
         popup.focus_set()
-        
+
         # Set size and position
         popup_width = 600
         popup_height = 450
@@ -235,24 +236,24 @@ class AudioHints:
         x = (screen_width - popup_width) // 2
         y = (screen_height - popup_height) // 2
         popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
-        
+
         # Create main content frame
         main_frame = ttk.Frame(popup)
         main_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
+
         # Create left panel for audio list
-        left_panel = ttk.Frame(main_frame, width=180)
+        left_panel = ttk.Frame(main_frame, width=220) # Adjusted width for potentially longer entries
         left_panel.pack(side='left', fill='y', padx=(0, 10))
         left_panel.pack_propagate(False)  # Keep fixed width
-        
+
         # Add list label
         list_label = ttk.Label(left_panel, text="Available Audio Files:", font=('Arial', 10, 'bold'))
         list_label.pack(anchor='w', pady=(0, 5))
-        
+
         # Create audio listbox with scrollbar
         list_frame = ttk.Frame(left_panel)
         list_frame.pack(fill='both', expand=True)
-        
+
         audio_listbox = tk.Listbox(
             list_frame,
             selectmode=tk.SINGLE,
@@ -260,70 +261,69 @@ class AudioHints:
             height=20
         )
         audio_listbox.pack(side='left', fill='both', expand=True)
-        
+
         list_scrollbar = ttk.Scrollbar(list_frame, command=audio_listbox.yview)
         list_scrollbar.pack(side='right', fill='y')
         audio_listbox.config(yscrollcommand=list_scrollbar.set)
-        
+
         # Create right panel for audio details and controls
         right_panel = ttk.Frame(main_frame)
         right_panel.pack(side='left', fill='both', expand=True)
-        
+
         # Check if there are any audio files available
         if not self.available_audio_files:
             # Display message when no audio files are available
             no_audio_label = ttk.Label(
-                right_panel, 
+                right_panel,
                 text="No audio files available for this prop",
                 font=('Arial', 12),
                 foreground='gray'
             )
             no_audio_label.pack(expand=True, pady=20)
-            
+
             # Add close button at the bottom
-            button_frame = ttk.Frame(popup, height=50)
-            button_frame.pack(fill='x', padx=10, pady=10)
-            
-            close_button = ttk.Button(
-                button_frame,
+            button_frame_popup = ttk.Frame(popup, height=50) # Renamed to avoid conflict
+            button_frame_popup.pack(fill='x', padx=10, pady=10)
+
+            close_button_popup = ttk.Button( # Renamed to avoid conflict
+                button_frame_popup,
                 text="Close",
                 command=popup.destroy
             )
-            close_button.pack(side='right', padx=5)
-            
+            close_button_popup.pack(side='right', padx=5)
+
             return
-        
-        # Fill listbox with available audio files - extract just the filename
-        for audio_file in self.available_audio_files:
-            # Split the prop display name from the filename
-            parts = audio_file.split(':', 1)
-            if len(parts) > 1:
-                prop_display, filename = parts
-                # Add the prop display name as a prefix to distinguish cousin files
-                audio_listbox.insert(tk.END, f"{filename}")
-            else:
-                audio_listbox.insert(tk.END, audio_file)
-        
+
+        # Fill listbox with available audio files - Display only the filename in the listbox
+        # Each entry in self.available_audio_files is "OwnerDisplayName:filename.mp3"
+        for audio_file_entry in self.available_audio_files:
+            # Split to get the filename part for display
+            parts = audio_file_entry.split(':', 1)
+            filename_only_for_display = parts[1] if len(parts) > 1 else parts[0]
+
+            # This is the line that inserts just the filename into the listbox display
+            audio_listbox.insert(tk.END, filename_only_for_display) # <-- This line is the change
+
         # Select the first audio file
         if self.available_audio_files:
             audio_listbox.selection_set(0)
             audio_listbox.see(0)
-        
+
         # Add title label
         title_frame = ttk.Frame(right_panel)
         title_frame.pack(fill='x', pady=5)
-        
+
         title_label = ttk.Label(title_frame, text="Selected Audio File:", font=('Arial', 12, 'bold'))
         title_label.pack(pady=5)
-        
+
         # Add selected file name label
         file_name_label = ttk.Label(right_panel, text="")
         file_name_label.pack(pady=10)
-        
+
         # Add audio controls frame
         controls_frame = ttk.Frame(right_panel)
         controls_frame.pack(pady=20)
-        
+
         # Preview button
         preview_button = ttk.Button(
             controls_frame,
@@ -332,7 +332,7 @@ class AudioHints:
             state='disabled'
         )
         preview_button.pack(side='left', padx=5)
-        
+
         # Send button
         send_button = ttk.Button(
             controls_frame,
@@ -341,20 +341,20 @@ class AudioHints:
             state='disabled'
         )
         send_button.pack(side='left', padx=5)
-        
+
         # Add navigation and close buttons at the bottom
-        button_frame = ttk.Frame(popup, height=50)
-        button_frame.pack(fill='x', padx=10, pady=10)
-        button_frame.pack_propagate(False)  # Prevent the frame from shrinking
-        
+        button_frame_bottom = ttk.Frame(popup, height=50) # Renamed for clarity
+        button_frame_bottom.pack(fill='x', padx=10, pady=10)
+        button_frame_bottom.pack_propagate(False)  # Prevent the frame from shrinking
+
         # Close button
-        close_button = ttk.Button(
-            button_frame,
+        close_button_bottom = ttk.Button( # Renamed for clarity
+            button_frame_bottom,
             text="Close",
             command=popup.destroy
         )
-        close_button.pack(side='right', padx=5)
-        
+        close_button_bottom.pack(side='right', padx=5)
+
         # Create function to handle audio selection
         def on_audio_select(event):
             selection = audio_listbox.curselection()
@@ -363,42 +363,71 @@ class AudioHints:
                 send_button.config(state='disabled')
                 file_name_label.config(text="")
                 return
-                
-            display_audio_name = audio_listbox.get(selection[0])
-            file_name_label.config(text=display_audio_name)
-            
-            # Extract prop display name and filename
-            if ": " in display_audio_name:
-                prop_display, audio_name = display_audio_name.split(": ", 1)
+
+            # Get the index of the selected item from the listbox
+            selected_index = selection[0]
+
+            # Retrieve the original full string ("OwnerDisplayName:filename.mp3")
+            # from the source list (self.available_audio_files) using the index.
+            # The listbox only displays the filename, but we need the owner info
+            # to construct the correct file path.
+            full_audio_entry = ""
+            if 0 <= selected_index < len(self.available_audio_files):
+                 full_audio_entry = self.available_audio_files[selected_index]
             else:
-                prop_display = display_name
-                audio_name = display_audio_name
-            
-            # Set current audio file path
-            current_audio_file = os.path.join(
+                 # Should not happen if selection is valid, but handle defensively
+                 print(f"[audio hints] Error: Selected index {selected_index} out of bounds for available_audio_files.")
+                 preview_button.config(state='disabled')
+                 send_button.config(state='disabled')
+                 file_name_label.config(text="Error")
+                 return
+
+
+            actual_owner_display_name_for_path = ""
+            actual_filename_only = ""
+
+            try:
+                # Split the full string to get owner and filename for path construction
+                actual_owner_display_name_for_path, actual_filename_only = full_audio_entry.split(':', 1)
+            except ValueError:
+                # Fallback if the entry in self.available_audio_files isn't in expected format
+                # This is less likely now if self.available_audio_files is populated correctly
+                print(f"[audio hints] Warning: Could not parse full entry '{full_audio_entry}' as 'owner:file'.")
+                # Assuming the full entry is just the filename in this unexpected case
+                actual_owner_display_name_for_path = selected_prop_display_name_for_title # Use the prop selected in dropdown as fallback owner
+                actual_filename_only = full_audio_entry
+
+            # Update the file name label to show the actual filename
+            file_name_label.config(text=actual_filename_only)
+
+            # Construct the actual file path using the retrieved owner and filename
+            current_audio_file_path = os.path.join(
                 self.audio_root,
                 self.current_room,
-                prop_display,
-                audio_name
+                actual_owner_display_name_for_path, # Use the owner's display name for the directory
+                actual_filename_only # Use the actual filename
             )
-            
+
             # Enable buttons
             preview_button.config(
                 state='normal',
-                command=lambda: self.preview_audio_file(current_audio_file)
+                command=lambda: self.preview_audio_file(current_audio_file_path)
             )
-            
+
             send_button.config(
                 state='normal',
-                command=lambda: self.send_audio_file(popup, current_audio_file)
+                command=lambda: self.send_audio_file(popup, current_audio_file_path)
             )
-        
+
         # Bind audio selection event
         audio_listbox.bind('<<ListboxSelect>>', on_audio_select)
-        
+
         # Trigger initial selection
         if self.available_audio_files:
-            on_audio_select(None)
+            # Trigger the selection event to populate details for the first item
+            # Need to simulate a selection event or call the handler directly with an event-like object
+            # Calling directly is simpler
+            on_audio_select(None) # Call to populate details for the initially selected item
     
     def preview_audio_file(self, audio_file):
         """Play the selected audio file"""
@@ -432,57 +461,50 @@ class AudioHints:
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its name"""
-        print(f"[audio hints]Trying to select prop: {prop_name}")
+        # print(f"[audio hints]Trying to select prop: {prop_name}") # Minor debug print
         
         if not self.current_room:
-            print("[audio hints]No current room")
+            # print("[audio hints]No current room") # Minor debug print
             return
             
         room_key = self.ROOM_MAP.get(self.current_room)
-        #print(f"[audio hints]Current room: {self.current_room}, Room key: {room_key}")
         
         if not room_key:
-            print(f"[audio hints]No room key for {self.current_room}")
+            # print(f"[audio hints]No room key for {self.current_room}") # Minor debug print
             return
 
         # Find display name that corresponds to this prop key
-        for display_name, key in self.prop_data_mapping.items():
-            if key.lower() == prop_name.lower():
-                #print(f"[audio hints]Found matching prop: {display_name}")
-                self.prop_dropdown.set(display_name)
+        for display_name_iter, key_iter in self.prop_data_mapping.items():
+            if key_iter.lower() == prop_name.lower():
+                self.prop_dropdown.set(display_name_iter)
                 self.on_prop_select(None)
                 return
         
-        print(f"[audio hints]No matching prop found for {prop_name}")
+        # print(f"[audio hints]No matching prop found for {prop_name}") # Minor debug print
 
     def refresh_audio_files(self):
         """Refresh audio files for the selected prop"""
-        # Remember currently selected prop
-        selected_display_name = self.prop_var.get()
+        selected_display_name_before_refresh = self.prop_var.get()
         
-        # Refresh prop list for current room
         if self.current_room:
             self.update_room(self.current_room)
             
-            # Re-select the previously selected prop if it still exists
-            if selected_display_name:
+            if selected_display_name_before_refresh:
                 props_list = self.prop_dropdown['values']
-                if selected_display_name in props_list:
-                    self.prop_dropdown.set(selected_display_name)
-                    self.on_prop_select(None) # Trigger audio files update
+                if selected_display_name_before_refresh in props_list:
+                    self.prop_dropdown.set(selected_display_name_before_refresh)
+                    self.on_prop_select(None) 
                 else:
-                    # Prop no longer exists, clear selection
                     self.prop_var.set('')
                     self.available_audio_files = []
                     self.open_button.config(state='disabled')
-                    print(f"[audio hints] Previously selected prop '{selected_display_name}' no longer found after refresh.")
+                    print(f"[audio hints] Previously selected prop '{selected_display_name_before_refresh}' no longer found after refresh.")
 
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
         try:
             with open("prop_name_mapping.json", 'r') as f:
                 self.prop_name_mappings = json.load(f)
-            #print("[audio hints]Loaded prop name mappings successfully")
         except Exception as e:
             print(f"[audio hints]Error loading prop name mappings: {e}")
             self.prop_name_mappings = {}

@@ -4,8 +4,6 @@
 
 ##############################################################################################################################
 # beta testing
- 
-audio hints don't have cousin handling for previewing and sending
 
 watchdog launcher blocks message_handler communications
 
