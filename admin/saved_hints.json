@@ -402,7 +402,8 @@
             },
             "Ignition": {
                 "timing": {
-                    "text": "The ignition coils must fire at a precise timing to lock in. The green sections indicate proper ignition timing for each coil. Press the button and press it again when the coil fills up to the green line."
+                    "text": "The ignition coils must fire at a precise timing to lock in. The green sections indicate proper ignition timing for each coil. Press the button and press it again when the coil fills up to the green line.",
+                    "image": "ignition.png"
                 }
             },
             "Skull Button": {
@@ -455,6 +456,20 @@
                 "small ball goes in table": {
                     "text": "The ball that came from the skull goes into the DESK.",
                     "image": "skull with eye.png"
+                }
+            },
+            "Color Prism": {
+                "timing": {
+                    "text": "The big red button must be pressed every time the blinking piece of the color wheel on the front of the desk matches the color inside the bookshelf.\n\nHave one person watch the colors and one person press the button. Press once and firmly. If you mess up, you start over."
+                }
+            },
+            "Calculometer": {
+                "your goal is": {
+                    "text": "Your goal is to get the two numbers on the calculometer to match. If you found a calculator, it may help.",
+                    "image": "calculometer.png"
+                },
+                "solution": {
+                    "text": "Reduce to 550.\nMultiply by 3.\nMultiply by 5.\nFrom here, keep pressing -1500 until you reach the desired number."
                 }
             }
         },

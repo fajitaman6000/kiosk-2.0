@@ -2,10 +2,6 @@
 # Test notes
 
 
-Adding time should add to TTC value
-fix misplaced audio files
-    atlantis help in general Other
-    memory hotel has bottles hint
 
 ##############################################################################################################################
 # beta testing
