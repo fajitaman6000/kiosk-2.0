@@ -6,7 +6,6 @@ Adding time should add to TTC value
 fix misplaced audio files
     atlantis help in general Other
     memory hotel has bottles hint
-    ignore-contents-of-drawers.mp3 should be in ma, not casino
 
 ##############################################################################################################################
 # beta testing
@@ -15,7 +14,7 @@ hint contents
     add images to the manual hint library
     !film video solutions
 
-"Other" category as prop for hints
+video solutions will have to take into account cousin props as well
 
 ##############################################################################################################################
 # todo
