@@ -9,11 +9,11 @@ hint contents
     add images to the manual hint library
     !film video solutions
 
+"Other" category as prop for hints
+
 ##############################################################################################################################
 # todo
 
-Hint text doesn't respect newlines
-"Other" category as prop for hints
 "currently displayed hint"
 "please select nudge frequency"
 auto create folders for hint contents

@@ -973,6 +973,7 @@ class Overlay:
                 return
 
             text = data.get('text', "")
+            text = text.replace('\n', '<br>') #respect newlines
             room_number = data.get('room_number')
 
             # 1. First, ensure the background remains visible

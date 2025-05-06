@@ -46,7 +46,7 @@
             },
             "Buzzwire": {
                 "operation": {
-                    "text": "Ever played \"Operation\"? Keep the buzzer away from the metal pipes and try to get it to the end. If the light turns red you must go all the way back to restart it.",
+                    "text": "Ever played \"Operation\"? Keep the buzzer away from the metal pipes and try to get it to the end. \n\nIf the light turns red you must go all the way back to restart it.",
                     "image": "buzzwire instructions.png"
                 },
                 "fast then slow": {
