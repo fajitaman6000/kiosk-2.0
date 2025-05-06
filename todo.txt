@@ -12,6 +12,8 @@ hint contents
 
 video solutions will have to take into account cousin props as well
 
+receiving new hint should clear currently viewed image
+
 ##############################################################################################################################
 # todo
 
