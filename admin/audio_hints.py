@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk
 import json
 
-class ClassicAudioHints:
+class AudioHints:
     # Room mapping dictionary to convert room names to their canonical forms
     ROOM_MAP = {
         "wizard": "wizard",
@@ -19,7 +19,7 @@ class ClassicAudioHints:
     }
 
     def __init__(self, parent, room_change_callback, app):
-        #print("[classic audio hints]=== INITIALIZING CLASSIC AUDIO HINTS ===")
+        #print("[audio hints]=== INITIALIZING audio hints ===")
         self.app = app
         self.parent = parent
         self.room_change_callback = room_change_callback
@@ -31,7 +31,7 @@ class ClassicAudioHints:
         pygame.mixer.init()
         
         # Create main frame with fixed width
-        self.frame = tk.LabelFrame(parent, text="Audio Hints", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
+        self.frame = tk.LabelFrame(parent, text="Play Audio", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
         self.frame.pack(side='left', padx=10, pady=0, anchor='sw')
         
         # Create fixed-width inner container
@@ -83,13 +83,13 @@ class ClassicAudioHints:
         # Add a mapping to store prop_key for each display item
         self.prop_data_mapping = {}
         
-        #print("[classic audio hints]=== CLASSIC AUDIO HINTS INITIALIZATION COMPLETE ===\n")
+        #print("[audio hints]=== audio hints INITIALIZATION COMPLETE ===\n")
 
         self.load_prop_name_mappings()
 
     def update_room(self, room_name):
         """Update the prop list for the selected room"""
-        #print(f"[classic audio hints]=== UPDATING AUDIO HINTS FOR {room_name} ===")
+        #print(f"[audio hints]=== UPDATING AUDIO HINTS FOR {room_name} ===")
         
         # Convert room_name to lowercase for consistent comparison
         room_name = room_name.lower() if room_name else None
@@ -107,14 +107,14 @@ class ClassicAudioHints:
             with open('prop_name_mapping.json', 'r') as f:
                 prop_mappings = json.load(f)
         except Exception as e:
-            print(f"[classic audio hints]Error loading prop mappings: {e}")
+            print(f"[audio hints]Error loading prop mappings: {e}")
             prop_mappings = {}
 
         # Get room-specific props if room is assigned
         props_list = []
         
         room_key = self.ROOM_MAP.get(room_name)
-        print(f"[classic audio hints]Room name: {room_name}, Room key: {room_key}")
+        print(f"[audio hints]Room name: {room_name}, Room key: {room_key}")
         
         if room_key and room_key in prop_mappings:
             # Sort props by order like in video solutions
@@ -154,7 +154,7 @@ class ClassicAudioHints:
         # Get the original prop key from our mapping
         original_name = self.prop_data_mapping.get(selected_display_name)
         if not original_name:
-            print(f"[classic audio hints]No mapping found for {selected_display_name}")
+            print(f"[audio hints]No mapping found for {selected_display_name}")
             return
         
         # Get the room key
@@ -174,7 +174,7 @@ class ClassicAudioHints:
                 for prop_key, info in self.prop_name_mappings[room_key]['mappings'].items():
                     if info.get('cousin') == cousin_value and prop_key != original_name:
                         props_to_check.append(prop_key)
-                print(f"[classic audio hints]Found cousin props: {props_to_check}")
+                print(f"[audio hints]Found cousin props: {props_to_check}")
         
         # Update available audio files from all props
         self.available_audio_files = []
@@ -189,7 +189,7 @@ class ClassicAudioHints:
                 audio_files = [f"{display_name}:{audio_file}" for audio_file in os.listdir(prop_path) 
                               if audio_file.lower().endswith('.mp3')]
                 self.available_audio_files.extend(audio_files)
-                print(f"[classic audio hints]Found audio files for prop '{prop_to_check}': {len(audio_files)}")
+                print(f"[audio hints]Found audio files for prop '{prop_to_check}': {len(audio_files)}")
         
         # Sort the combined list
         self.available_audio_files = sorted(self.available_audio_files)
@@ -206,7 +206,7 @@ class ClassicAudioHints:
         # Get original prop key using our mapping
         original_name = self.prop_data_mapping.get(selected_display_name)
         if not original_name:
-            print(f"[classic audio hints]No mapping found for {selected_display_name}")
+            print(f"[audio hints]No mapping found for {selected_display_name}")
             return
         
         # Show popup with audio browser
@@ -412,7 +412,7 @@ class ClassicAudioHints:
     def send_audio_file(self, popup, audio_file):
         """Send the selected audio hint and close the popup"""
         if audio_file and os.path.exists(audio_file):
-            print(f"[classic audio hints]Sending audio hint: {audio_file}")
+            print(f"[audio hints]Sending audio hint: {audio_file}")
 
             # Construct relative audio path
             relative_path = os.path.relpath(audio_file, start=self.audio_root)
@@ -421,39 +421,39 @@ class ClassicAudioHints:
             computer_name = self.app.interface_builder.selected_kiosk
             if computer_name: # check to make sure there is even a selected computer
                 self.app.network_handler.send_audio_hint_command(computer_name, relative_path)
-                print(f"[classic audio hints]Sent audio hint to {computer_name}: {relative_path}")
+                print(f"[audio hints]Sent audio hint to {computer_name}: {relative_path}")
             else:
-                print(f"[classic audio hints]No kiosk selected, cannot send audio hint")
+                print(f"[audio hints]No kiosk selected, cannot send audio hint")
 
             # Close the popup
             popup.destroy()
         else:
-            print(f"[classic audio hints]Cannot send audio hint - file does not exist: {audio_file}")
+            print(f"[audio hints]Cannot send audio hint - file does not exist: {audio_file}")
 
     def select_prop_by_name(self, prop_name):
         """Try to select a prop by its name"""
-        print(f"[classic audio hints]Trying to select prop: {prop_name}")
+        print(f"[audio hints]Trying to select prop: {prop_name}")
         
         if not self.current_room:
-            print("[classic audio hints]No current room")
+            print("[audio hints]No current room")
             return
             
         room_key = self.ROOM_MAP.get(self.current_room)
-        #print(f"[classic audio hints]Current room: {self.current_room}, Room key: {room_key}")
+        #print(f"[audio hints]Current room: {self.current_room}, Room key: {room_key}")
         
         if not room_key:
-            print(f"[classic audio hints]No room key for {self.current_room}")
+            print(f"[audio hints]No room key for {self.current_room}")
             return
 
         # Find display name that corresponds to this prop key
         for display_name, key in self.prop_data_mapping.items():
             if key.lower() == prop_name.lower():
-                #print(f"[classic audio hints]Found matching prop: {display_name}")
+                #print(f"[audio hints]Found matching prop: {display_name}")
                 self.prop_dropdown.set(display_name)
                 self.on_prop_select(None)
                 return
         
-        print(f"[classic audio hints]No matching prop found for {prop_name}")
+        print(f"[audio hints]No matching prop found for {prop_name}")
 
     def refresh_audio_files(self):
         """Refresh audio files for the selected prop"""
@@ -475,16 +475,16 @@ class ClassicAudioHints:
                     self.prop_var.set('')
                     self.available_audio_files = []
                     self.open_button.config(state='disabled')
-                    print(f"[classic audio hints] Previously selected prop '{selected_display_name}' no longer found after refresh.")
+                    print(f"[audio hints] Previously selected prop '{selected_display_name}' no longer found after refresh.")
 
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
         try:
             with open("prop_name_mapping.json", 'r') as f:
                 self.prop_name_mappings = json.load(f)
-            #print("[classic audio hints]Loaded prop name mappings successfully")
+            #print("[audio hints]Loaded prop name mappings successfully")
         except Exception as e:
-            print(f"[classic audio hints]Error loading prop name mappings: {e}")
+            print(f"[audio hints]Error loading prop name mappings: {e}")
             self.prop_name_mappings = {}
 
     def get_display_name(self, room_key, prop_name):

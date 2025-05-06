@@ -3,7 +3,7 @@ from tkinter import ttk, filedialog
 import time
 from video_client import VideoClient
 from audio_client import AudioClient
-from classic_audio_hints import ClassicAudioHints
+from audio_hints import AudioHints
 from setup_stats_panel import setup_stats_panel, update_volume_meter
 from hint_functions import save_manual_hint, clear_manual_hint, send_hint
 from admin_audio_manager import AdminAudioManager
@@ -254,7 +254,7 @@ class AdminInterfaceBuilder:
         self.hint_manager.show_hint_manager() # call the show method
 
     def setup_audio_hints(self):
-        """Set up the Classic Audio Hints panel"""
+        """Set up the audio hints panel"""
         #print("[interface builder]=== AUDIO HINTS SETUP START ===")
         
         def on_room_change(room_name):
@@ -280,9 +280,9 @@ class AdminInterfaceBuilder:
                     self.audio_hints.update_room(room_dirs[room_num])
             print("[interface builder]=== ROOM CHANGE CALLBACK END ===\n")
         
-        # Create ClassicAudioHints instance
-        #print("[interface builder]Creating new ClassicAudioHints instance...")
-        self.audio_hints = ClassicAudioHints(self.stats_frame, on_room_change, self.app)
+        # Create AudioHints instance
+        #print("[interface builder]Creating new AudioHints instance...")
+        self.audio_hints = AudioHints(self.stats_frame, on_room_change, self.app)
         #print("[interface builder]=== AUDIO HINTS SETUP END ===\n")
 
     def setup_stats_panel(self, computer_name):

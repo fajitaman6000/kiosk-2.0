@@ -149,7 +149,7 @@ try:
                     )
                 )
 
-            # Create ClassicAudioHints if it doesn't exist
+            # Create AudioHints if it doesn't exist
             if not hasattr(self.interface_builder, 'audio_hints'):
                 self.interface_builder.setup_audio_hints()
 
