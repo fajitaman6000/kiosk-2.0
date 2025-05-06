@@ -5,8 +5,6 @@
 ##############################################################################################################################
 # beta testing
 
-watchdog launcher blocks message_handler communications
-
 hint contents
     add images to the manual hint library
     !film video solutions
