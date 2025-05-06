@@ -140,7 +140,7 @@ def init_view_image_button(cls):
 
         # Inside _init_view_image_button (and similar for _init_view_solution_button)
 
-        text_item = QGraphicsTextItem("VIEW IMAGE HINT")
+        text_item = QGraphicsTextItem("TOUCH TO\nVIEW IMAGE")
         text_item.setDefaultTextColor(Qt.white)
         text_item.setFont(QFont('Arial', 24))
         scene.addItem(text_item)
