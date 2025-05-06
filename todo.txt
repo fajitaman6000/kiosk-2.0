@@ -1,6 +1,8 @@
 ##############################################################################################################################
 # Test notes
 
+"View image hint" clearly isn't attractive enough to click or isn't readily apparent that it is a button
+Adding time should add to TTC value
 
 ##############################################################################################################################
 # beta testing
