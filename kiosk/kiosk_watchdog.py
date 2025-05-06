@@ -31,7 +31,41 @@ reader_thread = None
 monitor_active_flag_for_reader = threading.Event()
 restart_count = 0
 lock = threading.Lock()
-spinner_chars = ['|', '/', '-', '\\']
+spinner_chars = ["⠁",
+			"⠂",
+			"⠄",
+			"⡀",
+			"⡈",
+			"⡐",
+			"⡠",
+			"⣀",
+			"⣁",
+			"⣂",
+			"⣄",
+			"⣌",
+			"⣔",
+			"⣤",
+			"⣥",
+			"⣦",
+			"⣮",
+			"⣶",
+			"⣷",
+			"⣿",
+			"⡿",
+			"⠿",
+			"⢟",
+			"⠟",
+			"⡛",
+			"⠛",
+			"⠫",
+			"⢋",
+			"⠋",
+			"⠍",
+			"⡉",
+			"⠉",
+			"⠑",
+			"⠡",
+			"⢁"]
 spinner_idx = 0
 
 # --- Functions ---
