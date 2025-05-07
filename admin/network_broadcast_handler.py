@@ -412,13 +412,14 @@ class NetworkBroadcastHandler:
         }
         self._send_tracked_message(message, computer_name)
 
-    def send_audio_hint_command(self, computer_name, audio_path):
+    def send_audio_hint_command(self, computer_name, audio_path, count_as_hint=True):
         """Sends a command to play an audio hint."""
         message = {
             'type': 'audio_hint',
             'command_id': str(uuid.uuid4()),
             'computer_name': computer_name,
-            'audio_path': audio_path
+            'audio_path': audio_path,
+            'count_as_hint': count_as_hint
         }
         self._send_tracked_message(message, computer_name)
 

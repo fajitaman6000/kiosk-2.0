@@ -430,8 +430,23 @@ class MessageHandler:
             elif msg_type == 'audio_hint' and is_targeted:
                 print(f"[message handler][DEBUG] Received audio hint command (Command ID: {command_id})")
                 audio_path = msg.get('audio_path')
+                count_as_hint = msg.get('count_as_hint', True)  # Default to True for backwards compatibility
+                
                 if audio_path:
-                    # Schedule audio play on main thread
+                    # Increment hint counter and handle hint mechanics if count_as_hint is True
+                    if count_as_hint:
+                        # --- State updates (safe in network thread) ---
+                        self.kiosk_app.hints_received += 1
+                        self.kiosk_app.hint_requested_flag = False
+                        print(f"[message handler] Audio hint counting as hint, incremented hints_received to {self.kiosk_app.hints_received}")
+                        
+                        # Clear existing hints
+                        self.schedule_timer(0, Overlay.hide_fullscreen_hint)
+                        self.schedule_timer(0, self.kiosk_app.clear_hints)
+                        # Start cooldown
+                        self.schedule_timer(0, self.kiosk_app.ui.start_cooldown)
+                    
+                    # Schedule audio play on main thread (always play the audio)
                     self.schedule_timer(0, lambda ap=audio_path: self.kiosk_app.audio_manager.play_hint_audio(ap))
 
             elif msg_type == 'solution_video' and is_targeted:

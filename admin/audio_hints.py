@@ -322,6 +322,15 @@ class AudioHints:
 
         file_name_label = ttk.Label(right_panel, text="")
         file_name_label.pack(pady=10)
+        
+        # Add checkbox for "Count as hint"
+        count_as_hint_var = tk.BooleanVar(value=True)  # Default checked
+        count_as_hint_check = ttk.Checkbutton(
+            right_panel, 
+            text="Count as hint",
+            variable=count_as_hint_var
+        )
+        count_as_hint_check.pack(pady=5)
 
         controls_frame = ttk.Frame(right_panel)
         controls_frame.pack(pady=20)
@@ -394,7 +403,7 @@ class AudioHints:
                 )
 
             preview_button.config(state='normal', command=lambda: self.preview_audio_file(current_audio_file_path))
-            send_button.config(state='normal', command=lambda: self.send_audio_file(popup, current_audio_file_path))
+            send_button.config(state='normal', command=lambda: self.send_audio_file(popup, current_audio_file_path, count_as_hint_var.get()))
 
         audio_listbox.bind('<<ListboxSelect>>', on_audio_select_popup)
         if self.available_audio_files:
@@ -425,7 +434,7 @@ class AudioHints:
         else:
             print(f"[audio hints] preview audio check failed because path exists:{os.path.exists(audio_file)} and audio_file = {audio_file}")
     
-    def send_audio_file(self, popup, audio_file):
+    def send_audio_file(self, popup, audio_file, count_as_hint=True):
         """Send the selected audio hint and close the popup"""
         # First stop any currently playing audio
         self.stop_audio()
@@ -435,8 +444,8 @@ class AudioHints:
             relative_path = os.path.relpath(audio_file, start=self.audio_root)
             computer_name = self.app.interface_builder.selected_kiosk
             if computer_name:
-                self.app.network_handler.send_audio_hint_command(computer_name, relative_path)
-                print(f"[audio hints]Sent audio hint to {computer_name}: {relative_path}")
+                self.app.network_handler.send_audio_hint_command(computer_name, relative_path, count_as_hint)
+                print(f"[audio hints]Sent audio hint to {computer_name}: {relative_path}, count as hint: {count_as_hint}")
             else:
                 print(f"[audio hints]No kiosk selected, cannot send audio hint")
             popup.destroy()

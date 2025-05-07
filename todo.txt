@@ -2,6 +2,7 @@
 # Test notes
 
 hint requested status remains despite clearing on admin side
+one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
 
 need "answer hint request" (by default checked ON) option for sending audio files (increments hint count and puts them on cooldown)
 
@@ -12,7 +13,7 @@ need "answer hint request" (by default checked ON) option for sending audio file
 
 prop page resetting repeatedly
 
-one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
+
 
 play hint sound broke after spamming the shit out of it?
 
