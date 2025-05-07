@@ -260,6 +260,9 @@ class AudioHints:
         y = (screen_height - popup_height) // 2
         popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
 
+        # Add protocol handler to stop audio when window is closed
+        popup.protocol("WM_DELETE_WINDOW", lambda: self.stop_and_close_popup(popup))
+
         main_frame = ttk.Frame(popup)
         main_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
@@ -299,7 +302,7 @@ class AudioHints:
             no_audio_label.pack(expand=True, pady=20)
             button_frame_popup = ttk.Frame(popup, height=50)
             button_frame_popup.pack(fill='x', padx=10, pady=10)
-            close_button_popup = ttk.Button(button_frame_popup, text="Close", command=popup.destroy)
+            close_button_popup = ttk.Button(button_frame_popup, text="Close", command=lambda: self.stop_and_close_popup(popup))
             close_button_popup.pack(side='right', padx=5)
             return
 
@@ -331,10 +334,13 @@ class AudioHints:
         button_frame_bottom = ttk.Frame(popup, height=50)
         button_frame_bottom.pack(fill='x', padx=10, pady=10)
         button_frame_bottom.pack_propagate(False)
-        close_button_bottom = ttk.Button(button_frame_bottom, text="Close", command=popup.destroy)
+        close_button_bottom = ttk.Button(button_frame_bottom, text="Close", command=lambda: self.stop_and_close_popup(popup))
         close_button_bottom.pack(side='right', padx=5)
 
         def on_audio_select_popup(event): # Renamed from on_audio_select to avoid conflict
+            # Stop any currently playing audio when a new selection is made
+            self.stop_audio()
+            
             selection = audio_listbox.curselection()
             if not selection:
                 preview_button.config(state='disabled')
@@ -394,11 +400,24 @@ class AudioHints:
         if self.available_audio_files:
             on_audio_select_popup(None) 
     
+    def stop_audio(self):
+        """Stop any currently playing audio"""
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()
+            print("[audio hints] Stopped currently playing audio")
+    
+    def stop_and_close_popup(self, popup):
+        """Stop audio playback and close the popup window"""
+        self.stop_audio()
+        popup.destroy()
+    
     def preview_audio_file(self, audio_file):
         """Play the selected audio file"""
         if audio_file and os.path.exists(audio_file):
             print(f"[audio_hints] loading audio file for admin preview: {audio_file}")
             try:
+                # Stop any currently playing audio first
+                self.stop_audio()
                 pygame.mixer.music.load(audio_file)
                 pygame.mixer.music.play()
             except pygame.error as e:
@@ -408,6 +427,9 @@ class AudioHints:
     
     def send_audio_file(self, popup, audio_file):
         """Send the selected audio hint and close the popup"""
+        # First stop any currently playing audio
+        self.stop_audio()
+        
         if audio_file and os.path.exists(audio_file):
             print(f"[audio hints]Sending audio hint: {audio_file}")
             relative_path = os.path.relpath(audio_file, start=self.audio_root)

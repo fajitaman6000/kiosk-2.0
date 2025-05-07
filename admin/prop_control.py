@@ -441,6 +441,7 @@ class PropControl:
 
     def restore_prop_ui(self, prop_id, prop_data):
         """Recreate UI elements for a saved prop"""
+        print("[prop control]Restoring prop UI")
         if not prop_data or 'info' not in prop_data:
             return False
             
@@ -529,6 +530,7 @@ class PropControl:
 
     def sort_and_repack_props(self):
         """Sorts props based on their 'order' for the *current* room and repacks them."""
+        print("[prop control]Sorting and repacking props")
         if not self.current_room or not self.props:
             return
 
