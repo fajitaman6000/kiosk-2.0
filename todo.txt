@@ -12,6 +12,8 @@ hint contents
 
 video solutions will have to take into account cousin props as well
 
+manual hints don't handle cousins yet
+
 ##############################################################################################################################
 # todo
 

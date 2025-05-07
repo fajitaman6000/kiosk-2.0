@@ -313,15 +313,14 @@ class AdminInterfaceBuilder:
         room_key = None
         if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
             room_key = self.audio_hints.ROOM_MAP.get(room_name)
-            #if(room_name != None):
-                #print(f"[image hints] Updating props for room: {room_name} (key: {room_key})")
+            print(f"[image hints] Updating props dropdown for room: {room_name} (key: {room_key})")
         
         props_list = []
         if room_key and room_key in prop_mappings:
             props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
             props.sort(key=lambda x: x[1]["order"])
             props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
-            #print(f"[image hints] Found {len(props_list)} props for room")
+            print(f"[image hints] Found {len(props_list)} props for room")
         
         self.stats_elements['image_btn']['values'] = props_list
         self.img_prop_var.set("")
@@ -371,13 +370,43 @@ class AdminInterfaceBuilder:
             if original_name in mappings:
                 display_name = mappings[original_name]["display"]
         
+        # Check if this prop has cousins
+        cousin_props = []
+        if room_key and room_key in prop_mappings:
+            # Get cousin value for this prop
+            prop_info = prop_mappings[room_key]["mappings"].get(original_name, {})
+            cousin_value = prop_info.get("cousin")
+            
+            # If this prop has a cousin value, find all props with the same cousin value
+            if cousin_value:
+                for prop_key, info in prop_mappings[room_key]["mappings"].items():
+                    if info.get("cousin") == cousin_value and prop_key != original_name:
+                        cousin_display = info.get("display", prop_key)
+                        cousin_props.append((prop_key, cousin_display))
+                print(f"[image hints] Found cousin props: {cousin_props}")
+        
+        # Add images from selected prop's folder
         folder_path = os.path.join(self.image_root, room_name, display_name)
+        added_images = set()  # Track added images to avoid duplicates
+        
         if os.path.exists(folder_path):
             allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
             image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
             for img in sorted(image_files):
-                self.stats_elements['image_listbox'].insert(tk.END, img)
-                
+                self.stats_elements['image_listbox'].insert(tk.END, f"{img} ({display_name})")
+                added_images.add(img)
+        
+        # Add images from cousin props' folders
+        for cousin_key, cousin_display in cousin_props:
+            cousin_folder = os.path.join(self.image_root, room_name, cousin_display)
+            if os.path.exists(cousin_folder):
+                allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
+                image_files = [f for f in os.listdir(cousin_folder) if os.path.splitext(f)[1].lower() in allowed_exts]
+                for img in sorted(image_files):
+                    if img not in added_images:  # Only add if not already added
+                        self.stats_elements['image_listbox'].insert(tk.END, f"{img} ({cousin_display})")
+                        added_images.add(img)
+        
         # Update the layout to ensure proper spacing
         if 'img_prop_frame' in self.stats_elements:
             self.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
@@ -388,35 +417,46 @@ class AdminInterfaceBuilder:
         if not selection:
             return
             
-        image_name = self.stats_elements['image_listbox'].get(selection[0])
-        selected_item = self.img_prop_var.get()
-        if not selected_item:
-            return
+        listbox_item = self.stats_elements['image_listbox'].get(selection[0])
+        # Parse the image name and prop name from the listbox item (format: "image.jpg (Prop Name)")
+        if "(" in listbox_item and ")" in listbox_item:
+            image_name = listbox_item.split("(")[0].strip()
+            prop_display = listbox_item.split("(")[1].rstrip(")").strip()
+        else:
+            # Fallback for old format (without prop name)
+            image_name = listbox_item
+            selected_item = self.img_prop_var.get()
+            if not selected_item:
+                return
+            # Extract original prop name from the dropdown text
+            original_name = selected_item.split("(")[-1].rstrip(")")
             
-        # Extract original prop name from the dropdown text
-        original_name = selected_item.split("(")[-1].rstrip(")")
+            room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
+            room_name = room_name.lower() if room_name else None
+            
+            try:
+                with open("prop_name_mapping.json", "r") as f:
+                    prop_mappings = json.load(f)
+            except Exception as e:
+                print(f"[image hints] Error loading prop mappings: {e}")
+                prop_mappings = {}
+            
+            room_key = None
+            if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
+                room_key = self.audio_hints.ROOM_MAP.get(room_name)
+            
+            prop_display = ""
+            if room_key and room_key in prop_mappings:
+                mappings = prop_mappings[room_key]["mappings"]
+                if original_name in mappings:
+                    prop_display = mappings[original_name]["display"]
         
         room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
         room_name = room_name.lower() if room_name else None
         
-        try:
-            with open("prop_name_mapping.json", "r") as f:
-                prop_mappings = json.load(f)
-        except Exception as e:
-            print(f"[image hints] Error loading prop mappings: {e}")
-            prop_mappings = {}
+        # Find the image in the prop's folder or cousin folders
+        image_path = os.path.join(self.image_root, room_name, prop_display, image_name)
         
-        room_key = None
-        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
-            room_key = self.audio_hints.ROOM_MAP.get(room_name)
-        
-        display_name = ""
-        if room_key and room_key in prop_mappings:
-            mappings = prop_mappings[room_key]["mappings"]
-            if original_name in mappings:
-                display_name = mappings[original_name]["display"]
-        
-        image_path = os.path.join(self.image_root, room_name, display_name, image_name)
         try:
             from PIL import Image, ImageTk
             image = Image.open(image_path)
@@ -429,12 +469,14 @@ class AdminInterfaceBuilder:
             
             # Store the image path for attaching
             self.current_image_file = image_path
+            self.current_image_prop = prop_display  # Store the prop name for reference
             
             # Show the preview and attach button
             self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
             self.stats_elements['prop_attach_btn'].pack(side='left', padx=5)
         except Exception as e:
             print(f"[image hints] Error previewing image: {e}")
+            print(f"[image hints] Attempted to load from path: {image_path}")
 
     def show_manual_hint(self):
         """Show the manual hint text box and hide image selection"""
@@ -463,7 +505,12 @@ class AdminInterfaceBuilder:
         if hasattr(self, "current_image_file") and self.current_image_file:
             # Show the attached filename
             filename = os.path.basename(self.current_image_file)
-            self.stats_elements['attached_image_label'].config(text=f"Attached: {filename}")
+            prop_name = getattr(self, "current_image_prop", "")
+            display_text = f"{filename}"
+            if prop_name:
+                display_text = f"{filename} (from {prop_name})"
+            
+            self.stats_elements['attached_image_label'].config(text=f"Attached: {display_text}")
             self.stats_elements['img_control_frame'].pack_forget()
             self.stats_elements['image_listbox'].pack_forget()
             self.stats_elements['prop_control_buttons'].pack_forget()
@@ -484,6 +531,11 @@ class AdminInterfaceBuilder:
                 # Enable send button
                 if self.stats_elements['send_btn']:
                     self.stats_elements['send_btn'].config(state='normal')
+                
+                print(f"[image hints] Attached image from path: {self.current_image_file}")
+                print(f"[image hints] Relative path for sending: {rel_path}")
+                if hasattr(self, "current_image_prop"):
+                    print(f"[image hints] From prop: {self.current_image_prop}")
             except Exception as e:
                 print(f"[image hints] Error getting image path: {e}")
 
