@@ -2357,6 +2357,7 @@ class Overlay:
             cls._init_loss_screen()
 
         if cls._loss_screen_initialized and cls._loss_screen_window:
+            cls.hide_fullscreen_hint()
             # Ensure it's brought to the front
             cls._loss_screen_window.setWindowState(cls._loss_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
             cls._loss_screen_window.showFullScreen()
@@ -2468,6 +2469,7 @@ class Overlay:
 
             # Check if window exists before attempting to display
             if cls._victory_screen_initialized and cls._victory_screen_window:
+                cls.hide_fullscreen_hint()
                 # Try to show the window directly, catch any errors
                 try:
                     cls._victory_screen_window.setWindowState(cls._victory_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)

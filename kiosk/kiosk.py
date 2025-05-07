@@ -339,6 +339,8 @@ class KioskApp:
         # Clear any pending request status
         Overlay.hide_hint_request_text()
         self.hint_requested_flag = False  # Reset hint flag
+
+        Overlay.hide_fullscreen_hint() #hide any previous fullscreen hint
         
         # Trigger immediate help button update
         self._actual_help_button_update()
