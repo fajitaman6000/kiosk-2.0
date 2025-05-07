@@ -4,8 +4,6 @@
 hint requested status remains despite clearing on admin side
 one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
 
-need "answer hint request" (by default checked ON) option for sending audio files (increments hint count and puts them on cooldown)
-
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'wood_wheel'
