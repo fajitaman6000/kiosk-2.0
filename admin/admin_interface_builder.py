@@ -1508,6 +1508,8 @@ class AdminInterfaceBuilder:
         if self.stats_elements['image_preview']:
             self.stats_elements['image_preview'].configure(image='')
             self.stats_elements['image_preview'].image = None
+            
+        self.clear_manual_hint()
 
     def play_solution_video(self, computer_name):
       """Play a solution video for the selected prop"""

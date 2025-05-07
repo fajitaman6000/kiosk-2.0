@@ -12,8 +12,6 @@ hint contents
 
 video solutions will have to take into account cousin props as well
 
-attached image should clear from manual hint when hint is sent
-
 ##############################################################################################################################
 # todo
 
@@ -35,6 +33,8 @@ soundcheck button functionality
 
 make image viewing overlaying everything instead of hiding elements
 
+finish admin_interface_builder encapsulation
+    send_hint and clear_manual_hint are still being used directly from admin_interface_builder instead of hint_functions
 
 ##############################################################################################################################
 # known priority bugs
