@@ -601,13 +601,47 @@ def setup_stats_panel(interface_builder, computer_name):
         listen_btn.stop_listening_icon = stop_listening_icon
     listen_btn.pack(side='left', padx=5)
 
-    # Microphone controls with icon
+    # Determine initial state of speak_btn
+    initial_speak_btn_image = enable_mic_icon
+    initial_speak_btn_text = "Enable Microphone"
+    initial_speak_btn_state = 'disabled' # Default to disabled
+
+    is_audio_active = interface_builder.audio_active.get(computer_name, False)
+    is_aib_speaking = interface_builder.speaking.get(computer_name, False)
+
+    if is_audio_active:
+        initial_speak_btn_state = 'normal'
+        if is_aib_speaking:
+            # Audio is active AND interface_builder thinks it's speaking
+            # Check if audio_client also thinks it's speaking (more robust)
+            ac = interface_builder.audio_clients.get(computer_name)
+            if ac and ac.speaking: # ac.speaking is AudioClient's internal flag
+                initial_speak_btn_image = disable_mic_icon
+                initial_speak_btn_text = "Disable Microphone"
+            else:
+                # Discrepancy or AC not speaking, ensure AIB flag is corrected
+                if ac: # if ac exists but not speaking
+                    interface_builder.speaking[computer_name] = False
+                # Keep button as "Enable Microphone"
+                initial_speak_btn_image = enable_mic_icon
+                initial_speak_btn_text = "Enable Microphone"
+        else:
+            # Audio is active but not speaking
+            initial_speak_btn_image = enable_mic_icon
+            initial_speak_btn_text = "Enable Microphone"
+    else:
+        # Audio is not active, button should be disabled and show "Enable Microphone"
+        initial_speak_btn_state = 'disabled'
+        initial_speak_btn_image = enable_mic_icon
+        initial_speak_btn_text = "Enable Microphone"
+
+
     speak_btn = tk.Button(
         control_frame,
-        image=enable_mic_icon if enable_mic_icon else None,
-        text="" if enable_mic_icon else "Enable Microphone",
+        image=initial_speak_btn_image if initial_speak_btn_image else None,
+        text="" if initial_speak_btn_image else initial_speak_btn_text,
         command=lambda: interface_builder.toggle_speaking(computer_name),
-        state='disabled',
+        state=initial_speak_btn_state,
         width=24,
         height=24,
         bd=0,
@@ -620,6 +654,7 @@ def setup_stats_panel(interface_builder, computer_name):
         speak_btn.enable_mic_icon = enable_mic_icon
         speak_btn.disable_mic_icon = disable_mic_icon
     speak_btn.pack(side='left', padx=5)
+
 
     # --- START: Microphone Device Selector Button ---
     mic_control_frame = tk.Frame(control_frame, bg='systemButtonFace')

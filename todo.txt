@@ -2,7 +2,7 @@
 # Test notes
 
 hint requested status remains despite clearing on admin side
-one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
+    one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
 
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'tubes'
@@ -11,9 +11,9 @@ one admin didnt get hint request from room, sometimes doesn't appear until admin
 
 prop page resetting repeatedly
 
-
-
 play hint sound broke after spamming the shit out of it?
+
+listen speak buttons inconsistent
 
 ##############################################################################################################################
 # beta testing
@@ -49,6 +49,12 @@ make image viewing overlaying everything instead of hiding elements
 
 finish admin_interface_builder encapsulation
     send_hint and clear_manual_hint are still being used directly from admin_interface_builder instead of hint_functions
+
+technician app (e.g "finish all" button)
+    play intro button
+    reset ALLLLLL props
+    kiosk restarter
+    soundcheck functionality
 
 ##############################################################################################################################
 # known priority bugs
@@ -105,7 +111,7 @@ mqtt connections get crippled while running file sync
 ##############################################################################################################################
 # ambitious extra ideas:
 
-
+refill cylinders button
 "create popout prop control" (for controlling numerous rooms)
 option to play sound effects, ways for game masters to enjoyably interact with guests
 
@@ -130,7 +136,6 @@ AI generated text hint based on room state
 announce to lobby: room states for automatic standbys/room victory/out of time 
 mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
-technician app (e.g "finish all" button), reset ALLLLLL props, kiosk restarter, soundcheck functionality
 dark theme
 profile creation,
 profile deletion (admin only)
