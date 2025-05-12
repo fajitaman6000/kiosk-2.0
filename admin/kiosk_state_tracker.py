@@ -10,6 +10,16 @@ class KioskStateTracker:
         
     def update_kiosk_stats(self, computer_name, msg):
         #print(f"[kiosk state tracker][KioskStateTracker] update_kiosk_stats: Received stats from {computer_name}: {msg}")
+        
+        # --- Check if hint status changed and update UI if needed ---
+        current_hint_status = self.kiosk_stats.get(computer_name, {}).get('hint_requested', False)
+        new_hint_status = msg.get('hint_requested', False)
+        if current_hint_status != new_hint_status:
+            # Schedule the UI update on the main thread
+            self.app.root.after(0, lambda cn=computer_name: 
+                self.app.interface_builder.mark_help_requested(cn))
+        # ---------------------------------------------------------
+
         self.kiosk_stats[computer_name] = {
             'total_hints': msg.get('total_hints', 0),
             'timer_time': msg.get('timer_time', 3600),
@@ -21,7 +31,7 @@ class KioskStateTracker:
             'auto_start': msg.get('auto_start', False)
         }
         
-        # Update UI if this kiosk is selected
+        # Update detailed stats display ONLY if this kiosk is selected
         if computer_name == self.app.interface_builder.selected_kiosk:
             #print(f"[kiosk state tracker][KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
             self.app.interface_builder.update_stats_display(computer_name)
