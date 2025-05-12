@@ -1783,6 +1783,7 @@ class AdminInterfaceBuilder:
                 if computer_name == self.selected_kiosk: # Check if it's the currently selected kiosk
                     if self.app.root and self.app.root.winfo_exists():
                         self.app.root.configure(bg='systemButtonFace')  # Reset main window background
+                        self.stats_frame.configure(bg='systemButtonFace')
 
                 if speak_btn and speak_btn.winfo_exists():
                     # Reset speak button to "Enable Microphone" appearance
@@ -1809,6 +1810,7 @@ class AdminInterfaceBuilder:
                 if computer_name == self.selected_kiosk:
                     if self.app.root and self.app.root.winfo_exists():
                         self.app.root.configure(bg='systemButtonFace')
+                        self.stats_frame.configure(bg='systemButtonFace')
                 if speak_btn and speak_btn.winfo_exists():
                     if hasattr(speak_btn, 'enable_mic_icon'):
                         speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone", bg='systemButtonFace', activebackground='systemButtonFace')
@@ -1821,7 +1823,8 @@ class AdminInterfaceBuilder:
                     self.speaking[computer_name] = True
 
                     if computer_name == self.selected_kiosk:
-                            self.app.root.configure(bg='#ff5252')  # Light red
+                            self.app.root.configure(bg='#f50202')  # Light red
+                            self.stats_frame.configure(bg='#f50202')
 
                     if speak_btn:
                         if hasattr(speak_btn, 'disable_mic_icon'):
