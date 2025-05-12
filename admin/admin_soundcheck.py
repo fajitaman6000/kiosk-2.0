@@ -35,13 +35,13 @@ class AdminSoundcheckWindow:
         self.window.title("Kiosk Soundcheck Tool")
         self.window.geometry("700x400") # Adjusted size for additional buttons
         self.window.resizable(False, False)
-        # Make window modal (optional, prevents interaction with main window)
         self.window.grab_set() # Make the soundcheck window modal initially
 
         # --- Data Storage ---
         # Status: None (pending), True (pass), False (fail)
+        # 'initiated' tracks if the soundcheck process has started for this kiosk
         self.kiosk_status = {
-            name: {'touch': None, 'audio': None, 'mic': None, 'audio_sample': None}
+            name: {'initiated': False, 'touch': None, 'audio': None, 'mic': None, 'audio_sample': None}
             for name in kiosk_names
         }
         self.ui_elements = {name: {} for name in kiosk_names} # To store labels/buttons
@@ -52,11 +52,13 @@ class AdminSoundcheckWindow:
 
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill="x", pady=(0, 10))
-        ttk.Label(header_frame, text="Kiosk Computer Name", width=20, anchor="w", font=self.font).pack(side="left", padx=5)
+        # Adjusted widths/paddings for headers to align with dynamic content
+        ttk.Label(header_frame, text="Computer Name", width=18, anchor="w", font=self.font).pack(side="left", padx=(5,10))
         ttk.Label(header_frame, text="Touch", width=8, anchor="center", font=self.font).pack(side="left", padx=5)
         ttk.Label(header_frame, text="Audio Out", width=10, anchor="center", font=self.font).pack(side="left", padx=5)
         ttk.Label(header_frame, text="Mic In", width=8, anchor="center", font=self.font).pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Mic Sample", width=25, anchor="center", font=self.font).pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Mic Sample", width=25, anchor="center", font=self.font).pack(side="left", padx=5, fill="x", expand=True)
+
 
         # Separator
         ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=(0, 10))
@@ -96,167 +98,182 @@ class AdminSoundcheckWindow:
         # --- Window Close Handling ---
         self.window.protocol("WM_DELETE_WINDOW", self.cancel_soundcheck)
 
-        # --- Start the Soundcheck ---
-        self.send_start_command()
+        # --- Soundcheck no longer starts automatically for all kiosks ---
+        # self.send_start_command() # REMOVED
 
     def create_kiosk_row(self, parent_frame, kiosk_name):
-        """Creates the UI elements for a single kiosk row."""
+        """Creates the UI elements for a single kiosk row. Status elements are initially hidden."""
         row_frame = ttk.Frame(parent_frame)
         row_frame.pack(fill="x", pady=2)
 
-        ttk.Label(row_frame, text=kiosk_name, width=20, anchor="w").pack(side="left", padx=5)
+        # Kiosk name as a button to initiate its soundcheck
+        kiosk_name_button = ttk.Button(row_frame, text=kiosk_name, width=21, # Matches header width
+                                      command=lambda n=kiosk_name: self.initiate_soundcheck_for_kiosk(n))
+        kiosk_name_button.pack(side="left", padx=(5,0)) # Matches header padx
 
-        # Status Indicators (using Labels with text/color)
-        touch_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
-        touch_label.pack(side="left", padx=12)
-        audio_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
-        audio_label.pack(side="left", padx=12)
-        mic_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
-        mic_label.pack(side="left", padx=12)
+        # Status Indicators (created with font, but NOT PACKED initially)
+        touch_label = ttk.Label(row_frame, text="", font=self.font, width=8, anchor="center")
+        audio_label = ttk.Label(row_frame, text="", font=self.font, width=10, anchor="center") # Match header width
+        mic_label = ttk.Label(row_frame, text="", font=self.font, width=8, anchor="center")
 
-        # Sample Frame (Listen button and mic validation buttons)
+        # Sample Frame (created, but NOT PACKED initially)
         sample_frame = ttk.Frame(row_frame)
-        sample_frame.pack(side="left", padx=5, fill="x", expand=True)
+        # sample_frame children are created but packed when sample_frame itself is shown/configured
 
         listen_button = ttk.Button(sample_frame, text="Listen", width=8, state="disabled",
                                    command=lambda n=kiosk_name: self.play_audio_sample(n))
-        listen_button.pack(side="left", padx=(50, 0))
+        # listen_button will be packed into sample_frame later
 
-        # Mic validation buttons (initially hidden)
         mic_buttons_frame = ttk.Frame(sample_frame)
-        # mic_buttons_frame.pack(side="left", padx=(10, 0)) # Pack when shown by play_audio_sample
+        # mic_buttons_frame will be packed into sample_frame later (by play_audio_sample)
 
         mic_check_button = ttk.Button(mic_buttons_frame, text="✓", width=3,
                                       command=lambda n=kiosk_name: self.set_mic_status(n, True))
-        mic_check_button.pack(side="left", padx=(0, 2))
+        mic_check_button.pack(side="left", padx=(0, 2)) # Packed within its parent
 
         mic_fail_button = ttk.Button(mic_buttons_frame, text="✕", width=3,
                                     command=lambda n=kiosk_name: self.set_mic_status(n, False))
-        mic_fail_button.pack(side="left")
+        mic_fail_button.pack(side="left") # Packed within its parent
 
-        # Store UI elements for later updates
         self.ui_elements[kiosk_name] = {
-            'touch': touch_label,
-            'audio': audio_label,
-            'mic': mic_label,
+            'name_btn': kiosk_name_button,
+            'touch_label': touch_label,
+            'audio_label': audio_label,
+            'mic_label': mic_label,
+            'sample_frame': sample_frame,
             'listen_btn': listen_button,
-            'mic_buttons_frame': mic_buttons_frame, # Frame itself needs to be packed/unpacked
-            'mic_check_btn': mic_check_button,
-            'mic_fail_btn': mic_fail_button
+            'mic_buttons_frame': mic_buttons_frame
+            # 'mic_check_btn' and 'mic_fail_btn' are part of mic_buttons_frame
         }
-        # Hide frame initially
-        mic_buttons_frame.pack_forget()
 
+    def initiate_soundcheck_for_kiosk(self, kiosk_name):
+        """Sends soundcheck command to one kiosk and reveals its UI elements."""
+        if self.kiosk_status[kiosk_name].get('initiated', False):
+            # Should not happen if button is disabled, but good for safety
+            print(f"[Admin Soundcheck] Soundcheck already initiated for {kiosk_name}")
+            return
 
-    def send_start_command(self):
-        """Sends the soundcheck start command to all relevant kiosks."""
-        print("[Admin Soundcheck] Sending start command to kiosks:", self.kiosk_names)
-        # Use network handler to send command to each kiosk
-        for name in self.kiosk_names:
-            # Add check if kiosk is actually connected according to network handler?
-            self.app.network_handler.send_soundcheck_command(name) # Needs implementation in network handler
+        print(f"[Admin Soundcheck] Initiating soundcheck for {kiosk_name}")
+        self.app.network_handler.send_soundcheck_command(kiosk_name)
+
+        # Update status: mark as initiated and reset test results
+        self.kiosk_status[kiosk_name]['initiated'] = True
+        self.kiosk_status[kiosk_name]['touch'] = None
+        self.kiosk_status[kiosk_name]['audio'] = None
+        self.kiosk_status[kiosk_name]['mic'] = None
+        self.kiosk_status[kiosk_name]['audio_sample'] = None # Clear any old sample path
+
+        ui = self.ui_elements[kiosk_name]
+
+        # Pack and configure the status labels for this kiosk
+        ui['touch_label'].config(text="?", foreground="gray")
+        ui['touch_label'].pack(side="left", padx=5) # Matches header padx
+
+        ui['audio_label'].config(text="?", foreground="gray")
+        ui['audio_label'].pack(side="left", padx=5) # Matches header padx
+
+        ui['mic_label'].config(text="?", foreground="gray")
+        ui['mic_label'].pack(side="left", padx=5) # Matches header padx
+
+        # Pack and configure the sample_frame and its listen_button
+        ui['sample_frame'].pack(side="left", padx=5, fill="x", expand=True) # Matches header
+        
+        ui['listen_btn'].config(state="disabled")
+        ui['listen_btn'].pack(side="left", padx=(50, 0)) # Original padding for listen button
+
+        # Ensure mic_buttons_frame (child of sample_frame) is initially hidden
+        ui['mic_buttons_frame'].pack_forget()
+
+        # Disable the kiosk name button to prevent re-initiation
+        ui['name_btn'].config(state="disabled")
+        # Optionally, change text: ui['name_btn'].config(text=f"{kiosk_name} (Pending)")
+
+    # send_start_command(self) method is now removed.
 
     def update_status(self, kiosk_name, test_type, result, audio_data=None):
-        """Updates the status for a kiosk and refreshes its UI row."""
-        # Ensure updates run in the Tkinter thread
+        """Updates the status for a kiosk and refreshes its UI row, if initiated."""
         if self.window.winfo_exists():
-             self.window.after(0, self._update_status_ui, kiosk_name, test_type, result, audio_data)
-        else:
-             print(f"[Admin Soundcheck] Update ignored for {kiosk_name} (window destroyed)")
+            # Only process update if soundcheck was initiated for this kiosk
+            if kiosk_name in self.kiosk_status and self.kiosk_status[kiosk_name].get('initiated', False):
+                 self.window.after(0, self._update_status_ui, kiosk_name, test_type, result, audio_data)
+            # else:
+            #    print(f"[Admin Soundcheck] Update for {kiosk_name} (type {test_type}) ignored (soundcheck not initiated).")
+        # else:
+        #      print(f"[Admin Soundcheck] Update ignored for {kiosk_name} (window destroyed)")
 
 
     def _update_status_ui(self, kiosk_name, test_type, result, audio_data=None):
         """Internal method to update UI, called via window.after"""
-        if self.closed or kiosk_name not in self.kiosk_status:
-            # print(f"[Admin Soundcheck] Update ignored for {kiosk_name} (window closed or kiosk unknown)")
-            return # Ignore updates if window is closed or kiosk not part of this check
+        # Double check, as state might change between after() call and execution
+        if self.closed or kiosk_name not in self.kiosk_status or \
+           not self.kiosk_status[kiosk_name].get('initiated', False):
+            return
 
         print(f"[Admin Soundcheck] UI Update: Kiosk={kiosk_name}, Test={test_type}, Result={result}")
 
         # --- Handle audio sample logic first ---
         if test_type == 'audio_sample':
             if result: # Result is True if sample received
-                # Decode and store the audio sample
                 try:
                     # Clear any existing temp file
                     if kiosk_name in self.temp_files and self.temp_files[kiosk_name] and os.path.exists(self.temp_files[kiosk_name]):
-                        try:
-                            os.remove(self.temp_files[kiosk_name])
-                        except OSError as e:
-                             print(f"[Admin Soundcheck] Error removing old temp file {self.temp_files[kiosk_name]}: {e}")
+                        try: os.remove(self.temp_files[kiosk_name])
+                        except OSError as e: print(f"[Admin Soundcheck] Error removing old temp file {self.temp_files[kiosk_name]}: {e}")
                         self.temp_files[kiosk_name] = None
 
-                    # Decode data
                     decoded_data = base64.b64decode(audio_data)
-
-                    # Create a temporary file for better playback reliability
                     fd, temp_path = tempfile.mkstemp(suffix=".wav")
                     os.close(fd)
-
-                    # Save the WAV data to the temporary file
-                    with open(temp_path, 'wb') as f:
-                        f.write(decoded_data)
-
-                    # Store the path to the temporary file
+                    with open(temp_path, 'wb') as f: f.write(decoded_data)
                     self.temp_files[kiosk_name] = temp_path
                     print(f"[Admin Soundcheck] Audio sample saved to temp file for {kiosk_name}: {temp_path}")
-
-                    # Store path for playback reference
                     self.kiosk_status[kiosk_name]['audio_sample'] = temp_path
 
-                    # Enable the listen button
                     if kiosk_name in self.ui_elements and 'listen_btn' in self.ui_elements[kiosk_name]:
                         self.ui_elements[kiosk_name]['listen_btn'].config(state="normal")
-
-                    # Don't update mic status here yet, let user validate via buttons
-                    # self.kiosk_status[kiosk_name]['mic'] = None # Reset mic status pending validation
-
                 except Exception as e:
                     print(f"[Admin Soundcheck] Error processing audio sample for {kiosk_name}: {e}")
-                    import traceback
-                    traceback.print_exc()
-                    # Mark mic as failed if sample is bad or processing fails
+                    import traceback; traceback.print_exc()
                     self.kiosk_status[kiosk_name]['mic'] = False
-                    self.kiosk_status[kiosk_name]['audio_sample'] = None # Clear sample reference
-                    if kiosk_name in self.ui_elements and 'listen_btn' in self.ui_elements[kiosk_name]:
-                         self.ui_elements[kiosk_name]['listen_btn'].config(state="disabled")
-                    # Update the mic UI immediately to show failure
-                    if 'mic' in self.ui_elements[kiosk_name]:
-                        self.ui_elements[kiosk_name]['mic'].config(text="✕", foreground="red")
-                    # Hide validation buttons if they were somehow visible
-                    if 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
-                        self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
-
+                    self.kiosk_status[kiosk_name]['audio_sample'] = None
+                    if kiosk_name in self.ui_elements:
+                         if 'listen_btn' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['listen_btn'].config(state="disabled")
+                         if 'mic_label' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['mic_label'].config(text="✕", foreground="red") # Use mic_label
+                         if 'mic_buttons_frame' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
             else: # Result is False for audio_sample (e.g., kiosk failed to record/send)
                  print(f"[Admin Soundcheck] Received failed audio_sample status for {kiosk_name}")
-                 self.kiosk_status[kiosk_name]['mic'] = False # Mark mic as failed
+                 self.kiosk_status[kiosk_name]['mic'] = False
                  self.kiosk_status[kiosk_name]['audio_sample'] = None
                  if kiosk_name in self.ui_elements:
-                     if 'listen_btn' in self.ui_elements[kiosk_name]:
-                        self.ui_elements[kiosk_name]['listen_btn'].config(state="disabled")
-                     if 'mic' in self.ui_elements[kiosk_name]:
-                        self.ui_elements[kiosk_name]['mic'].config(text="✕", foreground="red")
-                     if 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
-                        self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
-
+                     if 'listen_btn' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['listen_btn'].config(state="disabled")
+                     if 'mic_label' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['mic_label'].config(text="✕", foreground="red") # Use mic_label
+                     if 'mic_buttons_frame' in self.ui_elements[kiosk_name]: self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
             return # Don't process further UI for 'audio_sample' type itself
 
-        # --- Update status for touch, audio, mic (manual update) ---
+        # --- Update status for touch, audio, mic (manual update by user or direct status) ---
         if test_type in self.kiosk_status[kiosk_name]:
              self.kiosk_status[kiosk_name][test_type] = result
 
-        # Update the corresponding UI label
-        if test_type in self.ui_elements[kiosk_name]:
-            label = self.ui_elements[kiosk_name][test_type]
-            if result is True:
-                label.config(text="✓", foreground="green")
-            elif result is False:
-                label.config(text="✕", foreground="red")
-            else: # None (pending/reset)
-                label.config(text="?", foreground="gray")
+        # Update the corresponding UI label (touch_label, audio_label, mic_label)
+        label_widget_key_map = {
+            'touch': 'touch_label',
+            'audio': 'audio_label',
+            'mic': 'mic_label'
+        }
+        if test_type in label_widget_key_map:
+            actual_ui_key = label_widget_key_map[test_type]
+            label = self.ui_elements[kiosk_name].get(actual_ui_key)
+            if label: # Check if label widget exists and is packed
+                if result is True:
+                    label.config(text="✓", foreground="green")
+                elif result is False:
+                    label.config(text="✕", foreground="red")
+                else: # None (pending/reset)
+                    label.config(text="?", foreground="gray")
+            # else: print(f"Warning: UI element {actual_ui_key} not found or not packed for {kiosk_name}")
 
-        # Special handling for 'mic' update: hide validation buttons if failed/reset
-        if test_type == 'mic' and result is not True:
+        # Special handling for 'mic' update: hide validation buttons if mic test explicitly fails or is reset.
+        if test_type == 'mic' and result is not True: # Mic failed or reset to pending by something other than play_audio_sample
              if kiosk_name in self.ui_elements and 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
                  self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
 
@@ -273,165 +290,131 @@ class AdminSoundcheckWindow:
         if not temp_path or not os.path.exists(temp_path):
             print(f"[Admin Soundcheck] Audio file missing or path invalid for {kiosk_name}: {temp_path}")
             messagebox.showerror("Playback Error", f"Audio file for {kiosk_name} not found.", parent=self.window)
-            # Consider marking mic as failed?
-            self.update_status(kiosk_name, 'mic', False)
+            self.update_status(kiosk_name, 'mic', False) # Mark mic as failed, will hide buttons
             return
 
         print(f"[Admin Soundcheck] Playing audio sample for {kiosk_name} from {temp_path}")
 
-        # Check if mixer is initialized
         if not pygame.mixer.get_init():
             messagebox.showerror("Audio Error", "Audio playback system not initialized.", parent=self.window)
             return
 
-        # Stop any currently playing sound
-        pygame.mixer.stop()
+        pygame.mixer.stop() # Stop any currently playing sound
 
         try:
-            # Load and play the audio file
             sound = pygame.mixer.Sound(temp_path)
             sound.play()
 
             # Show the mic validation buttons AND reset mic status display to '?'
             if kiosk_name in self.ui_elements:
-                if 'mic' in self.ui_elements[kiosk_name]:
-                     self.ui_elements[kiosk_name]['mic'].config(text="?", foreground="gray")
-                     self.kiosk_status[kiosk_name]['mic'] = None # Reset status pending validation
+                if 'mic_label' in self.ui_elements[kiosk_name]: # Target the specific label widget
+                     self.ui_elements[kiosk_name]['mic_label'].config(text="?", foreground="gray")
+                self.kiosk_status[kiosk_name]['mic'] = None # Reset status pending validation
 
                 if 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
-                    # Ensure it's packed correctly within its parent (sample_frame)
                     frame_widget = self.ui_elements[kiosk_name]['mic_buttons_frame']
-                    if not frame_widget.winfo_ismapped(): # Only pack if not already visible
+                    # Pack into its parent (sample_frame) if not already visible
+                    if not frame_widget.winfo_ismapped():
                         frame_widget.pack(side="left", padx=(10, 0))
-
-
         except Exception as e:
             print(f"[Admin Soundcheck] Error playing audio sample for {kiosk_name}: {e}")
-            import traceback
-            traceback.print_exc()
+            import traceback; traceback.print_exc()
             messagebox.showerror("Playback Error", f"Could not play audio sample for {kiosk_name}:\n{e}", parent=self.window)
-            # Mark mic as failed if playback fails
-            self.update_status(kiosk_name, 'mic', False)
+            self.update_status(kiosk_name, 'mic', False) # Mark mic as failed, will hide buttons
 
 
     def set_mic_status(self, kiosk_name, is_working):
         """Sets the microphone status based on user validation."""
         print(f"[Admin Soundcheck] Setting mic status for {kiosk_name} to {is_working}")
         self.update_status(kiosk_name, 'mic', is_working)
-        # Optionally hide the buttons again after selection? Or leave them? Let's leave them for now.
-        # if kiosk_name in self.ui_elements and 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
-        #     self.ui_elements[kiosk_name]['mic_buttons_frame'].pack_forget()
-
+        # If is_working is False, _update_status_ui's mic handling will hide buttons.
+        # If True, buttons remain visible.
 
     def finish_soundcheck(self):
-        """Generates a report using a custom window. Does NOT close main window yet."""
-        # Prevent opening multiple report windows
+        """Generates a report for initiated soundchecks. Does NOT close main window yet."""
         if self.report_window and self.report_window.winfo_exists():
             self.report_window.lift()
             return
 
-        # --- Create a new Toplevel window for the report ---
-        # Make it a child of the root window, not the soundcheck window,
-        # so it doesn't get destroyed if the soundcheck window is hidden/iconified.
-        self.report_window = tk.Toplevel(self.app.root) # Use app's root window as parent
+        self.report_window = tk.Toplevel(self.app.root)
         self.report_window.title("Soundcheck Report")
         self.report_window.geometry("500x400")
-        # Make the report window modal *relative to the application*
         self.report_window.grab_set()
-        # Make it transient to the main soundcheck window (optional, helps with window stacking)
         self.report_window.transient(self.window)
-
 
         report_text = scrolledtext.ScrolledText(self.report_window, wrap=tk.WORD, state='disabled', height=15)
         report_text.pack(expand=True, fill='both', padx=10, pady=5)
-
-        # Configure tags for formatting
         report_text.tag_configure("green_italic", foreground="green", font=('TkDefaultFont', 9, 'italic'))
         report_text.tag_configure("red", foreground="red")
         report_text.tag_configure("bold", font=('TkDefaultFont', 9, 'bold'))
 
-        report_text.configure(state='normal') # Enable editing to insert text
+        report_text.configure(state='normal')
         report_text.insert(tk.END, "")
 
         any_issues_found = False
-        # Sort kiosks by name for consistent report order
+        any_initiated = False # Flag to check if any soundcheck was run
         sorted_kiosk_names = sorted(self.kiosk_status.keys())
 
         for name in sorted_kiosk_names:
+            # Only include kiosks for which soundcheck was initiated in the report
+            if not self.kiosk_status[name].get('initiated', False):
+                continue
+            any_initiated = True
+
             status = self.kiosk_status[name]
             all_success = True
             issue_details = []
             success_details = []
 
             for test in ['touch', 'audio', 'mic']:
-                result = status.get(test, None) # Use .get for safety
+                result = status.get(test, None)
                 test_name_cap = test.capitalize()
                 if result is True:
                     success_details.append(f"  - {test_name_cap}: Pass")
                 elif result is False:
-                    issue_details.append((f"  - {test_name_cap}: Fail", ["bold"])) # Mark bold
+                    issue_details.append((f"  - {test_name_cap}: Fail", ["bold"]))
                     all_success = False
                     any_issues_found = True
                 else: # None (incomplete)
-                    issue_details.append((f"  - {test_name_cap}: Incomplete", ["bold"])) # Mark bold
+                    issue_details.append((f"  - {test_name_cap}: Incomplete", ["bold"]))
                     all_success = False
-                    any_issues_found = True # Treat incomplete as an issue requiring attention
+                    any_issues_found = True # Treat incomplete as an issue
 
-            # Format the output for this kiosk
             if all_success:
-                # Green italics: Only show name, marked as successful
                 report_text.insert(tk.END, f"Kiosk: {name} - OK\n", ("green_italic"))
-            else: # Has issues (red)
-                # Red: Mark kiosk name
+            else:
                 report_text.insert(tk.END, f"Kiosk: {name} - ISSUES FOUND\n", ("red"))
-                # Add failed/incomplete first (bold)
-                for text, tags in issue_details:
-                    report_text.insert(tk.END, f"{text}\n", tags)
-                # Then add successful items for this kiosk (green italic)
-                for text in success_details:
-                    report_text.insert(tk.END, f"{text}\n", ("green_italic"))
+                for text_content, tags in issue_details:
+                    report_text.insert(tk.END, f"{text_content}\n", tags)
+                for text_content in success_details:
+                    report_text.insert(tk.END, f"{text_content}\n", ("green_italic"))
+            report_text.insert(tk.END, "\n")
 
-            report_text.insert(tk.END, "\n") # Add a blank line between kiosks
+        if not any_initiated:
+             report_text.insert(tk.END, "No soundchecks were initiated for any kiosk.\n")
+        elif not any_issues_found: # This means all *initiated* soundchecks were OK
+             report_text.insert(tk.END, "\nAll initiated soundchecks reported OK.", ("green_italic"))
+        else: # Issues found in at least one *initiated* soundcheck
+             report_text.insert(tk.END, "\nISSUES FOUND in initiated soundchecks.")
 
-        if not self.kiosk_status:
-             report_text.insert(tk.END, "No kiosks were included in this soundcheck.\n")
-        elif not any_issues_found:
-             report_text.insert(tk.END, "\nAll checked kiosks reported OK.", ("green_italic"))
-        else:
-             report_text.insert(tk.END, "\nISSUES FOUND.")
+        report_text.configure(state='disabled')
 
-        report_text.configure(state='disabled') # Make read-only
-
-        # --- Add buttons to the report window ---
         report_button_frame = ttk.Frame(self.report_window)
         report_button_frame.pack(pady=(5, 10))
-
-        # Button to close report AND the main soundcheck window
         close_all_button = ttk.Button(report_button_frame, text="Close Report & Finish",
                                       command=self.close_report_and_main)
         close_all_button.pack(side=tk.RIGHT, padx=5)
-
-        # Allow user to just close report and keep soundcheck window open? Maybe not needed.
-
-        # Handle report window 'X' button press
         self.report_window.protocol("WM_DELETE_WINDOW", self.close_report_and_main)
-
-        # --- Important: DO NOT close the main soundcheck window here ---
-        # self.send_cancel_command() # Send cancel only when closing for good
-        # self.close_window() # Defer this call
 
 
     def close_report_and_main(self):
         """Closes the report window (if open) and then the main soundcheck window."""
         print("[Admin Soundcheck] Closing report and finishing soundcheck.")
-        # Destroy report window first
         if self.report_window and self.report_window.winfo_exists():
             self.report_window.destroy()
             self.report_window = None
-
-        # Now proceed with the main window cleanup and closure
-        self.send_cancel_command()
-        self.close_window()
+        self.send_cancel_command() # Send cancel to kiosks
+        self.close_window() # Close main soundcheck window and cleanup
 
 
     def cancel_soundcheck(self):
@@ -440,23 +423,23 @@ class AdminSoundcheckWindow:
         if self.report_window and self.report_window.winfo_exists():
              self.report_window.destroy()
              self.report_window = None
-        self.send_cancel_command()
-        self.close_window()
+        self.send_cancel_command() # Send cancel to kiosks
+        self.close_window() # Close main soundcheck window and cleanup
 
     def send_cancel_command(self):
-        """Sends the cancel command to kiosks."""
+        """Sends the cancel command to relevant kiosks."""
         print("[Admin Soundcheck] Sending cancel command to kiosks.")
-        # Ensure app and interface_builder are accessible and kiosks are present
         if hasattr(self.app, 'interface_builder') and hasattr(self.app.interface_builder, 'connected_kiosks'):
-            for name in self.kiosk_names:
-                 # Check if kiosk still exists in the main interface before sending cancel
-                if name in self.app.interface_builder.connected_kiosks:
+            for name in self.kiosk_names: # Iterate over all kiosks originally intended for soundcheck
+                # Optionally, only send cancel to 'initiated' kiosks:
+                # if self.kiosk_status[name].get('initiated', False):
+                if name in self.app.interface_builder.connected_kiosks: # Check if kiosk is still listed as connected
                     try:
-                        self.app.network_handler.send_soundcheck_cancel_command(name) # Needs implementation
+                        self.app.network_handler.send_soundcheck_cancel_command(name)
                     except Exception as e:
                         print(f"[Admin Soundcheck] Error sending cancel to {name}: {e}")
-                else:
-                    print(f"[Admin Soundcheck] Kiosk {name} no longer connected, skipping cancel command.")
+                # else:
+                #    print(f"[Admin Soundcheck] Kiosk {name} no longer connected, skipping cancel command.")
         else:
              print("[Admin Soundcheck] Warning: Cannot access connected kiosks list to send cancel commands.")
 
@@ -466,37 +449,27 @@ class AdminSoundcheckWindow:
         if not self.closed:
             self.closed = True
             print("[Admin Soundcheck] Closing main soundcheck window and cleaning up temp files.")
-
-            # Stop any active playback
             if pygame.mixer.get_init():
                 pygame.mixer.stop()
-
-            # Clean up temporary files
             for kiosk_name, temp_path in self.temp_files.items():
-                if temp_path and os.path.exists(temp_path): # Check if path is not None/empty
+                if temp_path and os.path.exists(temp_path):
                     try:
                         os.remove(temp_path)
                         print(f"[Admin Soundcheck] Removed temp file: {temp_path}")
                     except Exception as e:
                         print(f"[Admin Soundcheck] Error removing temp file {temp_path}: {e}")
-            self.temp_files.clear() # Clear the dictionary
-
-            # Destroy the main soundcheck window if it exists
+            self.temp_files.clear()
             if self.window and self.window.winfo_exists():
                 try:
-                    self.window.grab_release() # Release grab before destroying
+                    self.window.grab_release()
                     self.window.destroy()
                 except tk.TclError as e:
-                    print(f"[Admin Soundcheck] Error destroying window: {e}") # Handle race condition/errors
-
-            # Nullify reference in network handler if passed
-            # Check existence carefully
+                    print(f"[Admin Soundcheck] Error destroying window: {e}")
             if hasattr(self.app, 'network_handler') and \
                hasattr(self.app.network_handler, 'soundcheck_instance') and \
                self.app.network_handler.soundcheck_instance == self:
                 self.app.network_handler.soundcheck_instance = None
                 print("[Admin Soundcheck] Cleared network handler reference.")
-
             print("[Admin Soundcheck] Cleanup complete.")
-        else:
-            print("[Admin Soundcheck] close_window called but already closed.")
+        # else:
+        #    print("[Admin Soundcheck] close_window called but already closed.")

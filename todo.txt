@@ -1,9 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-soundcheck needs to be reset by reset button
-soundcheck needs to be able to target specific computers
-    clicking button opens window that has dropdown box for specific kiosk or button that says "All Kiosks"
 
 ##############################################################################################################################
 # beta testing
