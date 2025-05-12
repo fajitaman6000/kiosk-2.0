@@ -1204,7 +1204,7 @@ class AdminInterfaceBuilder:
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""
         try:
-            print(f"[interface builder] === KIOSK SELECTION START: {computer_name} ===")
+            #print(f"[interface builder] === KIOSK SELECTION START: {computer_name} ===")
 
             # --- Clean up existing streams before switching ---
             # Check if a kiosk was previously selected AND it's a different kiosk
@@ -1381,7 +1381,7 @@ class AdminInterfaceBuilder:
                     self.app.prop_control.disconnect_current_room()
 
 
-            print(f"[interface builder] === KIOSK SELECTION END: {self.selected_kiosk} ===\n")
+            #print(f"[interface builder] === KIOSK SELECTION END: {self.selected_kiosk} ===\n")
 
         except Exception as e:
             print(f"[interface builder] CRITICAL Error in select_kiosk for {computer_name}: {e}")

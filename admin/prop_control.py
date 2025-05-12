@@ -532,7 +532,7 @@ class PropControl:
 
     def sort_and_repack_props(self):
         """Sorts props based on their 'order' for the *current* room and repacks them."""
-        print("[prop control]Sorting and repacking props")
+        #print("[prop control]Sorting and repacking props")
         if not self.current_room or not self.props:
             return
 
