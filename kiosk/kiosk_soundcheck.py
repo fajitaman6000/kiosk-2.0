@@ -7,6 +7,7 @@ import pyaudio
 import os
 import pygame # Import pygame directly for sound playback here
 import traceback # Ensure traceback is imported
+import wave # <<< ADDED
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QApplication,
                              QSizePolicy, QFrame, QSpacerItem, QHBoxLayout)
 # --- MODIFIED IMPORT ---
@@ -27,9 +28,11 @@ STATE_CANCELED = 7
 # --- Reduced Audio Parameters ---
 RECORD_SECONDS = 3 # Reduced duration
 CHUNK = 1024
-FORMAT = pyaudio.paInt16
+# --- MODIFIED PARAMETERS ---
+FORMAT = pyaudio.paUInt8 # Use 8-bit unsigned integer format (halves data size)
 CHANNELS = 1
-RATE = 16000 # Reduced sample rate
+RATE = 8000 # Reduce sample rate significantly (halves data size again)
+# --- END MODIFIED PARAMETERS ---
 
 # --- Recorder Thread ---
 class RecorderThread(QThread):
@@ -507,7 +510,7 @@ class KioskSoundcheckWidget(QWidget):
     # Make slot connection explicit if needed, although connect often works okay
     # @pyqtSlot(bytes)
     def on_recording_complete(self, audio_data):
-        print(f"[Kiosk Soundcheck] Recording complete signal received with {len(audio_data)} bytes.")
+        print(f"[Kiosk Soundcheck] Recording complete signal received with {len(audio_data)} bytes (raw 8-bit).")
         if self.state != STATE_RECORDING:
             print("[Kiosk Soundcheck] Warning: Recording completed but state is not RECORDING.")
             # Clean up thread reference if it exists
@@ -522,7 +525,7 @@ class KioskSoundcheckWidget(QWidget):
         self._update_ui()
 
         try:
-            # Ensure audio_data is bytes
+            # Ensure audio_data is bytes and not empty
             if not isinstance(audio_data, bytes):
                 print("[Kiosk Soundcheck] Error: Recorded data is not bytes.")
                 raise TypeError("Recorded data is not bytes")
@@ -531,27 +534,46 @@ class KioskSoundcheckWidget(QWidget):
                 print("[Kiosk Soundcheck] Error: Recorded data is empty.")
                 raise ValueError("Recorded data is empty")
 
-            encoded_data = base64.b64encode(audio_data).decode('utf-8')
-            print("[Kiosk Soundcheck] Audio encoded to Base64.")
-            # Send status checks size internally now
-            self.send_status('audio_sample', True, encoded_data) # Send sample data if size permits
-            # Note: We don't send mic=True yet, admin decides based on listening
+            # --- ADDED: Create WAVE file in memory ---
+            wave_buffer = io.BytesIO()
+            # Need a temporary PyAudio instance to get the correct sample width for the format
+            audio_instance_for_width = pyaudio.PyAudio()
+            sample_width = audio_instance_for_width.get_sample_size(FORMAT) # Should be 1 for paUInt8
+            audio_instance_for_width.terminate() # Clean up the temporary instance
 
-            # If send_status decided data was too big, it will have already set state to COMPLETE
-            if self.state == STATE_SENDING: # Only change state if not already changed by send_status fail
+            with wave.open(wave_buffer, 'wb') as wf:
+                wf.setnchannels(CHANNELS)
+                wf.setsampwidth(sample_width)
+                wf.setframerate(RATE)
+                wf.writeframes(audio_data) # Write the raw 8-bit data
+
+            wave_data = wave_buffer.getvalue() # Get the complete WAVE data (header + raw data)
+            print(f"[Kiosk Soundcheck] Raw audio wrapped in WAVE format ({len(wave_data)} bytes).")
+            # --- END ADDED ---
+
+            # Encode the WAVE data, not the raw audio_data
+            encoded_data = base64.b64encode(wave_data).decode('utf-8')
+            print("[Kiosk Soundcheck] WAVE audio encoded to Base64.")
+
+            # send_status checks size internally now before adding 'audio_data'
+            # Pass the encoded *WAVE* data
+            self.send_status('audio_sample', True, encoded_data)
+
+            # If send_status decided data was too big (it shouldn't now), it will have
+            # already sent mic=False and set state to COMPLETE. Check if we still need to transition.
+            if self.state == STATE_SENDING: # Only change state if not already changed by send_status size fail
                 self.state = STATE_COMPLETE
                 self._update_ui()
 
         except Exception as e:
-            print(f"[Kiosk Soundcheck] Error encoding/sending audio sample: {e}")
+            print(f"[Kiosk Soundcheck] Error processing/encoding/sending audio sample: {e}")
             import traceback
             traceback.print_exc()
-            self.send_status('mic', False) # Send mic fail if encoding/sending fails
+            self.send_status('mic', False) # Send mic fail if processing/encoding fails
             self.state = STATE_COMPLETE # Still go to complete state
             self._update_ui()
         finally:
-             # Ensure thread object is cleaned up if recording ended normally
-             # deleteLater was connected to finished signal, should be okay.
+             # Thread cleanup is handled by the finished signal connection
              pass
 
 
@@ -595,12 +617,6 @@ class KioskSoundcheckWidget(QWidget):
     # --- END ADDED DECORATOR ---
     def cancel_soundcheck(self):
         print("[Kiosk Soundcheck] Cancel command received (Slot).")
-        if self.state == STATE_CANCELED or self.state == STATE_COMPLETE or self.state == STATE_IDLE:
-            print(f"[Kiosk Soundcheck] Ignoring cancel in state {self.state}.")
-            # If widget still visible, hide it
-            # if self.isVisible():
-            #     self.close_widget() # Trigger close sequence if needed
-            return
 
         initial_state = self.state
         self.state = STATE_CANCELED
