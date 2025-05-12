@@ -33,7 +33,7 @@ class AdminSoundcheckWindow:
         # --- Window Setup ---
         self.window = tk.Toplevel(parent_root)
         self.window.title("Kiosk Soundcheck Tool")
-        self.window.geometry("700x300") # Adjusted size for additional buttons
+        self.window.geometry("700x400") # Adjusted size for additional buttons
         self.window.resizable(False, False)
         # Make window modal (optional, prevents interaction with main window)
         self.window.grab_set() # Make the soundcheck window modal initially

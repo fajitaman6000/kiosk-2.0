@@ -9,11 +9,11 @@ import pygame # Import pygame directly for sound playback here
 import traceback # Ensure traceback is imported
 import wave # <<< ADDED
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QApplication,
-                             QSizePolicy, QFrame, QSpacerItem, QHBoxLayout)
+                             QSizePolicy, QFrame, QSpacerItem, QHBoxLayout, QGraphicsScene, QGraphicsView)
 # --- MODIFIED IMPORT ---
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, pyqtSlot
 # --- END MODIFIED IMPORT ---
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTransform, QPainter
 
 # --- Constants ---
 STATE_IDLE = 0
@@ -190,27 +190,83 @@ class KioskSoundcheckWidget(QWidget):
 
     def _init_ui(self):
         self.setWindowTitle("Soundcheck")
-        # Make it cover a good portion, centered, but not full screen initially
-        parent_size = self.parent().size() if self.parent() else QApplication.primaryScreen().size()
-        width = 600
-        height = 400
-        x = (parent_size.width() - width) // 2
-        y = (parent_size.height() - height) // 2
-        self.setGeometry(x, y, width, height)
-
+        
+        # Set window properties
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setStyleSheet("""
-            KioskSoundcheckWidget {
-                background-color: rgba(0, 0, 0, 190);
-                border: 2px solid white;
-                border-radius: 15px;
-            }
-            QLabel {
-                color: white;
-                font-size: 28px;
-                alignment: 'AlignCenter';
-            }
+        
+        # Get parent size for positioning
+        parent_size = self.parent().size() if self.parent() else QApplication.primaryScreen().size()
+        
+        # For a rotated widget, swap width and height dimensions
+        self.window_width = 400   # Will be height after rotation
+        self.window_height = 600  # Will be width after rotation
+        
+        # Set window size and position
+        screen_x = (parent_size.width() - self.window_width) // 2
+        screen_y = (parent_size.height() - self.window_height) // 2
+        self.setGeometry(screen_x, screen_y, self.window_width, self.window_height)
+        
+        # Create graphics scene and view for rotation
+        self.scene = QGraphicsScene(self)
+        self.view = QGraphicsView(self.scene, self)
+        self.view.setStyleSheet("background: transparent; border: none;")
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
+        self.view.setGeometry(0, 0, self.window_width, self.window_height)
+        
+        # Create a proxy widget to hold our content
+        self.content_widget = QWidget()
+        self.content_widget.setStyleSheet("""
+            background-color: rgba(0, 0, 0, 190);
+        """)
+        
+        # Layout for the content widget
+        self.layout = QVBoxLayout(self.content_widget)
+        self.layout.setAlignment(Qt.AlignCenter)
+        self.layout.setContentsMargins(30, 30, 30, 30)
+        self.layout.setSpacing(20)
+        
+        # Message label
+        self.message_label = QLabel("", self.content_widget)
+        self.message_label.setWordWrap(True)
+        self.message_label.setAlignment(Qt.AlignCenter)
+        self.message_label.setStyleSheet("""
+            color: white;
+            font-size: 28px;
+        """)
+        self.layout.addWidget(self.message_label)
+        
+        # Button container
+        self.button_container = QFrame(self.content_widget)
+        self.button_container.setObjectName("buttonContainer")
+        self.button_container_layout = QVBoxLayout(self.button_container)
+        self.button_container_layout.setAlignment(Qt.AlignCenter)
+        self.button_container_layout.setContentsMargins(0, 0, 0, 0)
+        self.button_container_layout.setSpacing(15)
+        self.layout.addWidget(self.button_container)
+        
+        # Set fixed size for content widget (swapped dimensions for rotation)
+        self.content_widget.setFixedSize(self.window_height - 40, self.window_width - 40)
+        
+        # Add content widget to scene via proxy
+        self.proxy = self.scene.addWidget(self.content_widget)
+        
+        # Set the transform origin point to the center of the widget
+        self.proxy.setTransformOriginPoint(self.proxy.boundingRect().center())
+        
+        # Rotate clockwise 90 degrees
+        self.proxy.setRotation(90)
+        
+        # Center the widget in the view
+        self.proxy.setPos(
+            (self.window_width - self.content_widget.height()) / 2,
+            (self.window_height - self.content_widget.width()) / 2
+        )
+        
+        # Button style
+        self.button_style = """
             QPushButton {
                 background-color: #4CAF50; /* Green */
                 border: none;
@@ -226,7 +282,7 @@ class KioskSoundcheckWidget(QWidget):
             QPushButton:hover {
                 background-color: #45a049;
             }
-             QPushButton:disabled {
+            QPushButton:disabled {
                 background-color: #cccccc;
                 color: #666666;
             }
@@ -236,58 +292,20 @@ class KioskSoundcheckWidget(QWidget):
             QPushButton#replayButton:hover {
                 background-color: #007ba7;
             }
-             QPushButton#noButton {
+            QPushButton#noButton {
                 background-color: #f44336; /* Red */
             }
             QPushButton#noButton:hover {
                 background-color: #da190b;
             }
-        """)
-
-        self.layout = QVBoxLayout(self)
-        self.layout.setAlignment(Qt.AlignCenter)
-        self.layout.setContentsMargins(30, 30, 30, 30)
-        self.layout.setSpacing(20)
-
-        self.message_label = QLabel("", self)
-        self.message_label.setWordWrap(True)
-        self.message_label.setAlignment(Qt.AlignCenter)
-        self.layout.addWidget(self.message_label)
-
-        # --- Button Container Frame ---
-        # This frame will hold the different button layouts
-        self.button_container = QFrame(self)
-        self.button_container.setObjectName("buttonContainer")
-        self.button_container_layout = QVBoxLayout(self.button_container)
-        self.button_container_layout.setAlignment(Qt.AlignCenter)
-        self.button_container_layout.setContentsMargins(0,0,0,0)
-        self.button_container_layout.setSpacing(15)
-        self.layout.addWidget(self.button_container)
-
-        # Buttons (created once, shown/hidden as needed)
-        self.touch_button = QPushButton("Touch Here", self)
-        self.yes_button = QPushButton("Yes", self)
-        self.no_button = QPushButton("No", self)
-        self.replay_button = QPushButton("Replay Sound", self)
-        self.record_button = QPushButton("Start Recording", self)
-
-        # Set object names for specific styling/identification
-        self.replay_button.setObjectName("replayButton")
-        self.no_button.setObjectName("noButton")
-
-        # Connect signals
-        self.touch_button.clicked.connect(self.handle_touch)
-        self.yes_button.clicked.connect(lambda: self.handle_audio_confirm(True))
-        self.no_button.clicked.connect(lambda: self.handle_audio_confirm(False))
-        self.replay_button.clicked.connect(self.handle_replay)
-        self.record_button.clicked.connect(self.handle_start_recording)
-
-        # Initially hide all buttons (they will be added to layout in _update_ui)
-        self.touch_button.hide()
-        self.yes_button.hide()
-        self.no_button.hide()
-        self.replay_button.hide()
-        self.record_button.hide()
+        """
+        
+        # Initialize button references (will be created when needed)
+        self.touch_button = None
+        self.yes_button = None
+        self.no_button = None
+        self.replay_button = None
+        self.record_button = None
 
     def start_soundcheck(self):
         print("[Kiosk Soundcheck] Starting soundcheck process.")
@@ -305,12 +323,10 @@ class KioskSoundcheckWidget(QWidget):
 
     def _clear_buttons(self):
         """Helper to remove all widgets from the button container layout."""
-        # print("[Kiosk Soundcheck] Clearing buttons...")
         while self.button_container_layout.count():
             item = self.button_container_layout.takeAt(0)
             widget = item.widget()
             if widget:
-                # print(f"[Kiosk Soundcheck] Removing and deleting widget: {widget.objectName()}")
                 widget.hide()
                 widget.setParent(None) # Remove from layout management
                 widget.deleteLater()   # Schedule deletion
@@ -318,7 +334,6 @@ class KioskSoundcheckWidget(QWidget):
                 # If it's a layout, clear it recursively
                 layout = item.layout()
                 if layout:
-                    # print("[Kiosk Soundcheck] Removing and deleting layout...")
                     while layout.count():
                         sub_item = layout.takeAt(0)
                         sub_widget = sub_item.widget()
@@ -329,66 +344,78 @@ class KioskSoundcheckWidget(QWidget):
                     # Request deletion of the layout itself
                     layout.deleteLater()
 
-
     def _update_ui(self):
         print(f"[Kiosk Soundcheck] Updating UI for state: {self.state}")
-        # Clear previous buttons more robustly
+        # Clear previous buttons
         self._clear_buttons()
 
         # Re-create buttons needed for the current state and add them
         if self.state == STATE_WAITING_TOUCH:
             self.message_label.setText("Soundcheck requested.\n\nTouch the button below to test audio.")
-            self.touch_button = QPushButton("Touch Here", self) # Recreate
+            self.touch_button = QPushButton("Touch Here", self.content_widget)
+            self.touch_button.setStyleSheet(self.button_style)
             self.touch_button.clicked.connect(self.handle_touch)
             self.button_container_layout.addWidget(self.touch_button)
             self.touch_button.show()
+            
         elif self.state == STATE_WAITING_AUDIO_CONFIRM:
             self.message_label.setText("Did you hear the sound play?")
-            # Recreate buttons
-            self.yes_button = QPushButton("Yes", self)
-            self.no_button = QPushButton("No", self)
-            self.replay_button = QPushButton("Replay Sound", self)
+            
+            # Create buttons
+            self.yes_button = QPushButton("Yes", self.content_widget)
+            self.no_button = QPushButton("No", self.content_widget)
+            self.replay_button = QPushButton("Replay Sound", self.content_widget)
+            
+            # Set styles
+            self.yes_button.setStyleSheet(self.button_style)
+            self.no_button.setStyleSheet(self.button_style)
+            self.replay_button.setStyleSheet(self.button_style)
+            
+            # Set object names for specific styling
+            self.replay_button.setObjectName("replayButton")
+            self.no_button.setObjectName("noButton")
+            
+            # Connect signals
             self.yes_button.clicked.connect(lambda: self.handle_audio_confirm(True))
             self.no_button.clicked.connect(lambda: self.handle_audio_confirm(False))
             self.replay_button.clicked.connect(self.handle_replay)
-            self.replay_button.setObjectName("replayButton")
-            self.no_button.setObjectName("noButton")
 
             # Add buttons horizontally
-            h_layout = QHBoxLayout() # Create new layout
+            h_layout = QHBoxLayout()
             h_layout.addStretch(1)
             h_layout.addWidget(self.yes_button)
             h_layout.addWidget(self.no_button)
             h_layout.addWidget(self.replay_button)
             h_layout.addStretch(1)
-            self.button_container_layout.addLayout(h_layout) # Add layout to container
-            self.yes_button.show()
-            self.no_button.show()
-            self.replay_button.show()
+            self.button_container_layout.addLayout(h_layout)
+            
         elif self.state == STATE_WAITING_MIC_START:
-             self.message_label.setText("Prepare to record a short audio sample.\n\nPress 'Start Recording' and speak clearly.")
-             self.record_button = QPushButton("Start Recording", self) # Recreate
-             self.record_button.clicked.connect(self.handle_start_recording)
-             self.record_button.setEnabled(True)
-             self.button_container_layout.addWidget(self.record_button)
-             self.record_button.show()
+            self.message_label.setText("Prepare to record a short audio sample.\n\nPress 'Start Recording' and speak clearly.")
+            self.record_button = QPushButton("Start Recording", self.content_widget)
+            self.record_button.setStyleSheet(self.button_style)
+            self.record_button.clicked.connect(self.handle_start_recording)
+            self.record_button.setEnabled(True)
+            self.button_container_layout.addWidget(self.record_button)
+            
         elif self.state == STATE_RECORDING:
-             self.message_label.setText(f"Recording audio for {RECORD_SECONDS} seconds...\nSpeak now!")
-             # Keep the button visible but disabled
-             self.record_button = QPushButton("Recording...", self) # Recreate as disabled text
-             self.record_button.setEnabled(False)
-             self.button_container_layout.addWidget(self.record_button)
-             self.record_button.show()
+            self.message_label.setText(f"Recording audio for {RECORD_SECONDS} seconds...\nSpeak now!")
+            self.record_button = QPushButton("Recording...", self.content_widget)
+            self.record_button.setStyleSheet(self.button_style)
+            self.record_button.setEnabled(False)
+            self.button_container_layout.addWidget(self.record_button)
+            
         elif self.state == STATE_SENDING:
-             self.message_label.setText("Sending audio sample to admin...")
-             # No buttons needed here
+            self.message_label.setText("Sending audio sample to admin...")
+            # No buttons needed
+            
         elif self.state == STATE_COMPLETE:
-             self.message_label.setText("Soundcheck step complete.\nResults uploaded to admin.")
-             # No buttons needed, wait for cancel command
+            self.message_label.setText("Soundcheck step complete.\nResults uploaded to admin.")
+            # No buttons needed
+            
         elif self.state == STATE_CANCELED:
-             self.message_label.setText("Soundcheck cancelled by admin.")
-             # Auto-close after 3s
-             QTimer.singleShot(3000, self.close_widget)
+            self.message_label.setText("Soundcheck cancelled by admin.")
+            # Auto-close after 3s
+            QTimer.singleShot(3000, self.close_widget)
 
     def send_status(self, test_type, result, audio_data_b64=None):
         """Sends status update back to the admin."""
@@ -489,7 +516,6 @@ class KioskSoundcheckWidget(QWidget):
             self.state = STATE_WAITING_MIC_START # Skip to mic test
         self._update_ui()
 
-
     def handle_audio_confirm(self, heard_sound):
         if self.state != STATE_WAITING_AUDIO_CONFIRM: return
         print(f"[Kiosk Soundcheck] Audio confirmation: Heard={heard_sound}")
@@ -581,7 +607,6 @@ class KioskSoundcheckWidget(QWidget):
              # Thread cleanup is handled by the finished signal connection
              pass
 
-
     # Make slot connection explicit if needed
     # @pyqtSlot(str)
     def on_recording_error(self, error_message):
@@ -592,7 +617,6 @@ class KioskSoundcheckWidget(QWidget):
         # Make sure we are on the main thread before updating UI
         # Use QTimer.singleShot which guarantees execution on the event loop's thread
         QTimer.singleShot(0, lambda: self._handle_recording_error_ui(error_message))
-
 
     def _handle_recording_error_ui(self, error_message):
         """Handles UI updates for recording errors on the main thread."""
@@ -607,7 +631,6 @@ class KioskSoundcheckWidget(QWidget):
         # Close the widget immediately after sending the mic fail status
         print(f"[Kiosk Soundcheck] Mic test failed due to recording error, closing widget: {error_message}")
         QTimer.singleShot(0, self.close_widget)
-
 
     # --- ADDED DECORATOR ---
     @pyqtSlot()
