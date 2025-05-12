@@ -227,7 +227,7 @@ class NetworkBroadcastHandler:
                             # Log room changes
                             room = msg.get('room')
                             current_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
-                            if room != current_room:
+                            if room != current_room and current_room is not None:
                                 print(f"[network broadcast handler] Processing room change for {computer_name}, Previous room: {current_room}, New room: {room}")
 
                         # Update kiosk tracker and UI

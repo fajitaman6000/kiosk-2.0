@@ -20,6 +20,7 @@ import base64
 class AdminInterfaceBuilder:
     def __init__(self, app):
         self.select_kiosk_debug = app.select_kiosk_debug
+        self.hint_debug = app.hint_debug
         self.app = app
         self.main_container = None
         self.connected_kiosks = {}
@@ -1126,7 +1127,8 @@ class AdminInterfaceBuilder:
                         self._last_hint_request_states = {}
                     self._last_hint_request_states[computer_name] = True
                 else:
-                    print(f"[interface builder][AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
+                    if(self.hint_debug):
+                        print(f"[interface builder][AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
                     self.connected_kiosks[computer_name]['help_label'].config(
                          text="",
                          fg='red',

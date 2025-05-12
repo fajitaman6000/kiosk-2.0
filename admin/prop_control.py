@@ -431,7 +431,7 @@ class PropControl:
                         if room_number in self.mqtt_clients:
                             del self.mqtt_clients[room_number]
                     except Exception as e:
-                        print(f"[prop control]Error cleaning up client for room {room_number}: {e}")
+                        print(f"[prop control]Error cleaning up client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
                 
                 threading.Thread(target=cleanup, daemon=True).start()
                 
@@ -683,7 +683,7 @@ class PropControl:
             prop_name = prop_info['info'].get('strName', 'unknown') if 'info' in prop_info else 'unknown'
             error_type = type(e).__name__
             trace_str = traceback.format_exc()
-            print(f"[prop control]Error in check_prop_status: Room {room_number}, Prop '{prop_name}' (ID: {prop_id})")
+            print(f"[prop control]Error in check_prop_status: Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}', Prop '{prop_name}' (ID: {prop_id})")
             print(f"[prop control]Exception type: {error_type}, Error: {str(e)}")
             print(f"[prop control]Traceback: {trace_str}")
 
@@ -898,7 +898,7 @@ class PropControl:
     def on_connect(self, client, userdata, flags, rc, room_number):
         """Handle connection for a specific room's client"""
         if rc == 0:
-            print(f"[prop control]Room {room_number} connected.")
+            print(f"[prop control]Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' connected.")
             # Don't clear history immediately on successful connection
             # We'll keep the history for a bit in case we quickly disconnect again
 
@@ -907,7 +907,7 @@ class PropControl:
                 try:
                     self.status_label.config(text="")
                 except tk.TclError:
-                    print(f"[prop control]Error clearing status label for room {room_number} on connect (widget destroyed?).")
+                    print(f"[prop control]Error clearing status label for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect (widget destroyed?).")
 
             # Cancel the timeout check timer on successful connection
             if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
@@ -937,12 +937,12 @@ class PropControl:
                     # Subscribe on the MQTT thread loop
                     client.subscribe(topic)
             except Exception as e:
-                print(f"[prop control]Error subscribing to topics for room {room_number} on connect: {e}")
+                print(f"[prop control]Error subscribing to topics for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect: {e}")
 
             # Clear the disconnect history after 5 seconds of stable connection
             def clear_disconnect_history():
                 if room_number in self.disconnect_rc7_history:
-                    print(f"[prop control] Connection to room {room_number} stable for 5s. Clearing rc=7 history.")
+                    print(f"[prop control] Connection to room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' stable for 5s. Clearing rc=7 history.")
                     del self.disconnect_rc7_history[room_number]
             
             # Schedule history clearing after a stable period
@@ -1099,7 +1099,7 @@ class PropControl:
         """Handle disconnection for a specific room's client, with aggressive retry for rc=7."""
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
         current_time = time.time()
-        print(f"[prop control]Room {room_number} disconnected with code: {rc} at {current_time}")  # Added timestamp
+        print(f"[prop control]Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' disconnected with code: {rc} at {current_time}")  # Added timestamp
 
         # --- Aggressive Retry Logic for rc=7 ---
         if rc == 7:
@@ -1121,7 +1121,7 @@ class PropControl:
 
             # Check if threshold is met (2 or more disconnects in the last 10 seconds)
             if disconnect_count >= 2:
-                print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room {room_number}. Triggering aggressive retry.")  # More specific log
+                print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'. Triggering aggressive retry.")  # More specific log
                 # Trigger the aggressive retry
                 self.aggressive_retry(room_number)
                 # Clear history *after* triggering aggressive retry
@@ -1130,13 +1130,13 @@ class PropControl:
 
             else:
                 # If threshold not met, proceed with standard retry logic below for rc=7
-                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room {room_number} is below threshold (2). Scheduling standard retry.")  # Debug log
+                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' is below threshold (2). Scheduling standard retry.")  # Debug log
                 # Fall through to the standard retry path below
 
         else:  # rc is not 7
             # For any other disconnect code (not rc=7), clear the rc=7 specific history
             if room_number in self.disconnect_rc7_history:
-                print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} due to non-rc=7 disconnect (code {rc}).")  # Debug
+                print(f"[prop control] DEBUG: Clearing rc=7 history for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' due to non-rc=7 disconnect (code {rc}).")  # Debug
                 del self.disconnect_rc7_history[room_number]
 
         # --- Standard Retry Logic (for non-zero rc OR rc=7 below threshold) ---
@@ -1156,7 +1156,7 @@ class PropControl:
 
     def aggressive_retry(self, room_number):
         """Performs a more aggressive retry for a room after repeated failures."""
-        print(f"[prop control]Triggering aggressive retry for room {room_number}")
+        print(f"[prop control]Triggering aggressive retry for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'")
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
 
         # Update UI status immediately (must use after)
@@ -1173,15 +1173,15 @@ class PropControl:
                     old_client.loop_stop()  # Stop its background thread
                     old_client.disconnect()  # Attempt a clean disconnect
                     del self.mqtt_clients[room_number]
-                    print(f"[prop control]Cleaned up old client for room {room_number} during aggressive retry.")
+                    print(f"[prop control]Cleaned up old client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' during aggressive retry.")
                 except Exception as e:
-                    print(f"[prop control]Error cleaning up old client during aggressive retry for room {room_number}: {e}")
+                    print(f"[prop control]Error cleaning up old client during aggressive retry for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
 
             # Wait for 5 seconds (blocking part)
             time.sleep(5)
 
             # Schedule the reconnection on the main thread
-            print(f"[prop control]Aggressive retry: Scheduling new connection initialization for room {room_number}")
+            print(f"[prop control]Aggressive retry: Scheduling new connection initialization for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'")
             self.app.root.after(0, lambda: self.initialize_mqtt_client(room_number))
 
         # Start the aggressive retry process in a new thread

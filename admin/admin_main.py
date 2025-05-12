@@ -23,6 +23,7 @@ def show_error_and_wait():
 try:
     class AdminApplication:
         select_kiosk_debug = False
+        hint_debug = False
         def __init__(self):
             # Ensure we're in the correct directory
             os.chdir(os.path.dirname(os.path.abspath(__file__)))
