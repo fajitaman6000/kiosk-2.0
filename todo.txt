@@ -1,10 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-hint requested status remains despite clearing on admin side
-
-one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
-
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'wood_wheel'

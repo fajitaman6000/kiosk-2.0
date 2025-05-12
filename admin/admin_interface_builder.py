@@ -583,6 +583,14 @@ class AdminInterfaceBuilder:
 
         # Reset hints count locally
         self.app.kiosk_tracker.kiosk_stats[computer_name]['total_hints'] = 0
+        
+        # Reset hint requested flag
+        self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = False
+        
+        # Update tracking state
+        if not hasattr(self, '_last_hint_request_states'):
+            self._last_hint_request_states = {}
+        self._last_hint_request_states[computer_name] = False
 
         # Reset and stop timer (local actions, combined with network command)
         self.app.network_handler.send_timer_command(computer_name, "set", 45)
@@ -777,6 +785,9 @@ class AdminInterfaceBuilder:
             if hasattr(self.app, 'prop_control') and self.app.prop_control:
                 if room_number in self.app.prop_control.last_progress_times:
                     self.update_last_progress_time_display(room_number)
+        
+        # Update all kiosk hint request indicators
+        self.update_all_kiosk_hint_statuses()
         
         self.app.root.after(1000, self.update_timer_display)
 
@@ -1106,6 +1117,11 @@ class AdminInterfaceBuilder:
                     )
                     self.audio_manager = AdminAudioManager()
                     self.audio_manager.play_sound("hint_notification")
+                    
+                    # Ensure tracking dictionary is initialized and updated
+                    if not hasattr(self, '_last_hint_request_states'):
+                        self._last_hint_request_states = {}
+                    self._last_hint_request_states[computer_name] = True
                 else:
                     print(f"[interface builder][AdminInterface] mark_help_requested: Clearing HINT REQUESTED for {computer_name} from state")
                     self.connected_kiosks[computer_name]['help_label'].config(
@@ -1113,6 +1129,11 @@ class AdminInterfaceBuilder:
                          fg='red',
                          font=('Arial', 14, 'bold')
                     )
+                    
+                    # Update tracking state
+                    if not hasattr(self, '_last_hint_request_states'):
+                        self._last_hint_request_states = {}
+                    self._last_hint_request_states[computer_name] = False
             else:
                 print(f"[interface builder][AdminInterface] mark_help_requested: Ignoring help request - no kiosk stats found for {computer_name}")
 
@@ -1392,12 +1413,10 @@ class AdminInterfaceBuilder:
         music_button = self.stats_elements.get('music_button')
         if music_button and music_button.winfo_exists():
             music_playing = stats.get('music_playing', False)
-            #print(f"[DEBUG] Raw stats music_playing value: {music_playing}")
 
             if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
                 try:
                     current_image = music_button.cget('image')
-                    #print(f"[DEBUG] music_playing: {music_playing}, current_image: {current_image}, on_icon: {music_button.music_on_icon}, off_icon: {music_button.music_off_icon}")
                     
                     if music_playing and str(current_image) != str(music_button.music_on_icon):
                         music_button.config(
@@ -1465,6 +1484,9 @@ class AdminInterfaceBuilder:
             self.mark_help_requested(computer_name)
             self._last_hint_request_states[computer_name] = current_hint_request
         
+        # Update hint request status for ALL connected kiosks, not just the selected one
+        self.update_all_kiosk_hint_statuses()
+        
         if self.app.prop_control and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
             room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
             
@@ -1515,7 +1537,20 @@ class AdminInterfaceBuilder:
         save_manual_hint(self)
 
     def clear_kiosk_hints(self, computer_name):
-      self.app.network_handler.send_clear_hints_command(computer_name)
+        self.app.network_handler.send_clear_hints_command(computer_name)
+        
+        # Also clear the hint requested status
+        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+            self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = False
+            
+            # Update tracking state
+            if not hasattr(self, '_last_hint_request_states'):
+                self._last_hint_request_states = {}
+            self._last_hint_request_states[computer_name] = False
+            
+            # Clear help label
+            if computer_name in self.connected_kiosks:
+                self.connected_kiosks[computer_name]['help_label'].config(text="")
 
     def send_hint(self, computer_name, hint_data=None):
         """Send a hint to the selected kiosk."""
@@ -1546,6 +1581,17 @@ class AdminInterfaceBuilder:
         # Clear any pending help requests
         if computer_name in self.app.kiosk_tracker.help_requested:
             self.app.kiosk_tracker.help_requested.remove(computer_name)
+        
+        # Also update the kiosk_stats to set hint_requested to False    
+        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+            self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = False
+            
+            # Update tracking state
+            if not hasattr(self, '_last_hint_request_states'):
+                self._last_hint_request_states = {}
+            self._last_hint_request_states[computer_name] = False
+            
+            # Clear help label text
             if computer_name in self.connected_kiosks:
                 self.connected_kiosks[computer_name]['help_label'].config(text="")
 
@@ -1884,3 +1930,32 @@ class AdminInterfaceBuilder:
             # Kiosks are connected, hide the message
             if self.no_kiosks_label.winfo_manager():
                 self.no_kiosks_label.pack_forget()
+
+    # Add this new method to update all kiosk hint statuses
+    def update_all_kiosk_hint_statuses(self):
+        """Update hint request indicators for all connected kiosks"""
+        for computer_name, kiosk_data in self.connected_kiosks.items():
+            if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                current_hint_request = self.app.kiosk_tracker.kiosk_stats[computer_name].get('hint_requested', False)
+                
+                # Initialize tracking dict if needed
+                if not hasattr(self, '_last_hint_request_states'):
+                    self._last_hint_request_states = {}
+                    
+                last_hint_request = self._last_hint_request_states.get(computer_name)
+                
+                # Update UI if hint request state has changed
+                if last_hint_request != current_hint_request:
+                    help_label = kiosk_data.get('help_label')
+                    if help_label and help_label.winfo_exists():
+                        if current_hint_request:
+                            help_label.config(
+                                text="HINT REQUESTED",
+                                fg='red',
+                                font=('Arial', 14, 'bold')
+                            )
+                        else:
+                            help_label.config(text="")
+                        
+                        # Update our tracking of the last state
+                        self._last_hint_request_states[computer_name] = current_hint_request
