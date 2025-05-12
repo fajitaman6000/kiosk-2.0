@@ -414,9 +414,10 @@ class KioskSoundcheckWidget(QWidget):
                      'result': False,
                  }
                  self.kiosk_app.network.send_message(mic_fail_status)
-
-                 self.state = STATE_COMPLETE # Move to complete state even on failure to send sample
-                 QTimer.singleShot(0, self._update_ui) # Update UI on main thread
+                 
+                 # Close the widget immediately after sending the mic fail status
+                 print("[Kiosk Soundcheck] Mic fail status sent due to large audio data, closing widget.")
+                 QTimer.singleShot(0, self.close_widget)
                  return # Don't send the message with oversized audio
             else:
                 status_data['audio_data'] = audio_data_b64
@@ -529,7 +530,6 @@ class KioskSoundcheckWidget(QWidget):
         self.recorder_thread.finished.connect(self.recorder_thread.deleteLater)
         self.recorder_thread.start()
 
-    # Make slot connection explicit if needed, although connect often works okay
     # @pyqtSlot(bytes)
     def on_recording_complete(self, audio_data):
         print(f"[Kiosk Soundcheck] Recording complete signal received with {len(audio_data)} bytes.")
@@ -565,20 +565,18 @@ class KioskSoundcheckWidget(QWidget):
 
             # send_status checks size internally now before adding 'audio_data'
             self.send_status('audio_sample', True, encoded_data)
-
-            # If send_status decided data was too big, it will have
-            # already sent mic=False and set state to COMPLETE. Check if we still need to transition.
-            if self.state == STATE_SENDING: # Only change state if not already changed by send_status size fail
-                self.state = STATE_COMPLETE
-                self._update_ui()
+            
+            # Close the widget immediately after sending the audio sample
+            print("[Kiosk Soundcheck] Audio sample sent, closing widget.")
+            QTimer.singleShot(0, self.close_widget)
 
         except Exception as e:
             print(f"[Kiosk Soundcheck] Error processing/encoding/sending audio sample: {e}")
             import traceback
             traceback.print_exc()
             self.send_status('mic', False) # Send mic fail if processing/encoding fails
-            self.state = STATE_COMPLETE # Still go to complete state
-            self._update_ui()
+            # Close the widget even on error
+            QTimer.singleShot(0, self.close_widget)
         finally:
              # Thread cleanup is handled by the finished signal connection
              pass
@@ -605,18 +603,10 @@ class KioskSoundcheckWidget(QWidget):
 
         # Mark mic test as failed
         self.send_status('mic', False)
-
-        # Option 1: Go back to allow retry
-        self.state = STATE_WAITING_MIC_START
-        self._update_ui() # This will recreate the "Start Recording" button
-        self.message_label.setText(f"Recording Error:\n{error_message}\n\nTry again?")
-
-        # Option 2: Mark as complete but failed (simpler?)
-        # self.state = STATE_COMPLETE
-        # self._update_ui()
-        # self.message_label.setText(f"Soundcheck complete.\nMic Test Failed:\n{error_message}")
-
-        print(f"[Kiosk Soundcheck] Mic test failed due to recording error: {error_message}")
+        
+        # Close the widget immediately after sending the mic fail status
+        print(f"[Kiosk Soundcheck] Mic test failed due to recording error, closing widget: {error_message}")
+        QTimer.singleShot(0, self.close_widget)
 
 
     # --- ADDED DECORATOR ---
