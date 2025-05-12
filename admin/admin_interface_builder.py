@@ -19,6 +19,7 @@ import base64
 
 class AdminInterfaceBuilder:
     def __init__(self, app):
+        self.select_kiosk_debug = app.select_kiosk_debug
         self.app = app
         self.main_container = None
         self.connected_kiosks = {}
@@ -303,7 +304,7 @@ class AdminInterfaceBuilder:
             with open("prop_name_mapping.json", "r") as f:
                 prop_mappings = json.load(f)
         except Exception as e:
-            print(f"[image hints] Error loading prop mappings: {e}")
+            print(f"[interface_builder image hints] Error loading prop mappings: {e}")
             prop_mappings = {}
 
         # Use current room from audio hints if available
@@ -313,14 +314,16 @@ class AdminInterfaceBuilder:
         room_key = None
         if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
             room_key = self.audio_hints.ROOM_MAP.get(room_name)
-            print(f"[image hints] Updating props dropdown for room: {room_name} (key: {room_key})")
+            if(self.select_kiosk_debug):
+                print(f"[interface_builder image hints] Updating props dropdown for room: {room_name} (key: {room_key})")
         
         props_list = []
         if room_key and room_key in prop_mappings:
             props = [(k, v) for k, v in prop_mappings[room_key]["mappings"].items()]
             props.sort(key=lambda x: x[1]["order"])
             props_list = [f"{p[1]['display']} ({p[0]})" for p in props]
-            print(f"[image hints] Found {len(props_list)} props for room")
+            if(self.select_kiosk_debug):
+                print(f"[interface_builder image hints] Found {len(props_list)} props for room")
         
         self.stats_elements['image_btn']['values'] = props_list
         self.img_prop_var.set("")
@@ -357,7 +360,7 @@ class AdminInterfaceBuilder:
             with open("prop_name_mapping.json", "r") as f:
                 prop_mappings = json.load(f)
         except Exception as e:
-            print(f"[image hints] Error loading prop mappings: {e}")
+            print(f"[interface_builder image hints] Error loading prop mappings: {e}")
             prop_mappings = {}
         
         room_key = None
@@ -383,7 +386,7 @@ class AdminInterfaceBuilder:
                     if info.get("cousin") == cousin_value and prop_key != original_name:
                         cousin_display = info.get("display", prop_key)
                         cousin_props.append((prop_key, cousin_display))
-                print(f"[image hints] Found cousin props: {cousin_props}")
+                print(f"[interface_builder image hints] Found cousin props: {cousin_props}")
         
         # Initialize or clear the image data mapping
         if not hasattr(self, 'image_data_mapping'):
@@ -446,7 +449,7 @@ class AdminInterfaceBuilder:
         
         # Get image data from our mapping
         if not hasattr(self, 'image_data_mapping') or selected_index not in self.image_data_mapping:
-            print(f"[image hints] Error: No image data found for index {selected_index}")
+            print(f"[interface_builder image hints] Error: No image data found for index {selected_index}")
             return
         
         image_data = self.image_data_mapping[selected_index]
@@ -469,8 +472,8 @@ class AdminInterfaceBuilder:
             self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
             self.stats_elements['prop_attach_btn'].pack(side='left', padx=5)
         except Exception as e:
-            print(f"[image hints] Error previewing image: {e}")
-            print(f"[image hints] Attempted to load from path: {image_path}")
+            print(f"[interface_builder image hints] Error previewing image: {e}")
+            print(f"[interface_builder image hints] Attempted to load from path: {image_path}")
 
     def show_manual_hint(self):
         """Show the manual hint text box and hide image selection"""
@@ -526,11 +529,11 @@ class AdminInterfaceBuilder:
                 if self.stats_elements['send_btn']:
                     self.stats_elements['send_btn'].config(state='normal')
                 
-                print(f"[image hints] Attached image from path: {image_data['path']}")
-                print(f"[image hints] Relative path for sending: {rel_path}")
-                print(f"[image hints] From prop: {prop_name} (key: {image_data['prop_key']})")
+                print(f"[interface_builder image hints] Attached image from path: {image_data['path']}")
+                print(f"[interface_builder image hints] Relative path for sending: {rel_path}")
+                print(f"[interface_builder image hints] From prop: {prop_name} (key: {image_data['prop_key']})")
             except Exception as e:
-                print(f"[image hints] Error getting image path: {e}")
+                print(f"[interface_builder image hints] Error getting image path: {e}")
 
     def clear_manual_hint(self):
         """Clear the manual hint text and reset image attachment state"""
@@ -1210,12 +1213,14 @@ class AdminInterfaceBuilder:
             # Check if a kiosk was previously selected AND it's a different kiosk
             if self.selected_kiosk is not None and self.selected_kiosk != computer_name:
                 previous_kiosk_name = self.selected_kiosk
-                print(f"[interface builder] Switching kiosk from {previous_kiosk_name} to {computer_name}. Cleaning up previous.")
+                if(self.select_kiosk_debug):
+                    print(f"[interface builder] Switching kiosk from {previous_kiosk_name} to {computer_name}. Cleaning up previous.")
 
                 # --- Stop Camera if active for the previous kiosk ---
                 if getattr(self, 'camera_active', False) and \
                    self.stats_elements.get('current_computer') == previous_kiosk_name:
-                    print(f"[interface builder] Disconnecting camera for {previous_kiosk_name} due to kiosk switch.")
+                    if(self.select_kiosk_debug):
+                        print(f"[interface builder] Disconnecting camera for {previous_kiosk_name} due to kiosk switch.")
                     try:
                         self.video_client.disconnect()
                         self.camera_active = False
@@ -1242,7 +1247,8 @@ class AdminInterfaceBuilder:
                         self.audio_active[previous_kiosk_name] = False
                     except Exception as e:
                         print(f"[interface builder] Error disconnecting audio for {previous_kiosk_name}: {e}")
-                print(f"[interface builder] Cleanup finished for {previous_kiosk_name}.")
+                if(self.select_kiosk_debug):
+                    print(f"[interface builder] Cleanup finished for {previous_kiosk_name}.")
 
             elif self.selected_kiosk is not None and self.selected_kiosk == computer_name:
                  # Selecting the same kiosk - allow refresh
@@ -1256,15 +1262,18 @@ class AdminInterfaceBuilder:
             # ***** MODIFICATION START *****
             # Set the selected kiosk state *before* setting up the new UI
             # This ensures subsequent functions/callbacks have the correct context.
-            print(f"[interface builder] Setting self.selected_kiosk from '{self.selected_kiosk}' to '{computer_name}'")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] Setting self.selected_kiosk from '{self.selected_kiosk}' to '{computer_name}'")
             self.selected_kiosk = computer_name
             # ***** MODIFICATION END *****
 
 
             # Setup stats panel (this clears and rebuilds the stats frame)
-            print(f"[interface builder] Calling setup_stats_panel for {computer_name}")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] Calling setup_stats_panel for {computer_name}")
             self.setup_stats_panel(computer_name) # Pass computer_name explicitly
-            print(f"[interface builder] setup_stats_panel finished for {computer_name}")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] setup_stats_panel finished for {computer_name}")
 
             # Now update the UI elements based on the NEWLY selected kiosk
             # Use self.selected_kiosk (or computer_name, they are now the same)
@@ -1275,7 +1284,8 @@ class AdminInterfaceBuilder:
                 room_num = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
                 room_name = self.app.rooms[room_num]
                 title = f"{room_name} ({self.selected_kiosk})"
-                print(f"[interface builder] Room assigned: {room_name} (#{room_num})")
+                if(self.select_kiosk_debug):
+                    print(f"[interface builder] Room assigned: {room_name} (#{room_num})")
                 room_color = self.ROOM_COLORS.get(room_num, "black")
                 self.stats_frame.configure(
                     text=title,
@@ -1289,9 +1299,11 @@ class AdminInterfaceBuilder:
                 if room_num in room_dirs:
                     room_dir = room_dirs[room_num]
                     if hasattr(self, 'audio_hints'):
-                        print(f"[interface builder] Updating audio hints for room: {room_dir}")
+                        if(self.select_kiosk_debug):
+                            print(f"[interface builder] Updating audio hints for room: {room_dir}")
                         self.audio_hints.update_room(room_dir)
-                    print(f"[interface builder] Updating image props dropdown")
+                    if(self.select_kiosk_debug):
+                        print(f"[interface builder] Updating image props dropdown")
                     self.update_image_props() # Update image props when room changes
                 else:
                      print(f"[interface builder] Room number {room_num} not found in room_dirs mapping.")
@@ -1312,14 +1324,16 @@ class AdminInterfaceBuilder:
 
             # Update Saved Hints Panel (if it exists)
             if hasattr(self, 'saved_hints'):
-                print(f"[interface builder] Updating saved hints panel for room: {room_num}")
+                if(self.select_kiosk_debug):
+                    print(f"[interface builder] Updating saved hints panel for room: {room_num}")
                 if room_num is not None: # Check if room_num was assigned
                     self.saved_hints.update_room(room_num)
                 else:
                     self.saved_hints.clear_preview() # Clear if no room assigned
 
             # Update highlighting with dotted border
-            print(f"[interface builder] Updating kiosk highlighting...")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] Updating kiosk highlighting...")
             for cn, data in self.connected_kiosks.items():
                 frame_widget = data.get('frame')
                 if not frame_widget or not frame_widget.winfo_exists(): # Check if widget exists
@@ -1357,13 +1371,16 @@ class AdminInterfaceBuilder:
                             if 'reboot_btn' in data and widget == data['reboot_btn']:
                                 widget.configure(bg='#FF6B6B', fg='white')
                             # Add other specific button styling if needed
-            print(f"[interface builder] Highlighting updated.")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] Highlighting updated.")
 
 
             # Update the actual stats display content for the selected kiosk
-            print(f"[interface builder] Calling update_stats_display for {self.selected_kiosk}")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] Calling update_stats_display for {self.selected_kiosk}")
             self.update_stats_display(self.selected_kiosk)
-            print(f"[interface builder] update_stats_display finished.")
+            if(self.select_kiosk_debug):
+                print(f"[interface builder] update_stats_display finished.")
 
             # Notify PropControl about room change (with safety check)
             if hasattr(self.app, 'prop_control') and self.app.prop_control:
@@ -1397,21 +1414,29 @@ class AdminInterfaceBuilder:
         if not self.stats_elements:
             return
 
-        if self.stats_elements.get('hints_label_below'):
+        # Check if hints_label_below exists and is valid before configuring
+        if self.stats_elements.get('hints_label_below') and hasattr(self.stats_elements['hints_label_below'], 'winfo_exists') and self.stats_elements['hints_label_below'].winfo_exists():
             total_hints = stats.get('total_hints', 0)
-            self.stats_elements['hints_label_below'].config(
-                text=f"Hints Requested:\n{total_hints}"
-            )
+            try:
+                self.stats_elements['hints_label_below'].config(
+                    text=f"Hints Requested:\n{total_hints}"
+                )
+            except Exception as e:
+                print(f"[interface builder] Error updating hints_label_below: {e}")
             
-        if self.stats_elements.get('hints_received_label'):
+        # Check if hints_received_label exists and is valid before configuring
+        if self.stats_elements.get('hints_received_label') and hasattr(self.stats_elements['hints_received_label'], 'winfo_exists') and self.stats_elements['hints_received_label'].winfo_exists():
             hints_received = stats.get('hints_received', 0)
-            self.stats_elements['hints_received_label'].config(
-                text=f"Hints Received:\n{hints_received}"
-            )
+            try:
+                self.stats_elements['hints_received_label'].config(
+                    text=f"Hints Received:\n{hints_received}"
+                )
+            except Exception as e:
+                print(f"[interface builder] Error updating hints_received_label: {e}")
 
         # Music button state update
         music_button = self.stats_elements.get('music_button')
-        if music_button and music_button.winfo_exists():
+        if music_button and hasattr(music_button, 'winfo_exists') and music_button.winfo_exists():
             music_playing = stats.get('music_playing', False)
 
             if hasattr(music_button, 'music_on_icon') and hasattr(music_button, 'music_off_icon'):
@@ -1427,19 +1452,24 @@ class AdminInterfaceBuilder:
                             image=music_button.music_off_icon
                         )
                 except tk.TclError:
-                    print("[interface builder]Music button was destroyed")
-                    return
+                    print("[interface builder] Music button was destroyed")
 
         timer_time = stats.get('timer_time', 3600)
         timer_minutes = int(timer_time // 60)
         timer_seconds = int(timer_time % 60)
-        if self.stats_elements.get('current_time'):
-            self.stats_elements['current_time'].config(
-                text=f"{timer_minutes:02d}:{timer_seconds:02d}"
-            )
+        
+        if self.stats_elements.get('current_time') and hasattr(self.stats_elements['current_time'], 'winfo_exists') and self.stats_elements['current_time'].winfo_exists():
+            try:
+                self.stats_elements['current_time'].config(
+                    text=f"{timer_minutes:02d}:{timer_seconds:02d}"
+                )
+            except Exception as e:
+                print(f"[interface builder] Error updating current_time: {e}")
 
+        # Continue with similar pattern for other UI elements
+        
         timer_button = self.stats_elements.get('timer_button')
-        if timer_button and timer_button.winfo_exists():
+        if timer_button and hasattr(timer_button, 'winfo_exists') and timer_button.winfo_exists():
             is_running = stats.get('timer_running', False)
 
             if hasattr(timer_button, 'stop_icon') and hasattr(timer_button, 'play_icon'):
@@ -1455,8 +1485,7 @@ class AdminInterfaceBuilder:
                             text="Start Room"
                         )
                 except tk.TclError:
-                    print("[interface builder]Timer button was destroyed")
-                    return
+                    print("[interface builder] Timer button was destroyed")
             else:
                 try:
                     if is_running and timer_button.cget('text') != "Stop Room":
@@ -1464,15 +1493,20 @@ class AdminInterfaceBuilder:
                     elif not is_running and timer_button.cget('text') != "Start Room":
                         timer_button.config(text="Start Room")
                 except tk.TclError:
-                    print("[interface builder]Timer button was destroyed")
-                    return
+                    print("[interface builder] Timer button was destroyed")
         
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
-            if self.stats_elements.get('send_btn'):
-                self.stats_elements['send_btn'].config(state='normal')
+            if self.stats_elements.get('send_btn') and hasattr(self.stats_elements['send_btn'], 'winfo_exists') and self.stats_elements['send_btn'].winfo_exists():
+                try:
+                    self.stats_elements['send_btn'].config(state='normal')
+                except Exception as e:
+                    print(f"[interface builder] Error updating send_btn: {e}")
         else:
-            if self.stats_elements.get('send_btn'):
-                self.stats_elements['send_btn'].config(state='disabled')
+            if self.stats_elements.get('send_btn') and hasattr(self.stats_elements['send_btn'], 'winfo_exists') and self.stats_elements['send_btn'].winfo_exists():
+                try:
+                    self.stats_elements['send_btn'].config(state='disabled')
+                except Exception as e:
+                    print(f"[interface builder] Error updating send_btn: {e}")
         
         current_hint_request = stats.get('hint_requested', False)
         if not hasattr(self, '_last_hint_request_states'):
@@ -1487,31 +1521,43 @@ class AdminInterfaceBuilder:
         # Update hint request status for ALL connected kiosks, not just the selected one
         self.update_all_kiosk_hint_statuses()
         
+        # Check for prop control and last progress time
         if self.app.prop_control and self.selected_kiosk in self.app.kiosk_tracker.kiosk_assignments:
             room_number = self.app.kiosk_tracker.kiosk_assignments[self.selected_kiosk]
             
             if room_number in self.app.prop_control.last_progress_times:
                 self.update_last_progress_time_display(room_number)
         else:
-            self.stats_elements['last_progress_label'].config(text="Last Progress:\nN/A", anchor='w')
+            if self.stats_elements.get('last_progress_label') and hasattr(self.stats_elements['last_progress_label'], 'winfo_exists') and self.stats_elements['last_progress_label'].winfo_exists():
+                try:
+                    self.stats_elements['last_progress_label'].config(text="Last Progress:\nN/A", anchor='w')
+                except Exception as e:
+                    print(f"[interface builder] Error updating last_progress_label: {e}")
 
         # Update last prop finished name
-        last_prop_finished = self.app.prop_control.last_prop_finished.get(room_number, 'N/A')
-        if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
-          self.stats_elements['last_prop_label'].config(text=f"Last Prop Finished:\n{last_prop_finished}",anchor='w')
-        else:
-            if 'last_prop_label' in self.stats_elements and self.stats_elements['last_prop_label']:
-                self.stats_elements['last_prop_label'].config(text="Last Prop Finished:\nN/A", anchor='w')
+        room_number = self.app.kiosk_tracker.kiosk_assignments.get(self.selected_kiosk, None)
+        if room_number and self.app.prop_control:
+            last_prop_finished = self.app.prop_control.last_prop_finished.get(room_number, 'N/A')
+            if self.stats_elements.get('last_prop_label') and hasattr(self.stats_elements['last_prop_label'], 'winfo_exists') and self.stats_elements['last_prop_label'].winfo_exists():
+                try:
+                    self.stats_elements['last_prop_label'].config(text=f"Last Prop Finished:\n{last_prop_finished}", anchor='w')
+                except Exception as e:
+                    print(f"[interface builder] Error updating last_prop_label: {e}")
+            else:
+                if self.stats_elements.get('last_prop_label') and hasattr(self.stats_elements['last_prop_label'], 'winfo_exists') and self.stats_elements['last_prop_label'].winfo_exists():
+                    try:
+                        self.stats_elements['last_prop_label'].config(text="Last Prop Finished:\nN/A", anchor='w')
+                    except Exception as e:
+                        print(f"[interface builder] Error updating last_prop_label: {e}")
 
         # Auto-start state update
         auto_start_check = self.stats_elements.get('auto_start_check')
-        if auto_start_check and auto_start_check.winfo_exists():
+        if auto_start_check and hasattr(auto_start_check, 'winfo_exists') and auto_start_check.winfo_exists():
             auto_start = stats.get('auto_start', False)
             try:
                 auto_start_check.config(text="[✓] Auto-Start" if auto_start else "[  ] Auto-Start")
             except tk.TclError:
-                print("[interface builder]Auto-start checkbox was destroyed")
-                return
+                print("[interface builder] Auto-start checkbox was destroyed")
 
     def update_last_progress_time_display(self, room_number):
         if room_number in self.app.prop_control.last_progress_times:

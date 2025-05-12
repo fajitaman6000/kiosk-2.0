@@ -510,7 +510,7 @@ class PropControl:
         self.update_prop_tracking_interval(room_number, is_selected=True)
 
         self.victory_sent[room_number] = False
-        print(f"[prop control] set victory sent false for room {room_number}")
+        #print(f"[prop control] set victory sent false for room {room_number}")
 
         # --- STANDBY STATE INITIALIZATION ---
         if room_number not in self.standby_played:

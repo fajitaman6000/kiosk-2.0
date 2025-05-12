@@ -24,7 +24,10 @@ class KioskStateTracker:
         # Update UI if this kiosk is selected
         if computer_name == self.app.interface_builder.selected_kiosk:
             #print(f"[kiosk state tracker][KioskStateTracker] update_kiosk_stats: Updating UI for selected kiosk {computer_name}")
-            self.app.interface_builder.update_stats_display(computer_name)
+            try:
+                self.app.interface_builder.update_stats_display(computer_name)
+            except Exception as e:
+                print(f"[kiosk state tracker] Error updating stats display: {e}")
 
     def update_timer_state(self, computer_name, time_remaining, is_running):
         if computer_name in self.kiosk_stats:

@@ -142,7 +142,7 @@ class SavedHintsPanel:
                 with open(hints_path, 'r') as f:
                     data = json.load(f)
                     self.hints_data = data.get('rooms', {})
-                    print(f"[saved hints panel]Loaded hints for {len(self.hints_data)} rooms")
+                    #print(f"[saved hints panel]Loaded hints for {len(self.hints_data)} rooms")
             else:
                 print("[saved hints panel]No hints file found!")
                 self.hints_data = {}
