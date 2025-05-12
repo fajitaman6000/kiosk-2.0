@@ -9,6 +9,7 @@ from file_sync_config import SYNC_MESSAGE_TYPE
 
 class NetworkBroadcastHandler:
     def __init__(self, app):
+        self.DEBUG = False
         self.app = app
         self.last_message = {}  # Cache kiosk status messages
         self.running = True     # Flag to control listening thread
@@ -169,6 +170,23 @@ class NetworkBroadcastHandler:
                 data, addr = self.socket.recvfrom(65536) # Use large buffer size
                 msg = json.loads(data.decode())
 
+                # --- DEBUG PRINT: Print contents of received message ---
+                if(self.DEBUG):
+                    try:
+                        msg_type_display = msg.get('type', 'unknown')
+                        # Suppress printing the full 'kiosk_announce' payload if it's unchanged
+                        computer_name = msg.get('computer_name')
+                        if msg_type_display == 'kiosk_announce' and computer_name in self.last_message and self.last_message[computer_name] == msg:
+                            # Only print a summary for unchanged status updates
+                            print(f"[network broadcast handler] RECEIVED ({msg_type_display}) from {addr}: (Content Unchanged)")
+                        else:
+                            # For all other message types, or changed status updates, print full content
+                            print(f"[network broadcast handler] RECEIVED ({msg_type_display}) from {addr}: {msg}")
+                    except Exception as print_e:
+                        print(f"[network broadcast handler] RECEIVED (Error printing: {print_e}) from {addr}")
+                # --- END DEBUG PRINT ---
+
+
                 # Store sender address (useful for potential direct replies, though not used currently)
                 msg['_sender_addr'] = addr
 
@@ -248,9 +266,24 @@ class NetworkBroadcastHandler:
                 elif msg_type == 'help_request':
                     computer_name = msg.get('computer_name')
                     if computer_name in self.app.interface_builder.connected_kiosks:
-                        self.app.kiosk_tracker.add_help_request(computer_name)
+                        # Directly update the state that mark_help_requested checks
+                        if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                            print(f"[network broadcast handler] Setting hint_requested=True in kiosk_stats for {computer_name} upon help_request receipt.")
+                            self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = True
+                        else:
+                             # Handle case where stats might not exist yet (though unlikely if kiosk is connected)
+                             print(f"[network broadcast handler] Warning: Received help_request for {computer_name} but no entry in kiosk_stats. Initializing.")
+                             # Initialize minimal stats including the hint request
+                             self.app.kiosk_tracker.kiosk_stats[computer_name] = {'hint_requested': True}
+                             # Also trigger the UI to add the kiosk if it wasn't fully there
+                             self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.add_kiosk_to_ui(cn))
+
+                        # We can potentially remove the call to add_help_request if the hint_requested flag is sufficient
+                        self.app.kiosk_tracker.add_help_request(computer_name) # Keep or remove? Let's keep for now, might be used elsewhere.
+
                         def mark_help(): # Closure to capture computer_name
                             if computer_name in self.app.interface_builder.connected_kiosks:
+                                # This should now reliably read hint_requested = True
                                 self.app.interface_builder.mark_help_requested(computer_name)
                         self.app.root.after(0, mark_help) # Schedule UI update on main thread
 

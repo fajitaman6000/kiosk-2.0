@@ -493,6 +493,7 @@ class MessageHandler:
                 self.kiosk_app.timer.game_won = False
                 self.kiosk_app.time_exceeded_45 = False
                 self.kiosk_app.hints_requested = 0
+                self.kiosk_app.hint_requested_flag = False
                 self.kiosk_app.hints_received = 0
                 self.kiosk_app.times_touched_screen = 0
                 self.kiosk_app.room_started = False

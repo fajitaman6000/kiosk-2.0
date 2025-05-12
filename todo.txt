@@ -2,7 +2,8 @@
 # Test notes
 
 hint requested status remains despite clearing on admin side
-    one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
+
+one admin didnt get hint request from room, sometimes doesn't appear until admin clicks that room
 
 [prop control]Error in check_prop_status: 'tubes'
 [prop control]Error in check_prop_status: 'tubes'
@@ -12,8 +13,6 @@ hint requested status remains despite clearing on admin side
 prop page resetting repeatedly
 
 play hint sound broke after spamming the shit out of it?
-
-listen speak buttons inconsistent
 
 ##############################################################################################################################
 # beta testing
