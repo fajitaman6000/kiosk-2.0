@@ -6,11 +6,13 @@ import base64
 import pyaudio
 import os
 import pygame # Import pygame directly for sound playback here
+import traceback # Ensure traceback is imported
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QApplication,
                              QSizePolicy, QFrame, QSpacerItem, QHBoxLayout)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread
+# --- MODIFIED IMPORT ---
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QObject, QThread, pyqtSlot
+# --- END MODIFIED IMPORT ---
 from PyQt5.QtGui import QFont
-import traceback
 
 # --- Constants ---
 STATE_IDLE = 0
@@ -47,14 +49,18 @@ class RecorderThread(QThread):
         try:
             # Add a check for available input devices
             input_device_index = None
-            info = audio.get_host_api_info_by_index(0)
-            numdevices = info.get('deviceCount')
-            for i in range(0, numdevices):
-                dev_info = audio.get_device_info_by_host_api_device_index(0, i)
-                if (dev_info.get('maxInputChannels')) > 0:
-                    print(f"[Kiosk Soundcheck] Found input device: {dev_info.get('name')} (Index {i})")
-                    input_device_index = i # Use the first available input device
-                    # break # Option: break here, or let it find the last one
+            default_input_device_info = audio.get_default_input_device_info()
+            input_device_index = default_input_device_info['index']
+            print(f"[Kiosk Soundcheck] Using default input device: {default_input_device_info['name']} (Index {input_device_index})")
+            # Fallback scan if default fails (less common now)
+            # info = audio.get_host_api_info_by_index(0)
+            # numdevices = info.get('deviceCount')
+            # for i in range(0, numdevices):
+            #     dev_info = audio.get_device_info_by_host_api_device_index(0, i)
+            #     if (dev_info.get('maxInputChannels')) > 0:
+            #         print(f"[Kiosk Soundcheck] Found input device: {dev_info.get('name')} (Index {i})")
+            #         input_device_index = i # Use the first available input device
+            #         # break # Option: break here, or let it find the last one
 
             if input_device_index is None:
                  raise IOError("No suitable input audio device found.")
@@ -109,8 +115,12 @@ class RecorderThread(QThread):
                 except Exception as e:
                      print(f"[Kiosk Soundcheck] Error closing recording stream: {e}")
             if audio: # Ensure PyAudio terminates only if initialized
-                audio.terminate()
-                print("[Kiosk Soundcheck] PyAudio terminated in recorder thread.")
+                try:
+                    audio.terminate()
+                    print("[Kiosk Soundcheck] PyAudio terminated in recorder thread.")
+                except Exception as e:
+                    print(f"[Kiosk Soundcheck] Error terminating PyAudio: {e}")
+
 
         if self._is_running and frames: # Only emit if not cancelled and data exists
             audio_data = b''.join(frames)
@@ -291,7 +301,8 @@ class KioskSoundcheckWidget(QWidget):
                             sub_widget.hide()
                             sub_widget.setParent(None)
                             sub_widget.deleteLater()
-                    layout.deleteLater() # Delete the layout itself
+                    # Request deletion of the layout itself
+                    layout.deleteLater()
 
 
     def _update_ui(self):
@@ -370,7 +381,15 @@ class KioskSoundcheckWidget(QWidget):
             if base_size + len(audio_data_b64) > 60000: # Check against a safe UDP limit
                  print("[Kiosk Soundcheck] WARNING: Audio data too large, sending mic fail status instead.")
                  # Send mic fail explicitly instead of the large data
-                 self.send_status('mic', False)
+                 # Create a separate dictionary for the mic fail status
+                 mic_fail_status = {
+                     'type': 'soundcheck_status',
+                     'computer_name': self.kiosk_app.computer_name,
+                     'test_type': 'mic', # Explicitly 'mic'
+                     'result': False,
+                 }
+                 self.kiosk_app.network.send_message(mic_fail_status)
+
                  self.state = STATE_COMPLETE # Move to complete state even on failure to send sample
                  QTimer.singleShot(0, self._update_ui) # Update UI on main thread
                  return # Don't send the message with oversized audio
@@ -485,11 +504,19 @@ class KioskSoundcheckWidget(QWidget):
         self.recorder_thread.finished.connect(self.recorder_thread.deleteLater)
         self.recorder_thread.start()
 
+    # Make slot connection explicit if needed, although connect often works okay
+    # @pyqtSlot(bytes)
     def on_recording_complete(self, audio_data):
         print(f"[Kiosk Soundcheck] Recording complete signal received with {len(audio_data)} bytes.")
         if self.state != STATE_RECORDING:
             print("[Kiosk Soundcheck] Warning: Recording completed but state is not RECORDING.")
+            # Clean up thread reference if it exists
+            if self.recorder_thread:
+                self.recorder_thread = None
             return # Avoid sending if state changed (e.g., cancelled)
+
+        active_thread = self.recorder_thread # Keep ref for cleanup
+        self.recorder_thread = None # Clear instance variable now
 
         self.state = STATE_SENDING
         self._update_ui()
@@ -522,15 +549,23 @@ class KioskSoundcheckWidget(QWidget):
             self.send_status('mic', False) # Send mic fail if encoding/sending fails
             self.state = STATE_COMPLETE # Still go to complete state
             self._update_ui()
+        finally:
+             # Ensure thread object is cleaned up if recording ended normally
+             # deleteLater was connected to finished signal, should be okay.
+             pass
 
+
+    # Make slot connection explicit if needed
+    # @pyqtSlot(str)
     def on_recording_error(self, error_message):
         print(f"[Kiosk Soundcheck] Recording error signal received: {error_message}")
+        active_thread = self.recorder_thread # Keep ref for cleanup
+        self.recorder_thread = None # Clear instance variable now
+
         # Make sure we are on the main thread before updating UI
-        if threading.current_thread() != threading.main_thread():
-            # print("[Kiosk Soundcheck] Scheduling UI update for recording error on main thread.")
-            QTimer.singleShot(0, lambda: self._handle_recording_error_ui(error_message))
-        else:
-             self._handle_recording_error_ui(error_message)
+        # Use QTimer.singleShot which guarantees execution on the event loop's thread
+        QTimer.singleShot(0, lambda: self._handle_recording_error_ui(error_message))
+
 
     def _handle_recording_error_ui(self, error_message):
         """Handles UI updates for recording errors on the main thread."""
@@ -555,10 +590,16 @@ class KioskSoundcheckWidget(QWidget):
         print(f"[Kiosk Soundcheck] Mic test failed due to recording error: {error_message}")
 
 
+    # --- ADDED DECORATOR ---
+    @pyqtSlot()
+    # --- END ADDED DECORATOR ---
     def cancel_soundcheck(self):
-        print("[Kiosk Soundcheck] Cancel command received.")
-        if self.state == STATE_CANCELED or self.state == STATE_COMPLETE:
-            print("[Kiosk Soundcheck] Already canceled or complete.")
+        print("[Kiosk Soundcheck] Cancel command received (Slot).")
+        if self.state == STATE_CANCELED or self.state == STATE_COMPLETE or self.state == STATE_IDLE:
+            print(f"[Kiosk Soundcheck] Ignoring cancel in state {self.state}.")
+            # If widget still visible, hide it
+            # if self.isVisible():
+            #     self.close_widget() # Trigger close sequence if needed
             return
 
         initial_state = self.state
@@ -568,24 +609,30 @@ class KioskSoundcheckWidget(QWidget):
             print("[Kiosk Soundcheck] Stopping recorder thread...")
             self.recorder_thread.stop()
             # Don't wait here, let it finish naturally or be killed by app exit
+            self.recorder_thread = None # Clear reference
 
         # Stop sound playback
         if self._sound_object:
             self._sound_object.stop()
 
         # If the UI hasn't updated yet (e.g., still in recording state visually)
-        # ensure the UI update runs
-        if initial_state != STATE_CANCELED:
-             self._update_ui() # Update UI to show "Cancelled" message
+        # ensure the UI update runs, which will show "Cancelled"
+        # Use QTimer to ensure it runs after current event processing
+        QTimer.singleShot(0, self._update_ui)
         # Widget will close automatically after delay in _update_ui for CANCELED state
 
     def close_widget(self):
         print("[Kiosk Soundcheck] Closing widget.")
+        # Check if already closing or closed
+        if self.state == STATE_IDLE:
+            return
         self.state = STATE_IDLE
 
         # Stop recorder thread if somehow still running
         if self.recorder_thread and self.recorder_thread.isRunning():
+            print("[Kiosk Soundcheck] Forcing stop on recorder thread during close.")
             self.recorder_thread.stop()
+            self.recorder_thread = None
 
         # Stop sound
         if self._sound_object:
@@ -593,14 +640,16 @@ class KioskSoundcheckWidget(QWidget):
             self._sound_object = None
 
         self.hide()
-        self.finished.emit() # Emit signal *before* deleting
-        QTimer.singleShot(100, self.deleteLater) # Schedule deletion slightly later
+        try:
+            self.finished.emit() # Emit signal *before* deleting
+        except Exception as e:
+             print(f"[Kiosk Soundcheck] Error emitting finished signal: {e}")
+        # Use QTimer for deleteLater to avoid issues during signal emission
+        QTimer.singleShot(0, self.deleteLater) # Schedule deletion
 
     def closeEvent(self, event):
         """Ensure cleanup on manual close if ever implemented."""
         print("[Kiosk Soundcheck] closeEvent called.")
+        # Initiate cancel sequence, which will eventually call close_widget
         self.cancel_soundcheck()
-        # Don't accept event immediately, let cancel_soundcheck handle closing via close_widget
-        event.ignore()
-        # super().closeEvent(event) # Avoid calling super if we handle close via cancel
-
+        event.ignore() # Let cancel_soundcheck manage the actual close
