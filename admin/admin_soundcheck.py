@@ -17,6 +17,7 @@ class AdminSoundcheckWindow:
         self.closed = False
         self.temp_files = {} # Store temporary audio files for playback
         self.report_window = None # Keep track of the report window
+        self.font = ('TkDefaultFont', 10, 'bold')
 
         # Initialize pygame mixer if not already done (e.g., by AdminAudioManager)
         if not pygame.mixer.get_init():
@@ -31,8 +32,8 @@ class AdminSoundcheckWindow:
 
         # --- Window Setup ---
         self.window = tk.Toplevel(parent_root)
-        self.window.title("Kiosk Soundcheck")
-        self.window.geometry("700x500") # Adjusted size for additional buttons
+        self.window.title("Kiosk Soundcheck Tool")
+        self.window.geometry("700x300") # Adjusted size for additional buttons
         self.window.resizable(False, False)
         # Make window modal (optional, prevents interaction with main window)
         self.window.grab_set() # Make the soundcheck window modal initially
@@ -51,11 +52,11 @@ class AdminSoundcheckWindow:
 
         header_frame = ttk.Frame(main_frame)
         header_frame.pack(fill="x", pady=(0, 10))
-        ttk.Label(header_frame, text="Kiosk", width=20, anchor="w").pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Touch", width=8, anchor="center").pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Audio Out", width=8, anchor="center").pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Mic In", width=8, anchor="center").pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Sample", width=25, anchor="center").pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Kiosk Computer Name", width=20, anchor="w", font=self.font).pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Touch", width=8, anchor="center", font=self.font).pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Audio Out", width=10, anchor="center", font=self.font).pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Mic In", width=8, anchor="center", font=self.font).pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Mic Sample", width=25, anchor="center", font=self.font).pack(side="left", padx=5)
 
         # Separator
         ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=(0, 10))
@@ -106,12 +107,12 @@ class AdminSoundcheckWindow:
         ttk.Label(row_frame, text=kiosk_name, width=20, anchor="w").pack(side="left", padx=5)
 
         # Status Indicators (using Labels with text/color)
-        touch_label = ttk.Label(row_frame, text="?", width=8, anchor="center", foreground="gray")
-        touch_label.pack(side="left", padx=5)
-        audio_label = ttk.Label(row_frame, text="?", width=8, anchor="center", foreground="gray")
-        audio_label.pack(side="left", padx=5)
-        mic_label = ttk.Label(row_frame, text="?", width=8, anchor="center", foreground="gray")
-        mic_label.pack(side="left", padx=5)
+        touch_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
+        touch_label.pack(side="left", padx=12)
+        audio_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
+        audio_label.pack(side="left", padx=12)
+        mic_label = ttk.Label(row_frame, text="?",font=self.font, width=8, anchor="center", foreground="gray")
+        mic_label.pack(side="left", padx=12)
 
         # Sample Frame (Listen button and mic validation buttons)
         sample_frame = ttk.Frame(row_frame)
@@ -119,7 +120,7 @@ class AdminSoundcheckWindow:
 
         listen_button = ttk.Button(sample_frame, text="Listen", width=8, state="disabled",
                                    command=lambda n=kiosk_name: self.play_audio_sample(n))
-        listen_button.pack(side="left")
+        listen_button.pack(side="left", padx=(50, 0))
 
         # Mic validation buttons (initially hidden)
         mic_buttons_frame = ttk.Frame(sample_frame)
