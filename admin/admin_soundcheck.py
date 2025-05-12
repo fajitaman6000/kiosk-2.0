@@ -31,7 +31,7 @@ class AdminSoundcheckWindow:
         # --- Window Setup ---
         self.window = tk.Toplevel(parent_root)
         self.window.title("Kiosk Soundcheck")
-        self.window.geometry("600x500") # Adjust size as needed
+        self.window.geometry("700x500") # Adjusted size for additional buttons
         self.window.resizable(False, False)
         # Make window modal (optional, prevents interaction with main window)
         # self.window.grab_set()
@@ -54,7 +54,7 @@ class AdminSoundcheckWindow:
         ttk.Label(header_frame, text="Touch", width=8, anchor="center").pack(side="left", padx=5)
         ttk.Label(header_frame, text="Audio Out", width=8, anchor="center").pack(side="left", padx=5)
         ttk.Label(header_frame, text="Mic In", width=8, anchor="center").pack(side="left", padx=5)
-        ttk.Label(header_frame, text="Sample", width=15, anchor="center").pack(side="left", padx=5)
+        ttk.Label(header_frame, text="Sample", width=25, anchor="center").pack(side="left", padx=5)
 
         # Separator
         ttk.Separator(main_frame, orient="horizontal").pack(fill="x", pady=(0, 10))
@@ -112,13 +112,28 @@ class AdminSoundcheckWindow:
         mic_label = ttk.Label(row_frame, text="?", width=8, anchor="center", foreground="gray")
         mic_label.pack(side="left", padx=5)
 
-        # Sample Frame (Listen button and optional Mic result)
+        # Sample Frame (Listen button and mic validation buttons)
         sample_frame = ttk.Frame(row_frame)
         sample_frame.pack(side="left", padx=5, fill="x", expand=True)
 
         listen_button = ttk.Button(sample_frame, text="Listen", width=8, state="disabled",
                                    command=lambda n=kiosk_name: self.play_audio_sample(n))
         listen_button.pack(side="left")
+        
+        # Mic validation buttons (initially hidden)
+        mic_buttons_frame = ttk.Frame(sample_frame)
+        mic_buttons_frame.pack(side="left", padx=(10, 0))
+        
+        mic_check_button = ttk.Button(mic_buttons_frame, text="✓", width=3, 
+                                      command=lambda n=kiosk_name: self.set_mic_status(n, True))
+        mic_check_button.pack(side="left", padx=(0, 2))
+        
+        mic_fail_button = ttk.Button(mic_buttons_frame, text="✕", width=3,
+                                    command=lambda n=kiosk_name: self.set_mic_status(n, False))
+        mic_fail_button.pack(side="left")
+        
+        # Initially hide the mic validation buttons
+        mic_buttons_frame.pack_forget()
 
         # Store UI elements for later updates
         self.ui_elements[kiosk_name] = {
@@ -126,6 +141,9 @@ class AdminSoundcheckWindow:
             'audio': audio_label,
             'mic': mic_label,
             'listen_btn': listen_button,
+            'mic_buttons_frame': mic_buttons_frame,
+            'mic_check_btn': mic_check_button,
+            'mic_fail_btn': mic_fail_button
         }
 
     def send_start_command(self):
@@ -222,25 +240,21 @@ class AdminSoundcheckWindow:
             # Load and play the audio file
             sound = pygame.mixer.Sound(temp_path)
             sound.play()
-            # Prompt for feedback after a short delay - add 1 sec to recording duration
-            feedback_delay = 2000 + 1000  # Recording length in ms + buffer
-            self.window.after(feedback_delay, lambda: self.prompt_mic_feedback(kiosk_name))
+            
+            # Show the mic validation buttons
+            if kiosk_name in self.ui_elements and 'mic_buttons_frame' in self.ui_elements[kiosk_name]:
+                self.ui_elements[kiosk_name]['mic_buttons_frame'].pack(side="left", padx=(10, 0))
+            
         except Exception as e:
             print(f"[Admin Soundcheck] Error playing audio sample for {kiosk_name}: {e}")
             import traceback
             traceback.print_exc()
             messagebox.showerror("Playback Error", f"Could not play audio sample for {kiosk_name}:\n{e}")
 
-    def prompt_mic_feedback(self, kiosk_name):
-        """Asks the admin if the microphone worked based on the sample."""
-        answer = messagebox.askyesnocancel("Microphone Check",
-                                           f"Did the microphone for {kiosk_name} seem functional?",
-                                           parent=self.window)
-        if answer is True:
-            self.update_status(kiosk_name, 'mic', True)
-        elif answer is False:
-            self.update_status(kiosk_name, 'mic', False)
-        # If Cancel, do nothing, status remains pending (or whatever it was)
+    def set_mic_status(self, kiosk_name, is_working):
+        """Sets the microphone status based on user validation."""
+        print(f"[Admin Soundcheck] Setting mic status for {kiosk_name} to {is_working}")
+        self.update_status(kiosk_name, 'mic', is_working)
 
     def finish_soundcheck(self):
         """Generates a report and closes the soundcheck."""
