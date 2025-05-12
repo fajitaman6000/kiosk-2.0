@@ -11,6 +11,7 @@ import threading
 from PIL import Image, ImageTk
 import os
 import traceback
+import uuid
 
 class PropControl:
     ROOM_MAP = {
@@ -371,7 +372,7 @@ class PropControl:
             return
 
         config = self.ROOM_CONFIGS[room_number]
-        client_id = f"id_{random.randint(0, 999)}_{room_number}"
+        client_id = f"admin_prop_control_{room_number}_{uuid.uuid4()}"
         client = mqtt.Client(
             client_id=client_id,
             transport="websockets",
@@ -447,7 +448,7 @@ class PropControl:
             return False
             
         try:
-            self.handle_prop_update(prop_data['info'])
+            self.handle_prop_update(prop_data['info'], self.current_room)
             return True
         except Exception as e:
             print(f"[prop control]Error restoring prop UI: {e}")
@@ -898,9 +899,8 @@ class PropControl:
         """Handle connection for a specific room's client"""
         if rc == 0:
             print(f"[prop control]Room {room_number} connected.")
-            # Clear history on successful connection
-            if room_number in self.disconnect_rc7_history:
-                del self.disconnect_rc7_history[room_number]
+            # Don't clear history immediately on successful connection
+            # We'll keep the history for a bit in case we quickly disconnect again
 
             # Clear any status messages on successful connection
             if room_number == self.current_room and hasattr(self, 'status_label'):
@@ -938,6 +938,15 @@ class PropControl:
                     client.subscribe(topic)
             except Exception as e:
                 print(f"[prop control]Error subscribing to topics for room {room_number} on connect: {e}")
+
+            # Clear the disconnect history after 5 seconds of stable connection
+            def clear_disconnect_history():
+                if room_number in self.disconnect_rc7_history:
+                    print(f"[prop control] Connection to room {room_number} stable for 5s. Clearing rc=7 history.")
+                    del self.disconnect_rc7_history[room_number]
+            
+            # Schedule history clearing after a stable period
+            self.app.root.after(5000, clear_disconnect_history)
 
         else:
             # Show error messages
@@ -1110,19 +1119,18 @@ class PropControl:
             disconnect_count = len(self.disconnect_rc7_history[room_number])  # Store count
             #print(f"[prop control] DEBUG: Filtered rc=7 history for room {room_number}. Count = {disconnect_count}. History: {self.disconnect_rc7_history[room_number]}")  # Debug
 
-            # Check if threshold is met (4 or more disconnects in the last 10 seconds)
+            # Check if threshold is met (2 or more disconnects in the last 10 seconds)
             if disconnect_count >= 2:
                 print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room {room_number}. Triggering aggressive retry.")  # More specific log
                 # Trigger the aggressive retry
                 self.aggressive_retry(room_number)
                 # Clear history *after* triggering aggressive retry
-                #print(f"[prop control] DEBUG: Clearing rc=7 history for room {room_number} after triggering aggressive retry.")  # Debug
                 self.disconnect_rc7_history[room_number] = []
                 return  # Stop here, aggressive_retry handles the next step
 
             else:
                 # If threshold not met, proceed with standard retry logic below for rc=7
-                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room {room_number} is below threshold (4). Scheduling standard retry.")  # Debug log
+                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room {room_number} is below threshold (2). Scheduling standard retry.")  # Debug log
                 # Fall through to the standard retry path below
 
         else:  # rc is not 7
