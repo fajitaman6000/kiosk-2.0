@@ -5,6 +5,9 @@ import base64
 import io
 import pygame # For playing back audio samples
 from threading import Thread
+import tempfile
+import os
+import wave
 
 class AdminSoundcheckWindow:
     def __init__(self, parent_root, app, kiosk_names):
@@ -12,11 +15,14 @@ class AdminSoundcheckWindow:
         self.kiosk_names = kiosk_names
         self.soundcheck_instance = self # Reference for network handler
         self.closed = False
+        self.temp_files = {} # Store temporary audio files for playback
 
         # Initialize pygame mixer if not already done (e.g., by AdminAudioManager)
         if not pygame.mixer.get_init():
             try:
-                pygame.mixer.init()
+                # Initialize with settings matching recording parameters
+                pygame.mixer.init(frequency=11025, size=16, channels=1)
+                print("[Admin Soundcheck] Pygame mixer initialized with optimal settings.")
             except Exception as e:
                 print(f"[Admin Soundcheck] Pygame mixer init error: {e}")
                 messagebox.showerror("Audio Error", "Could not initialize audio playback.")
@@ -140,16 +146,40 @@ class AdminSoundcheckWindow:
         self.kiosk_status[kiosk_name][test_type] = result
 
         if test_type == 'audio_sample' and result: # Result is True if sample received
-             # Decode and store the audio sample
+            # Decode and store the audio sample
             try:
+                # Clear any existing temp file
+                if kiosk_name in self.temp_files and os.path.exists(self.temp_files[kiosk_name]):
+                    try:
+                        os.remove(self.temp_files[kiosk_name])
+                    except:
+                        pass
+                    
+                # Decode data
                 decoded_data = base64.b64decode(audio_data)
-                self.kiosk_status[kiosk_name]['audio_sample'] = io.BytesIO(decoded_data)
-                print(f"[Admin Soundcheck] Audio sample stored for {kiosk_name}")
+                
+                # Create a temporary file for better playback reliability
+                fd, temp_path = tempfile.mkstemp(suffix=".wav")
+                os.close(fd)
+                
+                # Save the WAV data to the temporary file
+                with open(temp_path, 'wb') as f:
+                    f.write(decoded_data)
+                
+                # Store the path to the temporary file
+                self.temp_files[kiosk_name] = temp_path
+                print(f"[Admin Soundcheck] Audio sample saved to temp file for {kiosk_name}: {temp_path}")
+                
+                # Also keep a reference to the raw data for validation
+                self.kiosk_status[kiosk_name]['audio_sample'] = temp_path
+                
                 # Enable the listen button
                 if kiosk_name in self.ui_elements and 'listen_btn' in self.ui_elements[kiosk_name]:
                     self.ui_elements[kiosk_name]['listen_btn'].config(state="normal")
             except Exception as e:
-                print(f"[Admin Soundcheck] Error decoding/storing audio sample for {kiosk_name}: {e}")
+                print(f"[Admin Soundcheck] Error processing audio sample for {kiosk_name}: {e}")
+                import traceback
+                traceback.print_exc()
                 self.kiosk_status[kiosk_name]['mic'] = False # Mark mic as failed if sample is bad
                 result = False # Update result for UI
                 test_type = 'mic' # Update the UI for the mic test
@@ -170,11 +200,15 @@ class AdminSoundcheckWindow:
             print(f"[Admin Soundcheck] No audio sample available for {kiosk_name}")
             messagebox.showinfo("No Sample", f"No audio sample received from {kiosk_name}.")
             return
+            
+        temp_path = self.kiosk_status[kiosk_name]['audio_sample']
+        
+        if not os.path.exists(temp_path):
+            print(f"[Admin Soundcheck] Audio file missing for {kiosk_name}: {temp_path}")
+            messagebox.showerror("Playback Error", f"Audio file for {kiosk_name} not found.")
+            return
 
-        sample_data = self.kiosk_status[kiosk_name]['audio_sample']
-        sample_data.seek(0) # Rewind the buffer
-
-        print(f"[Admin Soundcheck] Playing audio sample for {kiosk_name}")
+        print(f"[Admin Soundcheck] Playing audio sample for {kiosk_name} from {temp_path}")
 
         # Check if mixer is initialized
         if not pygame.mixer.get_init():
@@ -185,13 +219,16 @@ class AdminSoundcheckWindow:
         pygame.mixer.stop()
 
         try:
-            # Load the sample from the BytesIO buffer
-            sound = pygame.mixer.Sound(buffer=sample_data.read())
+            # Load and play the audio file
+            sound = pygame.mixer.Sound(temp_path)
             sound.play()
-            # Prompt for feedback after a short delay (adjust as needed)
-            self.window.after(6000, lambda: self.prompt_mic_feedback(kiosk_name))
+            # Prompt for feedback after a short delay - add 1 sec to recording duration
+            feedback_delay = 2000 + 1000  # Recording length in ms + buffer
+            self.window.after(feedback_delay, lambda: self.prompt_mic_feedback(kiosk_name))
         except Exception as e:
             print(f"[Admin Soundcheck] Error playing audio sample for {kiosk_name}: {e}")
+            import traceback
+            traceback.print_exc()
             messagebox.showerror("Playback Error", f"Could not play audio sample for {kiosk_name}:\n{e}")
 
     def prompt_mic_feedback(self, kiosk_name):
@@ -250,14 +287,24 @@ class AdminSoundcheckWindow:
         """Safely closes the window and cleans up."""
         if not self.closed:
             self.closed = True
-            print("[Admin Soundcheck] Closing window.")
+            print("[Admin Soundcheck] Closing window and cleaning up temp files.")
+            
+            # Clean up temporary files
+            for kiosk_name, temp_path in self.temp_files.items():
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                        print(f"[Admin Soundcheck] Removed temp file: {temp_path}")
+                    except Exception as e:
+                        print(f"[Admin Soundcheck] Error removing temp file {temp_path}: {e}")
+                        
             # Stop pygame mixer if we initialized it here and nothing else is using it
-            # (Be cautious if AdminAudioManager is also used)
-            # if pygame.mixer.get_init():
-            #    pygame.mixer.stop()
-            #    # pygame.mixer.quit() # Maybe too aggressive if other parts use it
+            if pygame.mixer.get_init():
+                pygame.mixer.stop()
+                
             if self.window:
                 self.window.destroy()
+                
             # Nullify reference in network handler if passed
             if hasattr(self.app.network_handler, 'soundcheck_instance') and \
                self.app.network_handler.soundcheck_instance == self:
@@ -335,8 +382,8 @@ class AdminSoundcheckWindow:
 # Add near the end of __init__ before the main loop starts:
 #         # Initialize pygame mixer globally for admin app (if not done elsewhere)
 #         try:
-#             pygame.mixer.init()
-#             print("[Main Admin] Pygame mixer initialized.")
+#             pygame.mixer.init(frequency=11025, size=16, channels=1)
+#             print("[Main Admin] Pygame mixer initialized with optimal settings.")
 #         except Exception as e:
 #             print(f"[Main Admin] Failed to initialize pygame mixer: {e}")
 

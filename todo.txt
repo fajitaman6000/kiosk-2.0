@@ -1,6 +1,8 @@
 ##############################################################################################################################
 # Test notes
 
+soundcheck needs to be reset by reset button
+
 ##############################################################################################################################
 # beta testing
 
@@ -21,7 +23,7 @@ soundcheck button functionality
         window pops up on admin side, separate from main window, opened when soundcheck button is pressed
 
 
-        
+
 
 "switch sides" button for prop control
 
