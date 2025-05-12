@@ -4,6 +4,9 @@ import traceback
 import sys
 from prop_control import PropControl
 import os
+import pygame
+from admin_soundcheck import AdminSoundcheckWindow
+from tkinter import messagebox # Add messagebox if not already imported
 #import sv_ttk
 
 from network_broadcast_handler import NetworkBroadcastHandler
@@ -30,6 +33,14 @@ try:
             print(f"[main]Working directory set to: {os.getcwd()}")
             
             self.root = tk.Tk()
+            # Initialize pygame mixer globally for admin app (if not done elsewhere)
+            try:
+                pygame.mixer.init()
+                print("[Main Admin] Pygame mixer initialized.")
+            except Exception as e:
+                print(f"[Main Admin] Failed to initialize pygame mixer: {e}")
+                # Optionally show an error message to the user
+                # messagebox.showerror("Audio Error", f"Failed to initialize audio system: {e}")
             self.root.title("PanIQ Game Master Control Center")
 
             # Handle icon setting
@@ -131,12 +142,20 @@ try:
             self.password_manager.verify_password(callback=on_success)
 
         def handle_soundcheck_button_click(self):
-            if self.interface_builder.selected_kiosk:
-                computer_name = self.interface_builder.selected_kiosk
-                # Send soundcheck command through network handler
-                self.network_handler.send_soundcheck_command(computer_name)  # Use handler
-            else:
-                print("[main] No kiosk selected for soundcheck.")
+            # Get list of currently connected kiosks
+            connected_kiosk_names = list(self.interface_builder.connected_kiosks.keys())
+
+            if not connected_kiosk_names:
+                messagebox.showinfo("No Kiosks", "No kiosks are currently connected.", parent=self.root)
+                print("[Admin Main] No kiosks connected for soundcheck.")
+                return
+
+            print("[Admin Main] Initiating soundcheck for kiosks:", connected_kiosk_names)
+            # Create and show the soundcheck window
+            # Pass self (the AdminApplication instance) as 'app'
+            soundcheck_win = AdminSoundcheckWindow(self.root, self, connected_kiosk_names)
+            # Pass the instance to the network handler so it can call update_status
+            self.network_handler.soundcheck_instance = soundcheck_win
 
         def setup_prop_panel_sync(self):
             """Set up synchronization between prop controls and hint panels"""
@@ -192,6 +211,10 @@ try:
             if hasattr(self.interface_builder, 'cleanup'):
                 self.interface_builder.cleanup()
             self.sync_manager.stop()
+            # Quit pygame mixer
+            if pygame.mixer.get_init():
+                pygame.mixer.quit()
+                print("[Main Admin] Pygame mixer quit.")
             self.root.destroy()
 
     if __name__ == '__main__':

@@ -18,6 +18,7 @@ class NetworkBroadcastHandler:
         self.pending_acknowledgments = {}
         self.ACK_TIMEOUT = 6  # seconds before resend
         self.MAX_RESEND_ATTEMPTS = 3 # Max resends before giving up
+        self.soundcheck_instance = None # Will hold ref to AdminSoundcheckWindow
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -286,6 +287,20 @@ class NetworkBroadcastHandler:
                                 # This should now reliably read hint_requested = True
                                 self.app.interface_builder.mark_help_requested(computer_name)
                         self.app.root.after(0, mark_help) # Schedule UI update on main thread
+
+                elif msg_type == 'soundcheck_status':
+                    computer_name = msg.get('computer_name')
+                    test_type = msg.get('test_type')
+                    result = msg.get('result')
+                    audio_data = msg.get('audio_data') # Base64 string or None
+                    if computer_name and test_type is not None and result is not None:
+                        if self.soundcheck_instance and not self.soundcheck_instance.closed:
+                            # Use after to ensure UI update happens on main thread
+                            self.app.root.after(0, self.soundcheck_instance.update_status,
+                                                computer_name, test_type, result, audio_data)
+                        # else: print(f"Received soundcheck status for {computer_name}, but no active window.")
+                    else:
+                        print(f"[Network Handler] Invalid soundcheck_status message received: {msg}")
 
                 # --- Handle Intro Video Completion ---
                 elif msg_type == 'intro_video_completed':
@@ -560,3 +575,23 @@ class NetworkBroadcastHandler:
         print(f"[network broadcast handler] Sending SYNC command to {target_recipient} (Admin IP: {admin_ip}, SyncID: {sync_id})")
         # Even if sending to 'all', we track it under the key ('all', SYNC_MESSAGE_TYPE)
         self._send_tracked_message(message, target_recipient)
+
+    def send_soundcheck_command(self, computer_name):
+        """Sends a soundcheck command to a specific kiosk."""
+        message = {
+            'type': 'soundcheck_command',
+            'command_id': str(uuid.uuid4()),
+            'computer_name': computer_name
+        }
+        self._send_tracked_message(message, computer_name)
+        print(f"[Network Handler] Sent soundcheck command to {computer_name}")
+
+    def send_soundcheck_cancel_command(self, computer_name):
+        """Sends a command to cancel the soundcheck on a kiosk."""
+        message = {
+            'type': 'soundcheck_cancel',
+            'command_id': str(uuid.uuid4()),
+            'computer_name': computer_name
+        }
+        self._send_tracked_message(message, computer_name)
+        print(f"[Network Handler] Sent soundcheck cancel command to {computer_name}")

@@ -555,6 +555,17 @@ class KioskApp:
             # Can't use log_exception here as logger is being stopped
             traceback.print_exc()
         
+        # Cancel soundcheck if active
+        try:
+            # Access soundcheck_widget via message_handler
+            if hasattr(self, 'message_handler') and hasattr(self.message_handler, 'soundcheck_widget') and self.message_handler.soundcheck_widget:
+                print("[Kiosk Main] Closing active soundcheck window...")
+                # Ensure cancel runs on main thread
+                QMetaObject.invokeMethod(self.message_handler.soundcheck_widget, "cancel_soundcheck", Qt.QueuedConnection)
+        except Exception as e:
+            print(f"[Kiosk Main] Error cancelling soundcheck on close: {e}")
+            # log_exception(e, "Error cancelling soundcheck on close") # If logger available
+
         print("[kiosk main] Shutdown sequence complete.")
 
     def clear_hints(self):

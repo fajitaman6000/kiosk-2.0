@@ -15,6 +15,7 @@ from kiosk_file_downloader import KioskFileDownloader
 import base64
 import threading
 from PyQt5.QtCore import QMetaObject, Qt, Q_ARG, QTimer, QObject, pyqtSlot # Import for invoking methods thread-safely
+from kiosk_soundcheck import KioskSoundcheckWidget # Assuming it's in the same directory or sys.path is set
 print("[message_handler] Ending imports ...")
 
 # Create a global timer scheduler in the Qt main thread
@@ -58,6 +59,7 @@ class MessageHandler:
         self._resetting_kiosk = False
         # Queue for victory messages that arrive during reset
         self._pending_victory_msg = None
+        self.soundcheck_widget = None
         print("[message_handler] MessageHandler initialized.", flush=True)
 
     def schedule_timer(self, delay_ms, callback):
@@ -554,6 +556,49 @@ class MessageHandler:
                 self.kiosk_app.take_screenshot_requested = True
                 # Note: The ACK was already sent earlier.
 
+            elif msg_type == 'soundcheck_command' and is_targeted:
+                print(f"[Message Handler] Received soundcheck command (ID: {command_id})")
+                # Ensure any previous soundcheck is closed first
+                if self.soundcheck_widget:
+                    print("[Message Handler] Found existing soundcheck widget, cancelling it.")
+                    # Use invokeMethod for thread safety
+                    # Ensure cancel runs on the main thread where the widget lives
+                    QMetaObject.invokeMethod(self.soundcheck_widget, "cancel_soundcheck", Qt.QueuedConnection)
+                    # Note: We rely on the cancel_soundcheck to eventually clear self.soundcheck_widget via the finished signal
+
+                # Use the OverlayBridge to schedule the creation and start
+                # of the soundcheck widget on the main Qt thread.
+                if Overlay._bridge:
+                    print("[Message Handler] Using OverlayBridge to schedule soundcheck start.")
+                    # QTimer.singleShot(200, deferred_start) # <-- REMOVE or COMMENT OUT THIS LINE
+
+                    # Schedule deferred_start function to run on the main thread
+                    QMetaObject.invokeMethod(
+                        Overlay._bridge,
+                        "schedule_timer", # Name of the slot in OverlayBridge
+                        Qt.QueuedConnection,
+                        Q_ARG(int, 200), # Delay in ms
+                        Q_ARG(object, self._deferred_soundcheck_start) # The function to call
+                    )
+                else:
+                    print("[Message Handler] Error: OverlayBridge not initialized. Cannot schedule soundcheck.")
+
+            elif msg_type == 'soundcheck_cancel' and is_targeted:
+                print(f"[Message Handler] Received soundcheck cancel command (ID: {command_id})")
+                if self.soundcheck_widget:
+                    # Use invokeMethod to ensure cancel runs on the main thread
+                    QMetaObject.invokeMethod(self.soundcheck_widget, "cancel_soundcheck", Qt.QueuedConnection)
+                else:
+                    print("[Message Handler] Received cancel but no soundcheck widget found.")
+
+            elif msg_type == 'soundcheck_cancel' and is_targeted:
+                print(f"[Message Handler] Received soundcheck cancel command (ID: {command_id})")
+                if self.soundcheck_widget:
+                    # Use invokeMethod to ensure cancel runs on the main thread
+                    QMetaObject.invokeMethod(self.soundcheck_widget, "cancel_soundcheck", Qt.QueuedConnection)
+                else:
+                    print("[Message Handler] Received cancel but no soundcheck widget found.")
+
         except Exception as e:
             print("[message handler][CRITICAL ERROR] Critical error in handle_message:")
             print(f"[message handler][CRITICAL ERROR] Error type: {type(e)}")
@@ -583,8 +628,42 @@ class MessageHandler:
             # The video_manager.stop_video method handles the callback chain properly
             self.video_manager.stop_video() # This will trigger the completion callback
 
+    def _deferred_soundcheck_start(self):
+        """
+        This method is scheduled to run on the main Qt thread via OverlayBridge.
+        It handles the creation and starting of the KioskSoundcheckWidget.
+        """
+        print("[Message Handler] _deferred_soundcheck_start running on main thread.")
+        # Check if soundcheck widget was cancelled and cleared while waiting for this callback
+        if self.soundcheck_widget:
+            print("[Message Handler] Warning: Soundcheck widget exists on deferred start. Likely cancelled while waiting.")
+            return # Don't start a new one
+
+        try:
+            print("[Message Handler] Creating KioskSoundcheckWidget...")
+            # Parent the widget to the main application's content widget
+            from qt_main import QtKioskApp
+            parent_widget = QtKioskApp.instance.content_widget if QtKioskApp.instance else None
+            if not parent_widget:
+                print("[Message Handler] Error: Cannot find parent widget for soundcheck.")
+                parent_widget = None # Create without explicit parent if needed
+
+            self.soundcheck_widget = KioskSoundcheckWidget(self.kiosk_app, parent_widget)
+            self.soundcheck_widget.finished.connect(self._on_soundcheck_finished) # Connect signal
+            self.soundcheck_widget.start_soundcheck()
+            print("[Message Handler] KioskSoundcheckWidget created and started.")
+        except Exception as e:
+            print(f"[Message Handler] Error creating/starting soundcheck widget: {e}")
+            traceback.print_exc()
+            self.soundcheck_widget = None # Ensure it's None on error
+
     def toggle_auto_start(self):
         """Toggles the auto-start flag on the kiosk. Does not broadcast."""
         self.kiosk_app.auto_start = not self.kiosk_app.auto_start
         status = "enabled" if self.kiosk_app.auto_start else "disabled"
         print(f"[message handler] Auto-start {status}")
+
+    def _on_soundcheck_finished(self):
+        """Slot called when the soundcheck widget is closed/finished."""
+        print("[Message Handler] Soundcheck widget reported finished.")
+        self.soundcheck_widget = None # Clear the reference

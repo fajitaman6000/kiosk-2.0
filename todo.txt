@@ -13,6 +13,16 @@ video solutions will have to take into account cousin props as well
 ##############################################################################################################################
 # todo
 
+soundcheck button functionality
+    button which says "touch to play sound"
+    button to confirm sound was heard
+    button to begin testing microphone (visual indicator of audio for solo soundcheck)
+    list of checks including touch seen at admin side
+        window pops up on admin side, separate from main window, opened when soundcheck button is pressed
+
+
+        
+
 "switch sides" button for prop control
 
 watchdog send errors to admin
@@ -20,16 +30,10 @@ watchdog send errors to admin
 "currently displayed hint"
 "please select nudge frequency"
 auto create folders for hint contents
-perhaps restart microphone detection when attempting every time
+
 reboot kiosk application (watchdog command if it listens to message_handler)
 
 rebooter added to kiosk app
-
-soundcheck button functionality
-    button which says "touch to play sound"
-    button to confirm sound was heard
-    button to begin testing microphone (visual indicator of audio for solo soundcheck)
-    list of checks including touch seen at admin side
 
 make image viewing overlaying everything instead of hiding elements
 
