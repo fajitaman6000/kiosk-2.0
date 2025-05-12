@@ -1,11 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-[prop control]Error in check_prop_status: 'tubes'
-[prop control]Error in check_prop_status: 'tubes'
-[prop control]Error in check_prop_status: 'wood_wheel'
-[prop control]Error in check_prop_status: 'wood_wheel'
-
 prop page resetting repeatedly
 
 play hint sound broke after spamming the shit out of it?

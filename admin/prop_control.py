@@ -10,6 +10,7 @@ import random
 import threading
 from PIL import Image, ImageTk
 import os
+import traceback
 
 class PropControl:
     ROOM_MAP = {
@@ -678,7 +679,12 @@ class PropControl:
                     print(f"[prop control]Error updating prop UI: {e}")
 
         except Exception as e:
-            print(f"[prop control]Error in check_prop_status: {e}")
+            prop_name = prop_info['info'].get('strName', 'unknown') if 'info' in prop_info else 'unknown'
+            error_type = type(e).__name__
+            trace_str = traceback.format_exc()
+            print(f"[prop control]Error in check_prop_status: Room {room_number}, Prop '{prop_name}' (ID: {prop_id})")
+            print(f"[prop control]Exception type: {error_type}, Error: {str(e)}")
+            print(f"[prop control]Traceback: {trace_str}")
 
     def play_standby_sound(self, room_number):
         """Plays the room-specific standby sound."""
