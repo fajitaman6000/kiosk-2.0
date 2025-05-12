@@ -390,7 +390,7 @@ class KioskSoundcheckWidget(QWidget):
             self.button_container_layout.addLayout(h_layout)
             
         elif self.state == STATE_WAITING_MIC_START:
-            self.message_label.setText("Prepare to record a short audio sample.\n\nPress 'Start Recording' and speak clearly.")
+            self.message_label.setText("Prepare to record a short audio sample.\n\nWhen you press 'Start Recording' you will have 2 seconds to speak.")
             self.record_button = QPushButton("Start Recording", self.content_widget)
             self.record_button.setStyleSheet(self.button_style)
             self.record_button.clicked.connect(self.handle_start_recording)
