@@ -3,8 +3,33 @@
 
 increase received audio sample volume for soundcheck
 
+hint received may not always make a sound
+
+zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
+
+manual hint image browser needs a scroll feature (or a browser with thumbnails)
+
+mirror should be a cousin prop in haunted
+
+haunted's props did not start upon auto start being selected? (maybe)
+
 ##############################################################################################################################
 # beta testing
+
+
+
+When viewing room not with prop that was flagged
+
+[prop control]Exception type: KeyError, Error: 'light_maze'
+[prop control]Traceback: Traceback (most recent call last):
+  File "C:\Users\Vegas Manager\Desktop\kiosk-2.0\admin\prop_control.py", line 657, in check_prop_status
+    self.flagged_props[self.current_room][prop_id] and
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+KeyError: 'light_maze'
+
+
+
+bug reporter for users
 
 hint contents
     add images to the manual hint library
@@ -14,6 +39,8 @@ video solutions will have to take into account cousin props as well
 
 ##############################################################################################################################
 # todo
+
+times touched screen stat
 
 increase received audio sample volume for soundcheck
 
@@ -25,7 +52,7 @@ watchdog send errors to admin
 "please select nudge frequency"
 auto create folders for hint contents
 
-reboot kiosk application (watchdog command if it listens to message_handler)
+reboot kiosk application (watchdog command if it listens to message_handler) (or probably listen for such commands as though it were m_h)
 
 rebooter added to kiosk app
 
@@ -41,7 +68,9 @@ technician app (e.g "finish all" button)
     soundcheck functionality
 
 ##############################################################################################################################
-# known priority bugs
+# known bugs
+
+mqtt connections get crippled while running file sync
 
 admin application instability resulting in/caused by mqtt disconnect codes 16 and 7: paho codes
     MQTT_ERR_ACL_DENIED = 12
@@ -77,44 +106,25 @@ kiosk hangup reliability:
         [kiosk_file_downloader] Reset sync state
         ...
         [kiosk_file_downloader] Processing batch of 10 files
-
-##############################################################################################################################
-# known low priority bugs
-
-mqtt connections get crippled while running file sync
-
-
-"[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'
-[prop control]Error in check_prop_status: 'lamp'"
-
-
-
 ##############################################################################################################################
 # ambitious extra ideas:
 
 refill cylinders button
 "create popout prop control" (for controlling numerous rooms)
-option to play sound effects, ways for game masters to enjoyably interact with guests
-
+add ways for game masters to enjoyably interact with guests
 xyz finished their game (instead of generic victory sound)
 kiosk relaunch after sync finish
 reset props, reset room (runs reset all + reset kiosk)
 windows scaling detection, not having to rotate to landscape
 periodic setting of casino/morning after according to room?
 "wave back" button
-more specific standby audio
 log video solution usage to discourage excessive use
 make "reset kiosk" a reliable UI debugger somehow
-soundcheck logic kiosk side
 save props' status for blackbox, delete save upon load
 "enable drink menu" by default on
 dark theme
 hint count on THEIR side
 "your host/gamemaster's name" shown at victory/loss(?) screen
-route sound to speaker placed in office instead of from headphones
 LLM translator call
 AI generated text hint based on room state
 announce to lobby: room states for automatic standbys/room victory/out of time 
@@ -141,3 +151,75 @@ it will be up to the admin's network_broadcast_handler to receive and parse this
 The admin will have a file which will contain all of the IPs that the kiosk will need to report its latest data on, so this info will be included in the message sent via message_handler.
 
 Please examine the structure of prop_name_mapping.json. Each item will have added to it (if necessary; some items will not have an "ip" property) "ip". So when admin requests data on props, it will pull all the IPs from that room's props based on prop_name_mapping.json.
+
+##############################################################################################################################
+
+Video Solutions to film
+
+Casino
+    Hotel
+    Lamp
+    Weight Game
+    Paintings
+    Shelf Trophies
+    Buzzwire
+    Planting Bombs
+    Computer
+    Drawers
+Wizard
+    Knocking Chest
+    Spell Chart
+    Chair
+    Code Panel
+    Planets
+    Fireplace
+    Rod Game
+    Fart Owl
+    Magic Shelf
+    Potion Pot
+Haunted
+    Rope
+    Symbol Maze
+    Yellow Puzzle
+    Sun Dial
+    Diary/Cross
+    Candles
+    Vanity Photos
+    Family Portrait (+ blacklight)
+Zombie
+    Tools
+    Bench Lights
+    Wagon Wheel
+    TV
+    Cables Box
+    Zombie Loops
+    Motorcycle
+Atlantis
+    Pickaxes
+    Dynamite
+    Stone Pieces (+ vase)
+    Door
+    Light Maze
+    Floor Panels
+    Levers
+    Color Buttons
+    Cryptex
+    Harp
+    Pyramid
+    Laser Crown
+    Trident
+Time Machine
+    Professor doors
+    Clock
+    Desk Fan
+    Cylinders (+skull button)
+    Inverse Vault
+    Wall Valves
+    Footprints
+    Color Prism
+    Wall Ball
+    Desk Ball
+    Calculometer
+    Control Panel
+    Ignition
+    Time Capacitor
