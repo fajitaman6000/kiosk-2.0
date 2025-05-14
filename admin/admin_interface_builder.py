@@ -687,6 +687,17 @@ class AdminInterfaceBuilder:
 
         self.app.network_handler.send_video_command(computer_name, video_type, minutes)
 
+        # Assume the video command will succeed and update local state immediately
+        try:
+            self.app.kiosk_tracker.kiosk_stats[computer_name]['video_playing'] = True
+            print(f"[interface builder] Optimistically set video_playing=True for {computer_name}")
+            # Immediately update the stats display for the selected kiosk
+            if self.selected_kiosk == computer_name:
+                self.update_stats_display(computer_name)
+        except Exception as e:
+            # Log error but don't stop the process, the next status update will correct the state
+            print(f"[interface builder] Error during optimistic video_playing update: {e}")
+
     def handle_intro_video_complete(self, computer_name):
         """Handle the 'intro_video_completed' message"""
         print(f"[AdminInterfaceBuilder] Intro video completed by {computer_name}")
