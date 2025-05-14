@@ -11,3 +11,4 @@ flask
 requests
 pyautogui
 psutil
+rotatescreen

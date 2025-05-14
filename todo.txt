@@ -1,6 +1,8 @@
 ##############################################################################################################################
 # Test notes
 
+clearing gm assistance fucks up display of room name
+
 increase received audio sample volume for soundcheck
 
 hint received may not always make a sound
@@ -15,6 +17,9 @@ haunted's props did not start upon auto start being selected? (maybe)
 
 ##############################################################################################################################
 # beta testing
+
+option to adjust volume for hints and music separately
+
 
 restart app and restart computer as watchdog commands
 
