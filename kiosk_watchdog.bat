@@ -1,0 +1,1 @@
+python kiosk/kiosk_watchdog.py

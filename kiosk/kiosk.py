@@ -64,6 +64,13 @@ print("[kiosk main] Imported time.", flush=True)
 print("[kiosk main] Importing PyQt5.QtCore...", flush=True)
 from PyQt5.QtCore import QMetaObject, Qt, QTimer, Q_ARG
 print("[kiosk main] Imported PyQt5.QtCore.", flush=True)
+print("[kiosk main] Importing screen_rotation_manager...", flush=True)
+try:
+    from screen_rotation_manager import rotate_to_preferred_landscape
+    print("[kiosk main] Imported screen_rotation_manager.", flush=True)
+except ImportError:
+    print("[kiosk main] WARNING: Could not import screen_rotation_manager.py. Screen rotation will be skipped.", flush=True)
+    rotate_to_preferred_landscape = None
 print("[kiosk main] Ending imports ...", flush=True)
 
 class KioskApp:
@@ -75,6 +82,22 @@ class KioskApp:
         print("[kiosk main] Initializing logging...", flush=True)
         self.logger = init_logging()
         print("[kiosk main] Console logging initialized.", flush=True)
+
+        # --- Apply Screen Rotation Preference ---
+        # Do this after logging is set up, but before the main Qt app is created.
+        # The Qt app might read display configuration when created.
+        if rotate_to_preferred_landscape: # Check if the import was successful
+            print("[kiosk main] Applying screen rotation preference...", flush=True)
+            try:
+                rotate_to_preferred_landscape()
+            except Exception as e:
+                 # This catch is mostly for unexpected errors *during* the function call,
+                 # as the function itself has internal catches.
+                 print(f"[kiosk main] ERROR during screen rotation function call: {e}", flush=True)
+            print("[kiosk main] Screen rotation check complete.", flush=True)
+        else:
+             print("[kiosk main] Skipping screen rotation as manager was not imported.", flush=True)
+        # --- End Screen Rotation Logic ---
 
         #get_stats items to pass with info payload
         self.computer_name = socket.gethostname()
