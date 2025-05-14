@@ -1,1 +1,1 @@
-python kiosk/kiosk_watchdog.py
+python kiosk\kiosk_watchdog.py
