@@ -113,6 +113,9 @@ class KioskApp:
         self.take_screenshot_requested = False
         self.time_exceeded_45 = False
         self.room_started = False
+        # Volume levels (0-10 integer representation)
+        self.music_volume_level = 7  # Default 7/10 (70%)
+        self.hint_volume_level = 7   # Default 7/10 (70%)
 
         # Create Qt application first, before any other component
         print("[kiosk main] Creating Qt application...", flush=True)
@@ -219,6 +222,10 @@ class KioskApp:
         self.heartbeat_thread.start()
         print("[kiosk main] Heartbeat thread started.", flush=True)
         
+        # Volume levels (0-10 integer representation)
+        self.music_volume_level = 7  # Default 7/10 (70%)
+        self.hint_volume_level = 7   # Default 7/10 (70%)
+        
         print("[kiosk main] KioskApp initialization complete.", flush=True)
 
     def _actual_help_button_update(self):
@@ -247,7 +254,8 @@ class KioskApp:
             'times_touched_screen': self.times_touched_screen,
             'music_playing': self.audio_manager.is_playing if hasattr(self.audio_manager, 'is_playing') else False,
             'auto_start': self.auto_start,
-
+            'music_volume_level': self.music_volume_level, # Add music volume level
+            'hint_volume_level': self.hint_volume_level,   # Add hint volume level
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:

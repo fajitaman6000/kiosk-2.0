@@ -595,3 +595,25 @@ class NetworkBroadcastHandler:
         }
         self._send_tracked_message(message, computer_name)
         print(f"[Network Handler] Sent soundcheck cancel command to {computer_name}")
+
+    def send_set_music_volume_command(self, computer_name, level):
+        """Sends a command to set the music volume level (0-10) on a kiosk."""
+        message = {
+            'type': 'set_music_volume_level',
+            'command_id': str(uuid.uuid4()),
+            'computer_name': computer_name,
+            'level': level  # Integer level 0-10
+        }
+        self._send_tracked_message(message, computer_name)
+        print(f"[Network Handler] Sent set_music_volume_level ({level}) to {computer_name}")
+
+    def send_set_hint_volume_command(self, computer_name, level):
+        """Sends a command to set the hint audio volume level (0-10) on a kiosk."""
+        message = {
+            'type': 'set_hint_volume_level',
+            'command_id': str(uuid.uuid4()),
+            'computer_name': computer_name,
+            'level': level  # Integer level 0-10
+        }
+        self._send_tracked_message(message, computer_name)
+        print(f"[Network Handler] Sent set_hint_volume_level ({level}) to {computer_name}")

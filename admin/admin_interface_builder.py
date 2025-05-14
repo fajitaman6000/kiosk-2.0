@@ -1561,6 +1561,24 @@ class AdminInterfaceBuilder:
             except tk.TclError:
                 print("[interface builder] Auto-start checkbox was destroyed")
 
+        # Update Music Volume Label
+        music_vol_label = self.stats_elements.get('music_volume_label')
+        if music_vol_label and music_vol_label.winfo_exists():
+            level = stats.get('music_volume_level', 7)
+            try:
+                music_vol_label.config(text=f"Music Volume: {level}/10")
+            except tk.TclError:
+                print("[interface builder] Music volume label was destroyed")
+
+        # Update Hint Volume Label
+        hint_vol_label = self.stats_elements.get('hint_volume_label')
+        if hint_vol_label and hint_vol_label.winfo_exists():
+            level = stats.get('hint_volume_level', 7)
+            try:
+                hint_vol_label.config(text=f"Hint Volume: {level}/10")
+            except tk.TclError:
+                print("[interface builder] Hint volume label was destroyed")
+
     def update_last_progress_time_display(self, room_number):
         if room_number in self.app.prop_control.last_progress_times:
             last_progress_time = self.app.prop_control.last_progress_times[room_number]
@@ -2007,3 +2025,37 @@ class AdminInterfaceBuilder:
                         
                         # Update our tracking of the last state
                         self._last_hint_request_states[computer_name] = current_hint_request
+
+    def change_music_volume(self, computer_name, delta):
+        """Changes the music volume for the specified kiosk by delta (+1 or -1)."""
+        if computer_name not in self.app.kiosk_tracker.kiosk_stats:
+            return
+        
+        current_level = self.app.kiosk_tracker.kiosk_stats[computer_name].get('music_volume_level', 7)
+        new_level = max(0, min(10, current_level + delta))  # Clamp between 0 and 10
+
+        # Optimistically update local stats and UI
+        self.app.kiosk_tracker.kiosk_stats[computer_name]['music_volume_level'] = new_level
+        if self.selected_kiosk == computer_name:  # Update UI only if it's the selected kiosk
+            if self.stats_elements.get('music_volume_label') and self.stats_elements['music_volume_label'].winfo_exists():
+                self.stats_elements['music_volume_label'].config(text=f"Music Volume: {new_level}/10")
+        
+        # Send command to kiosk
+        self.app.network_handler.send_set_music_volume_command(computer_name, new_level)
+
+    def change_hint_volume(self, computer_name, delta):
+        """Changes the hint audio volume for the specified kiosk by delta (+1 or -1)."""
+        if computer_name not in self.app.kiosk_tracker.kiosk_stats:
+            return
+            
+        current_level = self.app.kiosk_tracker.kiosk_stats[computer_name].get('hint_volume_level', 7)
+        new_level = max(0, min(10, current_level + delta))  # Clamp between 0 and 10
+
+        # Optimistically update local stats and UI
+        self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_volume_level'] = new_level
+        if self.selected_kiosk == computer_name:  # Update UI only if it's the selected kiosk
+            if self.stats_elements.get('hint_volume_label') and self.stats_elements['hint_volume_label'].winfo_exists():
+                self.stats_elements['hint_volume_label'].config(text=f"Hint Volume: {new_level}/10")
+
+        # Send command to kiosk
+        self.app.network_handler.send_set_hint_volume_command(computer_name, new_level)

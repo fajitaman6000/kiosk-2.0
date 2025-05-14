@@ -591,13 +591,27 @@ class MessageHandler:
                 else:
                     print("[Message Handler] Received cancel but no soundcheck widget found.")
 
-            elif msg_type == 'soundcheck_cancel' and is_targeted:
-                print(f"[Message Handler] Received soundcheck cancel command (ID: {command_id})")
-                if self.soundcheck_widget:
-                    # Use invokeMethod to ensure cancel runs on the main thread
-                    QMetaObject.invokeMethod(self.soundcheck_widget, "cancel_soundcheck", Qt.QueuedConnection)
+            elif msg_type == 'set_music_volume_level' and is_targeted:
+                level = msg.get('level')
+                if level is not None and isinstance(level, int):
+                    print(f"[message handler] Received set_music_volume_level: {level} (Command ID: {command_id})")
+                    # Update KioskApp's integer level state
+                    self.kiosk_app.music_volume_level = max(0, min(10, level)) # Clamp 0-10
+                    # Schedule AudioManager call on main thread
+                    self.schedule_timer(0, lambda l=self.kiosk_app.music_volume_level: self.kiosk_app.audio_manager.set_music_volume_level(l))
                 else:
-                    print("[Message Handler] Received cancel but no soundcheck widget found.")
+                    print(f"[message handler] Invalid or missing level for set_music_volume_level: {msg}")
+
+            elif msg_type == 'set_hint_volume_level' and is_targeted:
+                level = msg.get('level')
+                if level is not None and isinstance(level, int):
+                    print(f"[message handler] Received set_hint_volume_level: {level} (Command ID: {command_id})")
+                    # Update KioskApp's integer level state
+                    self.kiosk_app.hint_volume_level = max(0, min(10, level)) # Clamp 0-10
+                    # Schedule AudioManager call on main thread
+                    self.schedule_timer(0, lambda l=self.kiosk_app.hint_volume_level: self.kiosk_app.audio_manager.set_hint_volume_level(l))
+                else:
+                    print(f"[message handler] Invalid or missing level for set_hint_volume_level: {msg}")
 
         except Exception as e:
             print("[message handler][CRITICAL ERROR] Critical error in handle_message:")

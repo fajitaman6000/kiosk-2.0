@@ -895,12 +895,62 @@ def setup_stats_panel(interface_builder, computer_name):
     sound_container = tk.Frame(other_controls_frame)
     sound_container.pack(fill='x', pady=5)
 
-    # Add "Issue Warning:" label
+    # --- Music Volume Controls ---
+    music_volume_frame = tk.Frame(sound_container)
+    music_volume_frame.pack(pady=2)
+    
+    interface_builder.stats_elements['music_volume_label'] = tk.Label(
+        music_volume_frame,
+        text="Music Volume: -/10", # Initial text
+        font=('Arial', 9)
+    )
+    interface_builder.stats_elements['music_volume_label'].pack(side='left', padx=(0, 5))
+
+    music_vol_down_btn = tk.Button(
+        music_volume_frame, text="ᐁ", font=('Arial', 8), width=2,
+        command=lambda cn=computer_name: interface_builder.change_music_volume(cn, -1),
+        cursor="hand2"
+    )
+    music_vol_down_btn.pack(side='left')
+    
+    music_vol_up_btn = tk.Button(
+        music_volume_frame, text="ᐃ", font=('Arial', 8), width=2,
+        command=lambda cn=computer_name: interface_builder.change_music_volume(cn, 1),
+        cursor="hand2"
+    )
+    music_vol_up_btn.pack(side='left', padx=(2,0))
+    
+    # --- Hint Volume Controls ---
+    hint_volume_frame = tk.Frame(sound_container)
+    hint_volume_frame.pack(pady=2)
+
+    interface_builder.stats_elements['hint_volume_label'] = tk.Label(
+        hint_volume_frame,
+        text="Hint Volume: -/10", # Initial text
+        font=('Arial', 9)
+    )
+    interface_builder.stats_elements['hint_volume_label'].pack(side='left', padx=(0, 5))
+
+    hint_vol_down_btn = tk.Button(
+        hint_volume_frame, text="ᐁ", font=('Arial', 8), width=2,
+        command=lambda cn=computer_name: interface_builder.change_hint_volume(cn, -1),
+        cursor="hand2"
+    )
+    hint_vol_down_btn.pack(side='left')
+
+    hint_vol_up_btn = tk.Button(
+        hint_volume_frame, text="ᐃ", font=('Arial', 8), width=2,
+        command=lambda cn=computer_name: interface_builder.change_hint_volume(cn, 1),
+        cursor="hand2"
+    )
+    hint_vol_up_btn.pack(side='left', padx=(2,0))
+
+    # Add "Issue Warning:" label (existing)
     tk.Label(
         sound_container,
         text="Issue Warning:",
         anchor='e'
-    ).pack(side='top', pady=(5,2))
+    ).pack(side='top', pady=(10,2)) # Added more top padding to separate from volume controls
 
     # Define warning sounds
     warning_sounds = {

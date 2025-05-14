@@ -40,6 +40,11 @@ class AudioManager:
             7: "time_machine.mp3",
         }
 
+        # Default volume levels (0.0 to 1.0 for pygame)
+        self.music_volume_actual = 0.7  # Default 70%
+        self.hint_volume_actual = 0.7   # Default 70%
+        pygame.mixer.music.set_volume(self.music_volume_actual) # Apply initial music volume
+
     def play_sound(self, sound_name):
         """
         Plays a sound file from the kiosk_sounds directory.
@@ -73,10 +78,11 @@ class AudioManager:
             audio_path = os.path.join(self.hint_audio_dir, audio_name)
             if os.path.exists(audio_path):
                 sound = pygame.mixer.Sound(audio_path)
+                sound.set_volume(self.hint_volume_actual) # Apply current hint volume
                 #Use channel 2 for audio hints (channel 0 is reserved for video and 1 for sfx)
                 sound_channel = pygame.mixer.Channel(2)
                 sound_channel.play(sound)
-                print(f"[audio manager]Playing audio hint {audio_name} on channel 2", flush=True)
+                print(f"[audio manager]Playing audio hint {audio_name} on channel 2 at volume {self.hint_volume_actual:.2f}", flush=True)
 
             else:
                     print(f"[audio manager]Audio hint file not found: {audio_path}", flush=True)
@@ -96,10 +102,11 @@ class AudioManager:
                 if os.path.exists(music_path):
                     self.stop_background_music()  # Stop any existing music
                     pygame.mixer.music.load(music_path)
+                    pygame.mixer.music.set_volume(self.music_volume_actual) # Apply current music volume
                     pygame.mixer.music.play(-1)  # Loop indefinitely
                     self.current_music = music_file
                     self.is_playing = True
-                    print(f"[audio manager]Started playing background music: {music_file}", flush=True)
+                    print(f"[audio manager]Started playing background music: {music_file} at volume {self.music_volume_actual:.2f}", flush=True)
                 else:
                     print(f"[audio manager]Background music file not found: {music_path}", flush=True)
             else:
@@ -138,16 +145,51 @@ class AudioManager:
             print(f"[audio manager]Error toggling music: {e}", flush=True)
 
 
-    def set_music_volume(self, volume):
+    def set_music_volume_float(self, volume_float):
         """
-        Sets the volume of currently playing background music.
-        Volume should be between 0.0 and 1.0
+        Sets the music channel volume.
+        volume_float should be between 0.0 and 1.0.
+        This method updates the internal actual volume and applies it to pygame.
         """
         try:
-            if pygame.mixer.music.get_busy():
-                pygame.mixer.music.set_volume(volume)
+            # Clamp value
+            volume_float = max(0.0, min(1.0, volume_float))
+            self.music_volume_actual = volume_float # Store the actual float value
+            pygame.mixer.music.set_volume(self.music_volume_actual)
+            # Update is_playing status based on whether music is busy, as volume changes don't affect this
+            self.is_playing = pygame.mixer.music.get_busy()
+            print(f"[audio manager] Set music volume to {self.music_volume_actual:.2f}", flush=True)
         except Exception as e:
-            print(f"[audio manager]Error setting music volume: {e}", flush=True)
+            print(f"[audio manager] Error setting music volume: {e}", flush=True)
+
+    def set_music_volume_level(self, level_int):
+        """
+        Sets the music volume based on an integer level (0-10).
+        Converts level to float and calls set_music_volume_float.
+        """
+        if not (0 <= level_int <= 10):
+            print(f"[audio manager] Invalid music volume level: {level_int}. Must be 0-10.", flush=True)
+            level_int = max(0, min(10, level_int)) # Clamp
+            
+        volume_float = level_int / 10.0
+        self.set_music_volume_float(volume_float)
+        # The KioskApp's corresponding integer level (e.g., self.kiosk_app.music_volume_level)
+        # will be updated by the MessageHandler.
+
+    def set_hint_volume_level(self, level_int):
+        """
+        Sets the hint audio volume based on an integer level (0-10).
+        This volume (as a float) will be stored and applied to individual hint sounds when they are played.
+        """
+        if not (0 <= level_int <= 10):
+            print(f"[audio manager] Invalid hint volume level: {level_int}. Must be 0-10.", flush=True)
+            level_int = max(0, min(10, level_int)) # Clamp
+
+        volume_float = level_int / 10.0
+        self.hint_volume_actual = max(0.0, min(1.0, volume_float)) # Store as float
+        print(f"[audio manager] Set hint audio master volume to {self.hint_volume_actual:.2f}", flush=True)
+        # The KioskApp's corresponding integer level (e.g., self.kiosk_app.hint_volume_level)
+        # will be updated by the MessageHandler.
 
     def play_loss_audio(self, room_number):
         """Plays the loss audio for the given room."""
