@@ -251,6 +251,58 @@ class AdminInterfaceBuilder:
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=0, anchor='nw', side='top')
 
+    def _repack_kiosk_elements(self, computer_name, include_icon=False):
+        if computer_name not in self.connected_kiosks:
+            return
+
+        kiosk_data = self.connected_kiosks[computer_name]
+        parent_frame = kiosk_data.get('frame')
+
+        if not parent_frame or not parent_frame.winfo_exists():
+            return
+
+        # Retrieve all relevant widgets
+        icon_label = kiosk_data.get('icon_label')
+        name_label = kiosk_data.get('name_label')
+        dropdown = kiosk_data.get('dropdown')
+        help_label = kiosk_data.get('help_label')
+        reboot_btn = kiosk_data.get('reboot_btn')
+        timer_label = kiosk_data.get('timer_label')
+
+        # Widgets to manage
+        widgets_to_repack = [icon_label, dropdown, name_label, help_label, reboot_btn, timer_label]
+
+        # Forget all of them to ensure clean repacking in the correct order
+        for widget in widgets_to_repack:
+            if widget and widget.winfo_exists() and widget.winfo_manager():
+                widget.pack_forget()
+
+        # Repack in the correct original order
+
+        if include_icon and icon_label and icon_label.winfo_exists():
+            icon_label.pack(side='left', padx=(0, 5))
+
+        # Determine name_label padding based on whether room is assigned (approximating original logic)
+        name_label_padx = (30, 3)  # Default for assigned room
+        if computer_name not in self.app.kiosk_tracker.kiosk_assignments or \
+           not self.app.kiosk_tracker.kiosk_assignments.get(computer_name):
+            name_label_padx = 5  # For unassigned
+
+        if dropdown and dropdown.winfo_exists():
+            dropdown.pack(side='left', padx=5, anchor='e')
+        if name_label and name_label.winfo_exists():
+            name_label.pack(side='left', padx=name_label_padx)
+        if help_label and help_label.winfo_exists():
+            help_label.pack(side='left', padx=5)
+        
+        # Pack right-aligned elements last to ensure they take precedence from the right
+        if reboot_btn and reboot_btn.winfo_exists():
+            reboot_btn.pack(side='right', padx=(20, 5), anchor='e')
+        
+        # Timer label is packed left, after help_label and before reboot_btn claims space from right
+        if timer_label and timer_label.winfo_exists():
+            timer_label.pack(side='left', padx=5)
+
     def show_hints_library(self):
         """Show the Hints Library interface"""
         self.hint_manager.show_hint_manager() # call the show method
@@ -930,15 +982,23 @@ class AdminInterfaceBuilder:
         icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
         
         # Add click handler to hide the icon
-        def hide_icon(event):
-            if icon_label.winfo_manager():  # If visible
-                icon_label.pack_forget()
-                # Also stop the blink timer if it exists
-                if self.connected_kiosks[computer_name]['icon_blink_after_id']:
-                    self.app.root.after_cancel(self.connected_kiosks[computer_name]['icon_blink_after_id'])
-                    self.connected_kiosks[computer_name]['icon_blink_after_id'] = None
+        def hide_icon(event, cn=computer_name): # Pass computer_name via default arg for clarity
+            if cn not in self.connected_kiosks:
+                return
+
+            kiosk_data = self.connected_kiosks[cn]
+            current_icon_label = kiosk_data.get('icon_label')
+
+            if current_icon_label and current_icon_label.winfo_exists() and current_icon_label.winfo_manager():  # If visible
+                # Stop the blink timer if it exists
+                if kiosk_data.get('icon_blink_after_id'):
+                    self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
+                    kiosk_data['icon_blink_after_id'] = None
+                
+                # Repack elements without the icon
+                self._repack_kiosk_elements(cn, include_icon=False)
         
-        icon_label.bind('<Button-1>', hide_icon)  # Bind left click to hide function
+        icon_label.bind('<Button-1>', hide_icon)
         
         # Pack the icon label first, before any other elements, then immediately hide it
         icon_label.pack(side='left', padx=(0,5))
@@ -1151,60 +1211,64 @@ class AdminInterfaceBuilder:
             return
         
         kiosk_data = self.connected_kiosks[computer_name]
-        icon_label = kiosk_data['icon_label']
+        icon_label = kiosk_data.get('icon_label') # Use .get() for safety
         
+        # Ensure icon_label exists and is valid
+        if not icon_label or not icon_label.winfo_exists():
+            return
+
         # Cancel any existing blink timer
-        if kiosk_data['icon_blink_after_id']:
+        if kiosk_data.get('icon_blink_after_id'): # Use .get()
             self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
+            kiosk_data['icon_blink_after_id'] = None # Explicitly set to None
         
         def blink():
             """Toggle icon visibility every 500ms"""
-            if computer_name not in self.connected_kiosks:
+            if computer_name not in self.connected_kiosks: # Kiosk might have been removed
                 return
             
-            if icon_label.winfo_manager():  # If visible
-                icon_label.pack_forget()
+            # Fetch kiosk_data and icon_label again inside blink, in case they changed
+            # or to ensure we have the most current references, though less likely to change rapidly.
+            current_kiosk_data = self.connected_kiosks.get(computer_name)
+            if not current_kiosk_data: return # Kiosk removed during blink cycle
+
+            current_icon_label = current_kiosk_data.get('icon_label')
+            if not current_icon_label or not current_icon_label.winfo_exists(): # Icon label might be destroyed
+                if current_kiosk_data.get('icon_blink_after_id'): # Stop further blinking if icon is gone
+                    self.app.root.after_cancel(current_kiosk_data['icon_blink_after_id'])
+                    current_kiosk_data['icon_blink_after_id'] = None
+                return
+
+            is_currently_visible = current_icon_label.winfo_manager()
+
+            if is_currently_visible:
+                # Icon is currently shown, so the blink will hide it. Repack without icon.
+                self._repack_kiosk_elements(computer_name, include_icon=False)
             else:
-                # Ensure icon is packed first by unpacking and repacking all siblings
-                for widget in kiosk_data['frame'].winfo_children():
-                    if widget != icon_label and widget.winfo_manager():
-                        widget.pack_forget()
-                icon_label.pack(side='left', padx=(0,5))
-                # Repack other widgets in their original order
-                if computer_name in self.connected_kiosks:
-                    name_label = self.connected_kiosks[computer_name]['name_label']
-                    help_label = self.connected_kiosks[computer_name]['help_label']
-                    dropdown = self.connected_kiosks[computer_name]['dropdown']
-                    reboot_btn = self.connected_kiosks[computer_name]['reboot_btn']
-                    timer_label = self.connected_kiosks[computer_name]['timer_label']
-                    
-                    name_label.pack(side='left', padx=5)
-                    dropdown.pack(side='left', padx=5)
-                    help_label.pack(side='left', padx=5)
-                    reboot_btn.pack(side='left', padx=(20, 5))
-                    timer_label.pack(side='right', padx=5)
+                # Icon is currently hidden, so the blink will show it. Repack with icon.
+                self._repack_kiosk_elements(computer_name, include_icon=True)
             
             # Schedule next blink
-            kiosk_data['icon_blink_after_id'] = self.app.root.after(500, blink)
+            current_kiosk_data['icon_blink_after_id'] = self.app.root.after(500, blink)
         
         # Start blinking
         blink()
 
     def stop_gm_assistance_icon(self, computer_name):
-        """Stop the GM assistance icon from blinking and hide it"""
+        """Stop the GM assistance icon from blinking and hide it, then repack."""
         if computer_name not in self.connected_kiosks:
             return
         
         kiosk_data = self.connected_kiosks[computer_name]
         
         # Cancel blink timer if it exists
-        if kiosk_data['icon_blink_after_id']:
+        if kiosk_data.get('icon_blink_after_id'): # Use .get()
             self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
             kiosk_data['icon_blink_after_id'] = None
         
-        # Hide the icon
-        if kiosk_data['icon_label'].winfo_manager():
-            kiosk_data['icon_label'].pack_forget()
+        # Repack elements without the icon (this will also hide it if it was visible
+        # because _repack_kiosk_elements only packs it if include_icon is True)
+        self._repack_kiosk_elements(computer_name, include_icon=False)
 
     def select_kiosk(self, computer_name):
         """Handle selection of a kiosk and setup of its interface"""

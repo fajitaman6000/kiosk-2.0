@@ -1,8 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-clearing gm assistance fucks up display of room name
-
 zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
 
 haunted's props did not start upon auto start being selected? (maybe)
@@ -24,8 +22,6 @@ starting video needs visual feedback (replace video playing icon?)
 manual hint image browser needs a scroll feature (or a browser with thumbnails)
 
 mirror should be a cousin prop in haunted
-
-option to adjust volume for hints and music separately
 
 restart app and restart computer as watchdog commands
 
