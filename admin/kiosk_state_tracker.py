@@ -21,6 +21,7 @@ class KioskStateTracker:
             'auto_start': msg.get('auto_start', False),
             'music_volume_level': msg.get('music_volume_level', 7),
             'hint_volume_level': msg.get('hint_volume_level', 7),
+            'video_playing': msg.get('video_playing', False)
         }
         
         # Update UI if this kiosk is selected

@@ -1477,7 +1477,7 @@ class AdminInterfaceBuilder:
 
         stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
 
-        if not self.stats_elements:
+        if not self.stats_elements:  # Should not happen if panel is built
             return
 
         # Check if hints_label_below exists and is valid before configuring
@@ -1642,6 +1642,40 @@ class AdminInterfaceBuilder:
                 hint_vol_label.config(text=f"Hint Volume: {level}/10")
             except tk.TclError:
                 print("[interface builder] Hint volume label was destroyed")
+
+        # --- VIDEO BUTTON ICON UPDATE (Revised) ---
+        video_button = self.stats_elements.get('video_button')  # Use the correct key
+
+        if video_button and hasattr(video_button, 'winfo_exists') and video_button.winfo_exists():
+            is_video_playing = stats.get('video_playing', False)
+            
+            # Check if the button has the necessary icon object attributes
+            if hasattr(video_button, 'video_icon_obj') and \
+               hasattr(video_button, 'video_playing_icon_obj'):
+                
+                try:
+                    current_img_name_str = video_button.cget('image')  # This is a string name like "pyimageX"
+                    
+                    target_icon_to_set = None
+                    expected_icon_name_str = ""
+
+                    if is_video_playing:
+                        target_icon_to_set = video_button.video_playing_icon_obj
+                        if target_icon_to_set:
+                             expected_icon_name_str = str(target_icon_to_set)
+                    else:
+                        target_icon_to_set = video_button.video_icon_obj
+                        if target_icon_to_set:
+                             expected_icon_name_str = str(target_icon_to_set)
+
+                    # Only attempt to config if the target PhotoImage object exists (is not None)
+                    # AND the current image is different from the target image.
+                    if target_icon_to_set is not None:
+                        if current_img_name_str != expected_icon_name_str:
+                            video_button.config(image=target_icon_to_set)
+
+                except tk.TclError as e:
+                    print(f"[interface builder] Video button TclError: {e}")
 
     def update_last_progress_time_display(self, room_number):
         if room_number in self.app.prop_control.last_progress_times:

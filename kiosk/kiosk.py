@@ -256,6 +256,7 @@ class KioskApp:
             'auto_start': self.auto_start,
             'music_volume_level': self.music_volume_level, # Add music volume level
             'hint_volume_level': self.hint_volume_level,   # Add hint volume level
+            'video_playing': self.video_manager.is_playing if hasattr(self, 'video_manager') else False,
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:

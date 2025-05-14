@@ -73,6 +73,10 @@ def setup_stats_panel(interface_builder, computer_name):
         clock_icon = clock_icon.resize((24, 24), Image.Resampling.LANCZOS)
         clock_icon = ImageTk.PhotoImage(clock_icon)
 
+        video_playing_icon = Image.open(os.path.join(icon_dir, "video_playing.png"))
+        video_playing_icon = video_playing_icon.resize((24, 24), Image.Resampling.LANCZOS)
+        video_playing_icon = ImageTk.PhotoImage(video_playing_icon)
+
         music_on_icon = Image.open(os.path.join(icon_dir, "music_on.png"))
         music_on_icon = music_on_icon.resize((24, 24), Image.Resampling.LANCZOS)
         music_on_icon = ImageTk.PhotoImage(music_on_icon)
@@ -160,9 +164,13 @@ def setup_stats_panel(interface_builder, computer_name):
         highlightthickness=0,
         cursor="hand2"
     )
-    if video_icon:
-        video_btn.image = video_icon
+    # Store the actual PhotoImage objects (or None) as attributes on the button.
+    # This ensures hasattr() will work correctly in the update logic.
+    video_btn.video_icon_obj = video_icon
+    video_btn.video_playing_icon_obj = video_playing_icon
+    
     video_btn.pack(side='left', padx=(5,0))
+    interface_builder.stats_elements['video_button'] = video_btn # Ensure this key is 'video_button'
 
     # Video options dropdown
     video_options = ['Intro', 'Late', 'Recent Player', 'Game']
