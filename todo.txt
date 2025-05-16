@@ -14,8 +14,6 @@ When viewing room not with prop that was flagged
     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
 KeyError: 'light_maze'
 
-starting video needs visual feedback (replace video playing icon?)
-
 wrong audio files for time capacitor
 
 ##############################################################################################################################

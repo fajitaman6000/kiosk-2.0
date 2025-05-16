@@ -506,15 +506,24 @@
             },
             "Spell Chart": {
                 "smell the bottles": {
-                    "text": "The bottles above the fireplace seem to have a smell! And they've got symbols on them that match that spell chart on the wall."
+                    "text": "The bottles above the fireplace seem to have a smell! And they've got symbols on them that match that spell chart on the wall.",
+                    "image": "spell_chart.png"
                 },
                 "scroll on desk": {
                     "text": "The bottles smell like the scent described on the scroll on the desk. Those bottles have symbols on them that should be tapped on the spell chart in the same order with your wand."
+                },
+                "solution": {
+                    "text": "The three bottles show these symbols you are to press, based on their smell.\nPress the white dots with your wand in this order.",
+                    "image": "solution.png"
                 }
             },
             "Chair": {
                 "sit on it": {
                     "text": "I know we're all excited to complete our quest, but I think the best thing to do would be to SIT and think about the plan."
+                },
+                "sit like rufio": {
+                    "text": "Do this.",
+                    "image": "sit_rufio.png"
                 }
             },
             "Rod Game": {
@@ -551,6 +560,10 @@
                 "need these items": {
                     "text": "To complete the shelf, you'll need three items. A goblet of ice, a chalice of dragon's eye, and a crystal skull.",
                     "image": "ice green skull.png"
+                },
+                "item positions": {
+                    "text": "The three items you need, the skull, the dragon eye chalice, and the ice goblet, go in these locations on the shelf.",
+                    "image": "shelf.png"
                 }
             },
             "Potion Pot": {

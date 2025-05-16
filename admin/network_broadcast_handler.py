@@ -68,7 +68,6 @@ class NetworkBroadcastHandler:
             # Schedule the next check
             self.app.root.after(int(self.ACK_TIMEOUT * 1000 / 2), self.check_and_resend_loop)
 
-
     def _send_tracked_message(self, message, computer_name):
         """Internal method to send a message, add tracking IDs, and manage ACKs."""
         # Ensure message has a command_id (should be added by the calling method)

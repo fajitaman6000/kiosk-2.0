@@ -198,7 +198,7 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     if skip_icon:
         skip_btn.image = skip_icon
-    #skip_btn.pack(side='left', padx=(0,10))      # Uncomment to show skip button
+    skip_btn.pack(side='left', padx=(0,10))      # Uncomment to show skip button
 
     # PACK THE FRAMES IN THE NEW ORDER
     video_frame.pack(side='left', padx=(0,2))
