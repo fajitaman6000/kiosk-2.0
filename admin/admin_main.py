@@ -7,6 +7,7 @@ import os
 import pygame
 from admin_soundcheck import AdminSoundcheckWindow
 from tkinter import messagebox # Add messagebox if not already imported
+from bug_report_manager import BugReportManager
 #import sv_ttk
 
 from network_broadcast_handler import NetworkBroadcastHandler
@@ -86,6 +87,7 @@ try:
             # Initialize components
             self.kiosk_tracker = KioskStateTracker(self)
             self.network_handler = NetworkBroadcastHandler(self)
+            self.bug_report_manager = BugReportManager(self)
             self.interface_builder = AdminInterfaceBuilder(self)
             self.prop_control = PropControl(self)
 
@@ -117,6 +119,7 @@ try:
             self.interface_builder.sync_button.config(command=self.handle_sync_button_click)
             self.interface_builder.settings_button.config(command=self.handle_settings_button_click)
             self.interface_builder.soundcheck_button.config(command=self.handle_soundcheck_button_click)
+            self.interface_builder.bug_report_button.config(command=self.handle_bug_report_button_click)
 
             # Set up window close handler
             self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
@@ -156,6 +159,16 @@ try:
             soundcheck_win = AdminSoundcheckWindow(self.root, self, connected_kiosk_names)
             # Pass the instance to the network handler so it can call update_status
             self.network_handler.soundcheck_instance = soundcheck_win
+
+        def handle_bug_report_button_click(self):
+            """Handle bug report button click."""
+            print("[Admin Main] Bug report button clicked.")
+            if hasattr(self, 'bug_report_manager') and self.bug_report_manager:
+                self.bug_report_manager.show_report_submission_popup()
+            else:
+                # This case should ideally not happen if initialization is correct
+                messagebox.showerror("Error", "Bug Report Manager is not initialized.", parent=self.root)
+                print("[Admin Main] Error: BugReportManager not found.")
 
         def setup_prop_panel_sync(self):
             """Set up synchronization between prop controls and hint panels"""

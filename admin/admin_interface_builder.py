@@ -247,6 +247,34 @@ class AdminInterfaceBuilder:
         if soundcheck_icon:
             self.soundcheck_button.image = soundcheck_icon
 
+        # Load bug report icon
+        try:
+           bug_icon = Image.open(os.path.join(icon_dir, "bug.png"))
+           bug_icon = bug_icon.resize((32,32), Image.Resampling.LANCZOS)
+           bug_icon = ImageTk.PhotoImage(bug_icon)
+        except Exception as e:
+            print(f"[interface builder] Error loading bug icon: {e}")
+            bug_icon = None
+        
+        # Add bug report button, directly below the soundcheck button
+        self.bug_report_button = tk.Button( # Assign to self so AdminApplication can configure its command
+            hints_button_frame,
+            image=bug_icon if bug_icon else None,
+            # command will be set in admin_main.py by AdminApplication instance
+            fg='white', # Or remove if using system theme / sv_ttk
+            font=('Arial', 9),
+            width=32,
+            height=32,
+            bd=0,
+            highlightthickness=0,
+            compound=tk.LEFT,
+            cursor="hand2"
+        )
+        self.bug_report_button.pack(anchor='n', pady=(25,0)) # Place below soundcheck button
+
+        if bug_icon:
+            self.bug_report_button.image = bug_icon
+
         # Create stats frame below the kiosk container
         self.stats_frame = tk.LabelFrame(left_frame, text="No Room Selected", padx=10, pady=5)
         self.stats_frame.pack(fill='both', expand=True, pady=0, anchor='nw', side='top')
