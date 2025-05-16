@@ -381,6 +381,9 @@ class AdminInterfaceBuilder:
         self.stats_elements['image_btn']['values'] = props_list
         self.img_prop_var.set("")
 
+    # admin_interface_builder.py
+# Inside AdminInterfaceBuilder class, modify on_image_prop_select method
+
     def on_image_prop_select(self, event):
         """When a prop is selected, hide manual hint and show image selection"""
         selected_item = self.img_prop_var.get()
@@ -388,26 +391,25 @@ class AdminInterfaceBuilder:
             return
         
         # Hide manual hint text box and buttons
-        if 'msg_entry' in self.stats_elements:
+        if 'msg_entry' in self.stats_elements and self.stats_elements['msg_entry'].winfo_ismapped():
             self.stats_elements['msg_entry'].pack_forget()
-        if 'hint_buttons_frame' in self.stats_elements:
+        if 'hint_buttons_frame' in self.stats_elements and self.stats_elements['hint_buttons_frame'].winfo_ismapped():
             self.stats_elements['hint_buttons_frame'].pack_forget()
         
-        # Show back button and listbox
+        # Show back button, open browser button, and listbox
         if 'prop_control_buttons' in self.stats_elements:
             self.stats_elements['prop_control_buttons'].pack(fill='x', pady=5)
             self.stats_elements['prop_back_btn'].pack(side='left', padx=5)
-            self.stats_elements['prop_attach_btn'].pack_forget()
+            self.stats_elements['open_browser_btn'].pack(side='left', padx=5) # Pack the new button
+            # Ensure the listbox's attach button is hidden initially
+            if 'prop_attach_btn' in self.stats_elements and self.stats_elements['prop_attach_btn'].winfo_ismapped():
+                 self.stats_elements['prop_attach_btn'].pack_forget()
         
-        # Clear the listbox and show it
         self.stats_elements['image_listbox'].delete(0, tk.END)
-        self.stats_elements['image_listbox'].pack(pady=5, fill='x')
+        self.stats_elements['image_listbox'].pack(pady=5, fill='x', expand=True)
         
-        # Extract original prop name from the dropdown text
-        original_name = selected_item.split("(")[-1].rstrip(")")
-        
-        room_name = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
-        room_name = room_name.lower() if room_name else None
+        # --- Use the new helper to get image data ---
+        room_name_for_images = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
         
         try:
             with open("prop_name_mapping.json", "r") as f:
@@ -415,82 +417,32 @@ class AdminInterfaceBuilder:
         except Exception as e:
             print(f"[interface_builder image hints] Error loading prop mappings: {e}")
             prop_mappings = {}
-        
-        room_key = None
-        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
-            room_key = self.audio_hints.ROOM_MAP.get(room_name)
-        
-        display_name = ""
-        if room_key and room_key in prop_mappings:
-            mappings = prop_mappings[room_key]["mappings"]
-            if original_name in mappings:
-                display_name = mappings[original_name]["display"]
-        
-        # Check if this prop has cousins
-        cousin_props = []
-        if room_key and room_key in prop_mappings:
-            # Get cousin value for this prop
-            prop_info = prop_mappings[room_key]["mappings"].get(original_name, {})
-            cousin_value = prop_info.get("cousin")
-            
-            # If this prop has a cousin value, find all props with the same cousin value
-            if cousin_value:
-                for prop_key, info in prop_mappings[room_key]["mappings"].items():
-                    if info.get("cousin") == cousin_value and prop_key != original_name:
-                        cousin_display = info.get("display", prop_key)
-                        cousin_props.append((prop_key, cousin_display))
-                print(f"[interface_builder image hints] Found cousin props: {cousin_props}")
-        
-        # Initialize or clear the image data mapping
+
+        all_images_data = self._get_image_files_for_prop_and_cousins(
+            selected_item, 
+            room_name_for_images, 
+            prop_mappings
+        )
+
+        # Initialize or clear the image data mapping for the listbox
         if not hasattr(self, 'image_data_mapping'):
             self.image_data_mapping = {}
         else:
             self.image_data_mapping.clear()
-        
-        # Add images from selected prop's folder
-        folder_path = os.path.join(self.image_root, room_name, display_name)
-        added_images = set()  # Track added images to avoid duplicates
-        index = 0
-        
-        if os.path.exists(folder_path):
-            allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
-            image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
-            for img in sorted(image_files):
-                # Store just the image name in the listbox
-                self.stats_elements['image_listbox'].insert(tk.END, img)
-                # Store full data in our mapping
-                self.image_data_mapping[index] = {
-                    'filename': img,
-                    'prop_name': display_name,
-                    'prop_key': original_name,
-                    'path': os.path.join(folder_path, img)
-                }
-                added_images.add(img)
-                index += 1
-        
-        # Add images from cousin props' folders
-        for cousin_key, cousin_display in cousin_props:
-            cousin_folder = os.path.join(self.image_root, room_name, cousin_display)
-            if os.path.exists(cousin_folder):
-                allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
-                image_files = [f for f in os.listdir(cousin_folder) if os.path.splitext(f)[1].lower() in allowed_exts]
-                for img in sorted(image_files):
-                    if img not in added_images:  # Only add if not already added
-                        # Store just the image name in the listbox
-                        self.stats_elements['image_listbox'].insert(tk.END, img)
-                        # Store full data in our mapping
-                        self.image_data_mapping[index] = {
-                            'filename': img,
-                            'prop_name': cousin_display,
-                            'prop_key': cousin_key,
-                            'path': os.path.join(cousin_folder, img)
-                        }
-                        added_images.add(img)
-                        index += 1
+
+        for index, image_data_item in enumerate(all_images_data):
+            # Listbox shows "filename (from Prop: prop_name)"
+            display_text = f"{image_data_item['filename']}"
+            self.stats_elements['image_listbox'].insert(tk.END, display_text)
+            self.image_data_mapping[index] = image_data_item
         
         # Update the layout to ensure proper spacing
         if 'img_prop_frame' in self.stats_elements:
             self.stats_elements['img_prop_frame'].pack(fill='x', expand=True)
+        
+        # Hide image preview and listbox-attach button until a listbox item is selected
+        if 'img_control_frame' in self.stats_elements and self.stats_elements['img_control_frame'].winfo_ismapped():
+            self.stats_elements['img_control_frame'].pack_forget()
 
     def on_image_file_select(self, event):
         """When an image is selected from the listbox, show preview and enable attach button"""
@@ -530,15 +482,29 @@ class AdminInterfaceBuilder:
 
     def show_manual_hint(self):
         """Show the manual hint text box and hide image selection"""
-        if 'image_listbox' in self.stats_elements:
+        if 'image_listbox' in self.stats_elements and self.stats_elements['image_listbox'].winfo_ismapped():
             self.stats_elements['image_listbox'].pack_forget()
-        if 'img_control_frame' in self.stats_elements:
+        if 'img_control_frame' in self.stats_elements and self.stats_elements['img_control_frame'].winfo_ismapped():
             self.stats_elements['img_control_frame'].pack_forget()
-        if 'attached_image_label' in self.stats_elements:
+        if 'attached_image_label' in self.stats_elements and self.stats_elements['attached_image_label'].winfo_ismapped():
             self.stats_elements['attached_image_label'].pack_forget()
+        
         if 'prop_control_buttons' in self.stats_elements:
-            self.stats_elements['prop_control_buttons'].pack_forget()
-            
+            # Hide specific buttons if they are packed
+            if self.stats_elements['prop_back_btn'].winfo_ismapped():
+                self.stats_elements['prop_back_btn'].pack_forget()
+            if self.stats_elements['open_browser_btn'].winfo_ismapped(): # New button
+                self.stats_elements['open_browser_btn'].pack_forget()
+            # If the frame itself is still visible because of other content (should not be the case here),
+            # or to be absolutely sure it's gone if it only contained these.
+            if not self.stats_elements['prop_control_buttons'].winfo_children():
+                 self.stats_elements['prop_control_buttons'].pack_forget()
+            elif not any(btn.winfo_ismapped() for btn in [self.stats_elements['prop_back_btn'], self.stats_elements['open_browser_btn']]):
+                 # If both are now gone, hide the parent frame
+                 if self.stats_elements['prop_control_buttons'].winfo_ismapped():
+                    self.stats_elements['prop_control_buttons'].pack_forget()
+
+
         # Show text box and buttons
         if 'msg_entry' in self.stats_elements:
             self.stats_elements['msg_entry'].pack(fill='x', pady=8, padx=5)
@@ -547,8 +513,17 @@ class AdminInterfaceBuilder:
         
         # Reset image selection state
         self.current_hint_image = None
-        if 'image_btn' in self.stats_elements:
-            self.stats_elements['image_btn'].set('')
+        if hasattr(self, 'current_image_data'):
+            delattr(self, 'current_image_data')
+        
+        if 'image_btn' in self.stats_elements: # image_btn is the Combobox (dropdown)
+            try: # Check if it's a Combobox and has a 'set' method
+                if hasattr(self.stats_elements['image_btn'], 'set'):
+                    self.stats_elements['image_btn'].set('')
+                elif hasattr(self.stats_elements['image_btn'], '_name'): # sv_ttk Combobox workaround
+                    self.app.root.nametowidget(self.stats_elements['image_btn']._name).set('')
+            except Exception as e:
+                print(f"Error resetting image_btn (dropdown): {e}")
 
     def attach_image(self):
         """Attach the selected image to the hint"""
@@ -587,6 +562,69 @@ class AdminInterfaceBuilder:
                 print(f"[interface_builder image hints] From prop: {prop_name} (key: {image_data['prop_key']})")
             except Exception as e:
                 print(f"[interface_builder image hints] Error getting image path: {e}")
+
+    def _get_image_files_for_prop_and_cousins(self, selected_prop_item_text, room_name_str, prop_mappings_data):
+        """
+        Gathers a list of image data dictionaries for the selected prop and its cousins.
+        Output: [{'filename': str, 'prop_name': str, 'prop_key': str, 'path': str}, ...]
+        """
+        image_list_data = []
+        if not selected_prop_item_text or not room_name_str:
+            return image_list_data
+
+        # Extract original prop name from the dropdown text "Display Name (original_name)"
+        try:
+            original_name = selected_prop_item_text.split("(")[-1].rstrip(")")
+        except IndexError:
+            print(f"[InterfaceBuilder] Could not parse original_name from: {selected_prop_item_text}")
+            return image_list_data
+
+        room_key = None
+        if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
+            room_key = self.audio_hints.ROOM_MAP.get(room_name_str.lower())
+
+        # Get display name for the primary selected prop
+        primary_display_name = original_name # Default
+        if room_key and room_key in prop_mappings_data:
+            mappings = prop_mappings_data[room_key]["mappings"]
+            if original_name in mappings:
+                primary_display_name = mappings[original_name].get("display", original_name)
+
+        # Find cousin props
+        cousin_props_data = [] # List of (key, display_name)
+        if room_key and room_key in prop_mappings_data:
+            prop_info = prop_mappings_data[room_key]["mappings"].get(original_name, {})
+            cousin_value = prop_info.get("cousin")
+            if cousin_value:
+                for p_key, info in prop_mappings_data[room_key]["mappings"].items():
+                    if info.get("cousin") == cousin_value and p_key != original_name:
+                        cousin_display = info.get("display", p_key)
+                        cousin_props_data.append({'key': p_key, 'display': cousin_display})
+        
+        # Collect images
+        props_to_scan = [{'key': original_name, 'display': primary_display_name}] + cousin_props_data
+        added_image_paths = set() # To avoid duplicates if cousins share images by chance or structure
+
+        for prop_data in props_to_scan:
+            folder_path = os.path.join(self.image_root, room_name_str.lower(), prop_data['display'])
+            if os.path.exists(folder_path):
+                allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
+                try:
+                    image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
+                    for img_filename in sorted(image_files):
+                        full_path = os.path.join(folder_path, img_filename)
+                        if full_path not in added_image_paths:
+                            image_list_data.append({
+                                'filename': img_filename,
+                                'prop_name': prop_data['display'], # The display name of the folder it was found in
+                                'prop_key': prop_data['key'],     # The original key of the folder it was found in
+                                'path': full_path
+                            })
+                            added_image_paths.add(full_path)
+                except OSError as e:
+                    print(f"[InterfaceBuilder] Error listing files in {folder_path}: {e}")
+        
+        return image_list_data
 
     def clear_manual_hint(self):
         """Clear the manual hint text and reset image attachment state"""
@@ -2168,3 +2206,144 @@ class AdminInterfaceBuilder:
 
         # Send command to kiosk
         self.app.network_handler.send_set_hint_volume_command(computer_name, new_level)
+    
+    def open_full_image_browser(self):
+        selected_prop_item_text = self.img_prop_var.get()
+        if not selected_prop_item_text:
+            return
+
+        room_name_for_images = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
+        if not room_name_for_images:
+            print("[InterfaceBuilder] Cannot open image browser: room not determined.")
+            return
+
+        try:
+            with open("prop_name_mapping.json", "r") as f:
+                prop_mappings = json.load(f)
+        except Exception as e:
+            print(f"[InterfaceBuilder] Error loading prop mappings for browser: {e}")
+            prop_mappings = {}
+
+        all_images_data = self._get_image_files_for_prop_and_cousins(
+            selected_prop_item_text,
+            room_name_for_images,
+            prop_mappings
+        )
+
+        if not all_images_data:
+            self.app.messagebox.showinfo("Image Browser", "No images found for the selected prop or its cousins.", parent=self.app.root)
+            return
+
+        self._build_image_browser_popup(all_images_data, selected_prop_item_text)
+
+    def _build_image_browser_popup(self, image_data_list, prop_text):
+        browser_popup = tk.Toplevel(self.app.root)
+        browser_popup.title(f"Image Browser - {prop_text}")
+        browser_popup.geometry("900x900")
+        browser_popup.transient(self.app.root)
+        browser_popup.grab_set()
+
+        # Store references for event handlers
+        browser_popup.current_selected_image_data = None
+
+        main_paned_window = ttk.PanedWindow(browser_popup, orient=tk.HORIZONTAL)
+        main_paned_window.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # --- Left Panel: Scrollable Thumbnail Grid ---
+        grid_frame_container = ttk.Frame(main_paned_window, width=400) # Initial width
+        main_paned_window.add(grid_frame_container, weight=2) # Allow resizing
+
+        canvas = tk.Canvas(grid_frame_container)
+        scrollbar = ttk.Scrollbar(grid_frame_container, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Populate grid
+        max_cols = 3
+        thumbnail_size = (100, 100)
+        for i, img_data in enumerate(image_data_list):
+            row, col = divmod(i, max_cols)
+            
+            item_frame = ttk.Frame(scrollable_frame, padding=5, relief="groove", borderwidth=1)
+            item_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            
+            try:
+                img = Image.open(img_data['path'])
+                img.thumbnail(thumbnail_size) # Preserves aspect ratio
+                photo = ImageTk.PhotoImage(img)
+                
+                img_label = ttk.Label(item_frame, image=photo)
+                img_label.image = photo # Keep reference
+                img_label.pack(pady=(0,2))
+                
+                filename_label = ttk.Label(item_frame, text=img_data['filename'], wraplength=thumbnail_size[0]-10, font=("Arial", 8))
+                filename_label.pack()
+
+                # Store img_data with the label for easy access on click
+                img_label.img_data_ref = img_data 
+                
+                img_label.bind("<Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_select(e, data, browser_popup))
+                img_label.bind("<Double-Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_double_click(e, data, browser_popup))
+                filename_label.bind("<Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_select(e, data, browser_popup))
+                filename_label.bind("<Double-Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_double_click(e, data, browser_popup))
+
+
+            except Exception as e:
+                print(f"Error loading thumbnail {img_data['path']}: {e}")
+                error_label = ttk.Label(item_frame, text="Load Error", foreground="red")
+                error_label.pack()
+
+        # --- Right Panel: Preview and Attach ---
+        preview_frame = ttk.Frame(main_paned_window)
+        main_paned_window.add(preview_frame, weight=3)
+
+        browser_popup.preview_image_label = ttk.Label(preview_frame, text="Select an image to preview", anchor="center")
+        browser_popup.preview_image_label.pack(padx=10, pady=10, fill="both", expand=True)
+
+        browser_popup.attach_button = ttk.Button(preview_frame, text="Attach Image", state="disabled",
+                                     command=lambda: self._on_browser_attach_click(browser_popup))
+        browser_popup.attach_button.pack(pady=10)
+
+    def _on_browser_thumbnail_select(self, event, image_data, popup_window):
+        popup_window.current_selected_image_data = image_data
+        try:
+            img = Image.open(image_data['path'])
+            # Scale preview to fit, e.g., max 300x300, maintaining aspect
+            preview_area_width = popup_window.preview_image_label.winfo_width()
+            preview_area_height = popup_window.preview_image_label.winfo_height()
+            
+            # Ensure dimensions are positive, provide defaults if not ready
+            preview_area_width = max(1, preview_area_width if preview_area_width > 0 else 300)
+            preview_area_height = max(1, preview_area_height if preview_area_height > 0 else 300)
+
+            img_copy = img.copy() # Work on a copy for resizing
+            img_copy.thumbnail((preview_area_width - 20, preview_area_height - 20)) # -20 for padding
+            
+            photo = ImageTk.PhotoImage(img_copy)
+            popup_window.preview_image_label.config(image=photo, text="")
+            popup_window.preview_image_label.image = photo
+            popup_window.attach_button.config(state="normal")
+        except Exception as e:
+            print(f"Error previewing image {image_data['path']}: {e}")
+            popup_window.preview_image_label.config(text="Preview Error", image=None)
+            popup_window.attach_button.config(state="disabled")
+
+    def _on_browser_attach_click(self, popup_window):
+        if popup_window.current_selected_image_data:
+            self.current_image_data = popup_window.current_selected_image_data # Set for attach_image
+            self.attach_image() # Call existing method
+            popup_window.destroy()
+
+    def _on_browser_thumbnail_double_click(self, event, image_data, popup_window):
+        self._on_browser_thumbnail_select(event, image_data, popup_window) # Select first
+        if popup_window.attach_button['state'] == 'normal': # If selection was successful
+            self._on_browser_attach_click(popup_window) # Then attach

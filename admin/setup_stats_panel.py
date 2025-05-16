@@ -332,6 +332,12 @@ def setup_stats_panel(interface_builder, computer_name):
         bg="#f7a1a1"
     )
 
+    interface_builder.stats_elements['open_browser_btn'] = ttk.Button(
+        interface_builder.stats_elements['prop_control_buttons'],  # Parent is the same frame
+        text="Browse Images",
+        command=interface_builder.open_full_image_browser  # Calls new method on AdminInterfaceBuilder
+    )
+
     interface_builder.stats_elements['prop_attach_btn'] = ttk.Button(
         prop_control_buttons,
         text="Attach",
