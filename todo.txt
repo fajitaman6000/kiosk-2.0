@@ -1,27 +1,25 @@
 ##############################################################################################################################
 # Test notes
 
-zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
-
-haunted's props did not start upon auto start being selected? (maybe)
 
 When viewing room not with prop that was flagged
-
-[prop control]Exception type: KeyError, Error: 'light_maze'
-[prop control]Traceback: Traceback (most recent call last):
-  File "C:\Users\Vegas Manager\Desktop\kiosk-2.0\admin\prop_control.py", line 657, in check_prop_status
-    self.flagged_props[self.current_room][prop_id] and
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
-KeyError: 'light_maze'
+    [prop control]Exception type: KeyError, Error: 'light_maze'
+    [prop control]Traceback: Traceback (most recent call last):
+    File "C:\Users\Vegas Manager\Desktop\kiosk-2.0\admin\prop_control.py", line 657, in check_prop_status
+        self.flagged_props[self.current_room][prop_id] and
+        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+    KeyError: 'light_maze'
 
 wrong audio files for time capacitor
+zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
 
 zombie did not start timer (but props did start) upon video finish
-
-timer should still be visible at game end
+haunted's props did not start upon auto start being selected? (maybe)
 
 ##############################################################################################################################
 # beta to do
+
+timer should still be visible at game end
 
 tap to close hint, instead opening image automatically on reception with text below it?
 
@@ -39,8 +37,6 @@ film video solutions
 increase received audio sample volume for soundcheck
 
 times touched screen stat
-
-increase received audio sample volume for soundcheck
 
 "switch sides" button for prop control
 
@@ -90,20 +86,6 @@ admin application instability resulting in/caused by mqtt disconnect codes 16 an
     MQTT_ERR_TLS = 8¶
     MQTT_ERR_UNKNOWN = 13
 
-kiosk hangup reliability: 
-    kiosk doesn't retry/add itself back to queue after failed sync attempt
-    kiosks don't always launch successfully, especially after the video feed check
-        "Blocking Network Operations (Highest Probability): This is by far the most likely culprit. The code has multiple places where network operations (sockets, HTTP requests) occur without proper timeouts and error handling. SIGINT (Ctrl+C) often interrupts these blocking calls.
-        Deadlocks (Medium Probability): The code uses threading.Lock in several places (audio_server.py, video_server.py, kiosk_file_downloader.py, video_manager.py, prop_data_monitor.py). Improper lock acquisition and release can lead to deadlocks. A single Ctrl+C might interrupt one thread, potentially breaking a deadlock, but this is unreliable.
-        Long-running operations in the main Tkinter thread (Medium Probability): Blocking calls in the Tkinter main thread will freeze the GUI and can lead to this behavior. While the code tries to offload to threads, some operations still might occur within after callbacks or event handlers.
-        Pygame Mixer Issues (Low Probability): While less likely than network issues, improper use of pygame.mixer can sometimes cause hangs, especially if there are errors loading or playing audio files.
-        Infinite Loops (Low Probability): Less likely, but still possible. If any of the while self.running: loops have a subtle bug that prevents them from exiting, this could occur."
-    FREEZE LOG
-        [qt overlay] Stored kiosk_app with computer_name: TIME-MACHINE-KIOSK
-        ...
-        [kiosk_file_downloader] Reset sync state
-        ...
-        [kiosk_file_downloader] Processing batch of 10 files
 ##############################################################################################################################
 # ambitious extra ideas:
 
@@ -141,13 +123,9 @@ set hint color
 prop monitoring functionality prompt:
 
 For now, on the admin side, it need only print every message it receives from the kiosk, but it will only receive such messages when it has asked the kiosk for them.
-
 So, it sends a message to kiosk message handler, and that tells message_handler to tell prop_data_monitor to gather a copy of all the data and send via networking.
-
 it will be up to the admin's network_broadcast_handler to receive and parse this data, again, but that's later and for now it will just print.
-
 The admin will have a file which will contain all of the IPs that the kiosk will need to report its latest data on, so this info will be included in the message sent via message_handler.
-
 Please examine the structure of prop_name_mapping.json. Each item will have added to it (if necessary; some items will not have an "ip" property) "ip". So when admin requests data on props, it will pull all the IPs from that room's props based on prop_name_mapping.json.
 
 ##############################################################################################################################

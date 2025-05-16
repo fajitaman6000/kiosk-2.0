@@ -47,3 +47,4 @@ kiosk/intro_videos/downscale.py
 New folder/downscale.py
 sloc counter/**
 kiosk/logs/**
+admin/bug_manager_debug.log
