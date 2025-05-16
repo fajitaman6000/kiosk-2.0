@@ -398,8 +398,8 @@ class AdminInterfaceBuilder:
         
         # Show back button, open browser button, and listbox
         if 'prop_control_buttons' in self.stats_elements:
-            self.stats_elements['prop_control_buttons'].pack(fill='x', pady=5)
             self.stats_elements['prop_back_btn'].pack(side='left', padx=5)
+            self.stats_elements['prop_control_buttons'].pack(fill='x', pady=5)
             self.stats_elements['open_browser_btn'].pack(side='left', padx=5) # Pack the new button
             # Ensure the listbox's attach button is hidden initially
             if 'prop_attach_btn' in self.stats_elements and self.stats_elements['prop_attach_btn'].winfo_ismapped():
@@ -475,7 +475,7 @@ class AdminInterfaceBuilder:
             
             # Show the preview and attach button
             self.stats_elements['img_control_frame'].pack(fill='x', pady=5)
-            self.stats_elements['prop_attach_btn'].pack(side='left', padx=5)
+            self.stats_elements['prop_attach_btn'].pack(side='right', padx=5)
         except Exception as e:
             print(f"[interface_builder image hints] Error previewing image: {e}")
             print(f"[interface_builder image hints] Attempted to load from path: {image_path}")
