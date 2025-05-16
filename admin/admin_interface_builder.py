@@ -566,51 +566,89 @@ class AdminInterfaceBuilder:
     def _get_image_files_for_prop_and_cousins(self, selected_prop_item_text, room_name_str, prop_mappings_data):
         """
         Gathers a list of image data dictionaries for the selected prop and its cousins.
+        Uses prop_name_mapping.json to find related 'cousin' props.
+        Looks for image files in the sync_directory/hint_image_files/<room_folder>/<prop_display_name> folder.
         Output: [{'filename': str, 'prop_name': str, 'prop_key': str, 'path': str}, ...]
         """
         image_list_data = []
         if not selected_prop_item_text or not room_name_str:
+            print("[InterfaceBuilder] _get_image_files: Missing prop text or room name.")
             return image_list_data
 
         # Extract original prop name from the dropdown text "Display Name (original_name)"
-        try:
-            original_name = selected_prop_item_text.split("(")[-1].rstrip(")")
-        except IndexError:
-            print(f"[InterfaceBuilder] Could not parse original_name from: {selected_prop_item_text}")
-            return image_list_data
+        # Handle cases where the format might be slightly different or missing ()
+        original_name = selected_prop_item_text
+        if '(' in original_name and original_name.endswith(')'):
+             try:
+                 original_name = selected_prop_item_text.split("(")[-1].rstrip(")")
+             except IndexError:
+                 print(f"[InterfaceBuilder] _get_image_files: Could not parse original_name from: {selected_prop_item_text}")
+
 
         room_key = None
         if hasattr(self, "audio_hints") and hasattr(self.audio_hints, "ROOM_MAP"):
             room_key = self.audio_hints.ROOM_MAP.get(room_name_str.lower())
+            if room_key is None:
+                 print(f"[InterfaceBuilder] _get_image_files: Room name '{room_name_str.lower()}' not found in audio_hints.ROOM_MAP.")
 
-        # Get display name for the primary selected prop
-        primary_display_name = original_name # Default
+
+        # Get display name for the primary selected prop - use original_name as fallback
+        primary_display_name = original_name
         if room_key and room_key in prop_mappings_data:
             mappings = prop_mappings_data[room_key]["mappings"]
             if original_name in mappings:
                 primary_display_name = mappings[original_name].get("display", original_name)
+            else:
+                 print(f"[InterfaceBuilder] _get_image_files: Original prop key '{original_name}' not found in mappings for room key '{room_key}'.")
+        else:
+             if room_key: # Only print if room_key was determined but not in mappings
+                 print(f"[InterfaceBuilder] _get_image_files: Room key '{room_key}' not found in prop_mappings_data.")
+
 
         # Find cousin props
-        cousin_props_data = [] # List of (key, display_name)
+        cousin_props_data = [] # List of {'key': str, 'display': str}
         if room_key and room_key in prop_mappings_data:
-            prop_info = prop_mappings_data[room_key]["mappings"].get(original_name, {})
+            mappings = prop_mappings_data[room_key]["mappings"]
+            prop_info = mappings.get(original_name, {}) # Get info for the primary prop
             cousin_value = prop_info.get("cousin")
-            if cousin_value:
-                for p_key, info in prop_mappings_data[room_key]["mappings"].items():
+
+            if cousin_value is not None: # Check if cousin value exists (can be 0, False, etc.)
+                print(f"[InterfaceBuilder] _get_image_files: Primary prop '{original_name}' has cousin value '{cousin_value}'. Looking for cousins.")
+                for p_key, info in mappings.items():
+                    # Ensure the cousin value matches AND it's not the primary prop itself
                     if info.get("cousin") == cousin_value and p_key != original_name:
                         cousin_display = info.get("display", p_key)
                         cousin_props_data.append({'key': p_key, 'display': cousin_display})
-        
-        # Collect images
-        props_to_scan = [{'key': original_name, 'display': primary_display_name}] + cousin_props_data
-        added_image_paths = set() # To avoid duplicates if cousins share images by chance or structure
+                if cousin_props_data:
+                    print(f"[InterfaceBuilder] _get_image_files: Found {len(cousin_props_data)} cousin(s) with cousin value '{cousin_value}'.")
+                else:
+                     print(f"[InterfaceBuilder] _get_image_files: Found no other props with cousin value '{cousin_value}'.")
+            else:
+                 print(f"[InterfaceBuilder] _get_image_files: Primary prop '{original_name}' has no 'cousin' value defined.")
 
+
+        # Collect images
+        # List of props to scan. Start with the primary prop, then add cousins found.
+        props_to_scan = [{'key': original_name, 'display': primary_display_name}] + cousin_props_data
+        added_image_paths = set() # To avoid duplicates
+
+        print(f"[InterfaceBuilder] _get_image_files: Scanning {len(props_to_scan)} prop folder(s) for images.")
         for prop_data in props_to_scan:
-            folder_path = os.path.join(self.image_root, room_name_str.lower(), prop_data['display'])
-            if os.path.exists(folder_path):
+            # Construct the expected folder path based on the display name
+            folder_path = os.path.join(
+                os.path.dirname(__file__), # Start from the script's directory
+                "sync_directory",
+                "hint_image_files",
+                room_name_str.lower(),
+                prop_data['display'] # Use the display name for the folder
+            )
+            print(f"[InterfaceBuilder] _get_image_files: Checking folder: {folder_path}")
+
+            if os.path.exists(folder_path) and os.path.isdir(folder_path):
                 allowed_exts = [".png", ".jpg", ".jpeg", ".gif", ".bmp"]
                 try:
                     image_files = [f for f in os.listdir(folder_path) if os.path.splitext(f)[1].lower() in allowed_exts]
+                    print(f"[InterfaceBuilder] _get_image_files: Found {len(image_files)} image files in {prop_data['display']} folder.")
                     for img_filename in sorted(image_files):
                         full_path = os.path.join(folder_path, img_filename)
                         if full_path not in added_image_paths:
@@ -622,8 +660,11 @@ class AdminInterfaceBuilder:
                             })
                             added_image_paths.add(full_path)
                 except OSError as e:
-                    print(f"[InterfaceBuilder] Error listing files in {folder_path}: {e}")
-        
+                    print(f"[InterfaceBuilder] _get_image_files Error listing files in {folder_path}: {e}")
+            else:
+                print(f"[InterfaceBuilder] _get_image_files: Folder not found or is not a directory: {folder_path}")
+
+        print(f"[InterfaceBuilder] _get_image_files: Finished scanning. Total images found: {len(image_list_data)}")
         return image_list_data
 
     def clear_manual_hint(self):
@@ -2208,22 +2249,28 @@ class AdminInterfaceBuilder:
         self.app.network_handler.send_set_hint_volume_command(computer_name, new_level)
     
     def open_full_image_browser(self):
+        """Opens a popup window to browse images for the currently selected prop."""
         selected_prop_item_text = self.img_prop_var.get()
         if not selected_prop_item_text:
+            print("[InterfaceBuilder] open_full_image_browser: No prop selected in dropdown.")
+            self.app.messagebox.showinfo("Image Browser", "Please select a prop first.", parent=self.app.root)
             return
 
         room_name_for_images = self.audio_hints.current_room if hasattr(self, "audio_hints") else None
         if not room_name_for_images:
-            print("[InterfaceBuilder] Cannot open image browser: room not determined.")
+            print("[InterfaceBuilder] open_full_image_browser: Room not determined from audio hints.")
+            self.app.messagebox.showerror("Image Browser Error", "Could not determine the current room.", parent=self.app.root)
             return
 
         try:
             with open("prop_name_mapping.json", "r") as f:
                 prop_mappings = json.load(f)
         except Exception as e:
-            print(f"[InterfaceBuilder] Error loading prop mappings for browser: {e}")
-            prop_mappings = {}
+            print(f"[InterfaceBuilder] open_full_image_browser Error loading prop mappings for browser: {e}")
+            self.app.messagebox.showerror("Image Browser Error", f"Failed to load prop mappings:\n{e}", parent=self.app.root)
+            prop_mappings = {} # Continue with empty mappings
 
+        # Use the helper function to get the list of all relevant image data
         all_images_data = self._get_image_files_for_prop_and_cousins(
             selected_prop_item_text,
             room_name_for_images,
@@ -2231,119 +2278,286 @@ class AdminInterfaceBuilder:
         )
 
         if not all_images_data:
+            print(f"[InterfaceBuilder] open_full_image_browser: No images found for prop '{selected_prop_item_text}' in room '{room_name_for_images}'.")
             self.app.messagebox.showinfo("Image Browser", "No images found for the selected prop or its cousins.", parent=self.app.root)
             return
 
+        print(f"[InterfaceBuilder] open_full_image_browser: Opening browser popup with {len(all_images_data)} images.")
         self._build_image_browser_popup(all_images_data, selected_prop_item_text)
 
     def _build_image_browser_popup(self, image_data_list, prop_text):
+        """Builds and displays the image browser popup window."""
+        # Create popup window
         browser_popup = tk.Toplevel(self.app.root)
         browser_popup.title(f"Image Browser - {prop_text}")
-        browser_popup.geometry("900x900")
+        # Set initial size and position (can be resized by user)
+        popup_width = 900
+        popup_height = 900
+        screen_width = browser_popup.winfo_screenwidth()
+        screen_height = browser_popup.winfo_screenheight()
+        x = (screen_width - popup_width) // 2
+        y = (screen_height - popup_height) // 2
+        browser_popup.geometry(f"{popup_width}x{popup_height}+{x}+{y}")
+
+        # Make it transient to the main window and grab focus (modal-like)
         browser_popup.transient(self.app.root)
         browser_popup.grab_set()
 
-        # Store references for event handlers
+        # Store references for event handlers and state tracking
         browser_popup.current_selected_image_data = None
+        browser_popup.is_current_image_valid = False # Flag to indicate if current preview is attachable
 
+        # --- Main Paned Window ---
         main_paned_window = ttk.PanedWindow(browser_popup, orient=tk.HORIZONTAL)
         main_paned_window.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         # --- Left Panel: Scrollable Thumbnail Grid ---
-        grid_frame_container = ttk.Frame(main_paned_window, width=400) # Initial width
-        main_paned_window.add(grid_frame_container, weight=2) # Allow resizing
+        grid_frame_container = ttk.Frame(main_paned_window, width=400) # Initial width hint
+        main_paned_window.add(grid_frame_container, weight=2) # Allow this panel to grow/shrink horizontally
 
+        # Canvas and Scrollbar for the grid
         canvas = tk.Canvas(grid_frame_container)
         scrollbar = ttk.Scrollbar(grid_frame_container, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        # Frame to hold the grid items inside the canvas
         scrollable_frame = ttk.Frame(canvas)
 
+        # Bind configure event to update scrollregion when content changes size
         scrollable_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
+        # Place the scrollable frame inside the canvas
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Populate grid
-        max_cols = 3
-        thumbnail_size = (100, 100)
+        # Configure grid columns to resize appropriately (optional but good)
+        # Example: scrollable_frame.grid_columnconfigure(0, weight=1) etc.
+
+        # Populate the thumbnail grid
+        max_cols = 4 # Number of columns in the grid
+        thumbnail_size = (120, 120) # Max size for thumbnails
+
+        print(f"[InterfaceBuilder] _build_image_browser_popup: Populating grid with {len(image_data_list)} images.")
         for i, img_data in enumerate(image_data_list):
             row, col = divmod(i, max_cols)
-            
-            item_frame = ttk.Frame(scrollable_frame, padding=5, relief="groove", borderwidth=1)
-            item_frame.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-            
+
+            # Frame for each individual thumbnail item
+            item_frame = ttk.Frame(scrollable_frame, padding=3, relief="solid", borderwidth=0) # Changed relief/border
+            item_frame.grid(row=row, column=col, padx=3, pady=3, sticky="nsew") # Reduced padding
+
             try:
+                # --- Load and resize thumbnail ---
                 img = Image.open(img_data['path'])
-                img.thumbnail(thumbnail_size) # Preserves aspect ratio
+                img.thumbnail(thumbnail_size) # Resize image while maintaining aspect ratio
                 photo = ImageTk.PhotoImage(img)
-                
-                img_label = ttk.Label(item_frame, image=photo)
-                img_label.image = photo # Keep reference
+
+                # --- Create image label ---
+                img_label = ttk.Label(item_frame, image=photo, cursor="hand2") # Add hand cursor
+                img_label.image = photo # Keep a reference to prevent garbage collection
                 img_label.pack(pady=(0,2))
-                
-                filename_label = ttk.Label(item_frame, text=img_data['filename'], wraplength=thumbnail_size[0]-10, font=("Arial", 8))
+
+                # --- Create filename label ---
+                filename_label = ttk.Label(item_frame, text=img_data.get('filename', 'N/A'), wraplength=thumbnail_size[0], font=("Arial", 8), anchor="center") # Use get, adjust wraplength
                 filename_label.pack()
 
-                # Store img_data with the label for easy access on click
-                img_label.img_data_ref = img_data 
-                
+                # Store img_data with the label for easy access on click/double-click
+                img_label.img_data_ref = img_data
+
+                # --- Bind events ---
                 img_label.bind("<Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_select(e, data, browser_popup))
                 img_label.bind("<Double-Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_double_click(e, data, browser_popup))
+                # Also bind clicks/double-clicks on the filename label
                 filename_label.bind("<Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_select(e, data, browser_popup))
                 filename_label.bind("<Double-Button-1>", lambda e, data=img_data: self._on_browser_thumbnail_double_click(e, data, browser_popup))
 
-
             except Exception as e:
-                print(f"Error loading thumbnail {img_data['path']}: {e}")
-                error_label = ttk.Label(item_frame, text="Load Error", foreground="red")
+                # Handle errors loading individual thumbnails
+                print(f"[InterfaceBuilder] _build_image_browser_popup Error loading thumbnail {img_data.get('path', 'N/A')}: {e}")
+                error_label = ttk.Label(item_frame, text="Load Error", foreground="red", font=("Arial", 8))
                 error_label.pack()
+                filename_label = ttk.Label(item_frame, text=img_data.get('filename', 'N/A'), wraplength=thumbnail_size[0], font=("Arial", 8), anchor="center")
+                filename_label.pack()
+
 
         # --- Right Panel: Preview and Attach ---
-        preview_frame = ttk.Frame(main_paned_window)
-        main_paned_window.add(preview_frame, weight=3)
+        preview_frame = ttk.Frame(main_paned_window, width=350) # Initial width hint
+        main_paned_window.add(preview_frame, weight=3) # Allow this panel to grow/shrink more
 
-        browser_popup.preview_image_label = ttk.Label(preview_frame, text="Select an image to preview", anchor="center")
-        browser_popup.preview_image_label.pack(padx=10, pady=10, fill="both", expand=True)
+        # Frame to center content vertically in preview pane
+        preview_content_frame = ttk.Frame(preview_frame)
+        preview_content_frame.pack(expand=True) # Center vertically
 
-        browser_popup.attach_button = ttk.Button(preview_frame, text="Attach Image", state="disabled",
+        # Label for preview image
+        # Set a placeholder text and size it dynamically if possible
+        browser_popup.preview_image_label = ttk.Label(preview_content_frame, text="Select an image to preview", anchor="center", padding=10)
+        browser_popup.preview_image_label.pack(padx=10, pady=10) # No fill/expand here, let parent frame center
+
+        # Frame for buttons below preview
+        preview_button_frame = ttk.Frame(preview_content_frame)
+        preview_button_frame.pack(pady=5)
+
+        # Attach button (initially disabled)
+        browser_popup.attach_button = ttk.Button(preview_button_frame, text="Attach Image", state="disabled",
                                      command=lambda: self._on_browser_attach_click(browser_popup))
-        browser_popup.attach_button.pack(pady=10)
+        browser_popup.attach_button.pack(side="left", padx=5)
+
+        # Back/Close button
+        close_button = ttk.Button(preview_button_frame, text="Close", command=browser_popup.destroy)
+        close_button.pack(side="left", padx=5)
 
     def _on_browser_thumbnail_select(self, event, image_data, popup_window):
-        popup_window.current_selected_image_data = image_data
-        try:
-            img = Image.open(image_data['path'])
-            # Scale preview to fit, e.g., max 300x300, maintaining aspect
-            preview_area_width = popup_window.preview_image_label.winfo_width()
-            preview_area_height = popup_window.preview_image_label.winfo_height()
-            
-            # Ensure dimensions are positive, provide defaults if not ready
-            preview_area_width = max(1, preview_area_width if preview_area_width > 0 else 300)
-            preview_area_height = max(1, preview_area_height if preview_area_height > 0 else 300)
+        """
+        Handles clicking a thumbnail in the image browser.
+        Loads and displays the full-size preview, and enables the Attach button.
+        Sets the `is_current_image_valid` flag on the popup window.
+        """
+        print(f"[InterfaceBuilder] _on_browser_thumbnail_select called for: {image_data.get('filename', 'N/A')}")
 
-            img_copy = img.copy() # Work on a copy for resizing
-            img_copy.thumbnail((preview_area_width - 20, preview_area_height - 20)) # -20 for padding
-            
+        # Ensure popup window and its widgets still exist
+        if not popup_window or not hasattr(popup_window, 'preview_image_label') or not hasattr(popup_window, 'attach_button') or not popup_window.winfo_exists():
+             print("[InterfaceBuilder] _on_browser_thumbnail_select: Popup window missing or destroyed. Aborting.")
+             return # Abort if window is gone. Widgets are checked below before use.
+
+
+        # Store the selected image data
+        popup_window.current_selected_image_data = image_data
+
+        # --- Reset flag and button state initially for robustness ---
+        # Assume it's invalid until successfully loaded and processed below
+        popup_window.is_current_image_valid = False
+        if hasattr(popup_window, 'attach_button') and popup_window.attach_button.winfo_exists():
+             popup_window.attach_button.config(state="disabled")
+        # --- End Reset ---
+
+        image_path = image_data.get('path') # Use .get() for safety
+        if not image_path:
+             print("[InterfaceBuilder] _on_browser_thumbnail_select: No 'path' found in image_data for preview.")
+             if hasattr(popup_window, 'preview_image_label') and popup_window.preview_image_label.winfo_exists():
+                  popup_window.preview_image_label.config(text="No Path Found", image=None)
+             return # Cannot proceed without a path
+
+
+        try:
+            print(f"[InterfaceBuilder] _on_browser_thumbnail_select: Attempting to load preview image from {image_path}")
+            image = Image.open(image_path)
+
+            # Get current size of the preview label area to fit the preview
+            # This requires the preview_image_label to be mapped (visible).
+            # Use geometry manager info to get size, fall back to a default if not mapped yet.
+            preview_area_width = 0
+            preview_area_height = 0
+            if hasattr(popup_window, 'preview_image_label') and popup_window.preview_image_label.winfo_exists():
+                 # Get size from the parent container that centers the preview
+                 preview_container = popup_window.preview_image_label.master
+                 if preview_container and preview_container.winfo_exists():
+                     # Use the size of the PanedWindow pane itself for better fitting
+                     # Find the preview pane in the PanedWindow
+                     preview_pane = None
+                     if hasattr(popup_window, 'main_paned_window') and popup_window.main_paned_window.winfo_exists():
+                          for pane in popup_window.main_paned_window.panes():
+                              if pane == str(preview_container.master): # Compare widget names/paths
+                                   preview_pane = popup_window.main_paned_window.nametowidget(pane)
+                                   break # Found it
+
+                     if preview_pane and preview_pane.winfo_exists():
+                         preview_area_width = preview_pane.winfo_width()
+                         preview_area_height = preview_pane.winfo_height() - (self.app.preview_button_frame.winfo_height() if hasattr(self.app.preview_button_frame, 'winfo_height') and self.app.preview_button_frame.winfo_exists() else 50) # Subtract button area
+
+            # Fallback to a reasonable default size if dynamic size couldn't be determined
+            preview_area_width = max(100, preview_area_width if preview_area_width > 0 else 350) # Match initial pane width hint
+            preview_area_height = max(100, preview_area_height if preview_area_height > 0 else 500) # A bit taller
+
+
+            img_copy = image.copy() # Work on a copy for resizing
+            # Adjust scaling to fit within the preview area, allowing some padding
+            max_preview_size = (preview_area_width - 20, preview_area_height - 20)
+            img_copy.thumbnail(max_preview_size) # Resize image while maintaining aspect ratio
+
             photo = ImageTk.PhotoImage(img_copy)
-            popup_window.preview_image_label.config(image=photo, text="")
-            popup_window.preview_image_label.image = photo
-            popup_window.attach_button.config(state="normal")
+
+            # --- Image loading and processing successful ---
+            print(f"[InterfaceBuilder] _on_browser_thumbnail_select: Image loaded and processed successfully.")
+            if hasattr(popup_window, 'preview_image_label') and popup_window.preview_image_label.winfo_exists():
+                 popup_window.preview_image_label.config(image=photo, text="")
+                 popup_window.preview_image_label.image = photo # Keep reference
+
+            # --- Set flag and button state on success ---
+            popup_window.is_current_image_valid = True # Set the flag!
+            if hasattr(popup_window, 'attach_button') and popup_window.attach_button.winfo_exists():
+                 popup_window.attach_button.config(state="normal") # Update button visually
+                 print("[InterfaceBuilder] _on_browser_thumbnail_select: is_current_image_valid flag set to True, Attach button set to 'normal'.")
+            else:
+                 print("[InterfaceBuilder] _on_browser_thumbnail_select: Attach button widget not found or destroyed after successful load.")
+
+
+        except FileNotFoundError:
+            print(f"[InterfaceBuilder] _on_browser_thumbnail_select Error: Image file not found at {image_path}")
+            if hasattr(popup_window, 'preview_image_label') and popup_window.preview_image_label.winfo_exists():
+                 popup_window.preview_image_label.config(text="File Not Found", image=None)
+            # Flag and button already disabled at the start of the method
+
         except Exception as e:
-            print(f"Error previewing image {image_data['path']}: {e}")
-            popup_window.preview_image_label.config(text="Preview Error", image=None)
-            popup_window.attach_button.config(state="disabled")
+            # Catch other exceptions during image processing (PIL errors, etc.)
+            print(f"[InterfaceBuilder] _on_browser_thumbnail_select Error: Failed to load or process image {image_data.get('path', 'N/A')}: {e}")
+            if hasattr(popup_window, 'preview_image_label') and popup_window.preview_image_label.winfo_exists():
+                 popup_window.preview_image_label.config(text=f"Load Error:\n{type(e).__name__}", image=None) # Show error type
+            # Flag and button already disabled at the start of the method
 
     def _on_browser_attach_click(self, popup_window):
-        if popup_window.current_selected_image_data:
-            self.current_image_data = popup_window.current_selected_image_data # Set for attach_image
-            self.attach_image() # Call existing method
-            popup_window.destroy()
+        """Handles clicking the Attach button in the image browser."""
+        print("[InterfaceBuilder] _on_browser_attach_click called.")
+        # Check if the flag indicates the currently selected image is valid
+        if popup_window and hasattr(popup_window, 'is_current_image_valid') and popup_window.is_current_image_valid:
+            if hasattr(popup_window, 'current_selected_image_data') and popup_window.current_selected_image_data:
+                print(f"[InterfaceBuilder] Attaching image: {popup_window.current_selected_image_data.get('filename', 'N/A')}")
+                self.current_image_data = popup_window.current_selected_image_data # Set for the main attach_image method
+                self.attach_image() # Call the existing method to handle the attachment in the main UI
+                popup_window.destroy() # Close the browser popup window
+            else:
+                print("[InterfaceBuilder] _on_browser_attach_click Error: is_current_image_valid is True but no current_selected_image_data found.")
+                # This state indicates an internal logic issue if the flag was True but data wasn't set.
+                self.app.messagebox.showerror("Attach Error", "No image data available to attach.", parent=popup_window)
+        else:
+             print("[InterfaceBuilder] _on_browser_attach_click ignored: is_current_image_valid is False or popup/flag missing.")
+             # This condition should technically not be reachable if the button state is correctly tied to the flag,
+             # as the button should be disabled when the flag is False.
 
     def _on_browser_thumbnail_double_click(self, event, image_data, popup_window):
-        self._on_browser_thumbnail_select(event, image_data, popup_window) # Select first
-        if popup_window.attach_button['state'] == 'normal': # If selection was successful
-            self._on_browser_attach_click(popup_window) # Then attach
+        """Handles double-clicking a thumbnail in the image browser."""
+        print(f"[InterfaceBuilder] Double-clicked thumbnail for: {image_data.get('filename', 'N/A')}")
+
+        # First, simulate a single click to select and update preview.
+        # This call will load the image, update the preview, and set the `is_current_image_valid` flag on the popup window.
+        try:
+            self._on_browser_thumbnail_select(event, image_data, popup_window)
+            # Note: _on_browser_thumbnail_select handles its own errors and sets the flag/button state.
+        except Exception as e:
+             # Catch any unexpected errors that might occur *during* the call to _on_browser_thumbnail_select itself,
+             # although image loading errors within _on_browser_thumbnail_select should be handled internally.
+             print(f"[InterfaceBuilder] Unexpected error during _on_browser_thumbnail_select call from double-click for {image_data.get('filename', 'N/A')}: {e}")
+             # In case of an unhandled error, ensure the flag is false
+             if popup_window and hasattr(popup_window, 'is_current_image_valid'):
+                 popup_window.is_current_image_valid = False
+
+
+        # --- Check the is_current_image_valid flag to determine if attachment is possible ---
+        # Ensure the popup window and the flag attribute exist before checking
+        if popup_window and hasattr(popup_window, 'is_current_image_valid') and popup_window.is_current_image_valid:
+            print(f"[InterfaceBuilder] Double-click: is_current_image_valid is True. Proceeding to attach via _on_browser_attach_click.")
+            # If selection/loading was successful (flag is True), perform the attach action
+            # Call the _on_browser_attach_click method, passing the popup_window
+            try:
+                self._on_browser_attach_click(popup_window)
+            except Exception as e:
+                 print(f"[InterfaceBuilder] Unexpected error during _on_browser_attach_click call from double-click: {e}")
+        else:
+            # If the flag is False, it means _on_browser_thumbnail_select determined
+            # the image was not valid or the popup/flag is gone.
+            # The error message from _on_browser_thumbnail_select should explain the image issue.
+            print(f"[InterfaceBuilder] Double-click: is_current_image_valid is False. Image preview/selection likely failed or window closed. Attach aborted.")
+            # No additional error message needed here, as _on_browser_thumbnail_select
+            # already provided feedback if it failed to load the image.
