@@ -18,6 +18,8 @@ wrong audio files for time capacitor
 
 zombie did not start timer (but props did start) upon video finish
 
+timer should still be visible at game end
+
 ##############################################################################################################################
 # beta to do
 
