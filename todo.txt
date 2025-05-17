@@ -2,19 +2,9 @@
 # Test notes
 
 
-When viewing room not with prop that was flagged
-    [prop control]Exception type: KeyError, Error: 'light_maze'
-    [prop control]Traceback: Traceback (most recent call last):
-    File "C:\Users\Vegas Manager\Desktop\kiosk-2.0\admin\prop_control.py", line 657, in check_prop_status
-        self.flagged_props[self.current_room][prop_id] and
-        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
-    KeyError: 'light_maze'
-
 wrong audio files for time capacitor
 
 zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
-
-autostart starts SELECTED ROOM, not the room autostart was enabled for!
 
 hint notification sound may be too quiet
 
@@ -27,6 +17,8 @@ sending multiple audio hints (specifically a spell chart bottle related hint) fr
 whole auto reset system feels messy/unclear
 
 sync system makes it unfriendly for anyone else to create hints currently
+
+ack system may not be in play at all, play audio hints doesn't seem to always be acknowledged or running when requested
 
 ##############################################################################################################################
 # beta to do

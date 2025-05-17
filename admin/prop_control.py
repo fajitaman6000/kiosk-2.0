@@ -545,8 +545,14 @@ class PropControl:
         # Re-pack the prop frames in the sorted order
         for prop_id, prop_data in sorted_props:
             if 'frame' in prop_data and prop_data['frame'].winfo_exists():
-                prop_data['frame'].pack_forget()  # Remove from current position
-                prop_data['frame'].pack(fill='x', pady=1)  # Add back in sorted order
+                try:
+                    prop_data['frame'].pack_forget()  # Remove from current position
+                    prop_data['frame'].pack(fill='x', pady=1)  # Add back in sorted order
+                except tk.TclError as e:
+                    print(f"[prop control]Error repacking prop {prop_id} for room {self.current_room}: Widget destroyed? {e}")
+                    # Optionally, remove the prop from self.props or mark as invalid
+                    if prop_id in self.props and 'frame' in self.props[prop_id]:
+                        del self.props[prop_id]['frame'] # Clean up reference to destroyed widget
 
     def get_prop_order(self, prop_name, room_number):
         """Get the order for a prop for a specific room."""
@@ -654,7 +660,7 @@ class PropControl:
             # Check if the prop is flagged AND finished
             if (room_number in self.flagged_props and
                 prop_id in self.flagged_props[room_number] and
-                self.flagged_props[self.current_room][prop_id] and
+                self.flagged_props[room_number][prop_id] and
                 status == "Finished"):
 
                 audio_manager = AdminAudioManager()
@@ -926,18 +932,22 @@ class PropControl:
             self.app.root.after(0, lambda rn=room_number: self.update_all_props_status(rn))
             # --- END ADDED LINES ---
 
-            # Subscribe to topics (EXISTING CODE BELOW)
+            # Subscribe to topics
             topics = [
                 "/er/ping", "/er/name", "/er/cmd", "/er/riddles/info",
                 "/er/music/info", "/er/music/soundlist", "/game/period",
                 "/unixts", "/stat/games/count"
             ]
-            try:
-                for topic in topics:
+            for topic in topics:
+                try:
                     # Subscribe on the MQTT thread loop
-                    client.subscribe(topic)
-            except Exception as e:
-                print(f"[prop control]Error subscribing to topics for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect: {e}")
+                    result, mid = client.subscribe(topic)
+                    if result != mqtt.MQTT_ERR_SUCCESS:
+                        print(f"[prop control]Failed to subscribe to topic '{topic}' for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'. Result code: {result}")
+                except Exception as e:
+                    # This would catch network errors or other unexpected issues during a specific subscribe call
+                    print(f"[prop control]Exception while subscribing to topic '{topic}' for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect: {e}")
+                    # Optionally, break or decide if partial subscription is acceptable
 
             # Clear the disconnect history after 5 seconds of stable connection
             def clear_disconnect_history():
@@ -1092,6 +1102,8 @@ class PropControl:
                         
         except json.JSONDecodeError:
             print(f"[prop control]Failed to decode message from room {room_number}: {msg.payload}")
+        except (json.JSONDecodeError, UnicodeDecodeError) as e: # MODIFIED: Catch UnicodeDecodeError as well
+            print(f"[prop control]Failed to decode or parse message from room {room_number}: {e}. Payload: {msg.payload}")
         except Exception as e:
             print(f"[prop control]Error handling message from room {room_number}: {e}")
 
@@ -1700,11 +1712,16 @@ class PropControl:
     def _send_victory_message(self, room_number, computer_name):
         """Sends a victory message to the kiosk (internal use)."""
         if hasattr(self.app, 'network_handler') and self.app.network_handler:
-            # Use the network handler
-            self.app.network_handler.send_victory_message(room_number, computer_name) # now correctly handled
-            self.victory_sent[room_number] = True # set prop control flag
+            try:
+                # Use the network handler
+                self.app.network_handler.send_victory_message(room_number, computer_name)
+                self.victory_sent[room_number] = True # set prop control flag
+                print(f"[prop control]Successfully sent victory message for room {room_number} to kiosk {computer_name}.")
+            except Exception as e:
+                print(f"[prop control]Error sending victory message for room {room_number} to kiosk {computer_name}: {e}")
+                # Do not set victory_sent to True if sending failed
         else:
-            print("[prop control]Network handler not available.")
+            print("[prop control]Network handler not available, cannot send victory message.")
 
     def send_command(self, prop_id, command):
         """Send command to standard props"""
