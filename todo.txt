@@ -15,8 +15,6 @@ text is too difficult to read for some rooms, perhaps per-room text color.
 
 crash occurred on admin side pertaining to prop connections; needs more robust error handling and console logger
 
-sending multiple audio hints (specifically a spell chart bottle related hint) from both admins did crash
-
 whole auto reset system feels messy/unclear
 
 sync system makes it unfriendly for anyone else to create hints currently

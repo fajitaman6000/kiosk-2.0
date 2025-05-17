@@ -64,6 +64,14 @@ class MessageHandler:
 
     def schedule_timer(self, delay_ms, callback):
         """Thread-safe way to schedule a timer"""
+        if not Overlay._bridge:
+            print("[message_handler] Error: Overlay Bridge not initialized. Cannot schedule timer.", flush=True)
+            # Fallback or simply log and skip. For critical timers, this might be an issue.
+            # Consider if a fallback mechanism (e.g. QTimer directly if on main thread) is needed,
+            # but for now, logging the error is a basic robustness step.
+            # If this happens, it indicates a deeper problem in application setup.
+            return
+
         # Use the bridge's timer scheduling
         QMetaObject.invokeMethod(
             Overlay._bridge,
@@ -310,32 +318,48 @@ class MessageHandler:
                 admin_ip = msg.get('admin_ip')
                 sync_id = msg.get('sync_id') # Note: sync_id is separate from command_id
 
-                if admin_ip:
+                if admin_ip: # Ensure admin_ip is present and not empty
                     if self._ensure_file_downloader(admin_ip):
-                        print(f"[message handler] Initiating sync with admin at {admin_ip} (Sync ID: {sync_id}, Command ID: {command_id})")
-                        self.last_sync_id = sync_id
-                        self.file_downloader.request_sync()
+                        # _ensure_file_downloader returning True should mean self.file_downloader is set,
+                        # but an extra check adds robustness.
+                        if self.file_downloader:
+                            print(f"[message handler] Initiating sync with admin at {admin_ip} (Sync ID: {sync_id}, Command ID: {command_id})", flush=True)
+                            self.last_sync_id = sync_id
+                            self.file_downloader.request_sync()
 
-                        confirm_msg = {
-                            'type': 'sync_confirmation',
-                            'computer_name': self.kiosk_app.computer_name,
-                            'sync_id': sync_id,
-                            'status': 'received'
-                        }
-                        self.kiosk_app.network.send_message(confirm_msg) # Use Kiosk's send, doesn't need command_id tracking
+                            confirm_msg = {
+                                'type': 'sync_confirmation',
+                                'computer_name': self.kiosk_app.computer_name,
+                                'sync_id': sync_id,
+                                'status': 'received'
+                            }
+                            self.kiosk_app.network.send_message(confirm_msg)
+                        else:
+                            # This case should ideally not be reached if _ensure_file_downloader is True
+                            print(f"[message handler] File downloader is None after successful _ensure_file_downloader call for IP {admin_ip}. Sync not initiated.", flush=True)
+                    else:
+                        # _ensure_file_downloader returned False (e.g., internal error or it decided not to proceed)
+                        print(f"[message handler] Failed to ensure file downloader for admin IP: {admin_ip}. Sync not initiated.", flush=True)
+                else:
+                    print(f"[message handler] SYNC_MESSAGE_TYPE: No admin_ip provided or admin_ip is empty. Sync not initiated. (Sync ID: {sync_id}, Command ID: {command_id})", flush=True)
 
             elif msg_type == 'room_assignment' and is_targeted:
-                print(f"[message handler][DEBUG] Processing room assignment: {msg['room']} (Command ID: {command_id})")
+                assigned_room_value = msg.get('room')
+                if assigned_room_value is None:
+                    print(f"[message handler][ERROR] 'room' key missing or None in room_assignment message. (Command ID: {command_id})", flush=True)
+                    return # Or handle as an error appropriately
+
+                print(f"[message handler][DEBUG] Processing room assignment: {assigned_room_value} (Command ID: {command_id})", flush=True)
                 # --- State resets (safe in network thread) ---
-                self.kiosk_app.assigned_room = msg['room']
-                save_result = self.kiosk_app.room_persistence.save_room_assignment(msg['room'])
-                print(f"[message handler][DEBUG] Save result: {save_result}")
+                self.kiosk_app.assigned_room = assigned_room_value
+                save_result = self.kiosk_app.room_persistence.save_room_assignment(assigned_room_value)
+                print(f"[message handler][DEBUG] Save result: {save_result}", flush=True)
                 self.kiosk_app.start_time = time.time()
                 self.kiosk_app.ui.hint_cooldown = False
                 self.kiosk_app.ui.current_hint = None
                 self.kiosk_app.audio_manager.current_music = None
                 # --- GUI update (schedule on main thread) ---
-                self.schedule_timer(0, lambda room=msg['room']: self.kiosk_app.ui.setup_room_interface(room))
+                self.schedule_timer(0, lambda room=assigned_room_value: self.kiosk_app.ui.setup_room_interface(room))
 
             elif msg_type == 'hint' and is_targeted and self.kiosk_app.assigned_room:
                 if msg.get('room') == self.kiosk_app.assigned_room:
