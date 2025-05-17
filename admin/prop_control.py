@@ -481,8 +481,14 @@ class PropControl:
             return
 
         # Clear UI
-        for widget in self.props_frame.winfo_children():
-            widget.destroy()
+        if hasattr(self, 'props_frame') and self.props_frame.winfo_exists(): # ADDED CHECK
+            for widget in self.props_frame.winfo_children():
+                try: # ADDED TRY/EXCEPT
+                    widget.destroy()
+                except tk.TclError:
+                    pass # Widget might have been destroyed already by other means
+        else: # ADDED ELSE FOR LOGGING/DEBUGGING
+            print("[prop control] props_frame does not exist or has been destroyed in connect_to_room.")
 
         # Reset props dict
         self.props = {}
@@ -592,18 +598,29 @@ class PropControl:
         mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
         
         # Update the name label
-        name_label = self.props[prop_id]['name_label']
-        name_label.config(text = mapped_name)
-        
-        # Update name label formatting
-        if self.is_finishing_prop(self.current_room, prop_data['strName']):
-            name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
-        else:
-            name_label.config(font=('Arial', 8, 'bold'))
+        name_label_widget = self.props[prop_id].get('name_label') # USE .get() FOR SAFER ACCESS
+        if not name_label_widget or not name_label_widget.winfo_exists(): # ADDED CHECK
+            # Optionally, log this: print(f"[prop control] Name label for prop {prop_id} not found or destroyed in update_prop_ui_elements.")
+            if prop_id in self.props and 'name_label' in self.props[prop_id]: # Clean up if reference exists but widget doesn't
+                del self.props[prop_id]['name_label']
+            return
 
-        # Ensure hover events for cousin highlighting are set
-        name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
-        name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
+        try: # WRAP UI OPERATIONS
+            name_label_widget.config(text = mapped_name)
+            
+            # Update name label formatting
+            if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                name_label_widget.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+            else:
+                name_label_widget.config(font=('Arial', 8, 'bold'))
+
+            # Ensure hover events for cousin highlighting are set
+            name_label_widget.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
+            name_label_widget.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
+        except tk.TclError:
+            # Optionally, log this: print(f"[prop control] TclError configuring name_label for prop {prop_id} in update_prop_ui_elements.")
+            if prop_id in self.props and 'name_label' in self.props[prop_id]: # Clean up reference on error
+                del self.props[prop_id]['name_label']
 
     def clean_up_room_props(self, room_number):
         """
@@ -794,9 +811,14 @@ class PropControl:
 
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
-                if computer_name in self.app.kiosk_tracker.kiosk_stats:
-                    timer_time = self.app.kiosk_tracker.kiosk_stats[computer_name].get('timer_time', 2700)
+                # SAFELY ACCESS KIOSK STATS
+                kiosk_stat_data = self.app.kiosk_tracker.kiosk_stats.get(computer_name) # USE .get()
+                if kiosk_stat_data: # CHECK IF DATA EXISTS
+                    timer_time = kiosk_stat_data.get('timer_time', 2700) # Safe get for timer_time
                     timer_expired = timer_time <= 0
+                else: # DEFAULT IF NO STATS FOR KIOSK
+                    # print(f"[prop control] No kiosk_stats found for {computer_name}") # Optional: log missing stats
+                    timer_expired = False # Default if no stats, or handle as an error/unknown state
                 break
 
         # Update kiosk highlight *before* further UI updates

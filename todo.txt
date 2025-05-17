@@ -20,6 +20,105 @@ sync system makes it unfriendly for anyone else to create hints currently
 
 ack system may not be in play at all, play audio hints doesn't seem to always be acknowledged or running when requested
 
+
+
+
+
+ Traceback (most recent call last):
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
+[KIOSK] cls.hide_fullscreen_hint()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
+[KIOSK] cls.show_all_overlays()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
+[KIOSK] cls.show_victory_screen()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2508, in show_victory_screen
+[KIOSK] print(f"[qt overlay] Unhandled exception in show_victory_screen: {e}")
+[KIOSK] RecursionError: maximum recursion depth exceeded
+[KIOSK] During handling of the above exception, another exception occurred:
+[KIOSK] Traceback (most recent call last):
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
+[KIOSK] cls.hide_fullscreen_hint()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
+[KIOSK] cls.show_all_overlays()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
+[KIOSK] cls.show_victory_screen()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
+[KIOSK] traceback.print_exc()
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
+[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
+[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 734, in __init__
+[KIOSK] _walk_tb_with_full_positions(exc_traceback),
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] RecursionError: maximum recursion depth exceeded
+[KIOSK] During handling of the above exception, another exception occurred:
+[KIOSK] Traceback (most recent call last):
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
+[KIOSK] cls.hide_fullscreen_hint()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
+[KIOSK] cls.show_all_overlays()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
+[KIOSK] cls.show_victory_screen()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
+[KIOSK] traceback.print_exc()
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
+[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
+[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 733, in __init__
+[KIOSK] self.stack = StackSummary._extract_from_extended_frame_gen(
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 438, in _extract_from_extended_frame_gen
+[KIOSK] f.line
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 323, in line
+[KIOSK] self._line = linecache.getline(self.filename, self.lineno)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 30, in getline
+[KIOSK] lines = getlines(filename, module_globals)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] RecursionError: maximum recursion depth exceeded
+[KIOSK] During handling of the above exception, another exception occurred:
+[KIOSK] Traceback (most recent call last):
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
+[KIOSK] cls.hide_fullscreen_hint()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
+[KIOSK] cls.show_all_overlays()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
+[KIOSK] cls.show_victory_screen()
+[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
+[KIOSK] traceback.print_exc()
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
+[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
+[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 733, in __init__
+[KIOSK] self.stack = StackSummary._extract_from_extended_frame_gen(
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 438, in _extract_from_extended_frame_gen
+[KIOSK] f.line
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 323, in line
+[KIOSK] self._line = linecache.getline(self.filename, self.lineno)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 30, in getline
+[KIOSK] lines = getlines(filename, module_globals)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 46, in getlines
+[KIOSK] return updatecache(filename, module_globals)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 138, in updatecache
+[KIOSK] with tokenize.open(fullname) as fp:
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\tokenize.py", line 451, in open
+[KIOSK] encoding, lines = detect_encoding(buffer.readline)
+[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[KIOSK] RecursionError: maximum recursion depth exceeded
+[KIOSK] [qt overlay] Warning: No UI instance found to call restore_hint_view.
+[KIOSK] [qt overlay] Victory screen shown.
+
 ##############################################################################################################################
 # beta to do
 
@@ -39,6 +138,9 @@ film video solutions
 
 ##############################################################################################################################
 # todo
+
+watchdog should remember some info to pass back to the kiosk when relaunching to ensure smooth revival
+    badly needs to notify gm upon crash
 
 set-in-stone ordering of rooms in top list
 
@@ -94,9 +196,12 @@ admin application instability resulting in/caused by mqtt disconnect codes 16 an
     MQTT_ERR_TLS = 8¶
     MQTT_ERR_UNKNOWN = 13
 
+    
+
 ##############################################################################################################################
 # ambitious extra ideas:
 
+blackout screen button for haunted
 refill cylinders button
 "create popout prop control" (for controlling numerous rooms)
 add ways for game masters to enjoyably interact with guests

@@ -20,6 +20,7 @@ print("[video server] Imported time.", flush=True)
 print("[video server] Ending imports ...", flush=True)
 
 class VideoServer:
+    DEBUG = False
     def __init__(self, port=8089):
         self.port = port
         self.running = False
@@ -165,36 +166,36 @@ class VideoServer:
         try:
             while self.running:
                 with self.camera_lock:
-                    print("[video_server.stream_video] thread lock here", flush=True)
+                    if(self.DEBUG): print("[video_server.stream_video] thread lock here", flush=True)
                     if self.camera is None or not self.camera.isOpened():
                         # Camera might be closed if all clients disconnected, reopen it
-                        print("[video server] Camera not open, reopening...", flush=True)
+                        if(self.DEBUG): print("[video server] Camera not open, reopening...", flush=True)
                         self._open_camera()
                         if self.camera is None or not self.camera.isOpened():  # Still failed to open.
                             print("[video server] Failed to reopen camera, exiting stream.", flush=True)
                             break  # Exit this client's thread
 
-                    print("[video server] Capturing frame...", flush=True)
+                    if(self.DEBUG): print("[video server] Capturing frame...", flush=True)
                     ret, frame = self.camera.read()
-                    print("[video server] Frame captured.", flush=True)
+                    if(self.DEBUG): print("[video server] Frame captured.", flush=True)
 
                 if ret:
-                    print("[video server] Encoding frame...", flush=True)
+                    if(self.DEBUG): print("[video server] Encoding frame...", flush=True)
                     encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 60]
                     _, buffer = cv2.imencode('.jpg', frame, encode_param)
                     size = len(buffer)
-                    print("[video server] Frame encoded.", flush=True)
+                    if(self.DEBUG): print("[video server] Frame encoded.", flush=True)
                     try:
-                        print("[video server] Sending frame size...", flush=True)
+                        if(self.DEBUG): print("[video server] Sending frame size...", flush=True)
                         client.sendall(struct.pack("Q", size))
-                        print("[video server] Sending frame data...", flush=True)
+                        if(self.DEBUG): print("[video server] Sending frame data...", flush=True)
                         client.sendall(buffer)
-                        print("[video server] Frame sent successfully.", flush=True)
+                        if(self.DEBUG): print("[video server] Frame sent successfully.", flush=True)
                     except socket.timeout: # Catch Timeout
-                        print(f"[video server] Client {addr} sendall timeout", flush=True)
+                        if(self.DEBUG): print(f"[video server] Client {addr} sendall timeout", flush=True)
                         break
                     except socket.error as e: # Catch more specific exception.
-                        print(f"[video server]Client {addr} disconnected: {e}", flush=True)
+                        if(self.DEBUG): print(f"[video server]Client {addr} disconnected: {e}", flush=True)
                         break  # Exit the loop, client disconnected
                 else:
                     print("[video server]Failed to get frame", flush=True)
