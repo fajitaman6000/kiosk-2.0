@@ -984,20 +984,23 @@ class PropControl:
             )
 
     def _update_connection_state_ui(self, room_number, state):
-        if room_number == self.current_room and hasattr(self, 'status_label'):
-            if any(error in state.lower() for error in ["failed", "timed out", "connecting", "lost"]):
-                # Show error states in red
-                self.status_label.config(
-                    text=state,
-                    fg='red'
-                )
-                # Clear props display on connection issues
-                for widget in self.props_frame.winfo_children():
-                    widget.destroy()
-                self.props = {}
-            else:
-                # Always hide the status label for non-error states
-                self.status_label.config(text="")
+         if room_number == self.current_room and hasattr(self, 'status_label'):
+            try:
+                if any(error in state.lower() for error in ["failed", "timed out", "connecting", "lost"]):
+                    # Show error states in red
+                    self.status_label.config(
+                        text=state,
+                        fg='red'
+                    )
+                    # Clear props display on connection issues
+                    for widget in self.props_frame.winfo_children():
+                        widget.destroy()
+                    self.props = {}
+                else:
+                    # Always hide the status label for non-error states
+                    self.status_label.config(text="")
+            except tk.TclError:
+                print(f"[prop control]Status label widget was destroyed while trying to update for room {room_number}.")
 
     def setup_special_buttons(self, room_number):
         # Clear existing buttons
@@ -1550,16 +1553,24 @@ class PropControl:
         #print(f"[prop control]Highlighting circuit props for {prop_name}")
         circuit = self.get_prop_circuit(prop_name)
         if not circuit:
-            return
-            
+             return
+             
         # Find all props with the same circuit value
         room_key = self.ROOM_MAP[self.current_room]
+        if self.current_room not in self.ROOM_MAP: # Should have been caught by get_prop_circuit, but defensive
+            return
+        room_key = self.ROOM_MAP[self.current_room]
+        
+        if not hasattr(self, 'prop_name_mappings') or room_key not in self.prop_name_mappings or \
+           'mappings' not in self.prop_name_mappings[room_key]:
+            return
+            
         circuit_props = []
         
         # Get all props that share this circuit
-        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
-            if info.get('circuit') == circuit:
-                circuit_props.append(name)
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items(): # Now safer
+             if info.get('circuit') == circuit:
+                 circuit_props.append(name)
                 
         # Find and highlight/unhighlight the name labels for these props
         for prop_id, prop_data in self.props.items():
@@ -1584,16 +1595,24 @@ class PropControl:
         # Get the cousin value for the hovered prop
         cousin = self.get_prop_cousin(prop_name)
         if not cousin:
-            return
-            
+             return
+             
         # Find all props with the same cousin value
         room_key = self.ROOM_MAP[self.current_room]
+        if self.current_room not in self.ROOM_MAP: # Should have been caught by get_prop_cousin, but defensive
+            return
+        room_key = self.ROOM_MAP[self.current_room]
+
+        if not hasattr(self, 'prop_name_mappings') or room_key not in self.prop_name_mappings or \
+           'mappings' not in self.prop_name_mappings[room_key]:
+            return
+
         cousin_props = []
         
         # Get all props that share this cousin value
-        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
-            if info.get('cousin') == cousin:
-                cousin_props.append(name)
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items(): # Now safer
+             if info.get('cousin') == cousin:
+                 cousin_props.append(name)
                 
         # Find and highlight/unhighlight the name labels for these props
         for prop_id, prop_data in self.props.items():
@@ -1774,17 +1793,26 @@ class PropControl:
 
     def on_frame_configure(self, event=None):
         """Reconfigure the canvas scrolling region"""
-        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-        
-        # Ensure props_frame spans the full width
-        width = self.canvas.winfo_width()
-        self.canvas.itemconfig(self.canvas_frame, width=width)
+        try:
+            if self.canvas.winfo_exists() and self.props_frame.winfo_exists(): # Check widgets exist
+                self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+                
+                # Ensure props_frame spans the full width
+                width = self.canvas.winfo_width()
+                self.canvas.itemconfig(self.canvas_frame, width=width)
+        except tk.TclError:
+            # Canvas or props_frame might have been destroyed
+            print("[prop control]TclError in on_frame_configure, likely widget destroyed.")
+            pass 
 
     def notify_prop_select(self, prop_name):
         """Notify all registered callbacks about prop selection"""
         if hasattr(self, 'prop_select_callbacks'):
-            for callback in self.prop_select_callbacks:
-                callback(prop_name)
+            for callback in list(self.prop_select_callbacks): # Iterate over a copy if callbacks can modify the list
+                try:
+                    callback(prop_name)
+                except Exception as e:
+                    print(f"[prop control]Error in prop_select_callback: {e}")
 
     def add_prop_select_callback(self, callback):
         """Add a callback to be called when a prop is selected"""
@@ -1794,18 +1822,30 @@ class PropControl:
 
     def on_canvas_configure(self, event):
         """Handle canvas resize"""
-        width = event.width
-        self.canvas.itemconfig(self.canvas_frame, width=width)
-        
-        # Recalculate column widths
-        col_width = (width - 40) // 3  # Subtract padding and divide by 3 columns
-        for i in range(3):
-            self.props_frame.grid_columnconfigure(i, minsize=col_width)
+        try:
+            if self.canvas.winfo_exists() and self.props_frame.winfo_exists(): # Check widgets exist
+                width = event.width
+                self.canvas.itemconfig(self.canvas_frame, width=width)
+                
+                # Recalculate column widths
+                col_width = (width - 40) // 3  # Subtract padding and divide by 3 columns
+                for i in range(3):
+                    self.props_frame.grid_columnconfigure(i, minsize=col_width)
+        except tk.TclError:
+            # Canvas or props_frame might have been destroyed
+            print("[prop control]TclError in on_canvas_configure, likely widget destroyed.")
+            pass
         
     def shutdown(self):
         for client in self.mqtt_clients.values():
-            client.loop_stop()
-            client.disconnect()
+            try:
+                client.loop_stop()
+            except Exception as e:
+                print(f"[prop control]Error stopping MQTT loop for client: {e}")
+            try:
+                client.disconnect()
+            except Exception as e:
+                print(f"[prop control]Error disconnecting MQTT client: {e}")
 
     def start_game(self, room_number=None): # MODIFIED: Added room_number argument
         """Send start game command to the specified room or current room if None."""
