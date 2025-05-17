@@ -1,6 +1,9 @@
 ##############################################################################################################################
 # Test notes
 
+zombie audio choppy either on intros or hints
+
+loss screen is not appearing upon time ending
 
 wrong audio files for time capacitor
 
@@ -21,106 +24,599 @@ sync system makes it unfriendly for anyone else to create hints currently
 ack system may not be in play at all, play audio hints doesn't seem to always be acknowledged or running when requested
 
 
-
-
-
- Traceback (most recent call last):
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
-[KIOSK] cls.hide_fullscreen_hint()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
-[KIOSK] cls.show_all_overlays()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
-[KIOSK] cls.show_victory_screen()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2508, in show_victory_screen
-[KIOSK] print(f"[qt overlay] Unhandled exception in show_victory_screen: {e}")
-[KIOSK] RecursionError: maximum recursion depth exceeded
-[KIOSK] During handling of the above exception, another exception occurred:
-[KIOSK] Traceback (most recent call last):
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
-[KIOSK] cls.hide_fullscreen_hint()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
-[KIOSK] cls.show_all_overlays()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
-[KIOSK] cls.show_victory_screen()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
-[KIOSK] traceback.print_exc()
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
-[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
-[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 734, in __init__
-[KIOSK] _walk_tb_with_full_positions(exc_traceback),
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] RecursionError: maximum recursion depth exceeded
-[KIOSK] During handling of the above exception, another exception occurred:
-[KIOSK] Traceback (most recent call last):
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
-[KIOSK] cls.hide_fullscreen_hint()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
-[KIOSK] cls.show_all_overlays()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
-[KIOSK] cls.show_victory_screen()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
-[KIOSK] traceback.print_exc()
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
-[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
-[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 733, in __init__
-[KIOSK] self.stack = StackSummary._extract_from_extended_frame_gen(
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 438, in _extract_from_extended_frame_gen
-[KIOSK] f.line
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 323, in line
-[KIOSK] self._line = linecache.getline(self.filename, self.lineno)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 30, in getline
-[KIOSK] lines = getlines(filename, module_globals)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] RecursionError: maximum recursion depth exceeded
-[KIOSK] During handling of the above exception, another exception occurred:
-[KIOSK] Traceback (most recent call last):
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2472, in show_victory_screen
-[KIOSK] cls.hide_fullscreen_hint()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 528, in hide_fullscreen_hint
-[KIOSK] cls.show_all_overlays()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 1798, in show_all_overlays
-[KIOSK] cls.show_victory_screen()
-[KIOSK] File "C:\Users\PanIQ Vegas\Desktop\kiosk-2.0\kiosk\qt_overlay.py", line 2509, in show_victory_screen
-[KIOSK] traceback.print_exc()
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 180, in print_exc
-[KIOSK] print_exception(sys.exception(), limit=limit, file=file, chain=chain)
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 124, in print_exception
-[KIOSK] te = TracebackException(type(value), value, tb, limit=limit, compact=True)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 733, in __init__
-[KIOSK] self.stack = StackSummary._extract_from_extended_frame_gen(
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 438, in _extract_from_extended_frame_gen
-[KIOSK] f.line
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\traceback.py", line 323, in line
-[KIOSK] self._line = linecache.getline(self.filename, self.lineno)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 30, in getline
-[KIOSK] lines = getlines(filename, module_globals)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 46, in getlines
-[KIOSK] return updatecache(filename, module_globals)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\linecache.py", line 138, in updatecache
-[KIOSK] with tokenize.open(fullname) as fp:
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] File "C:\Users\PanIQ Vegas\AppData\Local\Programs\Python\Python312\Lib\tokenize.py", line 451, in open
-[KIOSK] encoding, lines = detect_encoding(buffer.readline)
-[KIOSK] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-[KIOSK] RecursionError: maximum recursion depth exceeded
-[KIOSK] [qt overlay] Warning: No UI instance found to call restore_hint_view.
-[KIOSK] [qt overlay] Victory screen shown.
+[InterfaceBuilder] _get_image_files: Checking folder: C:\Users\PanIQ Vegas Office\Desktop\kiosk-2.0\admin\sync_directory\hint_image_files\casino\Weight Game
+[InterfaceBuilder] _get_image_files: Found 2 image files in Weight Game folder.
+[InterfaceBuilder] _get_image_files: Finished scanning. Total images found: 2
+[audio hints]Sending audio hint: C:\Users\PanIQ Vegas Office\Desktop\kiosk-2.0\admin\sync_directory\hint_audio_files\casino\Weight Game\pick-up-bottle.mp3
+[audio hints]Sent audio hint to CASINO-KIOSK: casino\Weight Game\pick-up-bottle.mp3, count as hint: True
+[interface builder] Attempting audio connection to CASINO-KIOSK
+[audio client] Attempting to connect to CASINO-KIOSK:8090
+[audio client] Socket connected successfully.
+[audio client] Opening output stream...
+[audio client] Output stream opened.
+[audio client] Starting receive thread...
+[audio client] Starting audio reception loop.
+[audio client] Receive thread started.
+[interface builder] Audio connected for CASINO-KIOSK
+[network broadcast handler] Sent request_screenshot command to CASINO-KIOSK (CmdID: 30ce7490-0001-4d54-8544-578fe7e98b89)
+[audio_hints] loading audio file for admin preview: C:\Users\PanIQ Vegas Office\Desktop\kiosk-2.0\admin\sync_directory\hint_audio_files\casino\Weight Game\sort-them.mp3
+[prop_control] Room 4 (zombie) has been stale for 600s. Playing sound.
+[prop_control].play_stale_sound
+[audio hints] Stopped currently playing audio
+[audio_hints] loading audio file for admin preview: C:\Users\PanIQ Vegas Office\Desktop\kiosk-2.0\admin\sync_directory\hint_audio_files\casino\Weight Game\vague-weight-hint.mp3
+[audio hints] Stopped currently playing audio
+[network broadcast handler] Setting hint_requested=True in kiosk_stats for ZOMBIE upon help_request receipt.
+[kiosk state tracker][KioskStateTracker] add_help_request: Received help request from ZOMBIE
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.6934602
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.7767296
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.7787242
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.836363
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521095.8599296
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.8728707
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.945109
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.9490938
+[prop control]Room 'time' disconnected with code: 16 at 1747521095.999988
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521096.0219555
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.4281168
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.518221
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.5426662
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.612704
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.7025526
+[prop control]Room 'ma' disconnected with code: 16 at 1747521096.725237
+[prop control]Room 'time' disconnected with code: 16 at 1747521096.8107007
+[prop control]Room 'time' disconnected with code: 16 at 1747521096.8206973
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521096.9232268
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521096.9456728
+[prop control]Room 'time' disconnected with code: 16 at 1747521097.266076
+[prop control]Room 'time' disconnected with code: 16 at 1747521097.2710512
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.351358
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.4176872
+[prop control]Room 'ma' disconnected with code: 16 at 1747521097.5040255
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'ma' disconnected with code: 16 at 1747521097.5503109
+[prop control]Room 'casino' disconnected with code: 16 at 1747521097.5533006
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.588207
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.6217694
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.6237917
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.6397479
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.803121
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.8101013
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521097.8283398
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521097.8868508
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521097.8967996
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521097.9087675
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521097.9178317
+[prop control]Room 'casino' disconnected with code: 16 at 1747521097.9188287
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521097.9238153
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521097.9363422
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521097.9403315
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521097.9562933
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521097.9714088
+[prop control]Room 'ma' disconnected with code: 16 at 1747521097.979363
+[prop control]Room 'ma' disconnected with code: 16 at 1747521097.9953682
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521098.0099292
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.0759664
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.1153684
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.124382
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.1430519
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.218739
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.2297082
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.230682
+[prop control]Room 'ma' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.2466893
+[prop control]Room 'ma' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.2681155
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.2961001
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.308094
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.3304446
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.3539054
+[prop control]Room 'casino' disconnected with code: 16 at 1747521098.3767774
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.3767774
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521098.4868057
+[prop control]Room 'casino' disconnected with code: 16 at 1747521098.7057216
+[prop control]Room 'ma' disconnected with code: 16 at 1747521098.745614
+[prop control]Room 'casino' disconnected with code: 16 at 1747521098.7695742
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.7875273
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.7925134
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.796061
+[prop control]Room 'casino' disconnected with code: 16 at 1747521098.7990534
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521098.8020449
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521098.8138292
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521098.8298116
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'time' disconnected with code: 16 at 1747521099.0437841
+[prop control]Room 'time' disconnected with code: 16 at 1747521099.0477455
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521099.0780022
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.09697
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521099.1019564
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.104949
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.1109645
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.1229033
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.1258955
+[prop control]Room 'casino' disconnected with code: 16 at 1747521099.1960034
+[prop control]Room 'ma' disconnected with code: 16 at 1747521099.2194436
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521099.303801
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.3077881
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521099.3227482
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.362862
+[prop control]Room 'casino' disconnected with code: 16 at 1747521099.4037542
+[prop control]Room 'casino' disconnected with code: 16 at 1747521099.439499
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'time' disconnected with code: 16 at 1747521099.4729435
+[prop control]Room 'time' disconnected with code: 16 at 1747521099.483914
+[prop control]Room 'casino' disconnected with code: 16 at 1747521099.5718546
+[prop control]Room 'ma' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521099.6077583
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.6087558
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.6272516
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.6367311
+[prop control]Room 'wizard' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.6397147
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.644702
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.6456993
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.6606588
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.661633
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.669611
+[prop control]Room 'casino' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.878492
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.8794873
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521099.889461
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.9103925
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.952299
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521099.9757435
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.0206504
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.0435655
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.0585258
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521100.063537
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521100.2163305
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521100.3041193
+[prop control]Room 'casino' disconnected with code: 16 at 1747521100.3196537
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521100.3605585
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521100.4080064
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521100.4233546
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.4462934
+[prop control]Room 'casino' disconnected with code: 16 at 1747521100.4887967
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.5046554
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.505678
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.5156684
+[prop control]Room 'casino' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.539589
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521100.585491
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.6577954
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521100.676398
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.7274702
+[prop control]Room 'ma' disconnected with code: 16 at 1747521100.729441
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521100.8088381
+[prop control]Room 'time' disconnected with code: 16 at 1747521100.82327
+[prop control]Room 'time' disconnected with code: 16 at 1747521100.826788
+[prop control]Room 'ma' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521100.9049459
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.9154449
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.934922
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.9677536
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.9727402
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521100.9777274
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521101.1237943
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521101.1532266
+[prop control]Room 'casino' disconnected with code: 16 at 1747521101.1602635
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521101.172203
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521101.175195
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521101.1893783
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.2452466
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.2532218
+[prop control]Room 'casino' disconnected with code: 16 at 1747521101.2620883
+[prop control]Room 'casino' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.3085985
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'time' disconnected with code: 16 at 1747521101.3500068
+[prop control]Room 'time' disconnected with code: 16 at 1747521101.3529987
+[prop control]Room 'casino' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.4533832
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.4593668
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521101.511737
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.1955163
+[prop control]Room 'ma' disconnected with code: 16 at 1747521102.210149
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.2258327
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.2288334
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.2374182
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521102.2444236
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.258362
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521102.2718341
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521102.3415005
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521102.3444924
+[prop control]Room 'ma' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521102.3544657
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.4049482
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.439922
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.4449167
+[prop control]Room 'time' disconnected with code: 16 at 1747521102.4479015
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.457874
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.4738533
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521102.477866
+[prop control]Room 'zombie' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.480834
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.495794
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521102.5038314
+[prop control]Room 'ma' disconnected with code: 16 at 1747521102.5048437
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521102.5118337
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.5148017
+[prop control]Room 'time' disconnected with code: 16 at 1747521102.5218072
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.5450778
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.5723786
+[prop control]Room 'zombie' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.57936
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.5923252
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.605877
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.6118371
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.8277607
+[prop control]Room 'casino' disconnected with code: 16 at 1747521102.8415754
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.8565354
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521102.920337
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521102.9417858
+[prop control]Room 'ma' disconnected with code: 16 at 1747521102.967743
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.0211046
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.0385408
+[prop control]Room 'ma' disconnected with code: 16 at 1747521103.0415576
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.0455222
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521103.0784595
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.097384
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521103.099402
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521103.1298773
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521103.1308553
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521103.137862
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.1653192
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.1848547
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.2067955
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.2307067
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.2626212
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.2780874
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.289032
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.2980075
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.3046775
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.3096836
+[prop control]Room 'time' disconnected with code: 16 at 1747521103.3306046
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.3336196
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.3620234
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.3737133
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.3836582
+[prop control]Room 'time' disconnected with code: 16 at 1747521103.3856559
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.389672
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521103.5425606
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.587473
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521103.622268
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521103.6977482
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.8903513
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.9050844
+[prop control]Room 'casino' disconnected with code: 16 at 1747521103.9304602
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.9417543
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521103.9527576
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521103.969712
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521103.9785168
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521104.0024729
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.0269172
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.053872
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.1809237
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.1879048
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.1879048
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.2078505
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.2271698
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.2441244
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.2771068
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521104.308021
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.3242981
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521104.339259
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.339259
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.3412535
+[prop control]Room 'wizard' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.3562374
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.3975003
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521104.5027633
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.5057547
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521104.5389256
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.57483
+[prop control]Room 'ma' connected.
+[prop control]Room 'ma' disconnected with code: 16 at 1747521104.7130475
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.7240996
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.7540557
+[prop control]Room 'ma' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.8020787
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.8070421
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.810034
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.8110316
+[prop control]Room 'zombie' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.8230271
+[prop control]Room 'zombie' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.8434436
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521104.8459444
+[prop control]Room 'casino' disconnected with code: 16 at 1747521104.8525069
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.8594875
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521104.8764431
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.8926709
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.9258919
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.9298813
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.945839
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521104.974765
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.1439
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521105.1468625
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.169824
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.1797981
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.181768
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.2052655
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.2082574
+[prop control]Room 'casino' disconnected with code: 16 at 1747521105.2102523
+[prop control]Room 'casino' disconnected with code: 16 at 1747521105.212247
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.2132442
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.2187912
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.231324
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.235313
+[prop control]Room 'casino' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.2422943
+[prop control]Room 'wizard' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.2472806
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.2602508
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521105.2662382
+[prop control]Room 'casino' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.302617
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.3066306
+[prop control]Room 'ma' disconnected with code: 16 at 1747521105.3076046
+[prop control]Room 'casino' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521105.4055824
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521105.4115398
+[prop control]Room 'haunted' connected.
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521105.4775312
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.499878
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521105.506859
+[prop control]Room 'wizard' disconnected with code: 16 at 1747521105.5078297
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.5118454
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.522225
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521105.5258765
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.6606429
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521105.7659616
+[prop control]Room 'casino' disconnected with code: 16 at 1747521105.7679799
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.790454
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.8377602
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.8579986
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.859989
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.8610108
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.868989
+[prop control]Room 'wizard' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.875971
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.8899367
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.8994749
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.9064581
+[prop control]Room 'time' disconnected with code: 16 at 1747521105.9094234
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.9283726
+[prop control]Room 'casino' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521105.955325
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.0062463
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.0132515
+[prop control]Room 'casino' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.0592225
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521106.0718644
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.1584196
+[prop control]Room 'haunted' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521106.2041805
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521106.2512686
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.2702472
+[prop control]Room 'casino' disconnected with code: 16 at 1747521106.277229
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521106.3518007
+[prop control]Room 'zombie' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.531135
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' disconnected with code: 16 at 1747521106.802177
+[prop control]Room 'haunted' disconnected with code: 16 at 1747521106.8480797
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521106.861701
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521106.8826709
+[prop control]Room 'casino' connected.
+[prop control]Room 'ma' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.0362394
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.0570724
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.1329615
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.1542797
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.2131443
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.2221203
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'wizard' connected.
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.3164618
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.4128046
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.4926202
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.4975808
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.5713055
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.6222258
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'time' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.6572785
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.6791947
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.6802204
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.689341
+[prop control]Room 'atlantis' disconnected with code: 16 at 1747521107.6993425
+[prop control]Room 'haunted' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.8748093
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'haunted' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.9349787
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.941974
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.9559581
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.9579432
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521107.9770446
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.000808
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.0104368
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.0144236
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.1239712
+[prop control]Room 'haunted' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.4110918
+[prop control]Room 'haunted' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'casino' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8219123
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8318872
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8368719
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8398643
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8498385
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8857706
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8917542
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521108.8977385
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521109.3946621
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'atlantis' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521109.6101415
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521109.8685157
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.0654483
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.2567759
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.398745
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.4216962
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.4416955
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.6336026
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.7432566
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.7567277
+[prop control]Room 'zombie' disconnected with code: 16 at 1747521110.771688
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
+[prop control]Room 'zombie' connected.
 
 ##############################################################################################################################
 # beta to do
+
+"last known state" held onto by the watchdog
+    long string containing info such as all the stats, contents of a currently viewed hint
 
 auto screenshot every 10 sec when not viewing video
 
