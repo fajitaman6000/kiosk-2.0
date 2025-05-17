@@ -1757,8 +1757,8 @@ class Overlay:
         cls.hide_view_image_button()
         cls.hide_view_solution_button()
         cls.hide_video_display() # Hide video display if it's showing
-        cls.hide_loss_screen()
-        cls.hide_victory_screen()
+        #cls.hide_loss_screen()
+        #cls.hide_victory_screen()
         # Note: cls.hide() itself is not called directly here as it might hide the main window
         # if cls._window is the main application window.
         # cls.hide() is intended for the old overlay concept, not individual components.
@@ -1785,17 +1785,6 @@ class Overlay:
         else:
             print("[qt overlay] Warning: _kiosk_app not available in show_all_overlays.")
             # If no kiosk_app or ui, we can't really proceed with state-dependent restores
-            return
-
-
-        if game_lost:
-            # print("[qt overlay] Game lost, showing loss screen only.") # Reduce noise
-            cls.show_loss_screen()
-            return
-
-        if game_won:
-            # print("[qt overlay] Game won, showing victory screen only.") # Reduce noise
-            cls.show_victory_screen()
             return
 
         # --- RESTORE OTHER OVERLAYS (if game not won/lost) ---
