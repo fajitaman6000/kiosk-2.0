@@ -809,13 +809,28 @@ class AdminInterfaceBuilder:
         """Handle the 'intro_video_completed' message"""
         print(f"[AdminInterfaceBuilder] Intro video completed by {computer_name}")
         
-        do_autostart = self.app.kiosk_tracker.kiosk_stats[computer_name].get("auto_start")
+        # --- MODIFICATION START ---
+        # Get the room number assigned to the kiosk that sent the signal
+        room_num_for_kiosk = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+        
+        if room_num_for_kiosk is None:
+            print(f"[AdminInterfaceBuilder] Auto-start for {computer_name} aborted: Kiosk not assigned to a room.")
+            return
+            
+        # Safely get the auto_start setting for this kiosk
+        # Defaults to False if kiosk_stats or auto_start key doesn't exist
+        kiosk_specific_stats = self.app.kiosk_tracker.kiosk_stats.get(computer_name, {})
+        do_autostart = kiosk_specific_stats.get("auto_start", False)
+        # --- MODIFICATION END ---
 
-        if(do_autostart == True):
-            print("auto start was true, would start props")
-            self.app.prop_control.start_game()
+        if do_autostart: # Check if do_autostart is explicitly True
+            room_name_for_log = self.app.rooms.get(room_num_for_kiosk, f"number {room_num_for_kiosk}")
+            print(f"[AdminInterfaceBuilder] Auto-start is TRUE for {computer_name} (Room '{room_name_for_log}'). Starting props for this room.")
+            # MODIFICATION: Pass the specific room_number of the kiosk
+            self.app.prop_control.start_game(room_number=room_num_for_kiosk)
         else:
-            print(f"auto start was read as {do_autostart}, not starting props")
+            room_name_for_log = self.app.rooms.get(room_num_for_kiosk, f"number {room_num_for_kiosk}")
+            print(f"[AdminInterfaceBuilder] Auto-start is FALSE (or not set) for {computer_name} (Room '{room_name_for_log}'). Not starting props automatically.")
 
     def toggle_music(self, computer_name):
         """Sends a command to toggle music playback on the specified kiosk."""

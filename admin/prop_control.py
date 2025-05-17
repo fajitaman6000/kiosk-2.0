@@ -1790,21 +1790,41 @@ class PropControl:
             client.loop_stop()
             client.disconnect()
 
-    def start_game(self):
-        """Send start game command to current room"""
-        if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("[prop control]No active room selected")
+    def start_game(self, room_number=None): # MODIFIED: Added room_number argument
+        """Send start game command to the specified room or current room if None."""
+        target_room = room_number if room_number is not None else self.current_room # MODIFIED: Determine target room
+
+        if target_room is None:
+            print("[prop control]Start game: No target room specified or selected.")
+            return
+        
+        # Ensure the target_room is actually a valid room number that has an MQTT client
+        if target_room not in self.mqtt_clients or not self.mqtt_clients[target_room]:
+            room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
+            print(f"[prop control]Start game: MQTT client not available or not configured for room '{room_name_for_log}' (ID: {target_room}).")
             return
             
-        client = self.mqtt_clients[self.current_room]
+        client = self.mqtt_clients[target_room]
         try:
             client.publish("/er/cmd", "start")
-            print(f"[prop control]Start game command sent to room {self.current_room}")
+            room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}") # Get friendly name for logging
+            print(f"[prop control]Start game command sent to room '{room_name_for_log}' (ID: {target_room}).") # MODIFIED: Logging
+            
             # Reset progress/state tracking for the started room
-            self.last_progress_times[self.current_room] = time.time()
-            self.stale_sound_played[self.current_room] = False  # <-- RESET FLAG
+            # Ensure keys exist before assignment, though they should if client exists
+            if target_room not in self.last_progress_times:
+                 self.last_progress_times[target_room] = time.time()
+            else: # If it exists, update it
+                 self.last_progress_times[target_room] = time.time()
+            
+            if target_room not in self.stale_sound_played:
+                 self.stale_sound_played[target_room] = False
+            else: # If it exists, update it
+                 self.stale_sound_played[target_room] = False
+                 
         except Exception as e:
-            print(f"[prop control]Failed to send start game command: {e}")
+            room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
+            print(f"[prop control]Failed to send start game command to room '{room_name_for_log}' (ID: {target_room}): {e}")
 
     def reset_all(self):
         """Send reset all command to current room"""
