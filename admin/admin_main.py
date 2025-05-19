@@ -16,6 +16,7 @@ from kiosk_state_tracker import KioskStateTracker
 from admin_interface_builder import AdminInterfaceBuilder
 from admin_sync_manager import AdminSyncManager
 from manager_settings import AdminPasswordManager, ManagerSettings
+from logger import init_logging, log_exception
 
 import json
 
@@ -42,7 +43,13 @@ try:
             os.chdir(os.path.dirname(os.path.abspath(__file__)))
             print(f"[main]Working directory set to: {os.getcwd()}")
             
+            print("[kiosk main] Initializing logging...", flush=True)
+            self.logger = init_logging()
+            print("[kiosk main] Console logging initialized.", flush=True)
+
+
             self.root = tk.Tk()
+            
             
             # Initialize pygame mixer globally for admin app (if not done elsewhere)
             try:
