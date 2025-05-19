@@ -30,6 +30,10 @@ HEARTBEAT_TIMEOUT_SECONDS = 20
 # --- New Watchdog Command Configuration ---
 WATCHDOG_CMD_PORT = 12347
 
+# --- Debug Mode Configuration ---
+DEBUG_MODE = "--debug" in sys.argv
+DEBUG_CRASH_TIME = 10 # Seconds before crash after successful launch
+
 # --- Globals ---
 kiosk_process = None
 shutdown_requested = False
@@ -43,6 +47,7 @@ lock = threading.Lock()
 spinner_chars = ["⠁", "⠂", "⠄", "⡀", "⡈", "⡐", "⡠", "⣀", "⣁", "⣂", "⣄", "⣌", "⣔", "⣤", "⣥", "⣦", "⣮", "⣶", "⣷", "⣿", "⡿", "⠿", "⢟", "⠟", "⡛", "⠛", "⠫", "⢋", "⠋", "⠍", "⡉", "⠉", "⠑", "⠡", "⢁"]
 spinner_idx = 0
 last_heartbeat_time = 0.0
+is_crash_restart = False  # Track if this is a crash restart
 
 # --- Globals for Watchdog Commands ---
 remote_restart_requested = False
@@ -220,12 +225,13 @@ def listen_for_watchdog_commands():
 def main():
     global kiosk_process, last_output_time, launch_successful
     global reader_thread, restart_count, shutdown_requested, spinner_idx
-    global remote_restart_requested, watchdog_cmd_listener_thread
+    global remote_restart_requested, watchdog_cmd_listener_thread, is_crash_restart
 
     print_watchdog("Starting Kiosk Watchdog...")
+    if DEBUG_MODE:
+        print_watchdog("DEBUG MODE ENABLED - Will simulate crash after successful launch")
     print_watchdog(f"Monitoring script: {KIOSK_SCRIPT}")
     print_watchdog(f"Max auto-restarts: {'Unlimited' if MAX_RESTARTS == -1 else MAX_RESTARTS}")
-
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     kiosk_script_path = os.path.join(script_dir, KIOSK_SCRIPT)
@@ -248,6 +254,7 @@ def main():
             restart_count = 0 
             with lock: remote_restart_requested = False
             launch_successful = False 
+            is_crash_restart = False  # Reset crash restart flag for remote restart
 
         # Main condition for attempting a launch (either unlimited or within limits)
         if MAX_RESTARTS == -1 or restart_count <= MAX_RESTARTS:
@@ -261,7 +268,11 @@ def main():
             clear_spinner_line()
             print_watchdog(f"Attempting Kiosk Launch (Attempt {restart_count + 1}/{MAX_RESTARTS + 1 if MAX_RESTARTS != -1 else 'Unlimited'})")
             
+            # Add --restore-state argument if this is a crash restart
             cmd = [PYTHON_EXECUTABLE, "-u", kiosk_script_path]
+            if is_crash_restart:
+                cmd.append("--restore-state")
+                print_watchdog("Adding --restore-state argument for crash recovery")
             
             try:
                 # Reset launch_successful for this specific attempt before Popen
@@ -302,6 +313,15 @@ def main():
                             clear_spinner_line()
                             print_watchdog("Kiosk launch successful. Monitoring with heartbeat...")
                             main.announced_heartbeat_monitoring = True
+                            
+                            # If in debug mode, simulate a crash after successful launch
+                            if DEBUG_MODE and not is_crash_restart:
+                                print_watchdog("DEBUG MODE: Simulating crash after successful launch...")
+                                time.sleep(DEBUG_CRASH_TIME)  # Give it a moment to stabilize
+                                if kiosk_process and kiosk_process.poll() is None:
+                                    terminate_kiosk_process()
+                                is_crash_restart = True
+                                break
                         
                         time_since_last_heartbeat = 0
                         with lock: time_since_last_heartbeat = time.time() - last_heartbeat_time
@@ -311,6 +331,7 @@ def main():
                             print_watchdog(f"HEARTBEAT TIMEOUT: Kiosk unresponsive for over {HEARTBEAT_TIMEOUT_SECONDS}s.")
                             if kiosk_process and kiosk_process.poll() is None: terminate_kiosk_process()
                             kiosk_run_failed_after_launch = True 
+                            is_crash_restart = True  # Set crash restart flag for heartbeat timeout
                             break
                         update_spinner() # Show passive monitoring spinner
 

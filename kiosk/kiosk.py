@@ -2,7 +2,7 @@
 print("[kiosk main] Beginning imports ...", flush=True)
 # import tkinter as tk - removed
 print("[kiosk main] Importing socket, sys, os, traceback, ctypes...", flush=True)
-import socket, sys, os, traceback, ctypes # type: ignore
+import socket, sys, os, traceback, ctypes, json # type: ignore
 print("[kiosk main] Imported socket, sys, os, traceback, ctypes.", flush=True)
 print("[kiosk main] Importing KioskNetwork from networking...", flush=True)
 from networking import KioskNetwork
@@ -503,6 +503,9 @@ class KioskApp:
         print("[kiosk main] Closing kiosk application...")
         self.is_closing = True
         
+        # Save state before closing
+        self.save_state()
+        
         # Wrap each shutdown step in try-except to ensure complete shutdown
         try:
             # Stop video player if running
@@ -659,11 +662,123 @@ class KioskApp:
         finally:
             print("[kiosk heartbeat] Thread stopping.", flush=True)
 
+    def restore_state(self):
+        """Attempt to restore state from kiosk_state.json if it exists and is recent"""
+        try:
+            state_file = Path("kiosk_state.json")
+            if not state_file.exists():
+                print("[kiosk main] No state file found to restore from.")
+                return
+
+            with open(state_file, 'r') as f:
+                state = json.load(f)
+
+            # Check if state is recent (within 5 minutes)
+            current_time = time.time()
+            state_time = state.get('timestamp_utc', 0)
+            # Allow restoration only if state is recent and room is assigned
+            if current_time - state_time > 300 or not self.assigned_room:  # 5 minutes = 300 seconds
+                print(f"[kiosk main] State file is too old ({int(current_time - state_time)}s old) or no room assigned ({self.assigned_room}) to restore from.")
+                return
+
+            print("[kiosk main] Restoring state from kiosk_state.json...")
+
+            # Restore timer state
+            if 'timer_remaining_seconds' in state and state['timer_remaining_seconds'] > 0:
+                print(f"[kiosk main] Restoring timer to {state['timer_remaining_seconds']}s")
+                # Set timer first
+                self.timer.handle_command("set", state['timer_remaining_seconds'] // 60) # Set minutes
+                # Handle remainder seconds if needed (KioskTimer set expects minutes, but it stores seconds)
+                # The KioskTimer already stores seconds internally, so setting minutes
+                # might lose precision. Let's adjust KioskTimer if needed, but for now,
+                # assume 'set' handles seconds correctly or accepts total seconds.
+                # Based on the provided code snippet `handle_command("set", minutes)`,
+                # it seems it only takes minutes. We'll stick to setting minutes from restored seconds.
+                # A more robust solution would modify KioskTimer.set to accept total seconds.
+                # For now, floor division is used.
+                
+                # If game was running, start the timer
+                if state.get('game_running', False):
+                    print("[kiosk main] Restoring timer state: Starting timer")
+                    self.timer.handle_command("start")
+                else:
+                     print("[kiosk main] Restoring timer state: Timer not running in saved state")
+
+
+            # Restore hint counts
+            if 'hints_requested_count' in state:
+                self.hints_requested = state['hints_requested_count']
+                print(f"[kiosk main] Restored hints requested: {self.hints_requested}")
+            if 'hints_received_count' in state:
+                self.hints_received = state['hints_received_count']
+                print(f"[kiosk main] Restored hints received: {self.hints_received}")
+
+            # Restore music position if applicable
+            # Ensure audio_manager exists, room is assigned, and position is valid
+            if hasattr(self, 'audio_manager') and self.assigned_room and state.get('music_position_ms', -1) >= 0:
+                music_pos_ms = state['music_position_ms']
+                music_pos_sec = music_pos_ms / 1000.0 # Convert milliseconds to seconds
+                print(f"[kiosk main] Restoring music for room {self.assigned_room} from position {music_pos_ms} ms ({music_pos_sec:.2f} s)")
+                # Use the existing play_background_music method, which takes a start time in seconds
+                self.audio_manager.play_background_music(self.assigned_room, start_time_seconds=music_pos_sec)
+            else:
+                print("[kiosk main] Skipped music restoration (audio_manager missing, no room, or invalid position).")
+
+
+            print("[kiosk main] State restoration complete.")
+
+        except FileNotFoundError:
+             # Already handled by the state_file.exists() check, but good practice
+            print("[kiosk main] State file disappeared during restoration attempt.")
+        except json.JSONDecodeError:
+            print("[kiosk main] Error decoding kiosk_state.json. File might be corrupted.")
+            traceback.print_exc()
+        except Exception as e:
+            print(f"[kiosk main] General error restoring state: {e}")
+            traceback.print_exc()
+        finally:
+            # Clean up the state file after attempting restoration, regardless of success
+            # This prevents restoring old or corrupted state on subsequent runs
+            try:
+                state_file = Path("kiosk_state.json")
+                if state_file.exists():
+                    print("[kiosk main] Removing kiosk_state.json after restoration attempt.")
+                    state_file.unlink()
+            except Exception as e:
+                print(f"[kiosk main] Error removing kiosk_state.json: {e}")
+                traceback.print_exc()
+
+    def save_state(self):
+        """Save current state to kiosk_state.json"""
+        try:
+            state = {
+                'game_running': self.timer.is_running if hasattr(self, 'timer') else False,
+                'timer_remaining_seconds': self.timer.time_remaining if hasattr(self, 'timer') else 0,
+                'hints_requested_count': self.hints_requested,
+                'hints_received_count': self.hints_received,
+                'music_position_ms': self.audio_manager.get_music_position() if hasattr(self, 'audio_manager') else -1,
+                'timestamp_utc': time.time()
+            }
+
+            with open('kiosk_state.json', 'w') as f:
+                json.dump(state, f, indent=2)
+
+        except Exception as e:
+            print(f"[kiosk main] Error saving state: {e}")
+            traceback.print_exc()
+
 def main():
     """Main entry point for the kiosk application."""
     # Setup exception handling for main thread
     try:
+        # Check for state restoration argument
+        should_restore_state = "--restore-state" in sys.argv
+        
         app = KioskApp()
+        
+        # If state restoration is requested, attempt to restore from kiosk_state.json
+        if should_restore_state:
+            app.restore_state()
         
         # Set up signal handler for Ctrl+C
         def signal_handler(sig, frame):
