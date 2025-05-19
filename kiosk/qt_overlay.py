@@ -71,7 +71,6 @@ print("[qt overlay] Ending imports ...", flush=True)
 
 class OverlayBridge(QObject):
     """Receives invocations from other threads and calls Overlay class methods."""
-
     def __init__(self):
         super().__init__()
         self._timers = []  # Keep track of active timers
@@ -204,6 +203,7 @@ def convert_cv_qt(cv_img):
         return QPixmap() # Return empty pixmap on error
 
 class Overlay:
+    TIMER_DEBUG = False
     _app = None
     _window = None
     _parent_hwnd = None
@@ -1072,7 +1072,7 @@ class Overlay:
     @classmethod
     def hide_hint_text(cls):
         """Hide the hint text overlay and clear its content."""
-        #print("[qt overlay.hide_hint_text] Called")
+        if(cls.TIMER_DEBUG): ("[qt overlay.hide_hint_text] Called")
         if hasattr(cls, '_hint_text') and cls._hint_text and cls._hint_text['window']:
             # Hide the window
             try:
@@ -1084,7 +1084,7 @@ class Overlay:
             if 'text_item' in cls._hint_text and cls._hint_text['text_item']:
                 try:
                     cls._hint_text['text_item'].setPlainText("")
-                    #print("[qt overlay] Hint text content cleared")
+                    if(cls.TIMER_DEBUG): ("[qt overlay] Hint text content cleared")
                 except Exception as e:
                     print(f"[qt overlay] Error clearing hint text: {e}")
         else:
@@ -1297,9 +1297,9 @@ class Overlay:
     @classmethod
     def update_timer_display(cls, time_str):
         thread_id = threading.get_ident()
-        print(f"[qt_overlay][{thread_id}] update_timer_display ENTERED with time: {time_str}")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] update_timer_display ENTERED with time: {time_str}")
         """Update timer display, but NOT if game is lost."""
-        #print(f"\n[DEBUG OVERLAY] update_timer_display called with time: {time_str}")
+        if(cls.TIMER_DEBUG): (f"\n[DEBUG OVERLAY] update_timer_display called with time: {time_str}")
         
         if not hasattr(cls, '_timer') or not cls._timer.text_item:
             print(f"[qt overlay][{thread_id}] Timer or text_item not initialized, returning.")
@@ -1317,7 +1317,7 @@ class Overlay:
              print(f"[qt overlay][{thread_id}] Warning: Cannot check game lost/won status (kiosk_app or timer missing).")
             
         # Initialize timer thread if needed
-        print(f"[qt_overlay][{thread_id}] Checking if _timer_thread is None...")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Checking if _timer_thread is None...")
         if cls._timer_thread is None:
             print(f"[qt_overlay][{thread_id}] _timer_thread IS None. Creating TimerThread...")
             cls._timer_thread = TimerThread() # Creates TimerThread from qt_classes
@@ -1335,16 +1335,17 @@ class Overlay:
                  # cls._timer_thread = None 
                  return # Avoid proceeding if connection failed
         else:
-             print(f"[qt_overlay][{thread_id}] _timer_thread already exists.")
+             if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _timer_thread already exists.")
+             pass
         
         # Send update through thread
-        print(f"[qt_overlay][{thread_id}] Calling _timer_thread.update_display('{time_str}')...")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Calling _timer_thread.update_display('{time_str}')...")
         if cls._timer_thread:
             cls._timer_thread.update_display(time_str)
-            print(f"[qt_overlay][{thread_id}] _timer_thread.update_display called.")
+            if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _timer_thread.update_display called.")
         else:
             print(f"[qt_overlay][{thread_id}] !!! _timer_thread is None AFTER check/creation! Cannot call update_display.")
-        print(f"[qt_overlay][{thread_id}] update_timer_display EXITED.")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] update_timer_display EXITED.")
 
     @classmethod
     def hide_timer(cls):
@@ -1357,32 +1358,32 @@ class Overlay:
     @classmethod
     def _actual_timer_update(cls, time_str):
         thread_id = threading.get_ident()
-        print(f"[qt_overlay][{thread_id}] _actual_timer_update ENTERED with time: {time_str}")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _actual_timer_update ENTERED with time: {time_str}")
         """Actual update method that runs in the main thread"""
-        #print(f"\n[DEBUG OVERLAY] _actual_timer_update called with time: {time_str}")
+        if(cls.TIMER_DEBUG): (f"\n[DEBUG OVERLAY] _actual_timer_update called with time: {time_str}")
         
-        print(f"[qt_overlay][{thread_id}] Checking _timer and _timer.text_item existence...")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Checking _timer and _timer.text_item existence...")
         if hasattr(cls, '_timer') and cls._timer.text_item:
-            print(f"[qt_overlay][{thread_id}] Accessing _timer.text_item.setHtml...")
-            #print("[DEBUG OVERLAY] Updating timer text item")
+            if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Accessing _timer.text_item.setHtml...")
+            if(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Updating timer text item")
             try:
                 cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
-                print(f"[qt_overlay][{thread_id}] setHtml successful. Setting position...")
+                if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] setHtml successful. Setting position...")
                 cls._timer.text_item.setPos(350, 145)
-                print(f"[qt_overlay][{thread_id}] Position set. Checking _timer_window...")
+                if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Position set. Checking _timer_window...")
                 if cls._timer_window:
-                    #print("[DEBUG OVERLAY] Showing and raising timer window")
-                    print(f"[qt_overlay][{thread_id}] Showing/raising _timer_window...")
+                    if(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Showing and raising timer window")
+                    if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Showing/raising _timer_window...")
                     cls._timer_window.show()
                     cls._timer_window.raise_()
-                    print(f"[qt_overlay][{thread_id}] _timer_window shown/raised.")
+                    if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _timer_window shown/raised.")
             except Exception as e:
                 print(f"[qt_overlay][{thread_id}] !!! EXCEPTION during setHtml/setPos/show/raise: {e}")
                 traceback.print_exc()
         else:
             print(f"[qt_overlay][{thread_id}] Timer or text_item not available for update.")
-            #pass#print("[DEBUG OVERLAY] Timer or text_item not available for update")
-        print(f"[qt_overlay][{thread_id}] _actual_timer_update EXITED.")
+            #passif(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Timer or text_item not available for update")
+        if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _actual_timer_update EXITED.")
 
     @classmethod
     def load_timer_background(cls, room_number):
@@ -1516,11 +1517,11 @@ class Overlay:
             cls._button['bg_image_item'].setTransformOriginPoint(button_pixmap.width() / 2, button_pixmap.height() / 2)
 
             # Debug info
-            #print(f"[qt overlay]Image Debug:")
-            #print(f"[qt overlay]Button image format: {qimage.format()}")
-            #print(f"[qt overlay]Button image size: {qimage.size()}")
-            #print(f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
-            #print(f"[qt overlay]Shadow pixmap size: {shadow_pixmap.size()}")
+            if(cls.TIMER_DEBUG): (f"[qt overlay]Image Debug:")
+            if(cls.TIMER_DEBUG): (f"[qt overlay]Button image format: {qimage.format()}")
+            if(cls.TIMER_DEBUG): (f"[qt overlay]Button image size: {qimage.size()}")
+            if(cls.TIMER_DEBUG): (f"[qt overlay]Button pixmap size: {button_pixmap.size()}")
+            if(cls.TIMER_DEBUG): (f"[qt overlay]Shadow pixmap size: {shadow_pixmap.size()}")
 
             return True
 
@@ -1693,13 +1694,13 @@ class Overlay:
             if ui.current_hint:  # First, check for the existence of current_hint
                 hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
                 if hint_text is not None and hint_text.strip() != "":
-                    #print("[qt_overlay] Restoring hint text from within _actual_help_button_update")
+                    if(cls.TIMER_DEBUG): ("[qt_overlay] Restoring hint text from within _actual_help_button_update")
                     cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
                 else:
-                    #print("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
+                    if(cls.TIMER_DEBUG): ("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
                     pass
             else:
-                #print("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
+                if(cls.TIMER_DEBUG): ("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
                 Overlay.hide_hint_text()
         except Exception as e:
            print(f"[qt overlay]Exception during help button update: {e}")

@@ -204,7 +204,7 @@ class KioskTimer:
             else:
                 # Conditions met to show/update the timer
                 time_str = self.get_time_str()
-                print(f"[kiosk timer] Updating timer display to {time_str}", flush=True)
+                #print(f"[kiosk timer] Updating timer display to {time_str}", flush=True)
                 Overlay.update_timer_display(time_str)
 
         except Exception as e:

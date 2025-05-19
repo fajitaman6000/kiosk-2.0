@@ -19,8 +19,6 @@ whole auto reset system feels messy/unclear
 
 sync system makes it unfriendly for anyone else to create hints currently
 
-ack system may not be in play at all, play audio hints doesn't seem to always be acknowledged or running when requested
-
 mqtt makes separate connections for ma and casino?
 
 
