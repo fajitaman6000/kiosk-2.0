@@ -46,6 +46,9 @@ class AdminInterfaceBuilder:
         # Start timer update loop using app's root
         self.app.root.after(1000, self.update_timer_display)
 
+    # Add this list to define the specific order for the 7 rooms
+    ROOM_ORDER_NUMERICAL = [1, 2, 3, 5, 4, 6, 7]
+
     ROOM_COLORS = {
         4: "#006400",  # Zombie - dark green
         2: "#FF1493",  # Morning After - dark pink 
@@ -1080,10 +1083,10 @@ class AdminInterfaceBuilder:
                 self.stats_frame.configure(text="No Room Selected")
                 for widget in self.stats_frame.winfo_children():
                     widget.destroy()
-                self.stats_elements = {key: None for key in self.stats_elements}
+                self.stats_elements = {}
             
-            # After removing a kiosk, update the "No kiosks" message visibility
-            self.update_no_kiosks_message()
+            # After removing a kiosk, repack the remaining frames to maintain order
+            self.repack_kiosk_frames()
 
     def update_stats_timer(self):
         if self.selected_kiosk and self.selected_kiosk in self.app.kiosk_tracker.kiosk_stats:
@@ -1091,16 +1094,26 @@ class AdminInterfaceBuilder:
         self.app.root.after(1000, self.update_stats_timer)
 
     def add_kiosk_to_ui(self, computer_name):
-        """Add or update a kiosk in the UI with room-specific colors"""
+        """Add or update a kiosk in the UI"""
         current_time = time.time()
 
+        # --- MODIFIED LOGIC START ---
+        # Check if the kiosk is already in our UI list
         if computer_name in self.connected_kiosks:
+            # If it exists, just update the last seen time.
             self.connected_kiosks[computer_name]['last_seen'] = current_time
-            return
+            # Update its display details if its assignment was just updated in NBH
+            # (This call is already scheduled in NBH if assignment changed)
+            # if self.selected_kiosk == computer_name:
+            #    self.update_stats_display(computer_name) # Update stats panel if it's the selected one
+            return # Exit early, no need to create a new frame or repack
+
+        # If we reach here, the kiosk is new. Proceed to create its UI elements.
+        print(f"[interface builder] Adding new kiosk UI for {computer_name}")
 
         frame = tk.Frame(self.kiosk_frame)
         frame.configure(relief='flat', borderwidth=0, highlightthickness=0)
-        frame.pack(fill='x', pady=2)
+        # No initial pack here. Packing order is controlled by repack_kiosk_frames.
 
         # Load kiosk icon
         try:
@@ -1111,7 +1124,7 @@ class AdminInterfaceBuilder:
             print(f"[interface builder]Error loading kiosk icon: {e}")
             kiosk_icon = None
 
-        # Create icon label but don't pack it yet
+        # Create icon label but don't pack it initially
         icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None, cursor="hand2")
         icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
 
@@ -1128,72 +1141,143 @@ class AdminInterfaceBuilder:
                     self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
                     kiosk_data['icon_blink_after_id'] = None
 
+                # Repack without including the icon
                 self._repack_kiosk_elements(cn, include_icon=False)
 
         icon_label.bind('<Button-1>', hide_icon)
 
-        icon_label.pack(side='left', padx=(0,5))
-        icon_label.pack_forget()
+        # icon_label.pack(side='left', padx=(0,5)) # Do not pack here, _repack_kiosk_elements handles it based on state
+        # icon_label.pack_forget() # Ensure it's not packed initially
 
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
             room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
             room_name = self.app.rooms[room_num]
             room_color = self.ROOM_COLORS.get(room_num, "black")
 
+            # Use the room name for the label if assigned
             name_label = tk.Label(frame,
                 text=room_name,
                 font=('Arial', 12, 'bold'),
                 fg=room_color,
-                width=15,
+                width=15, # Fixed width helps alignment
                 anchor='center')
 
+            # Create the dropdown for room assignment
             room_var = tk.StringVar()
             dropdown = ttk.Combobox(frame, textvariable=room_var,
                 values=list(self.app.rooms.values()), state='readonly')
-            dropdown.pack(side='left', padx=5, anchor='e')
-            name_label.pack(side='left', padx=(30,3))
+            # dropdown.pack(side='left', padx=5, anchor='e') # Do not pack here
+            # name_label.pack(side='left', padx=(30,3)) # Do not pack here
         else:
+            # Use "Unassigned" and the computer name if no room is assigned
             room_var = tk.StringVar()
             dropdown = ttk.Combobox(frame, textvariable=room_var,
                 values=list(self.app.rooms.values()), state='readonly')
-            dropdown.pack(side='left', padx=5, anchor='e')
+            # dropdown.pack(side='left', padx=5, anchor='e') # Do not pack here
 
             name_label = tk.Label(frame,
-                text="Unassigned",
+                text=computer_name, # Display computer name for unassigned
                 font=('Arial', 12, 'bold'),
-                width=15,
+                width=15, # Fixed width helps alignment
                 anchor='center')
-            name_label.pack(side='left', padx=5)
+            # name_label.pack(side='left', padx=5) # Do not pack here
 
+
+        # Bind selection handler for the dropdown
+        def on_room_select(event):
+            # Check if event is real (sometimes triggered falsely) and selection is not empty
+            if not room_var.get() or "Auto-reset:" in room_var.get():
+                # print(f"[interface builder][on_room_select] Ignoring event for {computer_name}: value '{room_var.get()}'")
+                dropdown.set('') # Clear the dropdown display after interaction
+                return
+
+            selected_room_name = room_var.get()
+            # Find the room number corresponding to the selected name
+            selected_room_num = None
+            for num, name in self.app.rooms.items():
+                if name == selected_room_name:
+                    selected_room_num = num
+                    break
+
+            if selected_room_num is None:
+                print(f"[interface builder][on_room_select] Selected room name '{selected_room_name}' not found in app.rooms mapping for {computer_name}.")
+                dropdown.set('') # Clear the dropdown display
+                return
+
+            # Only re-assign if the selected room is different from the current one
+            current_assignment = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+
+            if current_assignment != selected_room_num:
+                print(f"[interface builder][on_room_select] Changing room for {computer_name} from {current_assignment} to {selected_room_num}")
+                # Perform the assignment in the kiosk tracker
+                self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room_num)
+
+                # Update the label text and color immediately to reflect the new assignment
+                room_name = self.app.rooms.get(selected_room_num, "Unknown Room") # Use get for safety
+                room_color = self.ROOM_COLORS.get(selected_room_num, "black")
+                name_label.config(
+                    text=room_name,
+                    fg=room_color
+                )
+
+                # After assigning, repack all frames to put this kiosk in its new sorted position
+                self.repack_kiosk_frames()
+
+                # If the newly assigned kiosk is the currently selected one, update the stats panel header
+                if computer_name == self.selected_kiosk:
+                    self.stats_frame.configure(
+                        text=f"{room_name} ({self.selected_kiosk})",
+                        font=('Arial', 7, 'bold'),
+                        fg=room_color
+                    )
+                    # Also update audio hints/image props based on the new room
+                    room_dirs = { 6: "atlantis", 1: "casino", 5: "haunted", 2: "ma", 7: "time", 3: "wizard", 4: "zombie" }
+                    if selected_room_num in room_dirs:
+                        room_dir = room_dirs[selected_room_num]
+                        if hasattr(self, 'audio_hints'):
+                            self.audio_hints.update_room(room_dir)
+                        self.update_image_props() # Update image props when room changes
+                    # And potentially refresh the stats display if it depends on room number
+                    self.update_stats_display(self.selected_kiosk)
+
+            # Clear the dropdown display value *after* processing, regardless of whether assignment changed
+            # This prevents the dropdown from showing the selected value persistently
+            # This might require a slight delay if not working immediately after the event
+            # Use after(0, ...) to run it right after the current event processing finishes
+            self.app.root.after(0, lambda: dropdown.set(''))
+
+
+        dropdown.bind('<<ComboboxSelected>>', on_room_select)
+
+        # Add click handler to select the kiosk
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
 
         frame.bind('<Button-1>', lambda e: click_handler())
-        name_label.bind('<Button-1>', lambda e: click_handler())
+        name_label.bind('<Button-1>', lambda e: click_handler()) # Also bind label for larger clickable area
 
+        # Store references to widgets in the connected_kiosks dictionary
         if computer_name not in self.connected_kiosks:
             self.connected_kiosks[computer_name] = {}
-        self.connected_kiosks[computer_name]['dropdown'] = dropdown
 
-        def on_room_select(event):
-            if not room_var.get():
-                return
-            if "Auto-reset:" in room_var.get():
-                return
+        # Update the dictionary with the created widgets
+        self.connected_kiosks[computer_name].update({
+            'frame': frame,
+            'dropdown': dropdown,
+            'name_label': name_label,
+            'last_seen': current_time,
+            'icon_label': icon_label,
+            'icon_blink_after_id': None, # Initialize blink ID
+            'help_label': tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red'), # Create help label
+            'actions_menubutton': None, # Placeholder for menubutton, created below
+            'timer_label': tk.Label(frame, text="--:--", font=('Arial', 10, 'bold'), width=6, anchor='center') # Create timer label
+        })
 
-            selected_room = next(num for num, name in self.app.rooms.items()
-                            if name == room_var.get())
-            self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room)
-            dropdown.set('')
-            name_label.config(
-                text=self.app.rooms[selected_room],
-                fg=self.ROOM_COLORS.get(selected_room, "black")
-            )
+        # Get references *after* they've been created and added to the dict
+        help_label = self.connected_kiosks[computer_name]['help_label']
+        actions_menubutton = self.connected_kiosks[computer_name]['actions_menubutton']
+        timer_label = self.connected_kiosks[computer_name]['timer_label']
 
-        dropdown.bind('<<ComboboxSelected>>', on_room_select)
-
-        help_label = tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red')
-        help_label.pack(side='left', padx=5)
 
         # --- START OF MODIFIED MENUBUTTON CREATION ---
         # Use default style (no 'style' argument). Let ttk draw the default indicator.
@@ -1209,41 +1293,37 @@ class AdminInterfaceBuilder:
         # populate_kiosk_actions_menu will now create items with direct commands
         actions_menubutton.menu.config(postcommand=lambda cn=computer_name: self.populate_kiosk_actions_menu(cn))
 
-        # Pack with minimal padding on the right
-        actions_menubutton.pack(side='right', padx=(5, 5), pady=0, anchor='e')
+        # Update the dictionary with the created menubutton reference
+        self.connected_kiosks[computer_name]['actions_menubutton'] = actions_menubutton
         # --- END OF MODIFIED MENUBUTTON CREATION ---
 
 
-        timer_label = tk.Label(frame,
-            text="--:--",
-            font=('Arial', 10, 'bold'),
-            width=6,
-            anchor='center')
-        timer_label.pack(side='left', padx=5)
+        # Pack widgets into the kiosk frame IN ORDER (will be done by _repack_kiosk_elements)
+        # This is handled by the repack_kiosk_frames call below
 
-        self.connected_kiosks[computer_name].update({ # Use update to add to existing dict if any
-            'frame': frame,
-            'help_label': help_label,
-            'dropdown': dropdown, # Ensure dropdown reference is kept
-            'actions_menubutton': actions_menubutton, # Keep menubutton reference
-            # REMOVE confirmation state keys: 'pending_action', 'pending_action_timer_id'
-            'last_seen': current_time,
-            'name_label': name_label,
-            'timer_label': timer_label,
-            'icon_label': icon_label,
-            'icon_blink_after_id': None
-        })
-
-        if computer_name in self.app.kiosk_tracker.kiosk_stats:
-            stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-            self.mark_help_requested(computer_name)
-        else:
-            print(f"[interface builder][AdminInterface] add_kiosk_to_ui: No kiosk stats from {computer_name}")
-
-        if computer_name == self.selected_kiosk:
+        # Ensure the stats panel is set up if this is the very first kiosk
+        if self.selected_kiosk is None:
             self.select_kiosk(computer_name)
+        elif computer_name == self.selected_kiosk:
+            # If adding the currently selected kiosk (e.g., after a restart/reconnect)
+            # ensure the stats display is refreshed.
+            self.update_stats_display(computer_name)
 
-        self.update_no_kiosks_message()
+
+        # --- IMPORTANT: Call repack_kiosk_frames AFTER a new kiosk frame is successfully created and widgets are referenced ---
+        # This ensures the new frame is added to the list and sorted correctly.
+        self.repack_kiosk_frames()
+
+        # The _repack_kiosk_elements method is responsible for actually packing the widgets
+        # inside this frame in the correct order (icon, dropdown, name, help, timer, actions)
+        # based on the kiosk's state (e.g., if icon should be shown).
+        # A minimal initial repack might be needed to get the elements into the frame the first time.
+        # Alternatively, _repack_kiosk_elements can be called directly here with include_icon=False initially.
+        # Let's call the internal repacker for the newly added frame immediately to pack its contents
+        self._repack_kiosk_elements(computer_name, include_icon=False) # Pack content without icon initially
+
+        # The main repack_kiosk_frames call above handles the ordering of the *frames* themselves.
+        # The _repack_kiosk_elements call here handles the ordering of widgets *within* the new frame.
 
     def populate_kiosk_actions_menu(self, computer_name):
         """Dynamically populates the actions menu for the given kiosk with direct commands."""
@@ -2208,6 +2288,37 @@ class AdminInterfaceBuilder:
             if self.no_kiosks_label.winfo_manager():
                 self.no_kiosks_label.pack_forget()
 
+    def _get_kiosk_sort_key(self, computer_name):
+        """Returns a tuple for sorting kiosks: (priority, secondary_key)"""
+        
+        # Use a high value for unknown/unassigned rooms to place them later
+        # The number of specific rooms + 1 for unassigned + 1 for truly unknown/other
+        default_priority = len(self.ROOM_ORDER_NUMERICAL) + 2 
+        
+        room_num = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+        
+        # Default secondary key is the computer name (alphabetical sort within priority group)
+        secondary_key = computer_name.lower() # Use lower for case-insensitive sorting
+
+        if room_num in self.ROOM_ORDER_NUMERICAL:
+            # Kiosk is assigned to one of the 7 specific rooms
+            try:
+                # Priority is the index in the ordered list (lower index = higher priority)
+                priority = self.ROOM_ORDER_NUMERICAL.index(room_num)
+                return (priority, secondary_key)
+            except ValueError:
+                # Should not happen if room_num is in the list, but good practice
+                print(f"[interface builder] Error: Room number {room_num} found in assignments but not in ROOM_ORDER_NUMERICAL list.")
+                return (default_priority, secondary_key) # Treat as unknown/other
+        elif room_num is None:
+            # Kiosk is unassigned
+            unassigned_priority = len(self.ROOM_ORDER_NUMERICAL) # Place after the 7 specific rooms
+            return (unassigned_priority, secondary_key)
+        else:
+            # Kiosk is assigned to a room number not in the specific list (should be rare/never)
+            print(f"[interface builder] Kiosk {computer_name} assigned to unhandled room number: {room_num}")
+            return (default_priority, secondary_key) # Place after unassigned
+
     # Add this new method to update all kiosk hint statuses
     def update_all_kiosk_hint_statuses(self):
         """Update hint request indicators for all connected kiosks"""
@@ -2584,3 +2695,43 @@ class AdminInterfaceBuilder:
             print(f"[InterfaceBuilder] Double-click: is_current_image_valid is False. Image preview/selection likely failed or window closed. Attach aborted.")
             # No additional error message needed here, as _on_browser_thumbnail_select
             # already provided feedback if it failed to load the image.
+
+    def repack_kiosk_frames(self):
+        """Forgets all kiosk frames and repacks them in the desired order."""
+        # Get a list of computer names currently in the connected kiosks dictionary
+        computer_names = list(self.connected_kiosks.keys())
+        
+        # Forget (hide) all currently packed kiosk frames
+        # This is necessary to re-pack them in a different order
+        for cn in computer_names:
+            frame = self.connected_kiosks[cn].get('frame')
+            if frame and frame.winfo_exists(): # Check if frame exists before trying to forget
+                try:
+                    if frame.winfo_manager(): # Check if it's currently managed by pack
+                         frame.pack_forget()
+                except tk.TclError:
+                     # Handle cases where the widget might be destroyed during the loop
+                     print(f"[interface builder] Error packing/forgetting frame for {cn}. It might have been destroyed.")
+                     # If the frame is gone, remove it from connected_kiosks if it's still there
+                     if cn in self.connected_kiosks:
+                         del self.connected_kiosks[cn]
+        
+        # Re-get keys after potentially removing destroyed ones
+        computer_names = list(self.connected_kiosks.keys())
+
+        # Sort the list of computer names using the custom sort key
+        # This determines the order in which they will be repacked
+        sorted_computer_names = sorted(computer_names, key=self._get_kiosk_sort_key)
+        
+        if self.select_kiosk_debug:
+            print(f"[interface builder] Repacking kiosks in order: {sorted_computer_names}")
+
+        # Pack the frames back into the kiosk_frame in the new sorted order
+        for cn in sorted_computer_names:
+            frame = self.connected_kiosks[cn].get('frame')
+            if frame and frame.winfo_exists(): # Double-check existence before packing
+                 # Use the same pack arguments as before
+                 frame.pack(fill='x', pady=2)
+
+        # Ensure the "No kiosks" message is updated after repacking
+        self.update_no_kiosks_message()

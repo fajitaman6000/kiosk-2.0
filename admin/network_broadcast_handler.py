@@ -203,7 +203,7 @@ class NetworkBroadcastHandler:
                         ack_handled = False
                         # Iterate through ALL pending acknowledgments to find the matching hash
                         for key, data in list(self.pending_acknowledgments.items()):
-                             # Check if the received hash is in the set of hashes for this command
+                            # Check if the received hash is in the set of hashes for this command
                             if received_hash in data['hashes']:
                                 # print(f"[network broadcast handler] Acknowledgment received for ReqHash: {received_hash} (CmdID: {data['message'].get('command_id')}, Type: {key[1]}, Kiosk: {key[0]})")
                                 data['hashes'].remove(received_hash) # Remove the specific hash that was acknowledged
@@ -232,17 +232,48 @@ class NetworkBroadcastHandler:
                             # Log room changes
                             room = msg.get('room')
                             current_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+                            # Only print room change if a previous assignment existed (not initial announce)
                             if room != current_room and current_room is not None:
                                 print(f"[network broadcast handler] Processing room change for {computer_name}, Previous room: {current_room}, New room: {room}")
+                                # Note: Repacking for room changes is handled in AdminInterfaceBuilder.on_room_select
 
                         # Update kiosk tracker and UI
-                        self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
+                        # Add or update the UI element for this kiosk.
+                        # This method in AdminInterfaceBuilder will handle *whether* to create a new frame
+                        # and will trigger repack_kiosk_frames *only* if a new frame is created.
                         self.app.root.after(0, lambda cn=computer_name:
-                            self.app.interface_builder.add_kiosk_to_ui(cn)) # Ensure UI element exists
+                            self.app.interface_builder.add_kiosk_to_ui(cn))
+
+                        # Update specific details like room assignment (if it wasn't a room_assignment message)
+                        # and then update its display within its existing frame.
                         if msg.get('room') is not None:
-                           self.app.kiosk_tracker.kiosk_assignments[computer_name] = msg['room']
-                           if hasattr(self.app.interface_builder, 'update_kiosk_display'):
-                                self.app.interface_builder.update_kiosk_display(computer_name) # Update display details
+                            # Check if assignment changed
+                            current_assigned_room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+                            if msg['room'] != current_assigned_room:
+                                # Update tracker assignment
+                                self.app.kiosk_tracker.kiosk_assignments[computer_name] = msg['room']
+                                # Update UI display within the existing frame
+                                if hasattr(self.app.interface_builder, 'update_kiosk_display'):
+                                        self.app.root.after(0, lambda cn=computer_name:
+                                            self.app.interface_builder.update_kiosk_display(cn))
+                                # Repacking for room change is handled by the dropdown's on_room_select handler
+                                # when the assignment is *set* there. If a kiosk re-announces with a different room
+                                # *after* the admin has manually assigned it, this might become inconsistent.
+                                # A better approach might be to *only* trust room assignments set by the admin UI
+                                # and ignore room announcements if a room is already assigned, *unless*
+                                # the kiosk is announcing 'unassigned' or some error state.
+                                # For now, let's let it update the tracker but rely on the admin UI's assign_kiosk
+                                # to trigger the repack based on intended admin action.
+
+                        # Update stats display for this specific kiosk if it's the currently selected one
+                        if self.app.interface_builder.selected_kiosk == computer_name:
+                            if hasattr(self.app.interface_builder, 'update_stats_display'):
+                                self.app.root.after(0, lambda cn=computer_name:
+                                    self.app.interface_builder.update_stats_display(cn))
+
+                        # --- REMOVED: The call to repack_kiosk_frames is removed here ---
+                        # It's now handled by AdminInterfaceBuilder.add_kiosk_to_ui for new additions,
+                        # and by AdminInterfaceBuilder.on_room_select for room changes initiated by the admin.
 
 
                 # --- Handle Sync Confirmations/Completions/Failures (Sent by Kiosk Downloader) ---
@@ -276,21 +307,21 @@ class NetworkBroadcastHandler:
                             print(f"[network broadcast handler] Setting hint_requested=True in kiosk_stats for {computer_name} upon help_request receipt.")
                             self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = True
                         else:
-                             # Handle case where stats might not exist yet (though unlikely if kiosk is connected)
-                             print(f"[network broadcast handler] Warning: Received help_request for {computer_name} but no entry in kiosk_stats. Initializing.")
-                             # Initialize minimal stats including the hint request
-                             self.app.kiosk_tracker.kiosk_stats[computer_name] = {'hint_requested': True}
-                             # Also trigger the UI to add the kiosk if it wasn't fully there
-                             self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.add_kiosk_to_ui(cn))
+                            # Handle case where stats might not exist yet (though unlikely if kiosk is connected)
+                            print(f"[network broadcast handler] Warning: Received help_request for {computer_name} but no entry in kiosk_stats. Initializing minimal stats.")
+                            # Initialize minimal stats including the hint request
+                            self.app.kiosk_tracker.kiosk_stats[computer_name] = {'hint_requested': True, 'total_hints': 0, 'hints_received': 0, 'timer_running': False, 'timer_time': 2700, 'video_playing': False, 'auto_start': False, 'music_playing': False, 'music_volume_level': 7, 'hint_volume_level': 7}
+
 
                         # We can potentially remove the call to add_help_request if the hint_requested flag is sufficient
-                        self.app.kiosk_tracker.add_help_request(computer_name) # Keep or remove? Let's keep for now, might be used elsewhere.
+                        # Let's keep it for now as it might be used elsewhere for filtering or lists.
+                        self.app.kiosk_tracker.add_help_request(computer_name)
 
-                        def mark_help(): # Closure to capture computer_name
-                            if computer_name in self.app.interface_builder.connected_kiosks:
-                                # This should now reliably read hint_requested = True
-                                self.app.interface_builder.mark_help_requested(computer_name)
-                        self.app.root.after(0, mark_help) # Schedule UI update on main thread
+                        # Schedule UI update for this specific kiosk and the global update check
+                        self.app.root.after(0, lambda cn=computer_name:
+                            self.app.interface_builder.mark_help_requested(cn))
+                        self.app.root.after(0, self.app.interface_builder.update_all_kiosk_hint_statuses)
+
 
                 elif msg_type == 'soundcheck_status':
                     computer_name = msg.get('computer_name')
@@ -310,6 +341,7 @@ class NetworkBroadcastHandler:
                 elif msg_type == 'intro_video_completed':
                     computer_name = msg['computer_name']
                     print(f"[network broadcast handler] Received intro video complete signal from: {computer_name}")
+                    # Pass computer_name to the handler
                     self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.handle_intro_video_complete(cn))
 
                 # --- Handle GM Assistance Acceptance ---
@@ -318,6 +350,7 @@ class NetworkBroadcastHandler:
                     room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name, "Unknown Room")
                     print(f"[network broadcast handler] GM assistance accepted by: {computer_name} (Room {room})")
                     self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.handle_gm_assistance_accepted(cn))
+
 
                 # --- Handle Kiosk Disconnect ---
                 elif msg_type == 'kiosk_disconnect':
@@ -328,9 +361,9 @@ class NetworkBroadcastHandler:
                     # Remove any pending ACKs for this kiosk
                     keys_to_remove = [k for k in self.pending_acknowledgments if k[0] == computer_name]
                     for k in keys_to_remove:
-                         print(f"[network broadcast handler] Clearing pending ACKs for disconnected kiosk {computer_name} (Type: {k[1]})")
-                         del self.pending_acknowledgments[k]
-                    # Update UI
+                        print(f"[network broadcast handler] Clearing pending ACKs for disconnected kiosk {computer_name} (Type: {k[1]})")
+                        del self.pending_acknowledgments[k]
+                    # Update UI - remove_kiosk handles repacking
                     self.app.root.after(0, lambda n=computer_name:
                         self.app.interface_builder.remove_kiosk(n))
                     # Optionally, remove from self.kiosk_ips if desired, or let it timeout/be overwritten

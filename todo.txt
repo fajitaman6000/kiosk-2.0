@@ -613,8 +613,11 @@ mqtt makes separate connections for ma and casino?
 ##############################################################################################################################
 # beta to do
 
-"last known state" held onto by the watchdog
-    long string containing info such as all the stats, contents of a currently viewed hint
+watchdog should remember some info to pass back to the kiosk when relaunching to ensure smooth revival
+    long last-known-state string containing info such as all the stats, contents of a currently viewed hint
+    badly needs to notify gm upon crash
+
+watchdog send errors to admin
 
 auto screenshot every 10 sec when not viewing video
 
@@ -624,19 +627,10 @@ tap to close hint, instead opening image automatically on reception with text be
 
 mirror should be a cousin prop in haunted
 
-restart app and restart computer as watchdog commands
-
-bug reporter for users
-
 film video solutions
 
 ##############################################################################################################################
 # todo
-
-watchdog should remember some info to pass back to the kiosk when relaunching to ensure smooth revival
-    badly needs to notify gm upon crash
-
-set-in-stone ordering of rooms in top list
 
 increase received audio sample volume for soundcheck
 
@@ -644,15 +638,9 @@ times touched screen stat
 
 "switch sides" button for prop control
 
-watchdog send errors to admin
-
 "currently displayed hint"
 "please select nudge frequency"
 auto create folders for hint contents
-
-reboot kiosk application (watchdog command if it listens to message_handler) (or probably listen for such commands as though it were m_h)
-
-rebooter added to kiosk app
 
 make image viewing overlaying everything instead of hiding elements
 
