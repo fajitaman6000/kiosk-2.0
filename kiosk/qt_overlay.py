@@ -273,6 +273,9 @@ class Overlay:
     # Add the _ui_manager class variable to the list of class variables
     _ui_manager = None  # Reference to the UI manager for callbacks
     
+    _current_hint_text_color = "#ffffff"
+    _current_timer_text_color = "#ffffff"
+    
     @classmethod
     def init(cls):
         print("[qt_overlay] Initializing Overlay...", flush=True)
@@ -1045,9 +1048,11 @@ class Overlay:
                 wrapped_text += remaining_text[:cut_point] + "<br>"
                 remaining_text = remaining_text[cut_point:].lstrip()
 
+            # Use theme color for hint text
+            color = cls._current_hint_text_color if hasattr(cls, '_current_hint_text_color') else '#ffffff'
             # Set text with transparent background explicitly
             cls._hint_text['text_item'].setHtml(
-                f'<div style="background-color: transparent; padding: 20px; text-align:center; width:{height-40}px">{wrapped_text}</div>'
+                f'<div style="background-color: transparent; color: {color}; padding: 20px; text-align:center; width:{height-40}px">{wrapped_text}</div>'
             )
 
             cls._hint_text['text_item'].setTransform(QTransform())
@@ -1364,25 +1369,18 @@ class Overlay:
         
         if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Checking _timer and _timer.text_item existence...")
         if hasattr(cls, '_timer') and cls._timer.text_item:
-            if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Accessing _timer.text_item.setHtml...")
-            if(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Updating timer text item")
             try:
-                cls._timer.text_item.setHtml(f'<div>{time_str}</div>')
-                if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] setHtml successful. Setting position...")
+                color = cls._current_timer_text_color if hasattr(cls, '_current_timer_text_color') else '#ffffff'
+                cls._timer.text_item.setHtml(f'<div style="color: {color};">{time_str}</div>')
                 cls._timer.text_item.setPos(350, 145)
-                if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Position set. Checking _timer_window...")
                 if cls._timer_window:
-                    if(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Showing and raising timer window")
-                    if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] Showing/raising _timer_window...")
                     cls._timer_window.show()
                     cls._timer_window.raise_()
-                    if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _timer_window shown/raised.")
             except Exception as e:
                 print(f"[qt_overlay][{thread_id}] !!! EXCEPTION during setHtml/setPos/show/raise: {e}")
                 traceback.print_exc()
         else:
             print(f"[qt_overlay][{thread_id}] Timer or text_item not available for update.")
-            #passif(cls.TIMER_DEBUG): ("[DEBUG OVERLAY] Timer or text_item not available for update")
         if(cls.TIMER_DEBUG): (f"[qt_overlay][{thread_id}] _actual_timer_update EXITED.")
 
     @classmethod
@@ -2504,3 +2502,8 @@ class Overlay:
         if cls._victory_screen_initialized and cls._victory_screen_window:
             cls._victory_screen_window.hide()
             print(f"[qt overlay] Victory screen hidden.")
+
+    @classmethod
+    def set_theme_colors(cls, hint_text_color, timer_text_color):
+        cls._current_hint_text_color = hint_text_color
+        cls._current_timer_text_color = timer_text_color

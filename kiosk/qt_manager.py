@@ -18,6 +18,9 @@ print("[qt_manager] Imported PyQt5.QtCore.", flush=True)
 print("[qt_manager] Importing base64...", flush=True)
 import base64
 print("[qt_manager] Imported base64.", flush=True)
+print("[qt_manager] Importing json...", flush=True)
+import json
+print("[qt_manager] Imported json.", flush=True)
 print("[qt_manager] Ending imports ...", flush=True)
 
 class QtManager:
@@ -38,6 +41,15 @@ class QtManager:
         self.stored_video_info = None
         self.image_is_fullscreen = False
         self.current_room = 0
+
+        # Load room themes once
+        try:
+            with open(os.path.join(os.path.dirname(__file__), 'room_themes.json'), 'r') as f:
+                self.room_themes = json.load(f)
+        except Exception as e:
+            print(f"[qt_manager] Error loading room_themes.json: {e}", flush=True)
+            self.room_themes = {}
+        self.current_theme = None
 
         # Register this instance with the overlay for callbacks
         self.register_with_overlay()
@@ -134,6 +146,15 @@ class QtManager:
         Overlay.hide_hint_request_text()
         print("[qt_manager] Hint UI cleared.", flush=True)
 
+    def get_current_theme(self):
+        """Return the theme dict for the current room, or a default if not found."""
+        if not self.current_room:
+            return {"hint_text_color": "#ffffff", "timer_text_color": "#ffffff"}
+        theme = self.room_themes.get(str(self.current_room))
+        if theme is None:
+            return {"hint_text_color": "#ffffff", "timer_text_color": "#ffffff"}
+        return theme
+
     def setup_room_interface(self, room_number):
         """Set up the room interface for the given room number"""
         print(f"[qt_manager] Setting up room interface for room {room_number}...", flush=True)
@@ -143,6 +164,13 @@ class QtManager:
         # Configure the room-specific elements
         if room_number > 0:
             self.current_room = room_number
+            # Update current theme for this room
+            self.current_theme = self.get_current_theme()
+            # Set theme colors in Overlay
+            Overlay.set_theme_colors(
+                self.current_theme.get("hint_text_color", "#ffffff"),
+                self.current_theme.get("timer_text_color", "#ffffff")
+            )
             
             # Get background path and set background using Qt overlay
             background_path = self.load_background(room_number)

@@ -1,0 +1,37 @@
+{
+  "1": {
+    "name": "Casino Heist",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "2": {
+    "name": "Morning After",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "3": {
+    "name": "Wizard Trials",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "4": {
+    "name": "Zombie Outbreak",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "5": {
+    "name": "Haunted Manor",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "6": {
+    "name": "Atlantis Rising",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  },
+  "7": {
+    "name": "Time Machine",
+    "hint_text_color": "#ffffff",
+    "timer_text_color": "#ffffff"
+  }
+} 

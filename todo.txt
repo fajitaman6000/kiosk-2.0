@@ -11,8 +11,6 @@ zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools 
 
 hint notification sound may be too quiet
 
-text is too difficult to read for some rooms, perhaps per-room text color.
-
 crash occurred on admin side pertaining to prop connections; needs more robust error handling and console logger
 
 whole auto reset system feels messy/unclear
@@ -623,6 +621,8 @@ film video solutions
 
 ##############################################################################################################################
 # todo
+
+payload for logs is too large. send when at max capacity automatically. if this occurs too many times within a period, send an error to admin log instead.
 
 increase received audio sample volume for soundcheck
 
