@@ -1359,20 +1359,28 @@ class AdminInterfaceBuilder:
                 return
         win = tk.Toplevel(self.app.root)
         win.title(f"Watchdog Output - {computer_name}")
-        win.geometry("700x500")
+        win.geometry("700x700")
+        win.configure(bg="#23272e")  # dark background
         self._watchdog_log_windows[computer_name] = win
-        # Store reference for update callback
         win.computer_name = computer_name
+        # Frame for text and scrollbar
+        frame = tk.Frame(win, bg="#23272e")
+        frame.pack(fill='both', expand=True, padx=0, pady=0)
         # Text widget for log
-        text = tk.Text(win, wrap='word', state='disabled', font=('Consolas', 10))
-        text.pack(fill='both', expand=True, padx=8, pady=8)
-        # Scrollbar
-        scrollbar = tk.Scrollbar(text.master, command=text.yview)
+        text = tk.Text(frame, wrap='word', state='disabled', font=('Consolas', 7),
+                       bg="#23272e", fg="#e6e6e6", insertbackground="#e6e6e6", relief='flat', borderwidth=0, highlightthickness=0)
+        text.grid(row=0, column=0, sticky='nsew')
+        # Scrollbar (right of text)
+        scrollbar = tk.Scrollbar(frame, command=text.yview, bg="#23272e", troughcolor="#181a1b", activebackground="#444", highlightthickness=0, bd=0)
         text['yscrollcommand'] = scrollbar.set
-        scrollbar.pack(side='right', fill='y')
-        # Clear button
-        clear_btn = tk.Button(win, text="Clear", command=lambda: self.clear_watchdog_log(computer_name))
-        clear_btn.pack(side='bottom', pady=6)
+        scrollbar.grid(row=0, column=1, sticky='ns')
+        frame.grid_rowconfigure(0, weight=1)
+        frame.grid_columnconfigure(0, weight=1)
+        # Clear button (styled for dark mode)
+        clear_btn = tk.Button(win, text="Clear", command=lambda: self.clear_watchdog_log(computer_name),
+                             bg="#36393f", fg="#e6e6e6", activebackground="#444", activeforeground="#fff",
+                             font=("Segoe UI", 10, "bold"), relief='flat', borderwidth=0, highlightthickness=0, cursor="hand2")
+        clear_btn.pack(side='bottom', pady=10)
         # Store widgets for update
         win._log_text_widget = text
         # Initial fill
@@ -1401,7 +1409,7 @@ class AdminInterfaceBuilder:
                 text.insert('end', line, 'error')
             else:
                 text.insert('end', line)
-        text.tag_config('error', foreground='red', font=('Consolas', 10, 'bold'))
+        text.tag_config('error', foreground='#ff5555', font=('Consolas', 11, 'bold'))
         text.config(state='disabled')
         text.see('end')
 

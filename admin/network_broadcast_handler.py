@@ -722,7 +722,7 @@ class NetworkBroadcastHandler:
                 msg = json.loads(data.decode())
                 msg_type = msg.get('type')
                 if msg_type in ('watchdog_log', 'watchdog_error'):
-                    print("received watchdog log")
+                    #print("received watchdog log")
                     computer_name = msg.get('computer_name', 'unknown')
                     log_entries = msg.get('log', [])
                     if not isinstance(log_entries, list):

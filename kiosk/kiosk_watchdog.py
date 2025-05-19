@@ -253,10 +253,12 @@ def watchdog_log_sender_loop():
     while not watchdog_log_sender_stop_event.is_set():
         time.sleep(LOG_SEND_INTERVAL)
         with watchdog_log_lock:
-            if watchdog_log_buffer:
-                # Send all buffered logs as a list
-                send_watchdog_udp_message(watchdog_log_buffer.copy(), is_error=False)
+            # Always send, even if buffer is empty (send empty list)
+            payload = watchdog_log_buffer.copy()
+            send_watchdog_udp_message(payload, is_error=False)
+            if payload:
                 watchdog_log_buffer.clear()
+            #print(f"[WATCHDOG] Sent log update to admin. Entries: {len(payload)}")
 
 def add_to_watchdog_log(text, is_error=False):
     entry = {
