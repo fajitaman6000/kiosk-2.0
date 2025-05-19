@@ -1718,30 +1718,51 @@ class PropControl:
         if not assigned_kiosk or assigned_kiosk not in self.app.interface_builder.connected_kiosks:
             return
 
+        kiosk_data = self.app.interface_builder.connected_kiosks.get(assigned_kiosk)
+        if not kiosk_data: # Kiosk data might have been removed
+            return
+
+        kiosk_frame = kiosk_data.get('frame')
+        if not kiosk_frame or not kiosk_frame.winfo_exists(): # Check if frame exists
+            # print(f"[prop control] Kiosk frame for {assigned_kiosk} does not exist in update_kiosk_highlight.")
+            return
+
         try:
-            kiosk_frame = self.app.interface_builder.connected_kiosks[assigned_kiosk]['frame']
-            audio_manager = AdminAudioManager()
-            #audio_manager.handle_timer_expired(timer_expired, room_number)
-            #audio_manager.handle_game_finish(is_finished, room_number)
+            # audio_manager = AdminAudioManager() # This line seems unused here
+            # audio_manager.handle_timer_expired(timer_expired, room_number)
+            # audio_manager.handle_game_finish(is_finished, room_number)
 
             if timer_expired:
-                new_color = '#FFB6C1'
+                new_color = '#FFB6C1' # Light Pink
             elif is_finished:
-                new_color = '#90EE90'
+                new_color = '#90EE90' # Light Green
             elif is_activated:
-                new_color = '#faf8ca'
+                new_color = '#faf8ca' # Pale Yellow
             else:
-                new_color = 'SystemButtonFace'
+                # Attempt to get the system default face color, fallback to a generic grey
+                try:
+                    new_color = kiosk_frame.winfo_toplevel().option_get('background', '') or 'SystemButtonFace'
+                    if not new_color or new_color == '': # Ensure it's a valid color
+                        new_color = ttk.Style().lookup('TFrame', 'background') or "#F0F0F0" # Another fallback
+                except tk.TclError:
+                    new_color = "#F0F0F0" # Final fallback
 
-            kiosk_frame.configure(bg=new_color)
-            for widget in kiosk_frame.winfo_children():
-                if not isinstance(widget, (tk.Button, ttk.Combobox)):
-                    widget.configure(bg=new_color)
 
+            if kiosk_frame.winfo_exists(): # Double check before configure
+                kiosk_frame.configure(bg=new_color)
+                for widget in kiosk_frame.winfo_children():
+                    if widget.winfo_exists(): # Check child widget
+                        if not isinstance(widget, (tk.Button, ttk.Combobox, ttk.Menubutton)): # Exclude Menubutton too
+                            try:
+                                widget.configure(bg=new_color)
+                            except tk.TclError:
+                                # This specific child might have a style that prevents bg change, or was destroyed
+                                pass # Safely ignore if a child can't be configured
         except tk.TclError:
-            print(f"[prop control]Widget for kiosk {assigned_kiosk} was destroyed")
+            # This catch is for kiosk_frame itself or other unexpected TclErrors
+            print(f"[prop control]Main TclError: Widget for kiosk {assigned_kiosk} was (likely) destroyed during update_kiosk_highlight")
         except Exception as e:
-            print(f"[prop control]Error updating kiosk highlight: {e}")
+            print(f"[prop control]Error updating kiosk highlight for {assigned_kiosk}: {e}")
 
     def schedule_status_update(self, prop_id):
         """Schedule periodic updates of prop status"""

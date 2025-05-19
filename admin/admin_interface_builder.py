@@ -294,11 +294,11 @@ class AdminInterfaceBuilder:
         name_label = kiosk_data.get('name_label')
         dropdown = kiosk_data.get('dropdown')
         help_label = kiosk_data.get('help_label')
-        reboot_btn = kiosk_data.get('reboot_btn')
+        actions_menubutton = kiosk_data.get('actions_menubutton') # CHANGED from reboot_btn
         timer_label = kiosk_data.get('timer_label')
 
         # Widgets to manage
-        widgets_to_repack = [icon_label, dropdown, name_label, help_label, reboot_btn, timer_label]
+        widgets_to_repack = [icon_label, dropdown, name_label, help_label, actions_menubutton, timer_label] # CHANGED
 
         # Forget all of them to ensure clean repacking in the correct order
         for widget in widgets_to_repack:
@@ -324,12 +324,13 @@ class AdminInterfaceBuilder:
             help_label.pack(side='left', padx=5)
         
         # Pack right-aligned elements last to ensure they take precedence from the right
-        if reboot_btn and reboot_btn.winfo_exists():
-            reboot_btn.pack(side='right', padx=(20, 5), anchor='e')
+        if actions_menubutton and actions_menubutton.winfo_exists(): # CHANGED from reboot_btn
+            actions_menubutton.pack(side='right', padx=(10, 5), anchor='e') # CHANGED, adjusted padx
         
-        # Timer label is packed left, after help_label and before reboot_btn claims space from right
+        # Timer label is packed left, after help_label and before right-aligned elements claim space
         if timer_label and timer_label.winfo_exists():
             timer_label.pack(side='left', padx=5)
+
 
     def show_hints_library(self):
         """Show the Hints Library interface"""
@@ -1092,15 +1093,15 @@ class AdminInterfaceBuilder:
     def add_kiosk_to_ui(self, computer_name):
         """Add or update a kiosk in the UI with room-specific colors"""
         current_time = time.time()
-        
+
         if computer_name in self.connected_kiosks:
             self.connected_kiosks[computer_name]['last_seen'] = current_time
             return
-            
+
         frame = tk.Frame(self.kiosk_frame)
         frame.configure(relief='flat', borderwidth=0, highlightthickness=0)
         frame.pack(fill='x', pady=2)
-        
+
         # Load kiosk icon
         try:
             kiosk_icon = Image.open(os.path.join("admin_icons", "assistance_requested.png"))
@@ -1109,93 +1110,78 @@ class AdminInterfaceBuilder:
         except Exception as e:
             print(f"[interface builder]Error loading kiosk icon: {e}")
             kiosk_icon = None
-            
+
         # Create icon label but don't pack it yet
         icon_label = tk.Label(frame, image=kiosk_icon if kiosk_icon else None, cursor="hand2")
         icon_label.image = kiosk_icon  # Keep reference to prevent garbage collection
-        
+
         # Add click handler to hide the icon
-        def hide_icon(event, cn=computer_name): # Pass computer_name via default arg for clarity
+        def hide_icon(event, cn=computer_name):
             if cn not in self.connected_kiosks:
                 return
 
             kiosk_data = self.connected_kiosks[cn]
             current_icon_label = kiosk_data.get('icon_label')
 
-            if current_icon_label and current_icon_label.winfo_exists() and current_icon_label.winfo_manager():  # If visible
-                # Stop the blink timer if it exists
+            if current_icon_label and current_icon_label.winfo_exists() and current_icon_label.winfo_manager():
                 if kiosk_data.get('icon_blink_after_id'):
                     self.app.root.after_cancel(kiosk_data['icon_blink_after_id'])
                     kiosk_data['icon_blink_after_id'] = None
-                
-                # Repack elements without the icon
+
                 self._repack_kiosk_elements(cn, include_icon=False)
-        
+
         icon_label.bind('<Button-1>', hide_icon)
-        
-        # Pack the icon label first, before any other elements, then immediately hide it
+
         icon_label.pack(side='left', padx=(0,5))
         icon_label.pack_forget()
-        
-        # Now create and pack other elements
+
         if computer_name in self.app.kiosk_tracker.kiosk_assignments:
             room_num = self.app.kiosk_tracker.kiosk_assignments[computer_name]
             room_name = self.app.rooms[room_num]
-            
-            # Get room color from mapping, default to black if not found
             room_color = self.ROOM_COLORS.get(room_num, "black")
-            
-            # Create room name label
-            name_label = tk.Label(frame, 
+
+            name_label = tk.Label(frame,
                 text=room_name,
                 font=('Arial', 12, 'bold'),
                 fg=room_color,
                 width=15,
-                anchor='center')  # Apply room-specific color
-            
-            # Create dropdown first
+                anchor='center')
+
             room_var = tk.StringVar()
-            dropdown = ttk.Combobox(frame, textvariable=room_var, 
+            dropdown = ttk.Combobox(frame, textvariable=room_var,
                 values=list(self.app.rooms.values()), state='readonly')
             dropdown.pack(side='left', padx=5, anchor='e')
-            
-            # Pack room name after dropdown
             name_label.pack(side='left', padx=(30,3))
         else:
-            # Create dropdown first  
             room_var = tk.StringVar()
-            dropdown = ttk.Combobox(frame, textvariable=room_var, 
+            dropdown = ttk.Combobox(frame, textvariable=room_var,
                 values=list(self.app.rooms.values()), state='readonly')
             dropdown.pack(side='left', padx=5, anchor='e')
-            
-            # Pack unassigned label after dropdown
-            name_label = tk.Label(frame, 
+
+            name_label = tk.Label(frame,
                 text="Unassigned",
                 font=('Arial', 12, 'bold'),
                 width=15,
                 anchor='center')
             name_label.pack(side='left', padx=5)
-        
+
         def click_handler(cn=computer_name):
             self.select_kiosk(cn)
-        
+
         frame.bind('<Button-1>', lambda e: click_handler())
         name_label.bind('<Button-1>', lambda e: click_handler())
-        
-        # Store the dropdown reference in connected_kiosks for auto-reset display
+
         if computer_name not in self.connected_kiosks:
             self.connected_kiosks[computer_name] = {}
         self.connected_kiosks[computer_name]['dropdown'] = dropdown
-        
+
         def on_room_select(event):
             if not room_var.get():
                 return
-            
-            # Check if the text contains "Auto-reset" - don't process if it's the timer
             if "Auto-reset:" in room_var.get():
                 return
-            
-            selected_room = next(num for num, name in self.app.rooms.items() 
+
+            selected_room = next(num for num, name in self.app.rooms.items()
                             if name == room_var.get())
             self.app.kiosk_tracker.assign_kiosk_to_room(computer_name, selected_room)
             dropdown.set('')
@@ -1203,85 +1189,80 @@ class AdminInterfaceBuilder:
                 text=self.app.rooms[selected_room],
                 fg=self.ROOM_COLORS.get(selected_room, "black")
             )
-        
+
         dropdown.bind('<<ComboboxSelected>>', on_room_select)
-        
+
         help_label = tk.Label(frame, text="", font=('Arial', 14, 'bold'), fg='red')
         help_label.pack(side='left', padx=5)
-        
-        reboot_btn = tk.Button(
-            frame, 
-            text="Reboot Computer",
-            bg='#FF6B6B',
-            fg='white',
-            cursor="hand2",
-            anchor='e'
+
+        # --- START OF MODIFIED MENUBUTTON CREATION ---
+        # Create a standard ttk.Menubutton. Text can be empty or a small char like "..."
+        # Use default style (no 'style' argument). Let ttk draw the default indicator.
+        actions_menubutton = ttk.Menubutton(
+            frame,
+            text="🛠", # Or text="" to potentially hide text but keep indicator
+            direction="left" # Or "below" if preferred
         )
-        
-        # Track confirmation state
-        reboot_btn.confirmation_pending = False
-        reboot_btn.after_id = None
-        
-        def reset_reboot_button(btn=reboot_btn):
-            """Reset the button to its original state"""
-            btn.confirmation_pending = False
-            btn.config(text="Reboot Kiosk Computer")
-            btn.after_id = None
-            
-        def handle_reboot_click():
-            """Handle reboot button clicks with confirmation"""
-            if reboot_btn.confirmation_pending:
-                # Second click - perform reboot
-                self.app.network_handler.send_watchdog_command(computer_name, "reboot_kiosk", None)
-                reset_reboot_button()
-            else:
-                # First click - show confirmation
-                reboot_btn.confirmation_pending = True
-                reboot_btn.config(text="Confirm")
-                
-                # Cancel any existing timer
-                if reboot_btn.after_id:
-                    reboot_btn.after_cancel(reboot_btn.after_id)
-                    
-                # Set timer to reset button after 2 seconds
-                reboot_btn.after_id = reboot_btn.after(2000, lambda: reset_reboot_button()) # Changed to lambda
+        actions_menubutton.menu = tk.Menu(actions_menubutton, tearoff=0)
+        actions_menubutton["menu"] = actions_menubutton.menu
 
-        reboot_btn.config(command=handle_reboot_click)
-        reboot_btn.pack(side='right', padx=(20, 5), anchor='e')
+        # Use postcommand to dynamically populate the menu each time it's shown
+        # populate_kiosk_actions_menu will now create items with direct commands
+        actions_menubutton.menu.config(postcommand=lambda cn=computer_name: self.populate_kiosk_actions_menu(cn))
 
-        # Add mini timer label at the end
+        # Pack with minimal padding on the right
+        actions_menubutton.pack(side='right', padx=(5, 5), pady=0, anchor='e')
+        # --- END OF MODIFIED MENUBUTTON CREATION ---
+
+
         timer_label = tk.Label(frame,
             text="--:--",
             font=('Arial', 10, 'bold'),
             width=6,
             anchor='center')
         timer_label.pack(side='left', padx=5)
-        
-        self.connected_kiosks[computer_name] = {
+
+        self.connected_kiosks[computer_name].update({ # Use update to add to existing dict if any
             'frame': frame,
             'help_label': help_label,
-            'dropdown': dropdown,
-            'reboot_btn': reboot_btn,
+            'dropdown': dropdown, # Ensure dropdown reference is kept
+            'actions_menubutton': actions_menubutton, # Keep menubutton reference
+            # REMOVE confirmation state keys: 'pending_action', 'pending_action_timer_id'
             'last_seen': current_time,
             'name_label': name_label,
-            'timer_label': timer_label,  # Store timer label reference
-            'icon_label': icon_label,  # Store icon label reference
-            'icon_blink_after_id': None  # For tracking blink timer
-        }
-        
-        # Check if the hint requested flag was set
+            'timer_label': timer_label,
+            'icon_label': icon_label,
+            'icon_blink_after_id': None
+        })
+
         if computer_name in self.app.kiosk_tracker.kiosk_stats:
             stats = self.app.kiosk_tracker.kiosk_stats[computer_name]
-            # Use .get() for safe access
             self.mark_help_requested(computer_name)
         else:
             print(f"[interface builder][AdminInterface] add_kiosk_to_ui: No kiosk stats from {computer_name}")
-        
+
         if computer_name == self.selected_kiosk:
             self.select_kiosk(computer_name)
-        
-        # After adding a kiosk, update the "No kiosks" message visibility
+
         self.update_no_kiosks_message()
+
+    def populate_kiosk_actions_menu(self, computer_name):
+        """Dynamically populates the actions menu for the given kiosk with direct commands."""
+        kiosk_data = self.connected_kiosks.get(computer_name)
+        if not kiosk_data or not kiosk_data.get('actions_menubutton'):
+            return
+
+        menu = kiosk_data['actions_menubutton'].menu
+        menu.delete(0, tk.END) # Clear existing menu items
+
+        menu.add_command(label="Restart App",
+                        command=lambda cn=computer_name: self.app.network_handler.send_watchdog_command(cn, "restart_app", None))
+        menu.add_command(label="Reboot Computer",
+                         command=lambda cn=computer_name: self.app.network_handler.send_watchdog_command(cn, "reboot_kiosk", None))
+        menu.add_separator()
+
+        # Add other potential actions here if needed in the future
+        # For example: menu.add_command(label="Send Log", command=lambda cn=computer_name: self.send_log_command(cn))
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
