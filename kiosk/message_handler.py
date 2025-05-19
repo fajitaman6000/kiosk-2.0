@@ -436,10 +436,6 @@ class MessageHandler:
                 # Replace root.after with QTimer.singleShot
                 self.schedule_timer(0, lambda vt=msg['video_type'], m=msg['minutes']: self.kiosk_app.play_video(vt, m))
 
-            elif msg_type == 'soundcheck' and is_targeted:
-                print(f"[message handler] soundcheck command received (Command ID: {command_id})")
-                # Potentially add soundcheck logic here if needed - schedule if it uses Pygame mixer
-
             elif msg_type == 'clear_hints' and is_targeted:
                 print(f"[message handler][DEBUG] Processing clear hints command (Command ID: {command_id})")
                 # KioskApp.clear_hints modifies state and calls UI/Overlay methods

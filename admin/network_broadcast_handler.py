@@ -20,6 +20,9 @@ class NetworkBroadcastHandler:
         self.MAX_RESEND_ATTEMPTS = 3 # Max resends before giving up
         self.soundcheck_instance = None # Will hold ref to AdminSoundcheckWindow
 
+        self.kiosk_ips = {} # Maps computer_name to IP address for watchdog commands
+        self.WATCHDOG_CMD_PORT = 12347 # Port watchdog listens on for commands
+
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 65536) # Increase buffer
@@ -220,6 +223,8 @@ class NetworkBroadcastHandler:
                 elif msg_type == 'kiosk_announce':
                     computer_name = msg.get('computer_name')
                     if computer_name:
+                        self.kiosk_ips[computer_name] = addr[0] # Store/update IP for watchdog commands
+
                         # Cache the latest status message to reduce redundant processing/logging if needed
                         last_msg = self.last_message.get(computer_name, {})
                         if msg != last_msg: # Basic check if content changed
@@ -328,6 +333,10 @@ class NetworkBroadcastHandler:
                     # Update UI
                     self.app.root.after(0, lambda n=computer_name:
                         self.app.interface_builder.remove_kiosk(n))
+                    # Optionally, remove from self.kiosk_ips if desired, or let it timeout/be overwritten
+                    # if computer_name in self.kiosk_ips:
+                    #     del self.kiosk_ips[computer_name]
+
 
                 # --- Handle Screenshots ---
                 elif msg_type == 'screenshot':
@@ -362,6 +371,27 @@ class NetworkBroadcastHandler:
         if self.reboot_socket:
             self.reboot_socket.close()
         print("[network broadcast handler] Network handler stopped.")
+
+
+    # --- Watchdog Command Sending Method ---
+    def send_watchdog_command(self, computer_name, command_type, command_payload=None):
+        """Sends a command to the watchdog service on a specific kiosk."""
+        target_ip = self.kiosk_ips.get(computer_name)
+        if not target_ip:
+            print(f"[network broadcast handler] Watchdog: IP for {computer_name} not found. Cannot send command '{command_type}'.")
+            return
+
+        message = {
+            'type': command_type,
+            'payload': command_payload or {} # Ensure payload is always a dict
+        }
+        try:
+            # Use a temporary socket for sending watchdog commands
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as cmd_socket:
+                cmd_socket.sendto(json.dumps(message).encode('utf-8'), (target_ip, self.WATCHDOG_CMD_PORT))
+            print(f"[network broadcast handler] Sent watchdog command '{command_type}' to {computer_name} ({target_ip}).")
+        except Exception as e:
+            print(f"[network broadcast handler] Error sending watchdog command '{command_type}' to {computer_name}: {e}")
 
 
     # --- Command Sending Methods ---
@@ -428,15 +458,6 @@ class NetworkBroadcastHandler:
             'computer_name': computer_name,
             'video_type': video_type,
             'minutes': minutes
-        }
-        self._send_tracked_message(message, computer_name)
-
-    def send_soundcheck_command(self, computer_name):
-        """Sends a soundcheck command to a kiosk."""
-        message = {
-            'type': 'soundcheck',
-            'command_id': str(uuid.uuid4()),
-            'computer_name': computer_name
         }
         self._send_tracked_message(message, computer_name)
 
@@ -578,7 +599,7 @@ class NetworkBroadcastHandler:
     def send_soundcheck_command(self, computer_name):
         """Sends a soundcheck command to a specific kiosk."""
         message = {
-            'type': 'soundcheck_command',
+            'type': 'soundcheck_command', # Intentionally using 'soundcheck_command' as type
             'command_id': str(uuid.uuid4()),
             'computer_name': computer_name
         }

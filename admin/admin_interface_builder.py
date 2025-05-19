@@ -1232,7 +1232,7 @@ class AdminInterfaceBuilder:
             """Handle reboot button clicks with confirmation"""
             if reboot_btn.confirmation_pending:
                 # Second click - perform reboot
-                self.app.network_handler.send_reboot_signal(computer_name)
+                self.app.network_handler.send_watchdog_command(computer_name, "reboot_kiosk", None)
                 reset_reboot_button()
             else:
                 # First click - show confirmation
