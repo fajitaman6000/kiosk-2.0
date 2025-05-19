@@ -1196,11 +1196,10 @@ class AdminInterfaceBuilder:
         help_label.pack(side='left', padx=5)
 
         # --- START OF MODIFIED MENUBUTTON CREATION ---
-        # Create a standard ttk.Menubutton. Text can be empty or a small char like "..."
         # Use default style (no 'style' argument). Let ttk draw the default indicator.
         actions_menubutton = ttk.Menubutton(
             frame,
-            text="🛠", # Or text="" to potentially hide text but keep indicator
+            text="⚙", # Or text="" to potentially hide text but keep indicator
             direction="left" # Or "below" if preferred
         )
         actions_menubutton.menu = tk.Menu(actions_menubutton, tearoff=0)

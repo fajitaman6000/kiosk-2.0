@@ -195,7 +195,8 @@ def listen_for_watchdog_commands():
                             remote_restart_requested = True
                     elif command.get("type") == "reboot_kiosk":
                         print_watchdog("Processing 'reboot_kiosk' command.")
-                        print_watchdog("Reboot command doesn't exist yet in kiosk_watchdog.py")
+                        #print_watchdog("Reboot command doesn't exist yet in kiosk_watchdog.py")
+                        os.system('shutdown /r /t 1')
                     else:
                         print_watchdog(f"Unknown command type received: {command.get('type')}")
                 except json.JSONDecodeError:
