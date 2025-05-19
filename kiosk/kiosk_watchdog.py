@@ -65,15 +65,6 @@ watchdog_cmd_listener_thread = None
 watchdog_cmd_listener_stop_event = threading.Event()
 watchdog_cmd_socket = None
 
-# --- Error Pattern Detection ---
-ERROR_PATTERNS = [
-    'error', 'exception', 'fail', 'critical', 'fatal', 'traceback'
-]
-
-def is_error_line(line):
-    """Return True if the line contains an error pattern (case-insensitive)."""
-    l = line.lower()
-    return any(pat in l for pat in ERROR_PATTERNS)
 
 # --- Functions ---
 
@@ -88,7 +79,6 @@ def print_watchdog_idle(message):
 
 def print_kiosk_line(line):
     kiosk_tag = f"{Fore.GREEN}[KIOSK]{Style.RESET_ALL}"
-    is_error = is_error_line(line)
     if launch_successful and not shutdown_requested and not (MAX_RESTARTS != -1 and restart_count > MAX_RESTARTS):
         sys.stdout.write("\r" + " " * 100 + "\r") 
         sys.stdout.write(f"{kiosk_tag} {line}\n")
@@ -96,7 +86,7 @@ def print_kiosk_line(line):
     else:
         sys.stdout.write(f"{kiosk_tag} {line}\n")
     sys.stdout.flush()
-    add_to_watchdog_log(line, is_error=is_error)
+    add_to_watchdog_log(line, is_error=False)
 
 
 def update_spinner():
@@ -148,16 +138,11 @@ def read_kiosk_output(process_stdout, stop_event):
                     
                     if not is_heartbeat: 
                         output_queue.put(line)
-                        # Robust error detection: log error lines immediately
-                        if is_error_line(line):
-                            add_to_watchdog_log(line, is_error=True)
                 else:
                     time.sleep(0.01) 
             except ValueError: 
                 break
-            except Exception as e: 
-                # Log any unexpected error in the reader as error
-                add_to_watchdog_log(f"Exception in read_kiosk_output: {e}", is_error=True)
+            except Exception: 
                 break
     finally:
         pass 
@@ -534,13 +519,4 @@ def main():
     sys.exit(0 if final_launch_status and not (shutdown_requested or remote_restart_requested) else 1)
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as e:
-        # Log any unhandled exception in the watchdog as error
-        add_to_watchdog_log(f"UNHANDLED EXCEPTION in watchdog: {e}", is_error=True)
-        import traceback
-        tb = traceback.format_exc()
-        for line in tb.splitlines():
-            add_to_watchdog_log(line, is_error=True)
-        raise
+    main()
