@@ -238,6 +238,7 @@ class NetworkBroadcastHandler:
                                 # Note: Repacking for room changes is handled in AdminInterfaceBuilder.on_room_select
 
                         # Update kiosk tracker and UI
+                        self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
                         # Add or update the UI element for this kiosk.
                         # This method in AdminInterfaceBuilder will handle *whether* to create a new frame
                         # and will trigger repack_kiosk_frames *only* if a new frame is created.
