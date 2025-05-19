@@ -801,7 +801,7 @@ class AdminInterfaceBuilder:
         # Assume the video command will succeed and update local state immediately
         try:
             self.app.kiosk_tracker.kiosk_stats[computer_name]['video_playing'] = True
-            print(f"[interface builder] Optimistically set video_playing=True for {computer_name}")
+            #print(f"[interface builder] Optimistically set video_playing=True for {computer_name}")
             # Immediately update the stats display for the selected kiosk
             if self.selected_kiosk == computer_name:
                 self.update_stats_display(computer_name)
