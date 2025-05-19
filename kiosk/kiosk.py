@@ -16,6 +16,11 @@ print("[kiosk main] Imported ROOM_CONFIG from config.", flush=True)
 print("[kiosk main] Importing VideoServer from video_server...", flush=True)
 from video_server import VideoServer
 print("[kiosk main] Imported VideoServer from video_server.", flush=True)
+
+print("[kiosk main] Importing StateTracker...", flush=True)
+from state_tracker import StateTracker
+print("[kiosk main] Imported StateTracker.", flush=True)
+
 print("[kiosk main] Importing VideoManager from video_manager...", flush=True)
 from video_manager import VideoManager
 print("[kiosk main] Imported VideoManager from video_manager.", flush=True)
@@ -216,6 +221,11 @@ class KioskApp:
         self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
         print("[kiosk main] Help button update timer started.", flush=True)
         
+        print("[kiosk main] Initializing StateTracker...", flush=True)
+        self.state_tracker = StateTracker(self) # Pass self (the KioskApp instance)
+        self.state_tracker.start()
+        print("[kiosk main] StateTracker started.", flush=True)
+
         print("[kiosk main] Initializing heartbeat thread...", flush=True)
         self.heartbeat_stop_event = threading.Event()
         self.heartbeat_thread = threading.Thread(target=self._send_heartbeats, daemon=True)

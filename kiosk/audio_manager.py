@@ -339,9 +339,11 @@ class AudioManager:
             position = pygame.mixer.music.get_pos()
             # get_pos returns -1 if no music is playing/loaded
             if position != -1:
-                 print(f"[audio manager] Got music position: {position} ms", flush=True)
+                 #print(f"[audio manager] Got music position: {position} ms", flush=True)
+                 pass
             else:
-                 print("[audio manager] No music playing, position not available.", flush=True)
+                 #print("[audio manager] No music playing, position not available.", flush=True)
+                 pass
             return position
         except pygame.error as pe:
              print(f"[audio manager]Pygame error getting music position: {pe}", flush=True)
