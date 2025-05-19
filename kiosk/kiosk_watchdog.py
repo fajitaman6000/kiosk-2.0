@@ -9,6 +9,7 @@ import queue
 import json # Added for parsing watchdog commands
 import socket # Added for watchdog command listener
 from colorama import init as colorama_init, Fore, Style
+import datetime  # For timestamps
 
 # Initialize colorama
 colorama_init(autoreset=True) # autoreset=True automatically adds Style.RESET_ALL after each print
@@ -33,6 +34,15 @@ WATCHDOG_CMD_PORT = 12347
 # --- Debug Mode Configuration ---
 DEBUG_MODE = "--debug" in sys.argv
 DEBUG_CRASH_TIME = 10 # Seconds before crash after successful launch
+
+# --- New for Watchdog Log Broadcasting ---
+WATCHDOG_LOG_BROADCAST_PORT = 12348  # Arbitrary port for admin to listen on
+ADMIN_BROADCAST_IP = '255.255.255.255'  # Default to broadcast; can be set to admin IP if known
+LOG_SEND_INTERVAL = 10  # seconds
+watchdog_log_buffer = []  # List of dicts: {timestamp, text, is_error}
+watchdog_log_lock = threading.Lock()
+watchdog_log_sender_thread = None
+watchdog_log_sender_stop_event = threading.Event()
 
 # --- Globals ---
 kiosk_process = None
@@ -61,6 +71,7 @@ watchdog_cmd_socket = None
 def print_watchdog(message):
     sys.stdout.write(f"\r{Fore.RED}[WATCHDOG]{Style.RESET_ALL} {message}{' ' * 20}\n")
     sys.stdout.flush()
+    add_to_watchdog_log(message, is_error=False)
 
 def print_watchdog_idle(message):
     sys.stdout.write(f"\r{Fore.CYAN}[WATCHDOG-IDLE]{Style.RESET_ALL} {message}{' ' * 20}\n")
@@ -75,6 +86,7 @@ def print_kiosk_line(line):
     else:
         sys.stdout.write(f"{kiosk_tag} {line}\n")
     sys.stdout.flush()
+    add_to_watchdog_log(line, is_error=False)
 
 
 def update_spinner():
@@ -221,11 +233,48 @@ def listen_for_watchdog_commands():
             watchdog_cmd_socket = None
         print_watchdog("Command listener stopped.")
 
+def send_watchdog_udp_message(payload, is_error=False):
+    try:
+        msg = {
+            'type': 'watchdog_error' if is_error else 'watchdog_log',
+            'computer_name': os.environ.get('COMPUTERNAME', 'unknown'),
+            'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'log': payload
+        }
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            s.sendto(json.dumps(msg).encode('utf-8'), (ADMIN_BROADCAST_IP, WATCHDOG_LOG_BROADCAST_PORT))
+    except Exception as e:
+        # Don't log this to buffer to avoid recursion
+        sys.stdout.write(f"\n[WATCHDOG] Failed to send UDP log: {e}\n")
+        sys.stdout.flush()
+
+def watchdog_log_sender_loop():
+    while not watchdog_log_sender_stop_event.is_set():
+        time.sleep(LOG_SEND_INTERVAL)
+        with watchdog_log_lock:
+            if watchdog_log_buffer:
+                # Send all buffered logs as a list
+                send_watchdog_udp_message(watchdog_log_buffer.copy(), is_error=False)
+                watchdog_log_buffer.clear()
+
+def add_to_watchdog_log(text, is_error=False):
+    entry = {
+        'timestamp': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        'text': text,
+        'is_error': is_error
+    }
+    with watchdog_log_lock:
+        watchdog_log_buffer.append(entry)
+    # If error, send immediately
+    if is_error:
+        send_watchdog_udp_message([entry], is_error=True)
 
 def main():
     global kiosk_process, last_output_time, launch_successful
     global reader_thread, restart_count, shutdown_requested, spinner_idx
     global remote_restart_requested, watchdog_cmd_listener_thread, is_crash_restart
+    global watchdog_log_sender_thread
 
     print_watchdog("Starting Kiosk Watchdog...")
     if DEBUG_MODE:
@@ -238,6 +287,7 @@ def main():
 
     if not os.path.exists(kiosk_script_path):
         print_watchdog(f"ERROR: Kiosk script not found: '{kiosk_script_path}'")
+        add_to_watchdog_log(f"ERROR: Kiosk script not found: '{kiosk_script_path}'", is_error=True)
         sys.exit(1)
 
     signal.signal(signal.SIGINT, signal_handler)
@@ -245,10 +295,15 @@ def main():
     watchdog_cmd_listener_thread = threading.Thread(target=listen_for_watchdog_commands, daemon=True)
     watchdog_cmd_listener_thread.start()
 
+    # Start watchdog log sender thread
+    watchdog_log_sender_thread = threading.Thread(target=watchdog_log_sender_loop, daemon=True)
+    watchdog_log_sender_thread.start()
+
     while not shutdown_requested:
         if remote_restart_requested:
             clear_spinner_line()
             print_watchdog("Remote restart command received. Resetting and attempting launch.")
+            add_to_watchdog_log("Remote restart command received. Resetting and attempting launch.", is_error=True)
             if kiosk_process and kiosk_process.poll() is None:
                  terminate_kiosk_process()
             restart_count = 0 
@@ -305,6 +360,7 @@ def main():
                            (time.time() - last_output_time > LAUNCH_TIMEOUT_SECONDS / 2) :
                             clear_spinner_line()
                             print_watchdog(f"TIMEOUT: Kiosk launch exceeded {LAUNCH_TIMEOUT_SECONDS}s or no output.")
+                            add_to_watchdog_log(f"TIMEOUT: Kiosk launch exceeded {LAUNCH_TIMEOUT_SECONDS}s or no output.", is_error=True)
                             if kiosk_process and kiosk_process.poll() is None: terminate_kiosk_process()
                             kiosk_run_failed_after_launch = True 
                             break 
@@ -329,6 +385,7 @@ def main():
                         if time_since_last_heartbeat > HEARTBEAT_TIMEOUT_SECONDS:
                             clear_spinner_line()
                             print_watchdog(f"HEARTBEAT TIMEOUT: Kiosk unresponsive for over {HEARTBEAT_TIMEOUT_SECONDS}s.")
+                            add_to_watchdog_log(f"HEARTBEAT TIMEOUT: Kiosk unresponsive for over {HEARTBEAT_TIMEOUT_SECONDS}s.", is_error=True)
                             if kiosk_process and kiosk_process.poll() is None: terminate_kiosk_process()
                             kiosk_run_failed_after_launch = True 
                             is_crash_restart = True  # Set crash restart flag for heartbeat timeout
@@ -355,16 +412,19 @@ def main():
                 if kiosk_process and kiosk_process.poll() is not None: # Kiosk exited on its own
                     if current_launch_status_final and not kiosk_run_failed_after_launch:
                         print_watchdog(f"Kiosk process exited cleanly (Return Code: {kiosk_process.returncode}). Watchdog will now exit.")
+                        add_to_watchdog_log(f"Kiosk process exited cleanly (Return Code: {kiosk_process.returncode}). Watchdog will now exit.", is_error=True)
                         shutdown_requested = True # Clean exit, watchdog can stop
                         current_attempt_successful = True
                     else: # Exited before success or after a failure (e.g. heartbeat)
                         print_watchdog(f"Kiosk process exited prematurely or after failure (Code: {kiosk_process.returncode}).")
-                        # kiosk_run_failed_after_launch might already be true
+                        add_to_watchdog_log(f"Kiosk process exited prematurely or after failure (Code: {kiosk_process.returncode}).", is_error=True)
                 elif kiosk_run_failed_after_launch: # Timeout or heartbeat failure
                      print_watchdog("Kiosk run failed (timeout or heartbeat).")
+                     add_to_watchdog_log("Kiosk run failed (timeout or heartbeat).", is_error=True)
                 elif not current_launch_status_final: # Did not reach success marker, process might still be running if shutdown/remote_restart broke loop
                     if not (shutdown_requested or remote_restart_requested):
                         print_watchdog("Kiosk launch was not successful (no success marker, process may have died).")
+                        add_to_watchdog_log("Kiosk launch was not successful (no success marker, process may have died).", is_error=True)
                 else: # Should mean it was successful and loop was broken by shutdown/remote
                     current_attempt_successful = True
 
@@ -379,18 +439,22 @@ def main():
 
                 if not current_attempt_successful and not shutdown_requested and (MAX_RESTARTS == -1 or restart_count <= MAX_RESTARTS):
                     print_watchdog(f"Pausing before retry...")
+                    add_to_watchdog_log("Pausing before retry...", is_error=True)
                     time.sleep(2) 
 
             except FileNotFoundError:
                 print_watchdog(f"ERROR: Python executable not found: '{PYTHON_EXECUTABLE}'")
+                add_to_watchdog_log(f"ERROR: Python executable not found: '{PYTHON_EXECUTABLE}'", is_error=True)
                 shutdown_requested = True 
             except Exception as e: 
                 clear_spinner_line()
                 print_watchdog(f"CRITICAL WATCHDOG ERROR during Kiosk Management: {e}")
+                add_to_watchdog_log(f"CRITICAL WATCHDOG ERROR during Kiosk Management: {e}", is_error=True)
                 if not shutdown_requested:
                     restart_count += 1
                     if MAX_RESTARTS == -1 or restart_count <= MAX_RESTARTS:
                         print_watchdog("Pausing before retry due to critical error...")
+                        add_to_watchdog_log("Pausing before retry due to critical error...", is_error=True)
                         time.sleep(5) 
             
             if kiosk_process and kiosk_process.poll() is None: # Final safety net for this attempt cycle
@@ -416,6 +480,7 @@ def main():
     clear_spinner_line()
     if not remote_restart_requested : # Avoid "Watchdog shutdown sequence complete" if it's about to restart by outer loop
          print_watchdog("Watchdog shutdown sequence initiated...")
+         add_to_watchdog_log("Watchdog shutdown sequence initiated...", is_error=True)
 
     watchdog_cmd_listener_stop_event.set()
     if watchdog_cmd_listener_thread and watchdog_cmd_listener_thread.is_alive():
@@ -444,6 +509,10 @@ def main():
          print_watchdog(f"Kiosk failed after {restart_count} attempts. Watchdog gave up.")
     else: # Should ideally not be reached if other conditions are met
         print_watchdog("Watchdog processing finished.")
+
+    watchdog_log_sender_stop_event.set()
+    if watchdog_log_sender_thread and watchdog_log_sender_thread.is_alive():
+        watchdog_log_sender_thread.join(timeout=2.0)
 
     sys.exit(0 if final_launch_status and not (shutdown_requested or remote_restart_requested) else 1)
 

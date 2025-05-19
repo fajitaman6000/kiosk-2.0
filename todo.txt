@@ -613,15 +613,7 @@ mqtt makes separate connections for ma and casino?
 ##############################################################################################################################
 # beta to do
 
-watchdog should remember some info to pass back to the kiosk when relaunching to ensure smooth revival
-    long last-known-state string containing info such as all the stats, contents of a currently viewed hint
-    badly needs to notify gm upon crash
-
-watchdog send errors to admin
-
 auto screenshot every 10 sec when not viewing video
-
-timer should still be visible at game end
 
 tap to close hint, instead opening image automatically on reception with text below it?
 

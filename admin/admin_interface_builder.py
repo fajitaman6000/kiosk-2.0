@@ -15,6 +15,7 @@ import os
 import json
 import io
 import base64
+import datetime
 
 
 class AdminInterfaceBuilder:
@@ -1339,9 +1340,79 @@ class AdminInterfaceBuilder:
         menu.add_command(label="Reboot Computer",
                          command=lambda cn=computer_name: self.app.network_handler.send_watchdog_command(cn, "reboot_kiosk", None))
         menu.add_separator()
-
+        # --- Add View Watchdog Output ---
+        menu.add_command(label="View Watchdog Output",
+                         command=lambda cn=computer_name: self.show_watchdog_log_window(cn))
+        menu.add_separator()
         # Add other potential actions here if needed in the future
         # For example: menu.add_command(label="Send Log", command=lambda cn=computer_name: self.send_log_command(cn))
+
+    # --- Watchdog Log Viewer ---
+    def show_watchdog_log_window(self, computer_name):
+        # Only allow one log window per kiosk
+        if not hasattr(self, '_watchdog_log_windows'):
+            self._watchdog_log_windows = {}
+        if computer_name in self._watchdog_log_windows:
+            win = self._watchdog_log_windows[computer_name]
+            if win.winfo_exists():
+                win.lift()
+                return
+        win = tk.Toplevel(self.app.root)
+        win.title(f"Watchdog Output - {computer_name}")
+        win.geometry("700x500")
+        self._watchdog_log_windows[computer_name] = win
+        # Store reference for update callback
+        win.computer_name = computer_name
+        # Text widget for log
+        text = tk.Text(win, wrap='word', state='disabled', font=('Consolas', 10))
+        text.pack(fill='both', expand=True, padx=8, pady=8)
+        # Scrollbar
+        scrollbar = tk.Scrollbar(text.master, command=text.yview)
+        text['yscrollcommand'] = scrollbar.set
+        scrollbar.pack(side='right', fill='y')
+        # Clear button
+        clear_btn = tk.Button(win, text="Clear", command=lambda: self.clear_watchdog_log(computer_name))
+        clear_btn.pack(side='bottom', pady=6)
+        # Store widgets for update
+        win._log_text_widget = text
+        # Initial fill
+        self._fill_watchdog_log_text(computer_name)
+        # On close, remove from dict
+        def on_close():
+            if computer_name in self._watchdog_log_windows:
+                del self._watchdog_log_windows[computer_name]
+            win.destroy()
+        win.protocol("WM_DELETE_WINDOW", on_close)
+
+    def _fill_watchdog_log_text(self, computer_name):
+        if not hasattr(self, '_watchdog_log_windows') or computer_name not in self._watchdog_log_windows:
+            return
+        win = self._watchdog_log_windows[computer_name]
+        text = win._log_text_widget
+        text.config(state='normal')
+        text.delete('1.0', 'end')
+        logs = self.app.network_handler.watchdog_logs.get(computer_name, [])
+        for entry in logs:
+            ts = entry.get('timestamp', '')
+            msg = entry.get('text', '')
+            is_error = entry.get('is_error', False)
+            line = f"[{ts}] {msg}\n"
+            if is_error:
+                text.insert('end', line, 'error')
+            else:
+                text.insert('end', line)
+        text.tag_config('error', foreground='red', font=('Consolas', 10, 'bold'))
+        text.config(state='disabled')
+        text.see('end')
+
+    def clear_watchdog_log(self, computer_name):
+        self.app.network_handler.clear_watchdog_log(computer_name)
+        self._fill_watchdog_log_text(computer_name)
+
+    def on_watchdog_log_update(self, computer_name):
+        # Called by network handler when new log data arrives
+        if hasattr(self, '_watchdog_log_windows') and computer_name in self._watchdog_log_windows:
+            self._fill_watchdog_log_text(computer_name)
 
     def update_kiosk_display(self, computer_name):
         """Update kiosk display including room-specific colors"""
@@ -1577,7 +1648,7 @@ class AdminInterfaceBuilder:
                     labelanchor='n'
                 )
                 # Clear hints/props if unassigned
-                if hasattr(self, 'audio_hints'): self.audio_hints.clear_hints()
+                #if hasattr(self, 'audio_hints'): self.audio_hints.clear_hints()
                 self.update_image_props() # Update to show empty props
 
 
@@ -1588,7 +1659,8 @@ class AdminInterfaceBuilder:
                 if room_num is not None: # Check if room_num was assigned
                     self.saved_hints.update_room(room_num)
                 else:
-                    self.saved_hints.clear_preview() # Clear if no room assigned
+                    #self.saved_hints.clear_preview() # Clear if no room assigned
+                    pass
 
             # Update highlighting with dotted border
             if(self.select_kiosk_debug):
@@ -1654,7 +1726,7 @@ class AdminInterfaceBuilder:
                 else:
                     print("[interface builder] No room assignment, skipping prop control notification")
                     # Consider disconnecting prop control if previously connected
-                    self.app.prop_control.disconnect_current_room()
+                    #self.app.prop_control.disconnect_current_room()
 
 
             #print(f"[interface builder] === KIOSK SELECTION END: {self.selected_kiosk} ===\n")

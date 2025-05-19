@@ -4,6 +4,7 @@ import json
 from threading import Thread
 import uuid
 import time
+import threading
 # --- ADDED IMPORT ---
 from file_sync_config import SYNC_MESSAGE_TYPE
 
@@ -22,6 +23,14 @@ class NetworkBroadcastHandler:
 
         self.kiosk_ips = {} # Maps computer_name to IP address for watchdog commands
         self.WATCHDOG_CMD_PORT = 12347 # Port watchdog listens on for commands
+
+        self.watchdog_logs = {}
+        self.watchdog_log_port = 12348
+        self.watchdog_log_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.watchdog_log_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.watchdog_log_socket.bind(('', self.watchdog_log_port))
+        self.watchdog_log_thread = threading.Thread(target=self.listen_for_watchdog_logs, daemon=True)
+        self.watchdog_log_thread.start()
 
         try:
             self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -380,6 +389,34 @@ class NetworkBroadcastHandler:
                         if hasattr(self.app, 'screenshot_handler'):
                             self.app.screenshot_handler.handle_screenshot(computer_name, image_data)
 
+                # --- Watchdog Log Reception ---
+                elif msg_type in ('watchdog_log', 'watchdog_error'):
+                    print("received watchdog log")
+                    computer_name = msg.get('computer_name', 'unknown')
+                    log_entries = msg.get('log', [])
+                    if not isinstance(log_entries, list):
+                        log_entries = [log_entries]
+                    if computer_name not in self.watchdog_logs:
+                        self.watchdog_logs[computer_name] = []
+                    # Add each entry, preserving order
+                    for entry in log_entries:
+                        # Ensure entry has required fields
+                        ts = entry.get('timestamp', msg.get('timestamp'))
+                        text = entry.get('text', str(entry))
+                        is_error = entry.get('is_error', msg_type == 'watchdog_error')
+                        self.watchdog_logs[computer_name].append({
+                            'timestamp': ts,
+                            'text': text,
+                            'is_error': is_error
+                        })
+                    # Optionally, limit log size per kiosk
+                    if len(self.watchdog_logs[computer_name]) > 1000:
+                        self.watchdog_logs[computer_name] = self.watchdog_logs[computer_name][-1000:]
+                    # Optionally, notify UI to update if a log window is open
+                    if hasattr(self.app.interface_builder, 'on_watchdog_log_update'):
+                        self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.on_watchdog_log_update(cn))
+                    continue  # Don't process further as a kiosk message
+
                 # --- Other message types can be added here ---
 
             except json.JSONDecodeError:
@@ -671,3 +708,39 @@ class NetworkBroadcastHandler:
         }
         self._send_tracked_message(message, computer_name)
         print(f"[Network Handler] Sent set_hint_volume_level ({level}) to {computer_name}")
+
+    def clear_watchdog_log(self, computer_name):
+        """Clear the stored watchdog log for a given kiosk."""
+        if computer_name in self.watchdog_logs:
+            self.watchdog_logs[computer_name] = []
+
+    def listen_for_watchdog_logs(self):
+        print("[network broadcast handler] Listening for watchdog logs on UDP port 12348...")
+        while self.running:
+            try:
+                data, addr = self.watchdog_log_socket.recvfrom(65536)
+                msg = json.loads(data.decode())
+                msg_type = msg.get('type')
+                if msg_type in ('watchdog_log', 'watchdog_error'):
+                    print("received watchdog log")
+                    computer_name = msg.get('computer_name', 'unknown')
+                    log_entries = msg.get('log', [])
+                    if not isinstance(log_entries, list):
+                        log_entries = [log_entries]
+                    if computer_name not in self.watchdog_logs:
+                        self.watchdog_logs[computer_name] = []
+                    for entry in log_entries:
+                        ts = entry.get('timestamp', msg.get('timestamp'))
+                        text = entry.get('text', str(entry))
+                        is_error = entry.get('is_error', msg_type == 'watchdog_error')
+                        self.watchdog_logs[computer_name].append({
+                            'timestamp': ts,
+                            'text': text,
+                            'is_error': is_error
+                        })
+                    if len(self.watchdog_logs[computer_name]) > 1000:
+                        self.watchdog_logs[computer_name] = self.watchdog_logs[computer_name][-1000:]
+                    if hasattr(self.app.interface_builder, 'on_watchdog_log_update'):
+                        self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.on_watchdog_log_update(cn))
+            except Exception as e:
+                print(f"[network broadcast handler] Error in watchdog log listener: {e}")
