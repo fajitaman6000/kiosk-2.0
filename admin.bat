@@ -2,7 +2,7 @@
 REM Using start command to run programs asynchronously
 REM /D sets starting directory, /MIN minimizes window if desired
 
-start "" /D "%~dp0" cmd /c "python admin/admin_main.py"
+start "" /D "%~dp0" cmd /c "python admin/admin_watchdog.py"
 
 REM Launch kiosk program
 
