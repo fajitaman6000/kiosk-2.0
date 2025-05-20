@@ -12,6 +12,7 @@ from PIL import Image, ImageTk
 import os
 import traceback
 import uuid
+from prop_control_popout import PropControlPopout
 
 class PropControl:
     ROOM_MAP = {
@@ -88,6 +89,7 @@ class PropControl:
         self.finish_sound_played = {}  # room_number -> bool ADDED FINISH TRACKING
         self.standby_played = {} #standby tracking
         self.stale_sound_played = {}  # <-- **ENSURE THIS LINE EXISTS HERE**
+        self.popout_windows = {}
 
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -161,6 +163,18 @@ class PropControl:
         self.reset_props_and_kiosk_button.original_text = "RESET PROPS & KIOSK"
         # Pack to the right, fill horizontally, expand to take equal space, with slight padding
         self.reset_props_and_kiosk_button.pack(side='right', fill='x', expand=True, padx=(1, 0))
+
+        self.popout_button = tk.Button(
+            self.global_controls,
+            text="Popout Prop Display",
+            command=self.create_popout_window,
+            bg='#6A5ACD', # Slate Blue
+            fg='white',
+            cursor="hand2"
+        )
+        self.popout_button.pack(fill='x', pady=2)
+        # Initially hide the popout button until a room is selected
+        self.popout_button.pack_forget() # Hide the button by default
 
         # Special buttons section
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
@@ -407,6 +421,14 @@ class PropControl:
 
         self.update_prop_status(prop_id)  # Update the visual display
 
+        if self.current_room in self.popout_windows and self.popout_windows[self.current_room]['toplevel'].winfo_exists():
+            popout_controller = self.popout_windows[self.current_room]['controller']
+            # Re-call update_prop_display, which will internally call _update_prop_status_icon
+            # This ensures the flag icon is updated in the popout.
+            # We need to pass the *current* info, which is stored in self.all_props.
+            if self.current_room in self.all_props and prop_id in self.all_props[self.current_room]:
+                popout_controller.update_prop_display(prop_id, self.all_props[self.current_room][prop_id]['info'])
+
     def load_prop_name_mappings(self):
         """Load prop name mappings from JSON file"""
         try:
@@ -552,6 +574,9 @@ class PropControl:
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
         if room_number == self.current_room:
+            # If the popout window is already open for this room, bring it to front
+            if room_number in self.popout_windows and self.popout_windows[room_number]['toplevel'].winfo_exists():
+                self.popout_windows[room_number]['toplevel'].lift()
             return
 
         # Clear UI
@@ -609,6 +634,11 @@ class PropControl:
                 print("[prop control]Status label was destroyed, skipping update")
         else:
             self.initialize_mqtt_client(room_number)
+        
+        if self.current_room is not None:
+            self.popout_button.pack(fill='x', pady=2) # Show the button
+        else:
+            self.popout_button.pack_forget() # Hide if no room selected
 
     def sort_and_repack_props(self):
         """Sorts props based on their 'order' for the *current* room and repacks them."""
@@ -1310,11 +1340,13 @@ class PropControl:
     def _handle_prop_update_ui(self, prop_id, prop_data, originating_room_number):  # <-- ADD ARGUMENT
         """Actual implementation of handle_prop_update, using after."""
 
-        # *** ADD THIS CHECK AT THE BEGINNING ***
+
         if originating_room_number != self.current_room:
-            # This update is for a room that is not currently displayed.
-            return
-        # *** END ADDED CHECK ***
+            # NEW: If there's a popout window for this non-current room, update it.
+            if originating_room_number in self.popout_windows and self.popout_windows[originating_room_number]['toplevel'].winfo_exists():
+                popout_controller = self.popout_windows[originating_room_number]['controller']
+                popout_controller.update_prop_display(prop_id, prop_data) # Update popout
+            return # Don't update main UI if it's not the current room
 
         # Load status icons (Correct)
         if not hasattr(self, 'status_icons'):
@@ -1521,6 +1553,10 @@ class PropControl:
                         del self.props[prop_id][key]
         except Exception as e:
             print(f"[prop control]Error in handle_prop_update: {e}")
+
+            if self.current_room in self.popout_windows and self.popout_windows[self.current_room]['toplevel'].winfo_exists():
+                popout_controller = self.popout_windows[self.current_room]['controller']
+                popout_controller.update_prop_display(prop_id, prop_data)
 
     def create_prop_widgets(self, prop_id, prop_data, order):
         """Create new widgets for a prop"""
@@ -1955,6 +1991,54 @@ class PropControl:
             print("[prop control]TclError in on_canvas_configure, likely widget destroyed.")
             pass
         
+    def create_popout_window(self):
+        """Creates a new popout window for the currently selected room's props."""
+        if self.current_room is None:
+            print("[prop control]Cannot popout: No room currently selected.")
+            return
+
+        # Check if a popout for this room already exists and is open
+        if self.current_room in self.popout_windows and self.popout_windows[self.current_room]['toplevel'].winfo_exists():
+            print(f"[prop control]Popout for room {self.current_room} already open. Bringing to front.")
+            self.popout_windows[self.current_room]['toplevel'].lift() # Bring to front
+            return
+
+        room_name = self.ROOM_MAP.get(self.current_room, f"Room {self.current_room}")
+        print(f"[prop control]Creating popout window for room {room_name} (ID: {self.current_room}).")
+
+        try:
+            # Create a Toplevel window
+            toplevel = tk.Toplevel(self.app.root)
+            toplevel.transient(self.app.root) # Make it transient to the main window
+            toplevel.geometry("300x500") # Set a default size
+
+            # Instantiate the PropControlPopout class inside this Toplevel
+            popout_controller = PropControlPopout(toplevel, self, self.current_room)
+
+            # Store the reference to the popout window and its controller
+            self.popout_windows[self.current_room] = {
+                'toplevel': toplevel,
+                'controller': popout_controller
+            }
+
+        except Exception as e:
+            print(f"[prop control]Error creating popout window for room {self.current_room}: {e}")
+            import traceback
+            traceback.print_exc()
+            # Clean up if creation failed
+            if self.current_room in self.popout_windows:
+                if 'toplevel' in self.popout_windows[self.current_room] and \
+                   self.popout_windows[self.current_room]['toplevel'].winfo_exists():
+                    self.popout_windows[self.current_room]['toplevel'].destroy()
+                del self.popout_windows[self.current_room]
+
+
+    def popout_closed(self, room_number):
+        """Callback from PropControlPopout when it is closed."""
+        if room_number in self.popout_windows:
+            print(f"[prop control]Popout for room {room_number} closed.")
+            del self.popout_windows[room_number]
+
     def shutdown(self):
         for client in self.mqtt_clients.values():
             try:
@@ -1965,6 +2049,14 @@ class PropControl:
                 client.disconnect()
             except Exception as e:
                 print(f"[prop control]Error disconnecting MQTT client: {e}")
+
+        # NEW: Close all popout windows on shutdown
+        for room_num in list(self.popout_windows.keys()): # Iterate over keys in a copy
+            popout_info = self.popout_windows.get(room_num)
+            if popout_info and popout_info['toplevel'].winfo_exists():
+                popout_info['toplevel'].destroy()
+            del self.popout_windows[room_num] # Remove from tracking dictionary
+        print("[prop control]All popout windows closed during shutdown.")
 
     def start_game(self, room_number=None): # MODIFIED: Added room_number argument
         """Send start game command to the specified room or current room if None."""
