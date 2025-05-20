@@ -181,7 +181,7 @@ class KioskNetwork:
                 #print(f"[networking.py] Received {len(data)} bytes from {addr}...", flush=True)
 
                 try:
-                    print("[networking.py] Decoding received data...", flush=True)
+                    #print("[networking.py] Decoding received data...", flush=True)
                     msg = json.loads(data.decode())
 
                     # --- Removed Hint Message Debug Noise ---

@@ -34,7 +34,7 @@ class ScreenshotHandler:
         # Use the network handler's method
         self.app.network_handler.send_request_screenshot_command(computer_name, force=force) # <--- PASS FORCE
         self.last_request_time[computer_name] = current_time
-        print(f"[screenshot handler] Requested screenshot from {computer_name} (Force: {force})")
+        #print(f"[screenshot handler] Requested screenshot from {computer_name} (Force: {force})")
 
 
     def handle_screenshot(self, computer_name, image_data):
