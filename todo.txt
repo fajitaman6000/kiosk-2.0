@@ -53,11 +53,9 @@ kiosk relaunch after sync finish
 periodic setting of casino/morning after according to room?
 "wave back" button
 log video solution usage to discourage excessive use
-make "reset kiosk" a reliable UI debugger somehow
 save props' status for blackbox, delete save upon load
 "enable drink menu" by default on
 dark theme
-hint count on THEIR side
 "your host/gamemaster's name" shown at victory/loss(?) screen
 LLM translator call
 AI generated text hint based on room state
@@ -67,10 +65,6 @@ kiosk responds to prop finishes with vfx
 dark theme
 profile creation,
 profile deletion (admin only)
-save hint to public (usable by all profiles, shown what profile made it, save to own private profile)
-save hint to private (local to profile)
-save hint to global/default (admin only)
-set hint color
 
 ##############################################################################################################################
 
