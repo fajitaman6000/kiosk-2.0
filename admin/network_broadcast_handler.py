@@ -618,16 +618,17 @@ class NetworkBroadcastHandler:
         }
         self._send_tracked_message(message, computer_name)
 
-    def send_request_screenshot_command(self, computer_name):
+    def send_request_screenshot_command(self, computer_name, force=False): # <--- MODIFIED SIGNATURE
         """Sends a command requesting a screenshot from the kiosk."""
         message = {
             'type': 'request_screenshot',
             'command_id': str(uuid.uuid4()), # Generate unique ID for this command instance
-            'computer_name': computer_name
+            'computer_name': computer_name,
+            'force': force
         }
         # Use the internal method that handles ACK tracking and adding request_hash
         self._send_tracked_message(message, computer_name)
-        print(f"[network broadcast handler] Sent request_screenshot command to {computer_name} (CmdID: {message['command_id']})")
+        print(f"[network broadcast handler] Sent request_screenshot command to {computer_name} (CmdID: {message['command_id']}, Force: {force})")
 
     def send_reboot_signal(self, computer_name):
         """Sends a direct UDP reboot signal (no ACK tracking)."""

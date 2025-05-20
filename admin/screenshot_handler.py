@@ -9,23 +9,32 @@ import json
 class ScreenshotHandler:
     def __init__(self, app):
         self.app = app
-        self.last_request_time = 0
+        self.last_request_time = {}
         self.request_interval = 1  # seconds
 
-    def request_screenshot(self):
-        """Request a screenshot from the currently selected kiosk."""
-        current_time = time.time()
-        if current_time - self.last_request_time < self.request_interval:
-            self.app.root.after(int((self.request_interval - (current_time - self.last_request_time)) * 1000), self.request_screenshot)
+    def request_screenshot(self, computer_name, force=False):
+        """Request a screenshot from a specific kiosk.
+        Args:
+            computer_name (str): The name of the target kiosk.
+            force (bool): If True, request will bypass video playing checks on kiosk.
+        """
+        if not computer_name:
+            print("[screenshot handler] No computer_name provided for screenshot request.")
             return
 
-        if self.app.interface_builder.selected_kiosk:
-            # Use the network handler's method
-            self.app.network_handler.send_request_screenshot_command(self.app.interface_builder.selected_kiosk)
-            self.last_request_time = current_time
-            #print(f"[screenshot handler] Requested screenshot from {self.app.interface_builder.selected_kiosk}")
+        current_time = time.time()
+        last_req_time = self.last_request_time.get(computer_name, 0)
 
-        self.app.root.after(2000, self.request_screenshot) # Schedule next request
+        # Apply interval check only for non-forced requests
+        if not force and (current_time - last_req_time < self.request_interval):
+            #print(f"[screenshot handler] Ignoring non-forced screenshot request for {computer_name}: too soon.")
+            # Do not schedule `after` here, the periodic caller handles that.
+            return
+
+        # Use the network handler's method
+        self.app.network_handler.send_request_screenshot_command(computer_name, force=force) # <--- PASS FORCE
+        self.last_request_time[computer_name] = current_time
+        print(f"[screenshot handler] Requested screenshot from {computer_name} (Force: {force})")
 
 
     def handle_screenshot(self, computer_name, image_data):

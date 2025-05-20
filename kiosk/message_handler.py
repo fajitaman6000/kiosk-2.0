@@ -562,11 +562,15 @@ class MessageHandler:
                 self.schedule_timer(0, self.kiosk_app.handle_game_win)
 
             elif msg_type == 'request_screenshot' and is_targeted:
-                # The command_id check already happened
-                # print(f"[message handler] Received request_screenshot command (Command ID: {command_id})") # Less noisy
-                # Set flag (safe), screenshot happens in separate thread anyway
+                force_screenshot = msg.get('force', False) # Get the force argument, default to False
+                
+                # Check if a video is playing and the request is not forced
+                if self.video_manager.is_playing and not force_screenshot:
+                    #print(f"[message handler] Ignoring non-forced screenshot request during video playback. (CmdID: {command_id})")
+                    return # Do not proceed if video is playing and force is False
+
+                print(f"[message handler] Processing request_screenshot command (CmdID: {command_id}, Force: {force_screenshot})")
                 self.kiosk_app.take_screenshot_requested = True
-                # Note: The ACK was already sent earlier.
 
             elif msg_type == 'soundcheck_command' and is_targeted:
                 print(f"[Message Handler] Received soundcheck command (ID: {command_id})")

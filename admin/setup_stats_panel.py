@@ -482,7 +482,7 @@ def setup_stats_panel(interface_builder, computer_name):
     check_screen_btn = tk.Button(
         image_display_frame, # Parent is the image frame
         text="Check Screen",
-        command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn),
+        command=lambda cn=computer_name: interface_builder.app.network_handler.send_request_screenshot_command(cn, True),
         cursor="hand2",
         # Consider making the button smaller or using an icon
         bg="lightblue",

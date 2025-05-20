@@ -10,8 +10,6 @@ zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools 
 sync system makes it unfriendly for anyone else to create hints currently
 
 mqtt makes separate connections for ma and casino?
-
-
 rapid code 16 mqtt disconnects
 
 ##############################################################################################################################
@@ -21,8 +19,6 @@ film video solutions
 
 ##############################################################################################################################
 # todo
-
-auto screenshot every 10 sec when not viewing video
 
 tap to close hint, instead opening image automatically on reception with text below it?
 

@@ -29,6 +29,8 @@ ADMIN_HEARTBEAT_MARKER = "[ADMIN_HEARTBEAT_ALIVE]"
 # Send heartbeat more frequently than the watchdog timeout (e.g., every 5 seconds)
 HEARTBEAT_INTERVAL_MS = 2000
 
+SCREENSHOT_INTERVAL = 5000
+
 def show_error_and_wait():
     print("[main]An error occurred. Error details above.")
     input("Press Enter to exit...")
@@ -119,9 +121,11 @@ try:
             # Set up update timers (existing code)
             self.root.after(5000, self.kiosk_tracker.check_timeouts)
             self.root.after(1000, self.interface_builder.update_stats_timer)
-            #self.root.after(10000, self.screenshot_handler.request_screenshot)
 
-            # Start the sync manager (existing code)
+            self._periodic_screenshot_timer_id = None 
+            # Start the periodic screenshot request
+            self.root.after(10000, self._periodic_screenshot_request)
+
             self.sync_manager.start()
 
             # Configure button callbacks with password protection (existing code)
@@ -235,6 +239,21 @@ try:
 
             self.prop_control.add_prop_select_callback(on_prop_select)
 
+        def _periodic_screenshot_request(self):
+            """Periodically requests a screenshot from the selected kiosk."""
+            if self.interface_builder.selected_kiosk:
+                # Call request_screenshot with the selected kiosk and force=True
+                self.screenshot_handler.request_screenshot(
+                    computer_name=self.interface_builder.selected_kiosk,
+                    force=False
+                )
+            else:
+                # print("[admin_main] No kiosk selected for periodic screenshot request.") # Can be noisy, uncomment for debugging
+                pass # No selected kiosk, just skip this interval
+
+            # Re-schedule this method to run again after the defined interval
+            self._periodic_screenshot_timer_id = self.root.after(SCREENSHOT_INTERVAL, self._periodic_screenshot_request)
+
         def run(self): # Existing method
             print("[main]Starting admin application...")
             self.root.mainloop()
@@ -257,6 +276,12 @@ try:
                 pygame.mixer.quit()
                 print("[Main Admin] Pygame mixer quit.")
             self.root.destroy()
+
+            # Cancel the periodic screenshot timer
+            if hasattr(self, '_periodic_screenshot_timer_id') and self._periodic_screenshot_timer_id is not None:
+                print("[Admin Main] Cancelling periodic screenshot timer...")
+                self.root.after_cancel(self._periodic_screenshot_timer_id)
+                self._periodic_screenshot_timer_id = None
 
     if __name__ == '__main__':
         app = AdminApplication()
