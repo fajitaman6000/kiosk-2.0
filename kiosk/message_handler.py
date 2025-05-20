@@ -58,8 +58,8 @@ class MessageHandler:
         # Flag to track when a reset operation is in progress
         self._resetting_kiosk = False
         # Queue for victory messages that arrive during reset
-        self._pending_victory_msg = None
         self.soundcheck_widget = None
+        self._last_reset_time = None
         print("[message_handler] MessageHandler initialized.", flush=True)
 
     def schedule_timer(self, delay_ms, callback):
@@ -184,13 +184,6 @@ class MessageHandler:
                     
                     # Reset is complete, mark flag
                     self._resetting_kiosk = False
-                    
-                    # Process any victory message that came in during reset
-                    if self._pending_victory_msg:
-                        print("[message handler] Processing pending victory message that arrived during reset")
-                        pending_msg = self._pending_victory_msg
-                        self._pending_victory_msg = None
-                        self.handle_message(pending_msg)
                 except Exception as e:
                     print(f"[message handler] Error during restore_base_ui: {e}")
                     traceback.print_exc()
@@ -520,7 +513,8 @@ class MessageHandler:
                 self.kiosk_app.times_touched_screen = 0
                 self.kiosk_app.room_started = False
                 self.kiosk_app.auto_start = False
-
+                self._last_reset_time = time.time()
+                
                 # Reset UI state variables (safe as they are just flags/data)
                 print("[message handler][DEBUG] Resetting UI hint state variables...")
                 self.kiosk_app.ui.hint_cooldown = False
@@ -556,13 +550,11 @@ class MessageHandler:
                 self.schedule_timer(50, lambda: Overlay.show_gm_assistance()) # Slight delay
 
             elif msg_type == 'victory' and is_targeted:
+                if self._last_reset_time and (time.time() - self._last_reset_time < 10): # ADD THIS BLOCK
+                    print(f"[message handler] Ignoring victory message as it arrived within 10 seconds of a kiosk reset. (Command ID: {command_id})")
+                    return # Ignore this message
+
                 print(f"[message handler] Victory detected (Command ID: {command_id})")
-                
-                # Check if we're in the middle of a reset operation
-                if self._resetting_kiosk:
-                    print("[message handler] Victory message received during kiosk reset - queueing for processing after reset")
-                    self._pending_victory_msg = msg.copy()  # Store a copy of the message
-                    return
                 
                 # Set state flag (safe)
                 self.kiosk_app.timer.game_won = True
