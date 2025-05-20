@@ -17,10 +17,6 @@ sync system makes it unfriendly for anyone else to create hints currently
 
 tap to close hint, instead opening image automatically on reception with text below it?
 
-mirror should be a cousin prop in haunted
-
-increase received audio sample volume for soundcheck
-
 times touched screen stat
 
 "switch sides" button for prop control

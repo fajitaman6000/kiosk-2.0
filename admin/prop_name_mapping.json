@@ -328,7 +328,8 @@
                 "display": "Symbol Maze",
                 "order": 1,
                 "finishing_prop": false,
-                "circuit": "maze"
+                "circuit": "maze",
+                "cousin": "18"
             },
             "Ghost puzzle": {
                 "display": "Yellow Puzzle",
@@ -344,7 +345,8 @@
             "Talking mirror": {
                 "display": "Mirror",
                 "order": 6,
-                "finishing_prop": false
+                "finishing_prop": false,
+                "cousin": "18"
             },
             "Rotate the sun": {
                 "display": "Sun Dial",
