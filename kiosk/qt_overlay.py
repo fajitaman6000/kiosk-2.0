@@ -2341,19 +2341,50 @@ class Overlay:
     @classmethod
     def show_loss_screen(cls):
         """Displays the game loss screen."""
-        if not cls._loss_screen_initialized:
-            cls._init_loss_screen()
+        try:
+            if not cls._loss_screen_initialized:
+                try:
+                    cls._init_loss_screen()
+                except Exception as e:
+                    print(f"[qt overlay] Error initializing loss screen: {e}")
+                    traceback.print_exc()
+                    return
 
-        if cls._loss_screen_initialized and cls._loss_screen_window:
-            cls.hide_fullscreen_hint()
-            # Ensure it's brought to the front
-            cls._loss_screen_window.setWindowState(cls._loss_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
-            cls._loss_screen_window.showFullScreen()
-            cls._loss_screen_window.activateWindow()
-            cls._loss_screen_window.raise_()
-            print(f"[qt overlay] Loss screen shown.")
-        else:
-            print(f"[qt overlay] Cannot show loss screen, not initialized.")
+            if cls._loss_screen_initialized and cls._loss_screen_window:
+                cls.hide_fullscreen_hint()
+                try:
+                    cls._loss_screen_window.setWindowState(cls._loss_screen_window.windowState() & ~Qt.WindowMinimized | Qt.WindowActive)
+                    cls._loss_screen_window.showFullScreen()
+                    cls._loss_screen_window.activateWindow()
+                    cls._loss_screen_window.raise_()
+                    print(f"[qt overlay] Loss screen shown.")
+                except Exception as e:
+                    print(f"[qt overlay] Error showing loss screen: {e}. Attempting to reinitialize.")
+                    traceback.print_exc()
+                    
+                    try:
+                        cls._loss_screen_initialized = False
+                        if cls._loss_screen_window:
+                            cls._loss_screen_window.deleteLater()
+                            cls._loss_screen_window = None
+                    except Exception:
+                        pass
+                    
+                    try:
+                        cls._init_loss_screen()
+                        if cls._loss_screen_initialized and cls._loss_screen_window:
+                            cls._loss_screen_window.showFullScreen()
+                            print(f"[qt overlay] Loss screen shown after reinitialization.")
+                        else:
+                            print(f"[qt overlay] Reinitialization of loss screen failed.")
+                    except Exception as e2:
+                        print(f"[qt overlay] Error reinitializing loss screen: {e2}")
+                        traceback.print_exc()
+            else:
+                print(f"[qt overlay] Cannot show loss screen, not initialized.")
+        except Exception as e:
+            print(f"[qt overlay] Unhandled exception in show_loss_screen: {e}")
+            traceback.print_exc()
 
     @classmethod
     def hide_loss_screen(cls):

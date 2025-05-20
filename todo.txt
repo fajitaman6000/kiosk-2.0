@@ -3,8 +3,6 @@
 
 zombie audio choppy either on intros or hints
 
-loss screen is not appearing upon time ending
-
 wrong audio files for time capacitor
 
 zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
@@ -613,16 +611,16 @@ watchdog is sometimes failing to continue printing all of kiosk's outputs. ctrl 
 ##############################################################################################################################
 # beta to do
 
+film video solutions
+
+##############################################################################################################################
+# todo
+
 auto screenshot every 10 sec when not viewing video
 
 tap to close hint, instead opening image automatically on reception with text below it?
 
 mirror should be a cousin prop in haunted
-
-film video solutions
-
-##############################################################################################################################
-# todo
 
 increase received audio sample volume for soundcheck
 
