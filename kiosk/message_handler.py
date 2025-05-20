@@ -551,11 +551,11 @@ class MessageHandler:
 
             elif msg_type == 'victory' and is_targeted:
                 if self._last_reset_time and (time.time() - self._last_reset_time < 10): # ADD THIS BLOCK
-                    print(f"[message handler] Ignoring victory message as it arrived within 10 seconds of a kiosk reset. (Command ID: {command_id})")
+                    #print(f"[message handler] Ignoring victory message as it arrived within 10 seconds of a kiosk reset. (Command ID: {command_id})")
                     return # Ignore this message
 
                 print(f"[message handler] Victory detected (Command ID: {command_id})")
-                
+
                 # Set state flag (safe)
                 self.kiosk_app.timer.game_won = True
                 # Handle game win logic (involves audio/video/overlay - schedule it)
