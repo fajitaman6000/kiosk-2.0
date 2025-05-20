@@ -112,7 +112,6 @@ class PropControl:
         self.global_controls = ttk.Frame(self.frame)
         self.global_controls.pack(fill='x', pady=(0, 10))
 
-        # Create Start Game and Reset All buttons
         self.start_button = tk.Button(
             self.global_controls,
             text="START PROPS",
@@ -123,43 +122,45 @@ class PropControl:
         )
         self.start_button.pack(fill='x', pady=2)
 
-        def reset_reset_button():
-            """Reset the button to its original state"""
-            self.reset_button.confirmation_pending = False
-            self.reset_button.config(text="RESET ALL PROPS")
-            self.reset_button.after_id = None
-            
-        def handle_reset_click():
-            """Handle reset button clicks with confirmation"""
-            if self.reset_button.confirmation_pending:
-                # Second click - perform reset
-                self.reset_all()
-                reset_reset_button()
-            else:
-                # First click - show confirmation
-                self.reset_button.confirmation_pending = True
-                self.reset_button.config(text="Confirm")
+        # Create a container frame for the two reset buttons
+        self.reset_buttons_container = tk.Frame(self.global_controls)
+        self.reset_buttons_container.pack(fill='x', pady=2) # Pack this container frame
 
-                # Cancel any existing timer
-                if self.reset_button.after_id:
-                    self.reset_button.after_cancel(self.reset_button.after_id)
+        # Define button colors for visual distinction
+        reset_props_only_bg = '#DB4260'
+        reset_props_and_kiosk_bg = '#a356ba'
 
-                # Set timer to reset button after 2 seconds
-                self.reset_button.after_id = self.reset_button.after(2000, reset_reset_button)
-
-        self.reset_button = tk.Button(
-            self.global_controls,
-            text="RESET ALL PROPS",
-            command=handle_reset_click,  # Use the new handler
-            bg='#DB4260',   # Red
+        # "RESET ALL PROPS" button (only resets props)
+        self.reset_props_only_button = tk.Button(
+            self.reset_buttons_container,
+            text="RESET PROPS",
+            command=self._handle_reset_props_only_click, # New handler for props only
+            bg=reset_props_only_bg,
             fg='white',
             cursor="hand2"
         )
+        # Store confirmation state and original text directly on the button widget
+        self.reset_props_only_button.confirmation_pending = False
+        self.reset_props_only_button.after_id = None
+        self.reset_props_only_button.original_text = "RESET PROPS"
+        # Pack to the left, fill horizontally, expand to take equal space, with slight padding
+        self.reset_props_only_button.pack(side='left', fill='x', expand=True, padx=(0, 1))
 
-        # Track confirmation state
-        self.reset_button.confirmation_pending = False
-        self.reset_button.after_id = None
-        self.reset_button.pack(fill='x', pady=2)
+        # "RESET PROPS & KIOSK" button (resets props AND kiosk)
+        self.reset_props_and_kiosk_button = tk.Button(
+            self.reset_buttons_container,
+            text="RESET PROPS & KIOSK",
+            command=self._handle_reset_props_and_kiosk_click, # New handler for props and kiosk
+            bg=reset_props_and_kiosk_bg,
+            fg='white',
+            cursor="hand2"
+        )
+        # Store confirmation state and original text directly on the button widget
+        self.reset_props_and_kiosk_button.confirmation_pending = False
+        self.reset_props_and_kiosk_button.after_id = None
+        self.reset_props_and_kiosk_button.original_text = "RESET PROPS & KIOSK"
+        # Pack to the right, fill horizontally, expand to take equal space, with slight padding
+        self.reset_props_and_kiosk_button.pack(side='right', fill='x', expand=True, padx=(1, 0))
 
         # Special buttons section
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
@@ -201,6 +202,79 @@ class PropControl:
             self.finish_sound_played.setdefault(room_number, False)
             self.standby_played.setdefault(room_number, False)
             self.initialize_mqtt_client(room_number)  # Moved MQTT init to end of loop body
+
+    def _reset_confirmable_button(self, button_widget):
+        """
+        Resets a confirmable button to its original state (text, confirmation flag, timer).
+        Args:
+            button_widget (tk.Button): The button widget to reset.
+        """
+        if button_widget.after_id:
+            self.app.root.after_cancel(button_widget.after_id)
+            button_widget.after_id = None
+        button_widget.confirmation_pending = False
+        button_widget.config(text=button_widget.original_text)
+
+    def _handle_confirmable_click(self, button_widget, action_callback):
+        """
+        Generic handler for buttons that require a confirmation click.
+        On first click, changes text to "Confirm". On second click within 2 seconds,
+        executes `action_callback`.
+        Args:
+            button_widget (tk.Button): The button that was clicked.
+            action_callback (callable): The function to execute on confirmation.
+        """
+        if button_widget.confirmation_pending:
+            # Second click - perform the action
+            action_callback()
+            self._reset_confirmable_button(button_widget) # Reset button state
+        else:
+            # First click - show confirmation text
+            button_widget.confirmation_pending = True
+            button_widget.config(text="Confirm")
+
+            # Cancel any existing timeout timer for this button
+            if button_widget.after_id:
+                self.app.root.after_cancel(button_widget.after_id)
+
+            # Schedule a reset if no second click occurs within 2 seconds
+            button_widget.after_id = self.app.root.after(
+                2000, lambda: self._reset_confirmable_button(button_widget)
+            )
+
+    def _perform_reset_props_only(self):
+        """
+        Action method to reset only the props for the currently selected room.
+        This calls the existing `reset_all` method.
+        """
+        print("[prop control] Executing 'Reset All Props' (props only).")
+        self.reset_all() # This method already handles only prop-related resets.
+
+    def _perform_reset_props_and_kiosk(self):
+        """
+        Action method to reset props AND the currently selected kiosk.
+        It first calls `reset_all` (for props) and then `reset_kiosk` on the
+        AdminInterfaceBuilder for the `selected_kiosk`.
+        """
+        print("[prop control] Executing 'Reset Props & Kiosk'.")
+        self.reset_all() # Reset props first
+
+        # Check if a kiosk is currently selected in the UI
+        if self.app.interface_builder.selected_kiosk:
+            kiosk_name = self.app.interface_builder.selected_kiosk
+            print(f"[prop control] Also resetting kiosk '{kiosk_name}' via AdminInterfaceBuilder.")
+            # Call the reset_kiosk method from AdminInterfaceBuilder
+            self.app.interface_builder.reset_kiosk(kiosk_name)
+        else:
+            print("[prop control] No kiosk selected in UI, only props were reset.")
+
+    def _handle_reset_props_only_click(self):
+        """Entry point for the 'RESET ALL PROPS' button click."""
+        self._handle_confirmable_click(self.reset_props_only_button, self._perform_reset_props_only)
+
+    def _handle_reset_props_and_kiosk_click(self):
+        """Entry point for the 'RESET PROPS & KIOSK' button click."""
+        self._handle_confirmable_click(self.reset_props_and_kiosk_button, self._perform_reset_props_and_kiosk)
 
     def update_prop_status(self, prop_id):
         """Update the status display, including flagged status."""
@@ -832,11 +906,11 @@ class PropControl:
                         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
                         print(f"[prop control.update_all_props_status]{room_name} just won")
                         self._send_victory_message(room_number, computer_name)
-                        self.app.interface_builder.start_auto_reset_timer(computer_name)
+                        #self.app.interface_builder.start_auto_reset_timer(computer_name)                      #uncomment to re-enable auto reset functionality
                     elif timer_expired:
                         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
                         print(f"[prop control.update_all_props_status]{room_name} timer expired")
-                        self.app.interface_builder.start_auto_reset_timer(computer_name)
+                        #self.app.interface_builder.start_auto_reset_timer(computer_name)                      #uncomment to re-enable auto reset functionality
                 break  # Important: Only process for the assigned kiosk
         
         # --- MODIFIED STANDBY HANDLING ---

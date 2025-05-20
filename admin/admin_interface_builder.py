@@ -63,7 +63,7 @@ class AdminInterfaceBuilder:
     def start_auto_reset_timer(self, computer_name):
         """Starts (or restarts) the auto-reset timer."""
 
-        duration = 60
+        duration = 120
 
         # Cancel any existing timer for this kiosk
         if computer_name in self.auto_reset_timer_ids:

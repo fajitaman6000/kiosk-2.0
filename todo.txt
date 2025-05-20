@@ -677,7 +677,6 @@ refill cylinders button
 add ways for game masters to enjoyably interact with guests
 xyz finished their game (instead of generic victory sound)
 kiosk relaunch after sync finish
-reset props, reset room (runs reset all + reset kiosk)
 windows scaling detection, not having to rotate to landscape
 periodic setting of casino/morning after according to room?
 "wave back" button
