@@ -7,8 +7,6 @@ wrong audio files for time capacitor
 
 zombie puzzle thing on the wall has its image in [REMOVED] instead of the tools prop
 
-hint notification sound may be too quiet
-
 crash occurred on admin side pertaining to prop connections; needs more robust error handling and console logger
 
 whole auto reset system feels messy/unclear
