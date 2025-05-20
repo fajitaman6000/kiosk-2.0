@@ -19,6 +19,8 @@ sync system makes it unfriendly for anyone else to create hints currently
 
 mqtt makes separate connections for ma and casino?
 
+watchdog is sometimes failing to continue printing all of kiosk's outputs. ctrl c makes it spit everything out....
+
 
 [InterfaceBuilder] _get_image_files: Checking folder: C:\Users\PanIQ Vegas Office\Desktop\kiosk-2.0\admin\sync_directory\hint_image_files\casino\Weight Game
 [InterfaceBuilder] _get_image_files: Found 2 image files in Weight Game folder.
@@ -621,8 +623,6 @@ film video solutions
 
 ##############################################################################################################################
 # todo
-
-payload for logs is too large. send when at max capacity automatically. if this occurs too many times within a period, send an error to admin log instead.
 
 increase received audio sample volume for soundcheck
 

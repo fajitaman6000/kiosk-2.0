@@ -37,7 +37,7 @@ DEBUG_CRASH_TIME = 10 # Seconds before crash after successful launch
 
 # --- New for Watchdog Log Broadcasting ---
 WATCHDOG_LOG_BROADCAST_PORT = 12348  # Arbitrary port for admin to listen on
-ADMIN_BROADCAST_IP = '255.255.255.255'  # Default to broadcast; can be set to admin IP if known
+ADMIN_BROADCAST_IP = '255.255.255.255'  # Default to subnet broadcast; can be set to admin IP if known, or 255.255.255.255 for global broadcast
 LOG_SEND_INTERVAL = 10  # seconds
 watchdog_log_buffer = []  # List of dicts: {timestamp, text, is_error}
 watchdog_log_lock = threading.Lock()
@@ -119,8 +119,10 @@ def read_kiosk_output(process_stdout, stop_event):
         while not stop_event.is_set():
             try:
                 line = process_stdout.readline()
-                if not line:
-                    break
+                if not line: # EOF reached (pipe closed)
+                    # This happens if the kiosk process exits cleanly or is terminated.
+                    # It's an expected shutdown path for the reader thread.
+                    break 
                 line = line.strip()
                 if line:
                     timestamp = time.time()
@@ -139,13 +141,26 @@ def read_kiosk_output(process_stdout, stop_event):
                     if not is_heartbeat: 
                         output_queue.put(line)
                 else:
+                    # If readline() returns an empty string but not EOF, it's typically a transient state.
+                    # A small sleep prevents busy-waiting, though readline() is blocking.
                     time.sleep(0.01) 
             except ValueError: 
+                # This can happen if the pipe becomes invalid (e.g., already closed unexpectedly by kiosk side)
+                clear_spinner_line()
+                print_watchdog("Reader thread ValueError: Kiosk stdout pipe invalid or closed. Exiting reader thread.")
+                add_to_watchdog_log("Reader thread ValueError: Kiosk stdout pipe invalid or closed. Exiting reader thread.", is_error=True)
                 break
-            except Exception: 
+            except Exception as e: 
+                # Catch any other unexpected errors in the reader thread
+                clear_spinner_line()
+                print_watchdog(f"Reader thread unhandled exception: {e}. Exiting reader thread.")
+                add_to_watchdog_log(f"Reader thread unhandled exception: {e}. Exiting reader thread.", is_error=True)
                 break
     finally:
-        pass 
+        # This will be printed when the thread's main loop finishes.
+        clear_spinner_line()
+        print_watchdog("Kiosk output reader thread finished.")
+        add_to_watchdog_log("Kiosk output reader thread finished.", is_error=False)
 
 def terminate_kiosk_process():
     global kiosk_process
@@ -354,6 +369,17 @@ def main():
                     if shutdown_requested or remote_restart_requested: break
                     
                     drain_output_queue_and_print()
+                    
+                    # Check if the reader thread is still alive. If not, something went wrong.
+                    if not reader_thread.is_alive():
+                        clear_spinner_line()
+                        print_watchdog("ERROR: Kiosk output reader thread died unexpectedly. Initiating kiosk restart.")
+                        add_to_watchdog_log("ERROR: Kiosk output reader thread died unexpectedly. Initiating kiosk restart.", is_error=True)
+                        if kiosk_process and kiosk_process.poll() is None: terminate_kiosk_process()
+                        kiosk_run_failed_after_launch = True # Mark as failure to trigger restart logic
+                        is_crash_restart = True  # Set crash restart flag
+                        break # Break from this inner loop to trigger restart
+
                     with lock:
                         current_launch_status = launch_successful # Read it once under lock
                     
