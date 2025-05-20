@@ -47,7 +47,6 @@ mqtt makes separate connections for ma and casino
 
 blackout screen button for haunted
 refill cylinders button
-"create popout prop control" (for controlling numerous rooms)
 add ways for game masters to enjoyably interact with guests
 xyz finished their game (instead of generic victory sound)
 kiosk relaunch after sync finish

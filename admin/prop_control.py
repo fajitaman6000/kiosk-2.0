@@ -165,42 +165,60 @@ class PropControl:
         self.reset_props_and_kiosk_button.pack(side='right', fill='x', expand=True, padx=(1, 0))
 
         self.popout_button = tk.Button(
-            self.global_controls,
-            text="Popout Prop Display",
+            self.frame, # <-- CHANGED PARENT TO self.frame (the main left panel)
+            text="◱",
             command=self.create_popout_window,
-            bg='#6A5ACD', # Slate Blue
+            bg='#5AC8CD', # Slate Blue
             fg='white',
-            cursor="hand2"
+            cursor="hand2",
+            font=('Arial', 9, 'bold') # <-- ADDED: Smaller font for reduced size
         )
-        self.popout_button.pack(fill='x', pady=2)
+        # Pack it at the very bottom of the 'self.frame'
+        self.popout_button.pack(side='bottom', fill='x', pady=(0, 5)) # <-- CHANGED PACKING
         # Initially hide the popout button until a room is selected
-        self.popout_button.pack_forget() # Hide the button by default
+        self.popout_button.pack_forget() # Still hides the button by default
 
-        # Special buttons section
+                # Special buttons section
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
         self.special_frame.pack(fill='x', pady=5)
 
-        # Scrollable props section
+        # --- START MODIFIED PACKING ORDER ---
+
+        # 1. Popout Button (Pack this first, at the very bottom of `self.frame`)
+        self.popout_button = tk.Button(
+            self.frame, # IMPORTANT: Parent is `self.frame` (the main left panel)
+            text="◱",
+            command=self.create_popout_window,
+            bg='#5AC8CD', # Slate Blue
+            fg='white',
+            cursor="hand2",
+            font=('Arial', 8, 'bold'), # Smaller font size
+            width=1 # Set a desired width (in text units)
+        )
+        self.popout_button.pack(side='bottom', fill='x', pady=(0, 5)) # Pack at the bottom, fill horizontally
+        self.popout_button.pack_forget() # Initially hidden
+
+        # 2. Status message label (Pack this above the popout button, also at the bottom)
+        self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
+        self.status_label.pack(side='bottom', fill='x', pady=5) # Pack above the popout button
+
+        # 3. Scrollable props section (This will now fill all *remaining* space in the middle)
         self.canvas = tk.Canvas(self.frame)
-        #self.scrollbar = ttk.Scrollbar(self.frame, orient="vertical", command=self.canvas.yview)
         self.props_frame = ttk.Frame(self.canvas)
 
-        #self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        # This canvas will expand to fill the space between `self.special_frame` (packed top)
+        # and `self.status_label` (packed bottom).
+        # Remove 'side="left"' if you want it to expand vertically to fill the remaining space.
+        self.canvas.pack(fill="both", expand=True) # <-- CRITICAL: No 'side' argument to fill vertically
 
-        # Pack scrolling components
-        #self.scrollbar.pack(side="right", fill="y")
-        self.canvas.pack(side="left", fill="both", expand=True)
-
-        # Create window in canvas for props
+        # Create window in canvas for props (this remains the same)
         self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
 
-        # Configure canvas scrolling
+        # Configure canvas scrolling (remains the same)
         self.props_frame.bind("<Configure>", self.on_frame_configure)
         self.canvas.bind("<Configure>", self.on_canvas_configure)
 
-        # Status message label for connection state
-        self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
-        self.status_label.pack(fill='x', pady=5)
+        # --- END MODIFIED PACKING ORDER ---
 
         self.load_prop_name_mappings()
         self.load_flagged_prop_image()
@@ -636,7 +654,8 @@ class PropControl:
             self.initialize_mqtt_client(room_number)
         
         if self.current_room is not None:
-            self.popout_button.pack(fill='x', pady=2) # Show the button
+            # IMPORTANT: Use the same packing options as its definition in __init__
+            self.popout_button.pack(side='bottom', pady=(0, 5), anchor="se") 
         else:
             self.popout_button.pack_forget() # Hide if no room selected
 
