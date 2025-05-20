@@ -1422,7 +1422,7 @@ class PropControl:
                 else:
                     name_label.config(font=('Arial', 8, 'bold'))
 
-                name_label.pack(side='left', padx=5)  # Pack name_label *first*
+                
 
                 # Add a black line underneath if it's a finishing prop
                 if self.is_finishing_prop(self.current_room, prop_data['strName']):
@@ -1439,6 +1439,8 @@ class PropControl:
 
                 status_label = tk.Label(prop_frame)
                 status_label.pack(side='right', padx=5)
+
+                name_label.pack(side='right', padx=5)  # Pack prop names AFTER status indicator to right-orient them
 
 
                 self.props[prop_id] = {

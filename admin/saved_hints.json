@@ -343,6 +343,9 @@
                 "not white path": {
                     "text": "The tip of the crystal must touch the SYMBOL, not the white path. Check the crystal for a map on where to go.",
                     "image": "light maze.png"
+                },
+                "symbols on crystal": {
+                    "text": "The crystal has all of the symbols that you need, in descending order."
                 }
             },
             "Pickaxes": {
