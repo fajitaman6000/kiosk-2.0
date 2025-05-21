@@ -569,7 +569,7 @@ class MessageHandler:
                     #print(f"[message handler] Ignoring non-forced screenshot request during video playback. (CmdID: {command_id})")
                     return # Do not proceed if video is playing and force is False
 
-                print(f"[message handler] Processing request_screenshot command (CmdID: {command_id}, Force: {force_screenshot})")
+                #print(f"[message handler] Processing request_screenshot command (CmdID: {command_id}, Force: {force_screenshot})")
                 self.kiosk_app.take_screenshot_requested = True
 
             elif msg_type == 'soundcheck_command' and is_targeted:

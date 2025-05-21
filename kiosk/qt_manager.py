@@ -41,6 +41,7 @@ class QtManager:
         self.stored_video_info = None
         self.image_is_fullscreen = False
         self.current_room = 0
+        self.last_displayed_hint_image_filename = None  # Store just the filename of the last displayed image
 
         # Load room themes once
         try:
@@ -222,6 +223,10 @@ class QtManager:
             })
             print("[qt_manager] Help request sent.", flush=True)
 
+    def get_last_displayed_hint_image_filename(self):
+        """Return the filename of the last displayed hint image, or None."""
+        return self.last_displayed_hint_image_filename
+
     def show_hint(self, text_or_data, start_cooldown=True):
         try:
             print("[qt_manager] Showing hint...", flush=True)
@@ -250,12 +255,20 @@ class QtManager:
             # Process hint data
             hint_text = ""
             self.stored_image_data = None
-
+            self.last_displayed_hint_image_filename = None
             if isinstance(text_or_data, str):
                 hint_text = text_or_data
             elif isinstance(text_or_data, dict):
                 hint_text = text_or_data.get('text', '')
                 self.stored_image_data = text_or_data.get('image') # Store potential image data
+                # If image is a path or filename, store just the filename
+                img_val = text_or_data.get('image', None) or text_or_data.get('image_path', None)
+                if isinstance(img_val, str):
+                    self.last_displayed_hint_image_filename = os.path.basename(img_val)
+                elif isinstance(img_val, dict):
+                    self.last_displayed_hint_image_filename = img_val.get('filename', None) or img_val.get('name', None)
+                else:
+                    self.last_displayed_hint_image_filename = None
             else:
                 # Fallback if unexpected data type
                 hint_text = str(text_or_data)

@@ -188,7 +188,9 @@ class KioskNetwork:
                     # if msg.get('type') == 'hint':
                     #     # ... (keep if needed for debugging, but noisy)
 
-                    print(f"[networking.py] Handling message of type: {msg.get('type', 'unknown')}", flush=True)
+                    msg_content = msg.get('type', 'unknown')
+                    if msg_content != 'request_screenshot':
+                        print(f"[networking.py] Handling message of type: {msg_content}", flush=True)
                     self.message_handler.handle_message(msg)
 
                 except json.JSONDecodeError as e:

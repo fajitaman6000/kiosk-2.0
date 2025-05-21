@@ -801,28 +801,48 @@ def setup_stats_panel(interface_builder, computer_name):
     other_controls_frame.pack(side='left', fill='y', anchor='sw')
     interface_builder.stats_elements['other_controls_frame'] = other_controls_frame
 
-    # Add labels for currently displayed hint text and image to the hint_info_frame (left of other controls)
-    print('[setup_stats_panel] Creating current_hint_text_label and current_hint_image_label in hint_info_frame')
+    # Use a canvas + frame for scrollable area
+    hint_scroll_canvas = tk.Canvas(hint_info_frame, width=180, height=100, highlightthickness=0)
+    hint_scroll_canvas.pack(side='left', expand=False, padx=0, pady=0)
+    hint_scrollbar = ttk.Scrollbar(hint_info_frame, orient='vertical', command=hint_scroll_canvas.yview)
+    #hint_scrollbar.pack(side='right', fill='y')
+    hint_scroll_canvas.configure(yscrollcommand=hint_scrollbar.set)
+    # Create a frame inside the canvas
+    hint_scroll_frame = tk.Frame(hint_scroll_canvas)
+    hint_scroll_frame_id = hint_scroll_canvas.create_window((0, 0), window=hint_scroll_frame, anchor='nw')
+    # Update scrollregion when contents change
+    def _on_hint_frame_configure(event):
+        hint_scroll_canvas.configure(scrollregion=hint_scroll_canvas.bbox('all'))
+    hint_scroll_frame.bind('<Configure>', _on_hint_frame_configure)
+    # Limit max height
+    def _on_canvas_configure(event):
+        hint_scroll_canvas.itemconfig(hint_scroll_frame_id, width=event.width)
+    hint_scroll_canvas.bind('<Configure>', _on_canvas_configure)
+
+    # Add labels for currently displayed hint text and image to the scrollable frame
     interface_builder.stats_elements['current_hint_text_label'] = tk.Label(
-        hint_info_frame,
+        hint_scroll_frame,
         text="",
         font=('Arial', 9, 'italic'),
         fg='#333333',
         anchor='w',
-        justify='left'
+        justify='left',
+        wraplength=200,
+        height=2  # About 2 lines tall
     )
     interface_builder.stats_elements['current_hint_text_label'].pack(fill='x', padx=8, pady=(2,0), anchor='w')
 
     interface_builder.stats_elements['current_hint_image_label'] = tk.Label(
-        hint_info_frame,
+        hint_scroll_frame,
         text="",
         font=('Arial', 9, 'italic'),
         fg='#333333',
         anchor='w',
-        justify='left'
+        justify='left',
+        wraplength=200,
+        height=1  # About 1 line tall
     )
     interface_builder.stats_elements['current_hint_image_label'].pack(fill='x', padx=8, pady=(0,4), anchor='w')
-    print('[setup_stats_panel] Finished creating hint info labels')
 
     # Common button width for all buttons in this section
     button_width = 20

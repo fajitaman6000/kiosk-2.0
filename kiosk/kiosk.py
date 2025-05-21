@@ -181,6 +181,7 @@ class KioskApp:
         print("[kiosk main] Initializing QtManager...", flush=True)
         self.ui = QtManager(self.computer_name, ROOM_CONFIG, self)
         self.ui.setup_waiting_screen()
+        self.ui.current_hint_image_filename = None
         print("[kiosk main] QtManager initialized.", flush=True)
         
         print("[kiosk main] Starting network threads...", flush=True)
@@ -262,24 +263,9 @@ class KioskApp:
                 hint_text = ch
             elif isinstance(ch, dict):
                 hint_text = ch.get('text', None)
-                # Only get the file name or relative path, not image data
-                img_val = ch.get('image', None) or ch.get('image_path', None)
-                if isinstance(img_val, str):
-                    # If it's a path, just use the file name
-                    import os
-                    hint_image = os.path.basename(img_val)
-                elif isinstance(img_val, dict):
-                    hint_image = img_val.get('filename', None) or img_val.get('name', None)
-                else:
-                    hint_image = None
-        # Fallback: also check stored_image_data if not found
-        if hint_image is None and hasattr(self.ui, 'stored_image_data'):
-            img_val = self.ui.stored_image_data
-            if isinstance(img_val, str):
-                import os
-                hint_image = os.path.basename(img_val)
-            elif isinstance(img_val, dict):
-                hint_image = img_val.get('filename', None) or img_val.get('name', None)
+        # Use the new QtManager method to get just the filename
+        if hasattr(self, 'ui') and hasattr(self.ui, 'current_hint_image_filename'):
+            hint_image = self.ui.current_hint_image_filename
         # --- END: Add currently displayed hint info ---
         stats = {
             'computer_name': self.computer_name,
@@ -320,7 +306,7 @@ class KioskApp:
             return
 
         try:
-            print("[kiosk] Taking screenshot...", flush=True)
+            #print("[kiosk] Taking screenshot...", flush=True)
             from PIL import ImageGrab, Image
             import io, base64
 
@@ -352,7 +338,7 @@ class KioskApp:
                 'computer_name': self.computer_name,
                 'image_data': image_data
             })
-            print("[kiosk] Screenshot sent.", flush=True)
+            #print("[kiosk] Screenshot sent.", flush=True)
 
         except Exception as e:
             print(f"[kiosk]Screenshot error: {e}", flush=True)
@@ -431,6 +417,18 @@ class KioskApp:
             # Handle string format (text-only hints)
             print(f"[kiosk main]Showing hint: {text[:30]}{'...' if len(text) > 30 else ''}")
             self.ui.show_hint(text, start_cooldown)
+            self.ui.current_hint_image_filename = None 
+        else:
+            # If hint is empty/None, clear both text and image
+            self.ui.current_hint_image_filename = None
+
+        image_path = text # wrong
+        if image_path:
+            # Assuming image_path is like 'hint_image_files/room/prop_name/image.png'
+            # We need just 'image.png'
+            self.ui.current_hint_image_filename = "image name not available" #os.path.basename(image_path)
+        else:
+            self.ui.current_hint_image_filename = None
     
     def play_video(self, video_type, minutes):
         print(f"[kiosk main]=== Video Playback Sequence Start ===")
@@ -658,6 +656,7 @@ class KioskApp:
             self.ui.current_hint = None
             self.ui.stored_image_data = None
             self.ui.stored_video_info = None
+            self.ui.current_hint_image_filename = None
             
             # Have UI clear labels and hint UI elements
             self.ui.clear_all_labels()
