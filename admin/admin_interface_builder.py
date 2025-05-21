@@ -1950,7 +1950,7 @@ class AdminInterfaceBuilder:
                 except tk.TclError as e:
                     print(f"[interface builder] Video button TclError: {e}")
 
-        # --- NEW: Display currently displayed hint text and image ---
+        # ---  Display currently displayed hint text and image ---
         # Add or update a label for the current hint text
         hint_text = stats.get('current_hint_text')
         hint_image = stats.get('current_hint_image')
@@ -1962,15 +1962,15 @@ class AdminInterfaceBuilder:
                 hint_text_label.config(text=f"Displayed Hint: {hint_text}")
                 hint_text_label.pack(fill='x', padx=8, pady=(2,0), anchor='w')
             else:
-                hint_text_label.config(text="")
-                hint_text_label.pack_forget()
+                hint_text_label.config(text="No hint text.")
+                #hint_text_label.pack_forget()
         if hint_image_label and hint_image_label.winfo_exists():
             if hint_image:
                 hint_image_label.config(text=f"Displayed Hint Image: {hint_image}")
                 hint_image_label.pack(fill='x', padx=8, pady=(0,4), anchor='w')
             else:
-                hint_image_label.config(text="")
-                hint_image_label.pack_forget()
+                hint_image_label.config(text="No hint image.")
+                #hint_image_label.pack_forget()
 
     def update_last_progress_time_display(self, room_number):
         if room_number in self.app.prop_control.last_progress_times:
