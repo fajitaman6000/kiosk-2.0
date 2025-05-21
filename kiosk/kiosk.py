@@ -253,6 +253,34 @@ class KioskApp:
         if self.is_closing:
             print("[kiosk get_stats] Prevented stats update and screenshot: Kiosk is closing.", flush=True)
             return {} # Return empty dict to avoid issues if stats are expected
+        # --- BEGIN: Add currently displayed hint info ---
+        hint_text = None
+        hint_image = None
+        if hasattr(self, 'ui') and hasattr(self.ui, 'current_hint'):
+            ch = self.ui.current_hint
+            if isinstance(ch, str):
+                hint_text = ch
+            elif isinstance(ch, dict):
+                hint_text = ch.get('text', None)
+                # Only get the file name or relative path, not image data
+                img_val = ch.get('image', None) or ch.get('image_path', None)
+                if isinstance(img_val, str):
+                    # If it's a path, just use the file name
+                    import os
+                    hint_image = os.path.basename(img_val)
+                elif isinstance(img_val, dict):
+                    hint_image = img_val.get('filename', None) or img_val.get('name', None)
+                else:
+                    hint_image = None
+        # Fallback: also check stored_image_data if not found
+        if hint_image is None and hasattr(self.ui, 'stored_image_data'):
+            img_val = self.ui.stored_image_data
+            if isinstance(img_val, str):
+                import os
+                hint_image = os.path.basename(img_val)
+            elif isinstance(img_val, dict):
+                hint_image = img_val.get('filename', None) or img_val.get('name', None)
+        # --- END: Add currently displayed hint info ---
         stats = {
             'computer_name': self.computer_name,
             'room': self.assigned_room,
@@ -267,6 +295,9 @@ class KioskApp:
             'music_volume_level': self.music_volume_level, # Add music volume level
             'hint_volume_level': self.hint_volume_level,   # Add hint volume level
             'video_playing': self.video_manager.is_playing if hasattr(self, 'video_manager') else False,
+            # --- NEW FIELDS ---
+            'current_hint_text': hint_text,
+            'current_hint_image': hint_image,
         }
         # Only log if stats have changed from last time
         if not hasattr(self, '_last_stats') or self._last_stats != stats:

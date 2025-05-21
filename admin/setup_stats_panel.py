@@ -788,10 +788,42 @@ def setup_stats_panel(interface_builder, computer_name):
     # ===========================================
     # SECTION: Other Controls
     # ===========================================
-    # Replace the LabelFrame with a regular Frame
-    other_controls_frame = tk.Frame(left_panel, borderwidth=1, relief='solid')
-    other_controls_frame.pack(fill='x', pady=10, side='right', anchor='ne')
-    
+    # Create a horizontal container for hint info and other controls
+    bottom_controls_container = tk.Frame(left_panel)
+    bottom_controls_container.pack(fill='x', pady=10, side='bottom', anchor='sw')
+
+    # Frame for hint info (left side)
+    hint_info_frame = tk.Frame(bottom_controls_container)
+    hint_info_frame.pack(side='left', fill='y', padx=(0, 10), anchor='sw')
+
+    # Frame for other controls (right side)
+    other_controls_frame = tk.Frame(bottom_controls_container, borderwidth=1, relief='solid')
+    other_controls_frame.pack(side='left', fill='y', anchor='sw')
+    interface_builder.stats_elements['other_controls_frame'] = other_controls_frame
+
+    # Add labels for currently displayed hint text and image to the hint_info_frame (left of other controls)
+    print('[setup_stats_panel] Creating current_hint_text_label and current_hint_image_label in hint_info_frame')
+    interface_builder.stats_elements['current_hint_text_label'] = tk.Label(
+        hint_info_frame,
+        text="",
+        font=('Arial', 9, 'italic'),
+        fg='#333333',
+        anchor='w',
+        justify='left'
+    )
+    interface_builder.stats_elements['current_hint_text_label'].pack(fill='x', padx=8, pady=(2,0), anchor='w')
+
+    interface_builder.stats_elements['current_hint_image_label'] = tk.Label(
+        hint_info_frame,
+        text="",
+        font=('Arial', 9, 'italic'),
+        fg='#333333',
+        anchor='w',
+        justify='left'
+    )
+    interface_builder.stats_elements['current_hint_image_label'].pack(fill='x', padx=8, pady=(0,4), anchor='w')
+    print('[setup_stats_panel] Finished creating hint info labels')
+
     # Common button width for all buttons in this section
     button_width = 20
 
@@ -1083,22 +1115,6 @@ def setup_stats_panel(interface_builder, computer_name):
         justify='left'
     )
     interface_builder.stats_elements['last_prop_label'].pack(side='top', pady=stats_panel_ypadding, fill='x')
-
-    # Screen Touches label
-    #current_touches = 0
-    #if computer_name in interface_builder.app.kiosk_tracker.kiosk_stats:
-        #current_touches = interface_builder.app.kiosk_tracker.kiosk_stats[computer_name].get('times_touched_screen', 0)
-        
-    #interface_builder.stats_elements['touches_label'] = tk.Label(
-        #stats_vertical_frame,
-        #text=f"Screen touches: {current_touches}",
-        #font=('Arial', 10, 'bold'),
-        #fg='black',
-        #bg='#E0E0E0',
-        #anchor='w' # Anchor text to left
-    #c)
-
-    #interface_builder.stats_elements['touches_label'].pack(side='top', pady=2, fill='x') # Fill 'x'
 
     # --- Set Initial Device Label (on the button) --- 
     initial_audio_client = interface_builder.audio_clients.get(computer_name)
