@@ -13,6 +13,8 @@ film video solutions
 ##############################################################################################################################
 # todo
 
+upload single files instead of uploading everything? with that text string methodology?
+
 sync system makes it unfriendly for anyone else to create hints currently
 
 tap to close hint, instead opening image automatically on reception with text below it?
