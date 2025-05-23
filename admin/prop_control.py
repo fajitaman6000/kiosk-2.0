@@ -69,6 +69,8 @@ class PropControl:
 
     STALE_THRESHOLD = 600  # 10 minutes in seconds
 
+    FATE_COOLDOWN_SECONDS = 15
+
     def __init__(self, app):
         self.app = app
         self.props = {}  # strId -> prop info
@@ -85,11 +87,13 @@ class PropControl:
         self.disconnect_rc7_history = {}  # room_number -> list of timestamps for rc=7 disconnects
         self.last_prop_finished = {} # prop status strings
         self.flagged_props = {}  # room_number -> {prop_id: True/False}
-        self.victory_sent = {}  # room_number -> bool
+        self.fate_sent = {}  # room_number -> bool
         self.finish_sound_played = {}  # room_number -> bool ADDED FINISH TRACKING
         self.standby_played = {} #standby tracking
-        self.stale_sound_played = {}  # <-- **ENSURE THIS LINE EXISTS HERE**
+        self.stale_sound_played = {}
         self.popout_windows = {}
+
+        self.last_fate_message_time = {} # computer_name -> timestamp
 
         self.MQTT_PORT = 8080
         self.MQTT_USER = "indestroom"
@@ -230,7 +234,7 @@ class PropControl:
             self.last_mqtt_updates[room_number] = {}  # Initialize MQTT update tracking
             self.flagged_props[room_number] = {}  # initialize the flag props dict
             self.stale_sound_played[room_number] = False  # <-- INITIALIZE FLAG (This line is fine)
-            self.victory_sent.setdefault(room_number, False)  # Use setdefault for cleaner init
+            self.fate_sent.setdefault(room_number, False)  # Use setdefault for cleaner init
             self.finish_sound_played.setdefault(room_number, False)
             self.standby_played.setdefault(room_number, False)
             self.initialize_mqtt_client(room_number)  # Moved MQTT init to end of loop body
@@ -632,8 +636,8 @@ class PropControl:
             self.update_prop_tracking_interval(old_room, is_selected=False)
         self.update_prop_tracking_interval(room_number, is_selected=True)
 
-        self.victory_sent[room_number] = False
-        #print(f"[prop control] set victory sent false for room {room_number}")
+        self.fate_sent[room_number] = False
+        print(f"[prop control] set fate_sent false for room {room_number}")
 
         # --- STANDBY STATE INITIALIZATION ---
         if room_number not in self.standby_played:
@@ -871,11 +875,11 @@ class PropControl:
         is_activated = False
         is_finished = False  # Initialize is_finished to False
         timer_expired = False
-        finishing_prop_offline = False # New flag
+        finishing_prop_offline = False
         is_standby = False
-        standby_prop_offline = False # flag for if a standby prop goes offline
+        standby_prop_offline = False
 
-        # --- STANDBY STATE TRACKING ---
+        # --- STANDBY STATE TRACKING (existing code) ---
         if room_number not in self.standby_played:
             self.standby_played[room_number] = False
         # --- END STANDBY STATE TRACKING ---
@@ -893,112 +897,136 @@ class PropControl:
             if is_offline:
                 prop_info['info']['strStatus'] = "offline"
                 if self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')):
-                    finishing_prop_offline = True # Set the flag
+                    finishing_prop_offline = True
                 if self.is_standby_prop(room_number, prop_info['info'].get('strName', '')):
                     standby_prop_offline = True
-
 
             status = prop_info['info'].get('strStatus')
             if status == "Activated":
                 is_activated = True
 
-            if (not finishing_prop_offline and  # Only check if no finishing prop is offline
-                self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')) and
+            # Check if a finishing prop is finished AND not offline
+            if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')) and
+                not finishing_prop_offline and # Only consider if the finishing prop is NOT offline
                 status == "Finished"):
-                is_finished = True
-            
+                is_finished = True # If any finishing prop is finished and online, game is finished
+
             # --- STANDBY PROP CHECK ---
-            if (not standby_prop_offline and self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
-                    status == "Finished"):
+            if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
+                not standby_prop_offline and # Only consider if the standby prop is NOT offline
+                status == "Finished"):
                 is_standby = True
+
 
             # Handle prop entering non-finished status after finish
             if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
-                and not finishing_prop_offline
+                and not finishing_prop_offline # Only reset if the prop is NOT offline
                 and status != "Finished"):
-                if (room_number in self.victory_sent and self.victory_sent[room_number] == True) or (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
-                    print("[prop_control] previously finished finishing prop entered state other than offline, resetting game finish status")
+                if (room_number in self.fate_sent and self.fate_sent[room_number] == True) or \
+                (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
+                    print("[prop_control] previously finished finishing prop entered state other than offline/finished, resetting game finish status")
                     self.reset_game_finish_state(room_number)
 
-        # Handle finishing prop offline
+
+        # Handle finishing prop going offline: implies game finish status is lost
         if finishing_prop_offline:
-            is_finished = False  # Ensure is_finished is False
-            if (room_number in self.victory_sent and self.victory_sent[room_number] == True) or (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
+            is_finished = False
+            if (room_number in self.fate_sent and self.fate_sent[room_number] == True) or \
+            (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
                     self.reset_game_finish_state(room_number)
 
-        
         if standby_prop_offline:
             is_standby = False
-            self.reset_standby_state(room_number) #now just resets the prop control flag
+            self.reset_standby_state(room_number)
 
 
+        # --- KIOSK-RELATED CHECKS (for victory message and auto-reset) ---
+        assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
                 # SAFELY ACCESS KIOSK STATS
-                kiosk_stat_data = self.app.kiosk_tracker.kiosk_stats.get(computer_name) # USE .get()
-                if kiosk_stat_data: # CHECK IF DATA EXISTS
-                    timer_time = kiosk_stat_data.get('timer_time', 2700) # Safe get for timer_time
+                kiosk_stat_data = self.app.kiosk_tracker.kiosk_stats.get(computer_name)
+                if kiosk_stat_data:
+                    timer_time = kiosk_stat_data.get('timer_time', 2700)
                     timer_expired = timer_time <= 0
-                else: # DEFAULT IF NO STATS FOR KIOSK
-                    # print(f"[prop control] No kiosk_stats found for {computer_name}") # Optional: log missing stats
-                    timer_expired = False # Default if no stats, or handle as an error/unknown state
-                break
+                assigned_kiosk = computer_name # Store the assigned kiosk
+                break # Found the kiosk for this room, exit loop
 
-        # Update kiosk highlight *before* further UI updates
+        # Update kiosk highlight (this should always run, regardless of victory status)
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
 
-        for computer_name, assigned_room_num in self.app.kiosk_tracker.kiosk_assignments.items():
-            if assigned_room_num == room_number:
-                # Check if timer is ALREADY running for this kiosk
-                if computer_name not in self.app.interface_builder.auto_reset_timer_ids:
-                    if is_finished:
-                        room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-                        print(f"[prop control.update_all_props_status]{room_name} just won")
-                        self._send_victory_message(room_number, computer_name)
-                        #self.app.interface_builder.start_auto_reset_timer(computer_name)                      #uncomment to re-enable auto reset functionality
-                    elif timer_expired:
-                        room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-                        print(f"[prop control.update_all_props_status]{room_name} timer expired")
-                        #self.app.interface_builder.start_auto_reset_timer(computer_name)                      #uncomment to re-enable auto reset functionality
-                break  # Important: Only process for the assigned kiosk
-        
-        # --- MODIFIED STANDBY HANDLING ---
+        # --- VICTORY MESSAGE DECISION LOGIC ---
+        # Only send victory message if the game is finished AND it hasn't been sent for this game state yet
+        if is_finished and not self.fate_sent.get(room_number, False):
+            if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
+                # Check if auto-reset timer is NOT already running for this kiosk (prevents double triggering)
+                if assigned_kiosk not in self.app.interface_builder.auto_reset_timer_ids:
+                    # Now, apply the cooldown check before calling the actual send method
+                    last_sent = self.last_fate_message_time.get(assigned_kiosk)
+                    if last_sent is None or (current_time - last_sent) >= self.FATE_COOLDOWN_SECONDS:
+                        # Conditions met: game finished, not previously sent for this state, cooldown elapsed
+                        #room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+                        #print(f"[prop control.update_all_props_status]{room_name} just won")
+                        self._send_victory_message(room_number, assigned_kiosk) # This now sets fate_sent and last_fate_message_time
+                        # Uncomment to re-enable auto reset functionality after victory message
+                        # self.app.interface_builder.start_auto_reset_timer(assigned_kiosk)
+                    else:
+                        cooldown_remaining = self.FATE_COOLDOWN_SECONDS - (current_time - last_sent)
+                        print(f"[prop control]Skipping victory message send for room {room_number} (kiosk {assigned_kiosk}). Cooldown active. Remaining: {cooldown_remaining:.1f}s.")
+            else:
+                # print(f"[prop control]Room {room_number} finished but no assigned kiosk or kiosk offline, skipping victory message.") # Optional debug
+                pass # No kiosk to send victory to
+
+        # --- AUTO-RESET TIMER FOR TIME EXPIRED (separate from victory) ---
+        # This was previously in the same block as victory check, but should be independent.
+        if timer_expired:
+            if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
+                if assigned_kiosk not in self.app.interface_builder.auto_reset_timer_ids:
+                    # room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+                    # print(f"[prop control.update_all_props_status]{room_name} timer expired")
+                    # Uncomment to re-enable auto reset functionality after timer expires
+                    # self.app.interface_builder.start_auto_reset_timer(assigned_kiosk)
+                    pass
+
+
+        # --- STANDBY SOUND HANDLING ---
         if is_standby and not self.standby_played[room_number]:
             self.standby(room_number)
-            self.standby_played[room_number] = True  # Mark as played
+            self.standby_played[room_number] = True
         # --- END MODIFIED STANDBY HANDLING ---
 
+        # --- FINISH SOUND HANDLING ---
         if is_finished and not self.finish_sound_played[room_number]:
-             self.play_finish_sound(room_number)
-             self.finish_sound_played[room_number] = True
-        elif not is_finished: # crucial to reset flag when appropriate
-             self.finish_sound_played[room_number] = False
+            self.play_finish_sound(room_number)
+            self.finish_sound_played[room_number] = True
+        elif not is_finished:
+            self.finish_sound_played[room_number] = False
 
+
+        # --- UI UPDATES FOR CURRENTLY SELECTED ROOM ---
         if room_number == self.current_room:
             for prop_id, prop_info in self.all_props[room_number].items():
-                if prop_id in self.props:
+                if prop_id in self.props: # Only update if the UI element exists
                     status_label = self.props[prop_id].get('status_label')
                     if status_label and status_label.winfo_exists():
                         self.update_prop_status(prop_id)
 
-        if room_number in self.prop_update_intervals:
-            interval = self.prop_update_intervals[room_number]
-            self.app.root.after(interval, lambda: self.update_all_props_status(room_number))
-
-        # --- ADDED: Check for Stale Game ---
+        # --- STALE GAME CHECK ---
         if room_number in self.last_progress_times:
             time_since_last_progress = time.time() - self.last_progress_times[room_number]
-
             if (is_activated and not is_finished and not timer_expired and
                 time_since_last_progress >= self.STALE_THRESHOLD and
                 not self.stale_sound_played.get(room_number, False)):
-
                 room_key = self.ROOM_MAP.get(room_number)
                 if room_key:
                     print(f"[prop_control] Room {room_number} ({room_key}) has been stale for {int(time_since_last_progress)}s. Playing sound.")
                     self.play_stale_sound(room_number)
-                    self.stale_sound_played[room_number] = True  # Mark as played for this period
-        # --- END ADDED: Check for Stale Game ---
+                    self.stale_sound_played[room_number] = True
+
+        # --- SCHEDULE NEXT UPDATE (ALWAYS RUNS) ---
+        if room_number in self.prop_update_intervals:
+            interval = self.prop_update_intervals[room_number]
+            self.app.root.after(interval, lambda rn=room_number: self.update_all_props_status(rn))
 
     def standby(self, room_number):
         """Plays the room-specific standby sound."""
@@ -1826,9 +1854,9 @@ class PropControl:
             pass
 
     def reset_game_finish_state(self, room_number):
-        print("[prop control]resetted game finish state")
-        if room_number in self.victory_sent:
-            self.victory_sent[room_number] = False
+        print("[prop control]reset game finish state")
+        if room_number in self.fate_sent:
+            self.fate_sent[room_number] = False
 
         if room_number in self.finish_sound_played: #also reset prop control finish flag
             self.finish_sound_played[room_number] = False
@@ -1903,16 +1931,19 @@ class PropControl:
             self.app.root.after(1000, lambda: self.schedule_status_update(prop_id))
 
     def _send_victory_message(self, room_number, computer_name):
-        """Sends a victory message to the kiosk (internal use)."""
+        """Sends a victory message to the kiosk (internal use) with a cooldown."""
+        current_time = time.time()
+
         if hasattr(self.app, 'network_handler') and self.app.network_handler:
             try:
                 # Use the network handler
                 self.app.network_handler.send_victory_message(room_number, computer_name)
-                self.victory_sent[room_number] = True # set prop control flag
-                print(f"[prop control]Successfully sent victory message for room {room_number} to kiosk {computer_name}.")
+                self.fate_sent[room_number] = True # set prop control flag for the room
+                self.last_fate_message_time[computer_name] = current_time # Update the last sent time for this computer
+                #print(f"[prop control]Successfully sent victory message for room {room_number} to kiosk {computer_name}. Next message for this kiosk available in {self.FATE_COOLDOWN_SECONDS}s.")
             except Exception as e:
                 print(f"[prop control]Error sending victory message for room {room_number} to kiosk {computer_name}: {e}")
-                # Do not set victory_sent to True if sending failed
+                # Do not set fate_sent to True if sending failed
         else:
             print("[prop control]Network handler not available, cannot send victory message.")
 
@@ -2108,6 +2139,8 @@ class PropControl:
                  self.stale_sound_played[target_room] = False
             else: # If it exists, update it
                  self.stale_sound_played[target_room] = False
+
+            self.fate_sent[target_room] = False
                  
         except Exception as e:
             room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
@@ -2125,7 +2158,7 @@ class PropControl:
             print(f"[prop control]Reset all command sent to room {self.current_room}")
             # Also reset progress/state tracking for the reset room
             self.last_progress_times[self.current_room] = time.time()  # Reset progress time
-            self.stale_sound_played[self.current_room] = False  # <-- RESET FLAG
+            self.stale_sound_played[self.current_room] = False
         except Exception as e:
             print(f"[prop control]Failed to send reset all command: {e}")
 

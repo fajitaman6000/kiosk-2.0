@@ -79,6 +79,7 @@ except ImportError:
 print("[kiosk main] Ending imports ...", flush=True)
 
 class KioskApp:
+    UI_DEBUG = False
     def __init__(self):
         print("[kiosk main]Starting KioskApp initialization...", flush=True)
         os.chdir(os.path.dirname(os.path.abspath(__file__)))

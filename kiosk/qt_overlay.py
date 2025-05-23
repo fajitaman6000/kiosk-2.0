@@ -1218,7 +1218,7 @@ class Overlay:
             if cls._hint_request_text.get('text_item'):
                 try:
                     cls._hint_request_text['text_item'].setPlainText("")
-                    print("[qt overlay] Hint request text cleared")
+                    if(cls._app.kiosk_app_instance.UI_DEBUG): print("[qt overlay] Hint request text cleared")
                 except Exception as e:
                     print(f"[qt overlay] Error clearing hint request text: {e}")
 
@@ -1887,13 +1887,6 @@ class Overlay:
                      # Only show if it contains valid cooldown text AND cooldown is active
                      if not cls._window.isVisible(): cls._window.show()
                      cls._window.raise_() # Ensure it's on top
-                 else:
-                     # CRITICAL FIX: MAKE ABSOLUTELY SURE we hide this window if it's not showing cooldown
-                     # This prevents the white screen issue
-                     if cls._window.isVisible():
-                        print("[qt overlay] Hiding main window because it's not showing valid cooldown.")
-                        #cls._window.hide()
-                        print("[qt overlay]would have tried to hide the window here for whatever reason")
 
             # --- Restore new, dedicated cooldown window if it exists ---
             if hasattr(cls, '_cooldown_window') and cls._cooldown_window:

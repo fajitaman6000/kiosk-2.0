@@ -104,18 +104,18 @@ class QtManager:
         
     def clear_all_labels(self):
         """Clear all UI elements and cancel any pending cooldown timer"""
-        print("[qt_manager] Clearing all labels...", flush=True)
+        if(self.message_handler.UI_DEBUG): print("[qt_manager] Clearing all labels...", flush=True)
         if self.cooldown_after_id:
             # Cancel any running QTimer
             self.cooldown_after_id.stop()
             self.cooldown_after_id = None
             
         self.hint_cooldown = False
-        print("[qt_manager] All labels cleared.", flush=True)
+        if(self.message_handler.UI_DEBUG): print("[qt_manager] All labels cleared.", flush=True)
         
     def clear_hint_ui(self):
         """Clears hint UI elements and hides Qt elements."""
-        print("[qt_manager] Clearing hint UI elements and hiding Qt counterparts", flush=True)
+        if(self.message_handler.UI_DEBUG): print("[qt_manager] Clearing hint UI elements and hiding Qt counterparts", flush=True)
 
         # Hide Qt Hint Text/Buttons
         Overlay.hide_hint_text()
@@ -127,7 +127,7 @@ class QtManager:
             try:
                 # Direct call instead of using QMetaObject.invokeMethod
                 Overlay._hint_text['text_item'].setPlainText("")
-                print("[qt_manager] Cleared hint text content", flush=True)
+                if(self.message_handler.UI_DEBUG):print("[qt_manager] Cleared hint text content", flush=True)
             except Exception as e:
                 print(f"[qt_manager] Error clearing hint text: {e}", flush=True)
             
@@ -145,7 +145,7 @@ class QtManager:
         
         # Hide hint request text
         Overlay.hide_hint_request_text()
-        print("[qt_manager] Hint UI cleared.", flush=True)
+        if(self.message_handler.UI_DEBUG):print("[qt_manager] Hint UI cleared.", flush=True)
 
     def get_current_theme(self):
         """Return the theme dict for the current room, or a default if not found."""
