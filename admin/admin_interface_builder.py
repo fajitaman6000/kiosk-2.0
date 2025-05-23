@@ -1062,6 +1062,12 @@ class AdminInterfaceBuilder:
         if computer_name in self.connected_kiosks:
             # Stop GM assistance icon if it's blinking
             self.stop_gm_assistance_icon(computer_name)
+
+            if computer_name in self.app.kiosk_tracker.help_requested:
+                self.app.kiosk_tracker.help_requested.remove(computer_name)
+
+            if hasattr(self, '_last_hint_request_states') and computer_name in self._last_hint_request_states:
+                del self._last_hint_request_states[computer_name]
             
             # Cancel any blinking timer
             if self.connected_kiosks[computer_name]['icon_blink_after_id']:

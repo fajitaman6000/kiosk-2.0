@@ -20,15 +20,15 @@ class AdminSoundcheckWindow:
         self.font = ('TkDefaultFont', 10, 'bold')
 
         # Initialize pygame mixer if not already done (e.g., by AdminAudioManager)
-        if not pygame.mixer.get_init():
-            try:
-                # Initialize with settings matching recording parameters
-                pygame.mixer.init(frequency=11025, size=16, channels=1)
-                print("[Admin Soundcheck] Pygame mixer initialized with optimal settings.")
-            except Exception as e:
-                print(f"[Admin Soundcheck] Pygame mixer init error: {e}")
-                messagebox.showerror("Audio Error", "Could not initialize audio playback.")
-                # Optionally handle differently, maybe disable 'Listen' buttons
+        #if not pygame.mixer.get_init():
+        #    try:
+        #        # Initialize with settings matching recording parameters
+        #        pygame.mixer.init(frequency=11025, size=16, channels=1)
+        #        print("[Admin Soundcheck] Pygame mixer initialized with optimal settings.")
+        #    except Exception as e:
+        #        print(f"[Admin Soundcheck] Pygame mixer init error: {e}")
+        #        messagebox.showerror("Audio Error", "Could not initialize audio playback.")
+        #        # Optionally handle differently, maybe disable 'Listen' buttons
 
         # --- Window Setup ---
         self.window = tk.Toplevel(parent_root)

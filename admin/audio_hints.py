@@ -35,7 +35,7 @@ class AudioHints:
         self.audio_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_audio_files")
         
         # Initialize pygame mixer for audio playback
-        pygame.mixer.init()
+        #pygame.mixer.init() #handled in admin_main
         
         # Create main frame with fixed width
         self.frame = tk.LabelFrame(parent, text="Play Audio", fg='black', font=('Arial', 10, 'bold'), labelanchor='ne')
@@ -521,4 +521,5 @@ class AudioHints:
 
     def cleanup(self):
         """Clean up pygame mixer"""
-        pygame.mixer.quit()
+        if pygame.mixer.music.get_busy():
+            pygame.mixer.music.stop()

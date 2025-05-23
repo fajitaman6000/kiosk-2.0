@@ -35,6 +35,27 @@ def show_error_and_wait():
     print("[main]An error occurred. Error details above.")
     input("Press Enter to exit...")
 
+def custom_excepthook(exc_type, exc_value, exc_traceback):
+    # Ignore KeyboardInterrupt as it's typically user-initiated shutdown
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # Log the exception details to your file logger
+    log_exception(f"FATAL UNHANDLED EXCEPTION: {exc_type.__name__}", exc_info=(exc_type, exc_value, exc_traceback))
+
+    # Optionally show an error message box to the user
+    try:
+        from tkinter import messagebox
+        messagebox.showerror("Critical Error", "An unexpected error occurred. Please check logs for details.")
+    except Exception as e:
+        print(f"Failed to show messagebox: {e}")
+
+    # Ensure the original hook is called in case other handlers are registered
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+sys.excepthook = custom_excepthook
+
 try:
     class AdminApplication:
         select_kiosk_debug = False

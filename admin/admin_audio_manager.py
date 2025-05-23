@@ -24,13 +24,13 @@ class AdminAudioManager:
         if self._initialized:
             return
             
-        # Initialize pygame mixer
-        try:
-            pygame.mixer.init()
-            #print("[audio manager]Audio manager initialized successfully")
-        except Exception as e:
-            print(f"[audio manager]Failed to initialize audio manager: {e}")
-            return
+        # Initialize pygame mixer (REMOVED: This is now handled in admin_main.py)
+        # try:
+        #     pygame.mixer.init()
+        #     #print("[audio manager]Audio manager initialized successfully")
+        # except Exception as e:
+        #     print(f"[audio manager]Failed to initialize audio manager: {e}")
+        #     return
             
         # Sound file paths
         self.sound_dir = Path("app_sounds")
@@ -100,5 +100,5 @@ class AdminAudioManager:
     def cleanup(self):
         """Clean up pygame mixer resources"""
         if self._initialized:
-            pygame.mixer.quit()
+            #pygame.mixer.quit()
             self._initialized = False
