@@ -357,32 +357,12 @@ class PropControl:
                         prop_id not in self.last_mqtt_updates[self.current_room] or
                         current_time - self.last_mqtt_updates[self.current_room][prop_id] > 3)
 
-
-            # Debug print status icon loading (This part is correct)
-            if not hasattr(self, 'status_icons'):
-                print("[prop control]Status icons not initialized!")
-                try:
-                    icon_dir = os.path.join("admin_icons")
-                    self.status_icons = {
-                        'not_activated': ImageTk.PhotoImage(
-                            Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                        ),
-                        'activated': ImageTk.PhotoImage(
-                            Image.open(os.path.join(icon_dir, "activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                        ),
-                        'finished': ImageTk.PhotoImage(
-                            Image.open(os.path.join(icon_dir, "finished.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                        ),
-                        'offline': ImageTk.PhotoImage(
-                            Image.open(os.path.join(icon_dir, "offline.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                        )
-                    }
-                except Exception as e:
-                    print(f"[prop control]Error loading status icons: {e}")
-                    return
-            elif 'offline' not in self.status_icons:
-                print("[prop control]Offline icon missing from status_icons!")
-                return
+            # BEGIN FIX SNIPPET (Add this where you deleted the block above)
+            # Ensure status_icons is available and has 'offline' before proceeding
+            if not hasattr(self, 'status_icons') or 'offline' not in self.status_icons:
+                print("[prop control]Status icons or 'offline' icon not properly initialized. Skipping icon update.")
+                return # Can't update status without icons, so exit
+            # END FIX SNIPPET
 
 
             if is_offline:
