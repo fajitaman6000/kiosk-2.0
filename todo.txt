@@ -3,6 +3,10 @@
 
 "ignore_progress" is being.. ignored.
 
+rods hint is atlantis voice, not wizard
+
+
+
 ##############################################################################################################################
 # beta to do
 
