@@ -182,6 +182,29 @@ class PropControl:
         # Initially hide the popout button until a room is selected
         self.popout_button.pack_forget() # Still hides the button by default
 
+        self.status_icons = {}
+        try:
+            icon_dir = os.path.join("admin_icons")
+            self.status_icons['not_activated'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+            self.status_icons['activated'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+            self.status_icons['finished'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "finished.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+            self.status_icons['offline'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "offline.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+            self.flagged_prop_image = ImageTk.PhotoImage(
+                Image.open(os.path.join(icon_dir, "flagged_prop.png")).resize((16, 16), Image.Resampling.LANCZOS)
+            )
+        except Exception as e:
+            print(f"[prop control]Error loading status icons or flagged prop image during initialization: {e}")
+            self.status_icons = {} # Ensure it's an empty dict if load fails
+            self.flagged_prop_image = None # Set to None if image fails to load
+
                 # Special buttons section
         self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
         self.special_frame.pack(fill='x', pady=5)
@@ -601,6 +624,19 @@ class PropControl:
                 self.popout_windows[room_number]['toplevel'].lift()
             return
 
+        # Before clearing UI and self.props, explicitly dereference widgets for the old room
+        # This helps break potential circular references and allows Python's GC to clean up.
+        if self.current_room is not None and self.current_room in self.all_props:
+            for prop_id in self.all_props[self.current_room]:
+                if prop_id in self.props: # Only dereference if it was in the active UI
+                    prop_data = self.props[prop_id]
+                    if 'frame' in prop_data: prop_data['frame'] = None
+                    if 'status_label' in prop_data: prop_data['status_label'] = None
+                    if 'name_label' in prop_data: prop_data['name_label'] = None
+        
+        # Clear the active UI prop dictionary for the new room
+        self.props = {}
+
         # Clear UI
         if hasattr(self, 'props_frame') and self.props_frame.winfo_exists(): # ADDED CHECK
             for widget in self.props_frame.winfo_children():
@@ -610,9 +646,6 @@ class PropControl:
                     pass # Widget might have been destroyed already by other means
         else: # ADDED ELSE FOR LOGGING/DEBUGGING
             print("[prop control] props_frame does not exist or has been destroyed in connect_to_room.")
-
-        # Reset props dict
-        self.props = {}
 
         # Restore props for new room
         if room_number in self.all_props:
@@ -1395,27 +1428,6 @@ class PropControl:
                 popout_controller.update_prop_display(prop_id, prop_data) # Update popout
             return # Don't update main UI if it's not the current room
 
-        # Load status icons (Correct)
-        if not hasattr(self, 'status_icons'):
-            try:
-                icon_dir = os.path.join("admin_icons")
-                self.status_icons = {
-                    'not_activated': ImageTk.PhotoImage(
-                        Image.open(os.path.join(icon_dir, "not_activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                    ),
-                    'activated': ImageTk.PhotoImage(
-                        Image.open(os.path.join(icon_dir, "activated.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                    ),
-                    'finished': ImageTk.PhotoImage(
-                        Image.open(os.path.join(icon_dir, "finished.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                    ),
-                    'offline': ImageTk.PhotoImage(
-                        Image.open(os.path.join(icon_dir, "offline.png")).resize((16, 16), Image.Resampling.LANCZOS)
-                    )
-                }
-            except Exception as e:
-                print(f"[prop control]Error loading status icons: {e}")
-                self.status_icons = None
 
         # Get order (CORRECTLY using current_room)
         order = self.get_prop_order(prop_data["strName"], self.current_room)
@@ -1592,12 +1604,18 @@ class PropControl:
 
 
         except tk.TclError as e:
-            print(f"[prop control]Widget error in handle_prop_update: {e}")
-            # Clean up invalid widget references
+            print(f"[prop control]Widget error in _handle_prop_update_ui for prop {prop_id} in room {originating_room_number}: {e}")
+            # If a TclError occurs, assume the widget is gone and remove its entry from self.props
             if prop_id in self.props:
-                for key in ['name_label', 'status_label', 'frame']:
-                    if key in self.props[prop_id]:
-                        del self.props[prop_id][key]
+                print(f"[prop control]Removing invalid prop {prop_id} from active UI (self.props).")
+                # Attempt to destroy any lingering sub-widgets and then remove the main entry
+                for key in ['frame', 'status_label', 'name_label']:
+                    if key in self.props[prop_id] and self.props[prop_id][key] and self.props[prop_id][key].winfo_exists():
+                        try:
+                            self.props[prop_id][key].destroy()
+                        except tk.TclError:
+                            pass # Already destroyed, ignore
+                del self.props[prop_id] # Remove the main entry
         except Exception as e:
             print(f"[prop control]Error in handle_prop_update: {e}")
 
