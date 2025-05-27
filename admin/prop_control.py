@@ -73,11 +73,15 @@ class PropControl:
 
     def __init__(self, app):
         self.app = app
-        self.props = {}  # strId -> prop info
+        self.props = {}  # strId -> prop info (for currently selected room's UI)
+        # Use locks for thread-safe access to shared data
+        self._mqtt_clients_lock = threading.Lock() # Protects self.mqtt_clients dictionary
+        self._mqtt_data_lock = threading.Lock()    # Protects other MQTT-related shared data (last_mqtt_updates, disconnect_rc7_history)
+
         self.mqtt_clients = {}  # room_number -> mqtt client
         self.current_room = None
         self.connection_states = {}  # room_number -> connection state
-        self.all_props = {}  # room_number -> {prop_id -> prop_info}
+        self.all_props = {}  # room_number -> {prop_id -> prop_info} (stores all props for all rooms)
         self.prop_update_intervals = {}  # room_number -> last_update_time
         self.UPDATE_INTERVAL = 1000  # Base update interval in ms
         self.INACTIVE_UPDATE_INTERVAL = 2000  # Update interval for non-selected rooms
@@ -106,15 +110,14 @@ class PropControl:
         style = ttk.Style()
         style.configure('Circuit.TFrame', background='#ffe6e6', borderwidth=2, relief='solid')
         style.configure('Circuit.TLabel', background='#ffe6e6', font=('Arial', 8, 'bold'))
-        # Add cousin highlighting style
         style.configure('Cousin.TFrame', background='#e6ffe6', borderwidth=2, relief='solid')
         style.configure('Cousin.TLabel', background='#e6ffe6', font=('Arial', 8, 'bold'))
 
-        # Title label
-        title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
-        #title_label.pack(fill='x', pady=(0, 10))
+        # Title label (optional, currently commented out)
+        # title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
+        # title_label.pack(fill='x', pady=(0, 10))
 
-        # Global controls section
+        # 1. Global controls section (TOP SECTION)
         self.global_controls = ttk.Frame(self.frame)
         self.global_controls.pack(fill='x', pady=(0, 10))
 
@@ -122,66 +125,76 @@ class PropControl:
             self.global_controls,
             text="START PROPS",
             command=self.start_game,
-            bg='#2898ED',   # Blue
+            bg="#2898ED",
             fg='white',
             cursor="hand2"
         )
         self.start_button.pack(fill='x', pady=2)
 
-        # Create a container frame for the two reset buttons
         self.reset_buttons_container = tk.Frame(self.global_controls)
-        self.reset_buttons_container.pack(fill='x', pady=2) # Pack this container frame
+        self.reset_buttons_container.pack(fill='x', pady=2)
 
-        # Define button colors for visual distinction
         reset_props_only_bg = '#DB4260'
         reset_props_and_kiosk_bg = '#a356ba'
 
-        # "RESET ALL PROPS" button (only resets props)
         self.reset_props_only_button = tk.Button(
             self.reset_buttons_container,
             text="RESET PROPS",
-            command=self._handle_reset_props_only_click, # New handler for props only
+            command=self._handle_reset_props_only_click,
             bg=reset_props_only_bg,
             fg='white',
             cursor="hand2"
         )
-        # Store confirmation state and original text directly on the button widget
         self.reset_props_only_button.confirmation_pending = False
         self.reset_props_only_button.after_id = None
         self.reset_props_only_button.original_text = "RESET PROPS"
-        # Pack to the left, fill horizontally, expand to take equal space, with slight padding
         self.reset_props_only_button.pack(side='left', fill='x', expand=True, padx=(0, 1))
 
-        # "RESET PROPS & KIOSK" button (resets props AND kiosk)
         self.reset_props_and_kiosk_button = tk.Button(
             self.reset_buttons_container,
             text="RESET PROPS & KIOSK",
-            command=self._handle_reset_props_and_kiosk_click, # New handler for props and kiosk
+            command=self._handle_reset_props_and_kiosk_click,
             bg=reset_props_and_kiosk_bg,
             fg='white',
             cursor="hand2"
         )
-        # Store confirmation state and original text directly on the button widget
         self.reset_props_and_kiosk_button.confirmation_pending = False
         self.reset_props_and_kiosk_button.after_id = None
         self.reset_props_and_kiosk_button.original_text = "RESET PROPS & KIOSK"
-        # Pack to the right, fill horizontally, expand to take equal space, with slight padding
         self.reset_props_and_kiosk_button.pack(side='right', fill='x', expand=True, padx=(1, 0))
 
+        # 2. Special buttons section (MIDDLE-TOP SECTION)
+        self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
+        self.special_frame.pack(fill='x', pady=5)
+
+        # 3. Scrollable props section (FILLS REMAINING MIDDLE SPACE, expands)
+        self.canvas = tk.Canvas(self.frame)
+        self.props_frame = ttk.Frame(self.canvas)
+        self.canvas.pack(fill="both", expand=True) # CRITICAL: No 'side' argument to fill vertically
+
+        self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
+        self.props_frame.bind("<Configure>", self.on_frame_configure)
+        self.canvas.bind("<Configure>", self.on_canvas_configure)
+
+        # 4. Status message label (BOTTOM SECTION - above popout button)
+        self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
+        self.status_label.pack(side='bottom', fill='x', pady=5)
+
+        # 5. Popout Button (VERY BOTTOM SECTION)
         self.popout_button = tk.Button(
-            self.frame, # <-- CHANGED PARENT TO self.frame (the main left panel)
+            self.frame,
             text="◱",
             command=self.create_popout_window,
-            bg='#5AC8CD', # Slate Blue
+            bg='#5AC8CD',
             fg='white',
             cursor="hand2",
-            font=('Arial', 9, 'bold') # <-- ADDED: Smaller font for reduced size
+            font=('Arial', 8, 'bold'),
+            width=1
         )
-        # Pack it at the very bottom of the 'self.frame'
-        self.popout_button.pack(side='bottom', fill='x', pady=(0, 5)) # <-- CHANGED PACKING
-        # Initially hide the popout button until a room is selected
-        self.popout_button.pack_forget() # Still hides the button by default
+        self.popout_button.pack(side='bottom', fill='x', pady=(0, 5))
+        self.popout_button.pack_forget() # Initially hidden
 
+        # Load icons *after* all UI elements have been defined and assigned to self
         self.status_icons = {}
         try:
             icon_dir = os.path.join("admin_icons")
@@ -205,62 +218,19 @@ class PropControl:
             self.status_icons = {} # Ensure it's an empty dict if load fails
             self.flagged_prop_image = None # Set to None if image fails to load
 
-                # Special buttons section
-        self.special_frame = ttk.LabelFrame(self.frame, text="Room-Specific")
-        self.special_frame.pack(fill='x', pady=5)
-
-        # --- START MODIFIED PACKING ORDER ---
-
-        # 1. Popout Button (Pack this first, at the very bottom of `self.frame`)
-        self.popout_button = tk.Button(
-            self.frame, # IMPORTANT: Parent is `self.frame` (the main left panel)
-            text="◱",
-            command=self.create_popout_window,
-            bg='#5AC8CD', # Slate Blue
-            fg='white',
-            cursor="hand2",
-            font=('Arial', 8, 'bold'), # Smaller font size
-            width=1 # Set a desired width (in text units)
-        )
-        self.popout_button.pack(side='bottom', fill='x', pady=(0, 5)) # Pack at the bottom, fill horizontally
-        self.popout_button.pack_forget() # Initially hidden
-
-        # 2. Status message label (Pack this above the popout button, also at the bottom)
-        self.status_label = tk.Label(self.frame, text="", font=('Arial', 10))
-        self.status_label.pack(side='bottom', fill='x', pady=5) # Pack above the popout button
-
-        # 3. Scrollable props section (This will now fill all *remaining* space in the middle)
-        self.canvas = tk.Canvas(self.frame)
-        self.props_frame = ttk.Frame(self.canvas)
-
-        # This canvas will expand to fill the space between `self.special_frame` (packed top)
-        # and `self.status_label` (packed bottom).
-        # Remove 'side="left"' if you want it to expand vertically to fill the remaining space.
-        self.canvas.pack(fill="both", expand=True) # <-- CRITICAL: No 'side' argument to fill vertically
-
-        # Create window in canvas for props (this remains the same)
-        self.canvas_frame = self.canvas.create_window((0,0), window=self.props_frame, anchor="nw")
-
-        # Configure canvas scrolling (remains the same)
-        self.props_frame.bind("<Configure>", self.on_frame_configure)
-        self.canvas.bind("<Configure>", self.on_canvas_configure)
-
-        # --- END MODIFIED PACKING ORDER ---
-
         self.load_prop_name_mappings()
-        self.load_flagged_prop_image()
 
         # Initialize MQTT clients for all rooms
         for room_number in self.ROOM_CONFIGS:
-            self.last_progress_times[room_number] = time.time()  # initialize to now
-            self.all_props[room_number] = {}  # Initialize the dictionary for each room
-            self.last_mqtt_updates[room_number] = {}  # Initialize MQTT update tracking
-            self.flagged_props[room_number] = {}  # initialize the flag props dict
-            self.stale_sound_played[room_number] = False  # <-- INITIALIZE FLAG (This line is fine)
-            self.fate_sent.setdefault(room_number, False)  # Use setdefault for cleaner init
+            self.last_progress_times[room_number] = time.time()
+            self.all_props[room_number] = {}
+            self.last_mqtt_updates[room_number] = {}
+            self.flagged_props[room_number] = {}
+            self.stale_sound_played[room_number] = False
+            self.fate_sent.setdefault(room_number, False)
             self.finish_sound_played.setdefault(room_number, False)
             self.standby_played.setdefault(room_number, False)
-            self.initialize_mqtt_client(room_number)  # Moved MQTT init to end of loop body
+            self.initialize_mqtt_client(room_number)
 
     def _reset_confirmable_button(self, button_widget):
         """
@@ -347,28 +317,29 @@ class PropControl:
         try:
             # Verify widget still exists
             if not prop['status_label'].winfo_exists():
+                # print(f"[prop control]Status label for {prop_id} no longer exists, removing reference.")
                 del prop['status_label']
                 return
 
             current_time = time.time()
 
-            # Check for MQTT timeout
-            is_offline = (self.current_room not in self.last_mqtt_updates or
-                        prop_id not in self.last_mqtt_updates[self.current_room] or
-                        current_time - self.last_mqtt_updates[self.current_room][prop_id] > 3)
+            is_offline = False
+            with self._mqtt_data_lock: # Protect access to self.last_mqtt_updates
+                is_offline = (self.current_room not in self.last_mqtt_updates or
+                            prop_id not in self.last_mqtt_updates[self.current_room] or
+                            current_time - self.last_mqtt_updates[self.current_room].get(prop_id, 0) > 3)
 
-            # BEGIN FIX SNIPPET (Add this where you deleted the block above)
             # Ensure status_icons is available and has 'offline' before proceeding
             if not hasattr(self, 'status_icons') or 'offline' not in self.status_icons:
                 print("[prop control]Status icons or 'offline' icon not properly initialized. Skipping icon update.")
                 return # Can't update status without icons, so exit
-            # END FIX SNIPPET
 
 
             if is_offline:
                 icon = self.status_icons['offline']
             else:
-                status_text = prop['info']['strStatus']
+                # Ensure 'info' key exists before accessing
+                status_text = prop.get('info', {}).get('strStatus')
                 if status_text == "Not activated" or status_text == "Not Activated":
                     icon = self.status_icons['not_activated']
                 elif status_text == "Activated":
@@ -376,7 +347,7 @@ class PropControl:
                 elif status_text == "Finished":
                     icon = self.status_icons['finished']
                 else:
-                    icon = self.status_icons['not_activated']
+                    icon = self.status_icons['not_activated'] # Default if status is unknown or missing
 
             # Check if prop is flagged and overlay the flag image if it is
             if (self.current_room in self.flagged_props and
@@ -385,14 +356,14 @@ class PropControl:
 
                 if self.flagged_prop_image:
                     # Create a new PhotoImage for the composite image
+                    # Convert to RGBA to ensure transparency blending works
                     composite_image = Image.new('RGBA', (16, 16), (0, 0, 0, 0))  # Transparent background
                     background_image = ImageTk.getimage(icon).convert("RGBA")
                     flag_image = ImageTk.getimage(self.flagged_prop_image).convert("RGBA")
 
-                    # *** KEY CHANGE: Paste flag_image FIRST ***
+                    # Paste flag_image FIRST then background to ensure background shows through transparent parts of flag
                     composite_image.paste(flag_image, (0, 0), flag_image)
-                    composite_image.paste(background_image, (0, 0), background_image)
-
+                    composite_image.paste(background_image, (0, 0), background_image) # Use flag as mask if needed
 
                     combined_icon = ImageTk.PhotoImage(composite_image)
                     prop['status_label'].config(image=combined_icon)
@@ -417,9 +388,11 @@ class PropControl:
 
         except tk.TclError:
             # Widget was destroyed, remove the reference
-            del prop['status_label']
+            # print(f"[prop control]TclError during update_prop_status for {prop_id}. Widget likely destroyed.")
+            if 'status_label' in prop:
+                del prop['status_label']
         except Exception as e:
-            print(f"[prop control]Error updating prop status: {e}")
+            print(f"[prop control]Error updating prop status for {prop_id}: {e}")
 
     def load_flagged_prop_image(self):
         """Loads the flagged_prop image."""
@@ -510,10 +483,12 @@ class PropControl:
             try:
                 client.ws_set_options(path="/mqtt")
                 client.connect_async(config['ip'], self.MQTT_PORT, keepalive=30)
-                client.loop_start()
-                self.mqtt_clients[room_number] = client
+                client.loop_start() # Starts a new thread for MQTT operations
+
+                with self._mqtt_clients_lock: # Protect modification of self.mqtt_clients
+                    self.mqtt_clients[room_number] = client
                 
-                # Schedule timeout check
+                # Schedule timeout check on the main thread
                 self._schedule_retry(room_number, 5000, lambda: self._check_connection_timeout_callback(room_number))
                 
             except Exception as e:
@@ -521,54 +496,66 @@ class PropControl:
                 error_msg = f"Connection failed. Retrying in 10 seconds..."
                 self.connection_states[room_number] = error_msg
                 
-                if room_number == self.current_room and hasattr(self, 'status_label'):
+                # Update UI on the main thread
+                if room_number == self.current_room and hasattr(self, 'status_label') and self.status_label.winfo_exists():
                     self.app.root.after(0, lambda: self.status_label.config(text=error_msg, fg='red'))
                 
-                # Schedule retry using after()
+                # Schedule retry using after() on the main thread
                 self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
         
-        # Start connection attempt in separate thread
-        self.app.root.after(0, lambda: threading.Thread(target=connect_async, daemon=True).start()) # wrap the thread creation in after
+        # Start connection attempt in separate thread (must be created on main thread, but target runs in new thread)
+        self.app.root.after(0, lambda: threading.Thread(target=connect_async, daemon=True).start())
 
     def check_connection_timeout(self, room_number):
         """Check if connection attempt has timed out"""
-        if room_number in self.mqtt_clients:
-            client = self.mqtt_clients[room_number]
-            if not client.is_connected():
-                #print(f"[prop control]Connection to room {room_number} timed out")
-                room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-                timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
-                self.connection_states[room_number] = timeout_msg
-                
-                # Only update UI if this is the current room
-                if room_number == self.current_room:
-                    self.app.root.after(0, lambda: self.update_connection_state(room_number, timeout_msg))
-                
-                # Clean up failed connection in a separate thread
-                def cleanup():
-                    try:
-                        client.loop_stop()
-                        client.disconnect()
+        # This function is called on the main thread via app.root.after
+        
+        client_to_check = None
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client_to_check = self.mqtt_clients.get(room_number)
+
+        if client_to_check and not client_to_check.is_connected():
+            print(f"[prop control]Connection to room {room_number} timed out")
+            room_name = self.app.rooms.get(room_number, f"Room {room_number}")
+            timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
+            self.connection_states[room_number] = timeout_msg
+            
+            # Only update UI if this is the current room
+            if room_number == self.current_room:
+                self.app.root.after(0, lambda: self.update_connection_state(room_number, timeout_msg))
+            
+            # Clean up failed connection in a separate thread to avoid blocking main thread
+            def cleanup():
+                try:
+                    with self._mqtt_clients_lock: # Protect client operations during cleanup
                         if room_number in self.mqtt_clients:
+                            client_to_stop = self.mqtt_clients[room_number]
+                            client_to_stop.loop_stop() # Stop the MQTT thread
+                            client_to_stop.disconnect() # Attempt a clean disconnect
                             del self.mqtt_clients[room_number]
-                    except Exception as e:
-                        print(f"[prop control]Error cleaning up client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
-                
-                threading.Thread(target=cleanup, daemon=True).start()
-                
-                # Schedule retry using after()
-                self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
+                            print(f"[prop control]Cleaned up client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' after timeout.")
+                except Exception as e:
+                    print(f"[prop control]Error cleaning up client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
+            
+            threading.Thread(target=cleanup, daemon=True).start()
+            
+            # Schedule retry using after() on the main thread
+            self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
     def _check_connection_timeout_callback(self, room_number): # new helper method
+         # Ensures this runs on the main thread implicitly if scheduled via after
          self.check_connection_timeout(room_number)
 
     def restore_prop_ui(self, prop_id, prop_data):
         """Recreate UI elements for a saved prop"""
+        # This method is not called anywhere in the provided code, but if it were,
+        # it should ensure it's called on the main thread or marshals UI calls.
         print("[prop control]Restoring prop UI")
         if not prop_data or 'info' not in prop_data:
             return False
             
         try:
+            # handle_prop_update already marshals to UI thread
             self.handle_prop_update(prop_data['info'], self.current_room)
             return True
         except Exception as e:
@@ -577,27 +564,32 @@ class PropControl:
 
     def retry_connection(self, room_number):
         """Retry connecting to a room's MQTT server without blocking"""
-        #print(f"[prop control]Retrying connection to room {room_number}")
+        # This function is called on the main thread via app.root.after
+        # print(f"[prop control]Retrying connection to room {room_number}")
         
         # Start a new connection attempt in a separate thread
         def do_retry():
-            # Clean up any existing client first
-            if room_number in self.mqtt_clients:
-                try:
-                    old_client = self.mqtt_clients[room_number]
-                    old_client.loop_stop()
-                    old_client.disconnect()
-                    del self.mqtt_clients[room_number]
-                except Exception as e:
-                    print(f"[prop control]Error cleaning up old client for room {room_number}: {e}")
+            # Clean up any existing client first in a thread-safe manner
+            with self._mqtt_clients_lock:
+                if room_number in self.mqtt_clients:
+                    try:
+                        old_client = self.mqtt_clients[room_number]
+                        old_client.loop_stop()
+                        old_client.disconnect()
+                        del self.mqtt_clients[room_number]
+                        print(f"[prop control]Cleaned up old client for room {room_number} before retry.")
+                    except Exception as e:
+                        print(f"[prop control]Error cleaning up old client for room {room_number} during retry: {e}")
             
-            # Initialize new connection
-            self.app.root.after(0, lambda: self.initialize_mqtt_client(room_number)) # wrap the initial connection call
+            # Initialize new connection (this call itself will be marshaled to the main thread)
+            self.app.root.after(0, lambda: self.initialize_mqtt_client(room_number))
         
-        self.app.root.after(0, lambda: threading.Thread(target=do_retry, daemon=True).start()) # wrap the retry in after
+        # Run the retry logic (especially cleanup) in a separate thread
+        self.app.root.after(0, lambda: threading.Thread(target=do_retry, daemon=True).start())
 
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
+        # This method is called from the main thread
         if room_number == self.current_room:
             # If the popout window is already open for this room, bring it to front
             if room_number in self.popout_windows and self.popout_windows[room_number]['toplevel'].winfo_exists():
@@ -605,35 +597,33 @@ class PropControl:
             return
 
         # Before clearing UI and self.props, explicitly dereference widgets for the old room
-        # This helps break potential circular references and allows Python's GC to clean up.
         if self.current_room is not None and self.current_room in self.all_props:
             for prop_id in self.all_props[self.current_room]:
                 if prop_id in self.props: # Only dereference if it was in the active UI
                     prop_data = self.props[prop_id]
-                    if 'frame' in prop_data: prop_data['frame'] = None
-                    if 'status_label' in prop_data: prop_data['status_label'] = None
-                    if 'name_label' in prop_data: prop_data['name_label'] = None
-        
+                    if 'frame' in prop_data and prop_data['frame'].winfo_exists():
+                        prop_data['frame'].destroy() # Destroy the frame to clean up all its children
+                    # Explicitly remove references from self.props
+                    self.props.pop(prop_id, None)
+
         # Clear the active UI prop dictionary for the new room
         self.props = {}
 
-        # Clear UI
-        if hasattr(self, 'props_frame') and self.props_frame.winfo_exists(): # ADDED CHECK
+        # Clear UI by destroying children of props_frame if it exists
+        if hasattr(self, 'props_frame') and self.props_frame.winfo_exists():
             for widget in self.props_frame.winfo_children():
-                try: # ADDED TRY/EXCEPT
+                try:
                     widget.destroy()
                 except tk.TclError:
-                    pass # Widget might have been destroyed already by other means
-        else: # ADDED ELSE FOR LOGGING/DEBUGGING
-            print("[prop control] props_frame does not exist or has been destroyed in connect_to_room.")
+                    pass # Widget might have been destroyed already by other means or by parent destroy
 
         # Restore props for new room
         if room_number in self.all_props:
             for prop_id, prop_data in self.all_props[room_number].items():
                 if 'last_status' not in prop_data:
                     prop_data['last_status'] = None
-                # *** MODIFY THIS CALL ***
-                self.handle_prop_update(prop_data['info'], room_number)  # Pass the new room number
+                # Pass the new room number
+                self.handle_prop_update(prop_data['info'], room_number)
         else:
             self.all_props[room_number] = {}
 
@@ -652,33 +642,35 @@ class PropControl:
         self.fate_sent[room_number] = False
         print(f"[prop control] set fate_sent false for room {room_number}")
 
-        # --- STANDBY STATE INITIALIZATION ---
         if room_number not in self.standby_played:
             self.standby_played[room_number] = False
-        # --- END STANDBY STATE INITIALIZATION ---
         if room_number not in self.finish_sound_played:
             self.finish_sound_played[room_number] = False
 
-        if room_number in self.connection_states and hasattr(self, 'status_label'):
+        if room_number in self.connection_states and hasattr(self, 'status_label') and self.status_label.winfo_exists():
             try:
                 self.status_label.config(
                     text=self.connection_states[room_number],
                     fg='black' if "Connected" in self.connection_states[room_number] else 'red'
                 )
             except tk.TclError:
-                print("[prop control]Status label was destroyed, skipping update")
+                print("[prop control]Status label was destroyed, skipping update in connect_to_room")
         else:
+            # If no existing connection state, try to initialize client.
+            # This handles cases where client might not have been initialized due to previous errors.
+            print(f"[prop control]No existing connection state for room {room_number}, attempting initialize_mqtt_client.")
             self.initialize_mqtt_client(room_number)
         
         if self.current_room is not None:
-            # IMPORTANT: Use the same packing options as its definition in __init__
-            self.popout_button.pack(side='bottom', pady=(0, 5), anchor="se") 
+            if hasattr(self, 'popout_button') and self.popout_button.winfo_exists():
+                self.popout_button.pack(side='bottom', pady=(0, 5), anchor="se")
         else:
-            self.popout_button.pack_forget() # Hide if no room selected
+            if hasattr(self, 'popout_button') and self.popout_button.winfo_exists():
+                self.popout_button.pack_forget() # Hide if no room selected
 
     def sort_and_repack_props(self):
         """Sorts props based on their 'order' for the *current* room and repacks them."""
-        #print("[prop control]Sorting and repacking props")
+        # This method is called from the main thread
         if not self.current_room or not self.props:
             return
 
@@ -696,9 +688,9 @@ class PropControl:
                     prop_data['frame'].pack(fill='x', pady=1)  # Add back in sorted order
                 except tk.TclError as e:
                     print(f"[prop control]Error repacking prop {prop_id} for room {self.current_room}: Widget destroyed? {e}")
-                    # Optionally, remove the prop from self.props or mark as invalid
-                    if prop_id in self.props and 'frame' in self.props[prop_id]:
-                        del self.props[prop_id]['frame'] # Clean up reference to destroyed widget
+                    # Remove the prop from self.props if its frame is destroyed
+                    if prop_id in self.props:
+                        del self.props[prop_id]
 
     def get_prop_order(self, prop_name, room_number):
         """Get the order for a prop for a specific room."""
@@ -708,7 +700,7 @@ class PropControl:
         room_key = self.ROOM_MAP[room_number]
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
-
+        
         if room_key not in self.prop_name_mappings:
             return 999  # Default order
 
@@ -732,25 +724,28 @@ class PropControl:
 
     def update_prop_ui_elements(self, prop_id, prop_data):
         """Updates prop name label based on the selected room without creating a new prop UI element"""
+        # This method is called from the main thread
         if prop_id not in self.props:
             return
         
         mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
         
         # Update the name label
-        name_label_widget = self.props[prop_id].get('name_label') # USE .get() FOR SAFER ACCESS
-        if not name_label_widget or not name_label_widget.winfo_exists(): # ADDED CHECK
-            # Optionally, log this: print(f"[prop control] Name label for prop {prop_id} not found or destroyed in update_prop_ui_elements.")
-            if prop_id in self.props and 'name_label' in self.props[prop_id]: # Clean up if reference exists but widget doesn't
+        name_label_widget = self.props[prop_id].get('name_label')
+        if not name_label_widget or not name_label_widget.winfo_exists():
+            # print(f"[prop control] Name label for prop {prop_id} not found or destroyed in update_prop_ui_elements.")
+            if prop_id in self.props and 'name_label' in self.props[prop_id]:
                 del self.props[prop_id]['name_label']
             return
 
-        try: # WRAP UI OPERATIONS
+        try:
             name_label_widget.config(text = mapped_name)
             
             # Update name label formatting
             if self.is_finishing_prop(self.current_room, prop_data['strName']):
                 name_label_widget.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
+            elif self.is_standby_prop(self.current_room, prop_data['strName']):
+                name_label_widget.config(font=('Arial', 8, 'bold', 'italic'))
             else:
                 name_label_widget.config(font=('Arial', 8, 'bold'))
 
@@ -758,30 +753,32 @@ class PropControl:
             name_label_widget.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
             name_label_widget.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
         except tk.TclError:
-            # Optionally, log this: print(f"[prop control] TclError configuring name_label for prop {prop_id} in update_prop_ui_elements.")
-            if prop_id in self.props and 'name_label' in self.props[prop_id]: # Clean up reference on error
+            # print(f"[prop control] TclError configuring name_label for prop {prop_id} in update_prop_ui_elements.")
+            if prop_id in self.props and 'name_label' in self.props[prop_id]:
                 del self.props[prop_id]['name_label']
+        except Exception as e:
+            print(f"[prop control]Unexpected error in update_prop_ui_elements for {prop_id}: {e}")
 
     def clean_up_room_props(self, room_number):
         """
         Safely clean up all prop widgets for a room and prepare for room switch.
         This should be called before switching rooms or clearing props.
         """
+        # This method is called from the main thread
         if room_number in self.all_props:
-            # Remove widget references but keep prop data
-            for prop_id in self.all_props[room_number]:
-                if 'status_label' in self.all_props[room_number][prop_id]:
-                    del self.all_props[room_number][prop_id]['status_label']
-                if 'frame' in self.all_props[room_number][prop_id]:
-                    del self.all_props[room_number][prop_id]['frame']
+            # Remove widget references but keep prop data (prop data is in self.all_props)
+            # The actual widget destruction is handled in connect_to_room for the current room
+            # For non-current rooms, their widgets don't exist in self.props anyway.
+            pass # No direct action here, as self.props handles active UI, and self.all_props stores data
 
     def update_prop_tracking_interval(self, room_number, is_selected=False):
         """Update the tracking interval for a room's props. The periodic update loop is started on connect."""
-        # Update the interval setting. The periodic update loop is started by on_connect.
+        # This method is called from the main thread
         self.prop_update_intervals[room_number] = self.UPDATE_INTERVAL if is_selected else self.INACTIVE_UPDATE_INTERVAL
         # The update_all_props_status method will use this interval for the next scheduled call.
 
     def check_prop_status(self, room_number, prop_id, prop_info):
+        # This method is called from the main thread
         if not prop_info or 'info' not in prop_info:
             return
 
@@ -826,21 +823,18 @@ class PropControl:
 
                 self.flagged_props[room_number][prop_id] = False
             
-            # --- STANDBY PROP HANDLING ---
-            #if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
-                    #status == "Finished"):
-                #self.play_standby_sound(room_number)
-            # --- END STANDBY PROP HANDLING ---
+            # --- STANDBY PROP HANDLING --- (logic removed as per original comment in update_all_props_status, but sound calls remain)
 
-
-            if room_number == self.current_room and 'status_label' in prop_info:
-                try:
-                    prop_info['status_label'].winfo_exists()
-                    self.update_prop_status(prop_id)
-                except tk.TclError:
-                    del prop_info['status_label']
-                except Exception as e:
-                    print(f"[prop control]Error updating prop UI: {e}")
+            if room_number == self.current_room and prop_id in self.props: # Check if prop is in active UI
+                # check if 'status_label' key exists and then if the widget exists
+                if 'status_label' in self.props[prop_id] and self.props[prop_id]['status_label'].winfo_exists():
+                    try:
+                        self.update_prop_status(prop_id)
+                    except tk.TclError:
+                        # Widget destroyed, remove reference from active UI dict
+                        del self.props[prop_id]['status_label']
+                    except Exception as e:
+                        print(f"[prop control]Error updating prop UI for {prop_id}: {e}")
 
         except Exception as e:
             prop_name = prop_info['info'].get('strName', 'unknown') if 'info' in prop_info else 'unknown'
@@ -852,60 +846,67 @@ class PropControl:
 
     def play_standby_sound(self, room_number):
         """Plays the room-specific standby sound."""
-        print("[prop_control].play_standby_sound")
+        print(f"[prop_control] Playing standby sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_standby.mp3"
-        audio_manager = AdminAudioManager()  # Get the singleton instance
-        audio_manager._load_sound(f"{room_name}_standby", sound_file)  # Ensure sound is loaded
+        audio_manager = AdminAudioManager()
+        audio_manager._load_sound(f"{room_name}_standby", sound_file)
         audio_manager.play_sound(f"{room_name}_standby")
 
     def play_stale_sound(self, room_number):
         """Plays the room-specific stale sound."""
-        print("[prop_control].play_stale_sound")
+        print(f"[prop_control] Playing stale sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_stale.mp3"
-        audio_manager = AdminAudioManager()  # Get the singleton instance
-        audio_manager._load_sound(f"{room_name}_stale", sound_file)  # Ensure sound is loaded
+        audio_manager = AdminAudioManager()
+        audio_manager._load_sound(f"{room_name}_stale", sound_file)
         audio_manager.play_sound(f"{room_name}_stale")
 
     def play_finish_sound(self, room_number):
         """Plays the room-specific finish sound."""
+        print(f"[prop_control] Playing finish sound for room {room_number}")
         audio_manager = AdminAudioManager()
         audio_manager.play_sound("game_finish")
 
     def update_all_props_status(self, room_number):
+        # This method is called from the main thread
         if room_number not in self.all_props:
             return
 
         current_time = time.time()
 
         is_activated = False
-        is_finished = False  # Initialize is_finished to False
+        is_finished = False
         timer_expired = False
         finishing_prop_offline = False
         is_standby = False
         standby_prop_offline = False
 
-        # --- STANDBY STATE TRACKING (existing code) ---
         if room_number not in self.standby_played:
             self.standby_played[room_number] = False
-        # --- END STANDBY STATE TRACKING ---
         if room_number not in self.finish_sound_played:
             self.finish_sound_played[room_number] = False
 
-        for prop_id, prop_info in self.all_props[room_number].items():
+        for prop_id, prop_info in list(self.all_props[room_number].items()): # Iterate over copy for safety
             if 'info' not in prop_info:
                 continue
 
-            is_offline = (room_number not in self.last_mqtt_updates or
-                        prop_id not in self.last_mqtt_updates[room_number] or
-                        current_time - self.last_mqtt_updates[room_number][prop_id] > 3)
+            # Access last_mqtt_updates safely with a lock
+            prop_last_mqtt_update = 0
+            with self._mqtt_data_lock:
+                prop_last_mqtt_update = self.last_mqtt_updates.get(room_number, {}).get(prop_id, 0)
+
+            is_offline = (current_time - prop_last_mqtt_update > 3)
+
+            # Ensure prop_info['info'] exists before modification or access
+            if 'info' not in prop_info:
+                continue
 
             if is_offline:
                 prop_info['info']['strStatus'] = "offline"
@@ -918,22 +919,20 @@ class PropControl:
             if status == "Activated":
                 is_activated = True
 
-            # Check if a finishing prop is finished AND not offline
             if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', '')) and
-                not finishing_prop_offline and # Only consider if the finishing prop is NOT offline
+                not finishing_prop_offline and
                 status == "Finished"):
-                is_finished = True # If any finishing prop is finished and online, game is finished
+                is_finished = True
 
-            # --- STANDBY PROP CHECK ---
             if (self.is_standby_prop(room_number, prop_info['info'].get('strName', '')) and
-                not standby_prop_offline and # Only consider if the standby prop is NOT offline
+                not standby_prop_offline and
                 status == "Finished"):
                 is_standby = True
 
 
             # Handle prop entering non-finished status after finish
             if (self.is_finishing_prop(room_number, prop_info['info'].get('strName', ''))
-                and not finishing_prop_offline # Only reset if the prop is NOT offline
+                and not finishing_prop_offline
                 and status != "Finished"):
                 if (room_number in self.fate_sent and self.fate_sent[room_number] == True) or \
                 (room_number in self.finish_sound_played and self.finish_sound_played[room_number] == True):
@@ -957,46 +956,35 @@ class PropControl:
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
-                # SAFELY ACCESS KIOSK STATS
                 kiosk_stat_data = self.app.kiosk_tracker.kiosk_stats.get(computer_name)
                 if kiosk_stat_data:
                     timer_time = kiosk_stat_data.get('timer_time', 2700)
                     timer_expired = timer_time <= 0
-                assigned_kiosk = computer_name # Store the assigned kiosk
-                break # Found the kiosk for this room, exit loop
+                assigned_kiosk = computer_name
+                break
 
         # Update kiosk highlight (this should always run, regardless of victory status)
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
 
         # --- VICTORY MESSAGE DECISION LOGIC ---
-        # Only send victory message if the game is finished AND it hasn't been sent for this game state yet
         if is_finished and not self.fate_sent.get(room_number, False):
             if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
-                # Check if auto-reset timer is NOT already running for this kiosk (prevents double triggering)
                 if assigned_kiosk not in self.app.interface_builder.auto_reset_timer_ids:
-                    # Now, apply the cooldown check before calling the actual send method
                     last_sent = self.last_fate_message_time.get(assigned_kiosk)
                     if last_sent is None or (current_time - last_sent) >= self.FATE_COOLDOWN_SECONDS:
-                        # Conditions met: game finished, not previously sent for this state, cooldown elapsed
-                        #room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-                        #print(f"[prop control.update_all_props_status]{room_name} just won")
-                        self._send_victory_message(room_number, assigned_kiosk) # This now sets fate_sent and last_fate_message_time
+                        self._send_victory_message(room_number, assigned_kiosk)
                         # Uncomment to re-enable auto reset functionality after victory message
                         # self.app.interface_builder.start_auto_reset_timer(assigned_kiosk)
                     else:
                         cooldown_remaining = self.FATE_COOLDOWN_SECONDS - (current_time - last_sent)
-                        print(f"[prop control]Skipping victory message send for room {room_number} (kiosk {assigned_kiosk}). Cooldown active. Remaining: {cooldown_remaining:.1f}s.")
+                        # print(f"[prop control]Skipping victory message send for room {room_number} (kiosk {assigned_kiosk}). Cooldown active. Remaining: {cooldown_remaining:.1f}s.")
             else:
-                # print(f"[prop control]Room {room_number} finished but no assigned kiosk or kiosk offline, skipping victory message.") # Optional debug
                 pass # No kiosk to send victory to
 
         # --- AUTO-RESET TIMER FOR TIME EXPIRED (separate from victory) ---
-        # This was previously in the same block as victory check, but should be independent.
         if timer_expired:
             if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
                 if assigned_kiosk not in self.app.interface_builder.auto_reset_timer_ids:
-                    # room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-                    # print(f"[prop control.update_all_props_status]{room_name} timer expired")
                     # Uncomment to re-enable auto reset functionality after timer expires
                     # self.app.interface_builder.start_auto_reset_timer(assigned_kiosk)
                     pass
@@ -1018,7 +1006,7 @@ class PropControl:
 
         # --- UI UPDATES FOR CURRENTLY SELECTED ROOM ---
         if room_number == self.current_room:
-            for prop_id, prop_info in self.all_props[room_number].items():
+            for prop_id, prop_info in list(self.all_props[room_number].items()): # Iterate over copy
                 if prop_id in self.props: # Only update if the UI element exists
                     status_label = self.props[prop_id].get('status_label')
                     if status_label and status_label.winfo_exists():
@@ -1048,14 +1036,12 @@ class PropControl:
 
     def reset_standby_state(self, room_number):
         """Reset the standby state for a room"""
-        #audio_manager = AdminAudioManager() #removed audio manager logic
-        #if room_number in audio_manager.sound_states:
-             #audio_manager.sound_states[room_number]['standby'] = False
         if room_number in self.standby_played:
             self.standby_played[room_number] = False
 
     def update_timer_status(self, room_number):
         """Update room status when timer changes"""
+        # This method is called from the main thread
         if room_number not in self.all_props:
             return
                 
@@ -1064,7 +1050,7 @@ class PropControl:
         timer_expired = False
             
         # Check prop states
-        for prop_id, prop_info in self.all_props[room_number].items():
+        for prop_id, prop_info in list(self.all_props[room_number].items()): # Iterate over copy
             if 'info' not in prop_info:
                 continue
                     
@@ -1089,34 +1075,26 @@ class PropControl:
 
     def on_connect(self, client, userdata, flags, rc, room_number):
         """Handle connection for a specific room's client"""
+        # This callback runs in the MQTT client's background thread
         if rc == 0:
             print(f"[prop control]Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' connected.")
-            # Don't clear history immediately on successful connection
-            # We'll keep the history for a bit in case we quickly disconnect again
+            
+            # Update UI on the main thread
+            self.app.root.after(0, lambda:
+                self.update_connection_state(room_number, "Connected")
+            )
 
-            # Clear any status messages on successful connection
-            if room_number == self.current_room and hasattr(self, 'status_label'):
-                try:
-                    self.status_label.config(text="")
-                except tk.TclError:
-                    print(f"[prop control]Error clearing status label for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect (widget destroyed?).")
-
-            # Cancel the timeout check timer on successful connection
+            # Cancel the timeout check timer on successful connection (on main thread)
             if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
                 self.app.root.after_cancel(self.retry_timer_ids[room_number])
                 self.retry_timer_ids[room_number] = None
 
-            # --- ADD THESE LINES ---
             # Ensure interval is set for periodic updates before scheduling the first one.
-            # Set default interval (inactive) if not already set by selecting the room.
             if room_number not in self.prop_update_intervals:
                 self.prop_update_intervals[room_number] = self.INACTIVE_UPDATE_INTERVAL
 
             # Schedule the first periodic status update call on the main thread.
-            # This ensures the check loop runs for all connected rooms.
-            # update_all_props_status will reschedule itself using the correct interval.
             self.app.root.after(0, lambda rn=room_number: self.update_all_props_status(rn))
-            # --- END ADDED LINES ---
 
             # Subscribe to topics
             topics = [
@@ -1126,26 +1104,22 @@ class PropControl:
             ]
             for topic in topics:
                 try:
-                    # Subscribe on the MQTT thread loop
                     result, mid = client.subscribe(topic)
                     if result != mqtt.MQTT_ERR_SUCCESS:
                         print(f"[prop control]Failed to subscribe to topic '{topic}' for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'. Result code: {result}")
                 except Exception as e:
-                    # This would catch network errors or other unexpected issues during a specific subscribe call
                     print(f"[prop control]Exception while subscribing to topic '{topic}' for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' on connect: {e}")
-                    # Optionally, break or decide if partial subscription is acceptable
 
-            # Clear the disconnect history after 5 seconds of stable connection
-            def clear_disconnect_history():
-                if room_number in self.disconnect_rc7_history:
-                    print(f"[prop control] Connection to room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' stable for 5s. Clearing rc=7 history.")
-                    del self.disconnect_rc7_history[room_number]
+            # Clear the disconnect history after 5 seconds of stable connection (on main thread)
+            def clear_disconnect_history_main_thread():
+                with self._mqtt_data_lock: # Protect shared history list
+                    if room_number in self.disconnect_rc7_history:
+                        print(f"[prop control] Connection to room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' stable for 5s. Clearing rc=7 history.")
+                        del self.disconnect_rc7_history[room_number]
             
-            # Schedule history clearing after a stable period
-            self.app.root.after(5000, clear_disconnect_history)
+            self.app.root.after(5000, clear_disconnect_history_main_thread)
 
         else:
-            # Show error messages
             status = {
                 1: "Connection refused - incorrect protocol version",
                 2: "Connection refused - invalid client identifier",
@@ -1155,71 +1129,79 @@ class PropControl:
             }.get(rc, f"Unknown error (code {rc})")
             
             error_msg = f"Connection failed: {status}. Retrying in 10 seconds..."
-            self.update_connection_state(room_number, error_msg)  # Use the helper
+            # Update UI on the main thread
+            self.app.root.after(0, lambda: self.update_connection_state(room_number, error_msg))
 
-            # Schedule retry
+            # Schedule retry (on main thread)
             self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
 
     def update_connection_state(self, room_number, state):
         """Update the connection state display - only shows error states"""
+        # This method is called from the main thread
         self.connection_states[room_number] = state
 
-        if room_number == self.current_room and hasattr(self, 'status_label'):
+        if room_number == self.current_room and hasattr(self, 'status_label') and self.status_label.winfo_exists():
             self.app.root.after(0, lambda:
                 self._update_connection_state_ui(room_number, state)
             )
 
     def _update_connection_state_ui(self, room_number, state):
-         if room_number == self.current_room and hasattr(self, 'status_label'):
+        # This method is called from the main thread
+        if room_number == self.current_room and hasattr(self, 'status_label') and self.status_label.winfo_exists():
             try:
                 if any(error in state.lower() for error in ["failed", "timed out", "connecting", "lost"]):
-                    # Show error states in red
                     self.status_label.config(
                         text=state,
                         fg='red'
                     )
                     # Clear props display on connection issues
-                    for widget in self.props_frame.winfo_children():
-                        widget.destroy()
-                    self.props = {}
+                    if hasattr(self, 'props_frame') and self.props_frame.winfo_exists():
+                        for widget in self.props_frame.winfo_children():
+                            try:
+                                widget.destroy()
+                            except tk.TclError:
+                                pass
+                    self.props = {} # Explicitly clear the active UI dictionary
                 else:
-                    # Always hide the status label for non-error states
-                    self.status_label.config(text="")
+                    self.status_label.config(text="") # Clear status text for non-error states
             except tk.TclError:
                 print(f"[prop control]Status label widget was destroyed while trying to update for room {room_number}.")
+            except Exception as e:
+                print(f"[prop control]Unexpected error updating connection state UI for room {room_number}: {e}")
+
 
     def setup_special_buttons(self, room_number):
-        # Clear existing buttons
+        # This method is called from the main thread
         for widget in self.special_frame.winfo_children():
-            widget.destroy()
+            try: # Ensure widgets are destroyed safely
+                widget.destroy()
+            except tk.TclError:
+                pass
             
         if room_number not in self.ROOM_CONFIGS:
             return
             
-        # Create container for button grid
         buttons_grid = ttk.Frame(self.special_frame)
-        buttons_grid.pack(fill='x', padx=1, pady=1)  # Reduced padding
+        buttons_grid.pack(fill='x', padx=1, pady=1)
         
-        # Configure grid columns to be equal width
         buttons_grid.columnconfigure(0, weight=1)
         buttons_grid.columnconfigure(1, weight=1)
         
         button_style = {
-            'background': '#ffcccc',    # Pale red background
-            'font': ('Arial', 7),       # Even smaller font
-            'wraplength': 60,           # Narrower text wrapping
-            'height': 1,                # Reduced height
-            'width': 8,                 # Reduced width
-            'relief': 'raised',         # Add subtle 3D effect
-            'padx': 1,                  # Minimal internal padding
-            'pady': 1                   # Minimal internal padding
+            'background': '#ffcccc',
+            'font': ('Arial', 7),
+            'wraplength': 60,
+            'height': 1,
+            'width': 8,
+            'relief': 'raised',
+            'padx': 1,
+            'pady': 1
         }
         
-        # Place buttons in a 2-column grid
         buttons = self.ROOM_CONFIGS[room_number]['special_buttons']
         for i, (button_text, command_name) in enumerate(buttons):
-            row = i // 2    # Integer division for row number
-            col = i % 2     # Remainder for column number
+            row = i // 2
+            col = i % 2
             
             if command_name.startswith('quest/'):
                 quest_type = command_name.split('/')[1]
@@ -1239,7 +1221,6 @@ class PropControl:
                     cursor="hand2"
                 )
                 
-            # Pack button into grid with minimal padding
             btn.grid(row=row, column=col, padx=1, pady=1, sticky='nsew')
 
     def should_ignore_progress(self, room_number, prop_name):
@@ -1255,10 +1236,11 @@ class PropControl:
             return False
             
         prop_info = self.prop_name_mappings[room_key]['mappings'].get(prop_name, {})
-        return prop_info.get('ignore_progress', False)  # Returns False if flag doesn't exist
+        return prop_info.get('ignore_progress', False)
 
     def on_message(self, client, userdata, msg, room_number):
-        """Modified to handle messages for all rooms, including tracking prop status changes."""
+        """Handle messages for all rooms, including tracking prop status changes."""
+        # This callback runs in the MQTT client's background thread
         try:
             if msg.topic == "/er/riddles/info":
                 payload = json.loads(msg.payload.decode())
@@ -1268,10 +1250,11 @@ class PropControl:
                     
                 prop_id = payload.get("strId")
                 if prop_id:
-                    # Update MQTT last update time
-                    if room_number not in self.last_mqtt_updates:
-                        self.last_mqtt_updates[room_number] = {}
-                    self.last_mqtt_updates[room_number][prop_id] = time.time()
+                    # Update MQTT last update time, protected by a lock
+                    with self._mqtt_data_lock:
+                        if room_number not in self.last_mqtt_updates:
+                            self.last_mqtt_updates[room_number] = {}
+                        self.last_mqtt_updates[room_number][prop_id] = time.time()
                     
                     if prop_id not in self.all_props[room_number]:
                         self.all_props[room_number][prop_id] = {
@@ -1282,101 +1265,82 @@ class PropControl:
                     else:
                         self.all_props[room_number][prop_id]['info'] = payload.copy()
 
-                    _payload_copy = payload.copy()  # Ensure we use a copy in the lambda
+                    _payload_copy = payload.copy()
+                    # Marshal calls to handle_prop_update and check_prop_status to the main thread
                     self.app.root.after(0, lambda pdata=_payload_copy, rn=room_number: self.handle_prop_update(pdata, rn))
-
-                    self.app.root.after(0, lambda: self.check_prop_status(
-                        room_number, prop_id, self.all_props[room_number][prop_id]
+                    self.app.root.after(0, lambda pid=prop_id, rn=room_number: self.check_prop_status(
+                        rn, pid, self.all_props[rn].get(pid, {}) # Pass a copy or safely get data
                     ))
                         
-        except json.JSONDecodeError:
-            print(f"[prop control]Failed to decode message from room {room_number}: {msg.payload}")
-        except (json.JSONDecodeError, UnicodeDecodeError) as e: # MODIFIED: Catch UnicodeDecodeError as well
+        except (json.JSONDecodeError, UnicodeDecodeError) as e:
             print(f"[prop control]Failed to decode or parse message from room {room_number}: {e}. Payload: {msg.payload}")
         except Exception as e:
-            print(f"[prop control]Error handling message from room {room_number}: {e}")
+            print(f"[prop control]Error handling message from room {room_number}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def on_disconnect(self, client, userdata, rc, room_number):
         """Handle disconnection for a specific room's client, with aggressive retry for rc=7."""
+        # This callback runs in the MQTT client's background thread
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
         current_time = time.time()
-        print(f"[prop control]Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' disconnected with code: {rc} at {current_time}")  # Added timestamp
+        print(f"[prop control]Room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' disconnected with code: {rc} at {current_time}")
 
-        # --- Aggressive Retry Logic for rc=7 ---
-        if rc == 7:
-            # Initialize history for this room if needed
-            if room_number not in self.disconnect_rc7_history:
-                self.disconnect_rc7_history[room_number] = []
-
-            # Add current disconnect timestamp
-            self.disconnect_rc7_history[room_number].append(current_time)
-            #print(f"[prop control] DEBUG: Added rc=7 timestamp for room {room_number}. History: {self.disconnect_rc7_history[room_number]}")  # Debug
-
-            # Filter out timestamps older than 10 seconds
-            self.disconnect_rc7_history[room_number] = [
-                ts for ts in self.disconnect_rc7_history[room_number]
-                if current_time - ts <= 10
-            ]
-            disconnect_count = len(self.disconnect_rc7_history[room_number])  # Store count
-            #print(f"[prop control] DEBUG: Filtered rc=7 history for room {room_number}. Count = {disconnect_count}. History: {self.disconnect_rc7_history[room_number]}")  # Debug
-
-            # Check if threshold is met (2 or more disconnects in the last 10 seconds)
-            if disconnect_count >= 2:
-                print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'. Triggering aggressive retry.")  # More specific log
-                # Trigger the aggressive retry
-                self.aggressive_retry(room_number)
-                # Clear history *after* triggering aggressive retry
-                self.disconnect_rc7_history[room_number] = []
-                return  # Stop here, aggressive_retry handles the next step
-
-            else:
-                # If threshold not met, proceed with standard retry logic below for rc=7
-                print(f"[prop control] DEBUG: rc=7 count ({disconnect_count}) for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' is below threshold (2). Scheduling standard retry.")  # Debug log
-                # Fall through to the standard retry path below
-
-        else:  # rc is not 7
-            # For any other disconnect code (not rc=7), clear the rc=7 specific history
-            if room_number in self.disconnect_rc7_history:
-                print(f"[prop control] DEBUG: Clearing rc=7 history for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' due to non-rc=7 disconnect (code {rc}).")  # Debug
-                del self.disconnect_rc7_history[room_number]
-
-        # --- Standard Retry Logic (for non-zero rc OR rc=7 below threshold) ---
-        if rc != 0:  # Unexpected disconnect
+        with self._mqtt_data_lock: # Protect access to disconnect_rc7_history
             if rc == 7:
-                # Use the count we calculated earlier if available
+                if room_number not in self.disconnect_rc7_history:
+                    self.disconnect_rc7_history[room_number] = []
+
+                self.disconnect_rc7_history[room_number].append(current_time)
+                
+                self.disconnect_rc7_history[room_number] = [
+                    ts for ts in self.disconnect_rc7_history[room_number]
+                    if current_time - ts <= 10
+                ]
+                disconnect_count = len(self.disconnect_rc7_history[room_number])
+
+                if disconnect_count >= 2:
+                    print(f"[prop control]Detected {disconnect_count} rc=7 disconnects in <=10s for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'. Triggering aggressive retry.")
+                    # Trigger the aggressive retry (marshaled to main thread as it involves UI updates and threading)
+                    self.app.root.after(0, lambda: self.aggressive_retry(room_number))
+                    self.disconnect_rc7_history[room_number] = [] # Clear history after triggering
+                    return
+            else:
+                if room_number in self.disconnect_rc7_history:
+                    del self.disconnect_rc7_history[room_number]
+
+        # Standard retry logic (for non-zero rc OR rc=7 below threshold)
+        if rc != 0:
+            status_msg = ""
+            if rc == 7:
                 count_info = f" (Count: {disconnect_count})" if 'disconnect_count' in locals() else ""
                 status_msg = f"Connection to {room_name} props lost (Code 7{count_info}). Retrying in 10 seconds..."
             else:
                 status_msg = f"Connection to {room_name} props lost (Code {rc}). Retrying in 10 seconds..."
 
-            self.update_connection_state(room_number, status_msg)  # Use helper
-
-            # Schedule standard retry using the helper method
-            self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number))
-        # else: rc == 0 (expected disconnect, e.g., client.disconnect() called) - do nothing
+            # Update UI and schedule retry on the main thread
+            self.app.root.after(0, lambda: self.update_connection_state(room_number, status_msg))
+            self.app.root.after(0, lambda: self._schedule_retry(room_number, 10000, lambda: self.retry_connection(room_number)))
 
     def aggressive_retry(self, room_number):
         """Performs a more aggressive retry for a room after repeated failures."""
+        # This method is called from the main thread
         print(f"[prop control]Triggering aggressive retry for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}'")
         room_name = self.app.rooms.get(room_number, f"Room {room_number}")
 
-        # Update UI status immediately (must use after)
-        self.app.root.after(0, lambda:
-            self.update_connection_state(room_number, f"Room {room_name}: Repeated disconnects (code 7). Waiting 5s before aggressive retry...")
-        )
+        # Update UI status immediately
+        self.update_connection_state(room_number, f"Room {room_name}: Repeated disconnects (code 7). Waiting 5s before aggressive retry...")
 
-        # Define the task to run in a separate thread
-        def do_aggressive_retry():
-            # Clean up current client immediately within the thread
-            if room_number in self.mqtt_clients:
-                try:
-                    old_client = self.mqtt_clients[room_number]
-                    old_client.loop_stop()  # Stop its background thread
-                    old_client.disconnect()  # Attempt a clean disconnect
-                    del self.mqtt_clients[room_number]
-                    print(f"[prop control]Cleaned up old client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' during aggressive retry.")
-                except Exception as e:
-                    print(f"[prop control]Error cleaning up old client during aggressive retry for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
+        def do_aggressive_retry_thread():
+            # Clean up current client immediately in a thread-safe manner
+            with self._mqtt_clients_lock:
+                if room_number in self.mqtt_clients:
+                    try:
+                        old_client = self.mqtt_clients[room_number]
+                        old_client.loop_stop()
+                        old_client.disconnect()
+                        del self.mqtt_clients[room_number]
+                        print(f"[prop control]Cleaned up old client for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' during aggressive retry.")
+                    except Exception as e:
+                        print(f"[prop control]Error cleaning up old client during aggressive retry for room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}': {e}")
 
             # Wait for 5 seconds (blocking part)
             time.sleep(5)
@@ -1386,38 +1350,31 @@ class PropControl:
             self.app.root.after(0, lambda: self.initialize_mqtt_client(room_number))
 
         # Start the aggressive retry process in a new thread
-        threading.Thread(target=do_aggressive_retry, daemon=True).start()
+        threading.Thread(target=do_aggressive_retry_thread, daemon=True).start()
 
-    def handle_prop_update(self, prop_data, originating_room_number):  # <-- ADD ARGUMENT
-        """Handle updates to prop data with widget safety checks"""
+    def handle_prop_update(self, prop_data, originating_room_number):
+        """Marshal prop update processing to the main Tkinter thread."""
+        self.app.root.after(0, lambda pdata=prop_data, rn=originating_room_number: self._handle_prop_update_ui(pdata, rn))
+
+    def _handle_prop_update_ui(self, prop_data, originating_room_number):
+        """Actual implementation of handle_prop_update, running on the main thread."""
         prop_id = prop_data.get("strId")
         if not prop_id:
             return
-        # Modify the lambda to pass the originating_room_number
-        self.app.root.after(0, lambda pid=prop_id, pdata=prop_data, rn=originating_room_number:  # <-- PASS ARGUMENT
-                             self._handle_prop_update_ui(pid, pdata, rn))
-
-    def _handle_prop_update_ui(self, prop_id, prop_data, originating_room_number):  # <-- ADD ARGUMENT
-        """Actual implementation of handle_prop_update, using after."""
-
 
         if originating_room_number != self.current_room:
-            # NEW: If there's a popout window for this non-current room, update it.
+            # If there's a popout window for this non-current room, update it.
             if originating_room_number in self.popout_windows and self.popout_windows[originating_room_number]['toplevel'].winfo_exists():
                 popout_controller = self.popout_windows[originating_room_number]['controller']
-                popout_controller.update_prop_display(prop_id, prop_data) # Update popout
-            return # Don't update main UI if it's not the current room
+                popout_controller.update_prop_display(prop_id, prop_data)
+            return
 
-
-        # Get order (CORRECTLY using current_room)
         order = self.get_prop_order(prop_data["strName"], self.current_room)
-
         current_status = prop_data.get("strStatus", "")
 
-        # Check for status changes and update last_progress_times (Correct)
-        if self.current_room is not None:
-            previous_status = (self.all_props[self.current_room][prop_id].get('last_status')
-                            if prop_id in self.all_props[self.current_room] else None)
+        # Check for status changes and update last_progress_times
+        if self.current_room is not None and self.current_room in self.all_props:
+            previous_status = self.all_props[self.current_room].get(prop_id, {}).get('last_status')
             if (previous_status is not None and
                 current_status != previous_status and
                 current_status != "offline" and
@@ -1429,272 +1386,125 @@ class PropControl:
                     self.last_prop_finished[self.current_room] = ""
                 if previous_status is not None and current_status != previous_status:
                     prop_name = prop_data.get("strName", "unknown")
-                    mapped_name = self.get_mapped_prop_name(prop_name, self.current_room) # Get mapped name here
+                    mapped_name = self.get_mapped_prop_name(prop_name, self.current_room)
                     self.last_prop_finished[self.current_room] = mapped_name
 
         try:
             if prop_id not in self.props:
-                # Create new prop widgets (Correct)
+                # Create new prop widgets
                 prop_frame = ttk.Frame(self.props_frame)
                 button_frame = ttk.Frame(prop_frame)
                 button_frame.pack(side='left', padx=(0, 5))
 
-                button_size = 20
-                reset_btn = tk.Button(
-                    button_frame,
-                    text="R",
-                    font=('Arial', 5, 'bold'),
-                    command=lambda: self.send_command(prop_id, "reset"),
-                    bg='#cc362b',
-                    width=2,
-                    height=5,
-                    cursor="hand2"
-                )
-                # Store prop name for hover events
+                # Buttons (these are correctly packed inside button_frame)
+                reset_btn = tk.Button(button_frame, text="R", font=('Arial', 5, 'bold'),
+                                      command=lambda: self.send_command(prop_id, "reset"),
+                                      bg='#cc362b', width=2, height=5, cursor="hand2")
                 prop_name = prop_data.get("strName", "")
                 if prop_name:
                     reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
                     reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
                 reset_btn.pack(side='left', padx=1)
 
-                activate_btn = tk.Button(
-                    button_frame,
-                    text="A",
-                    font=('Arial', 5, 'bold'),
-                    command=lambda: self.send_command(prop_id, "activate"),
-                    bg='#ff8c00',
-                    width=2,
-                    height=5,
-                    cursor="hand2"
-                )
+                activate_btn = tk.Button(button_frame, text="A", font=('Arial', 5, 'bold'),
+                                         command=lambda: self.send_command(prop_id, "activate"),
+                                         bg='#ff8c00', width=2, height=5, cursor="hand2")
                 activate_btn.pack(side='left', padx=1)
 
-                finish_btn = tk.Button(
-                    button_frame,
-                    text="F",
-                    font=('Arial', 5, 'bold'),
-                    command=lambda: self.send_command(prop_id, "finish"),
-                    bg='#28a745',
-                    width=2,
-                    height=5,
-                    cursor="hand2"
-                )
+                finish_btn = tk.Button(button_frame, text="F", font=('Arial', 5, 'bold'),
+                                       command=lambda: self.send_command(prop_id, "finish"),
+                                       bg='#28a745', width=2, height=5, cursor="hand2")
                 finish_btn.pack(side='left', padx=1)
+
+                # --- LAYOUT FIX: Pack Status Label THEN Name Label, both from the left ---
+
+                # Status Label: Pack this first, immediately to the right of the buttons
+                status_label = tk.Label(prop_frame)
+                status_label.pack(side='left', padx=5) # Changed from 'right' to 'left'
 
                 mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
 
-                # Create name label (Correct)
+                # Name Label: Pack this second, immediately to the right of the status icon
                 name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
-                # --- MODIFIED NAME LABEL FORMATTING ---
                 if self.is_finishing_prop(self.current_room, prop_data['strName']):
                     name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
                 elif self.is_standby_prop(self.current_room, prop_data['strName']):
-                    name_label.config(font=('Arial', 8, 'bold', 'italic'))  # Italic for standby
-                else:
-                    name_label.config(font=('Arial', 8, 'bold'))
-
-                
-
-                # Add a black line underneath if it's a finishing prop
-                if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                    line_label = tk.Frame(prop_frame, height=1, bg="black")
-                    line_label.pack(fill='x', padx=(5,0), pady=(0, 2), side='bottom')  # Pack *after* name label, adjust padx
-                # --- END MODIFIED NAME LABEL FORMATTING ---
+                    name_label.config(font=('Arial', 8, 'bold', 'italic'))
+                name_label.pack(side='right', padx=5)
 
                 name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
                 name_label.config(cursor="hand2")
-
-                # Add hover events for cousin highlighting
                 name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
                 name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
-
-                status_label = tk.Label(prop_frame)
-                status_label.pack(side='right', padx=5)
-
-                name_label.pack(side='right', padx=5)  # Pack prop names AFTER status indicator to right-orient them
-
 
                 self.props[prop_id] = {
                     'frame': prop_frame,
                     'status_label': status_label,
                     'info': prop_data,
                     'last_update': time.time(),
-                    'order': order,  # Use the retrieved order
+                    'order': order,
                     'name_label': name_label,
                 }
-
-                # Set initial last status (Correct)
+                
+                # Set initial last status
                 if self.current_room not in self.all_props:
                     self.all_props[self.current_room] = {}
-
                 if prop_id not in self.all_props[self.current_room]:
                     self.all_props[self.current_room][prop_id] = {}
                 self.all_props[self.current_room][prop_id]['last_status'] = current_status
 
-                # Sort and repack widgets (Correct)
-                self.sort_and_repack_props() # call the modified sorting
+                self.sort_and_repack_props()
 
+            else: # Prop exists, update its info
+                current_prop_data = self.props[prop_id]
+                name_label = current_prop_data.get('name_label')
+                status_label = current_prop_data.get('status_label')
 
-            else:
-                # Update existing prop info (Correct)
-                name_label = self.props[prop_id].get('name_label')
                 if name_label and name_label.winfo_exists():
-                    try:
-                        # Update values
-                        self.props[prop_id]['info'] = prop_data
-                        self.props[prop_id]['last_update'] = time.time()
-                        self.props[prop_id]['order'] = order #use the order retrieved at the function top
+                    current_prop_data['info'] = prop_data
+                    current_prop_data['last_update'] = time.time()
+                    current_prop_data['order'] = order
+                    mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
+                    name_label.config(text=mapped_name)
 
-                        # Get mapped name and set it here on update
-                        mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
-                        name_label.config(text = mapped_name)
+                    if self.current_room not in self.all_props:
+                        self.all_props[self.current_room] = {}
+                    if prop_id not in self.all_props[self.current_room]:
+                        self.all_props[self.current_room][prop_id] = {}
+                    self.all_props[self.current_room][prop_id]['last_status'] = current_status
 
-
-                        # Update the last status
-                        if self.current_room not in self.all_props:
-                            self.all_props[self.current_room] = {}
-                        if prop_id not in self.all_props[self.current_room]:
-                            self.all_props[self.current_room][prop_id] = {}
-                        self.all_props[self.current_room][prop_id]['last_status'] = current_status
-
-                        # --- MODIFIED NAME LABEL FORMATTING ---
-                        if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                            name_label.config(font=('Arial', 9, 'bold', 'italic', 'underline'))
-                        elif self.is_standby_prop(self.current_room, prop_data['strName']):
-                            name_label.config(font=('Arial', 9, 'italic'))
-                        else:
-                            name_label.config(font=('Arial', 8, 'bold'))
-                        # --- END MODIFIED NAME LABEL FORMATTING ---
-
-                    except tk.TclError:
-                        # Widget destroyed, remove reference
-                        del self.props[prop_id]['name_label']
+                    if self.is_finishing_prop(self.current_room, prop_data['strName']):
+                        name_label.config(font=('Arial', 9, 'bold', 'italic', 'underline'))
+                    elif self.is_standby_prop(self.current_room, prop_data['strName']):
+                        name_label.config(font=('Arial', 9, 'italic'))
+                    else:
+                        name_label.config(font=('Arial', 8, 'bold'))
                 else:
-                    # Remove invalid widget reference
-                    if 'name_label' in self.props[prop_id]:
-                        del self.props[prop_id]['name_label']
+                    if 'name_label' in current_prop_data:
+                        del current_prop_data['name_label']
+                        # Consider destroying the whole prop entry if critical widgets are gone
+                        # print(f"[prop control]name_label for {prop_id} gone, considering prop as invalid.")
+                        # del self.props[prop_id] # Might be too aggressive, depends on desired behavior
 
-            # Update status displays (Correct)
-            if prop_id in self.props:
-                status_label = self.props[prop_id].get('status_label')
                 if status_label and status_label.winfo_exists():
                     self.update_prop_status(prop_id)
 
             self.check_finishing_prop_status(prop_id, prop_data)
 
-
         except tk.TclError as e:
             print(f"[prop control]Widget error in _handle_prop_update_ui for prop {prop_id} in room {originating_room_number}: {e}")
-            # If a TclError occurs, assume the widget is gone and remove its entry from self.props
             if prop_id in self.props:
-                print(f"[prop control]Removing invalid prop {prop_id} from active UI (self.props).")
                 # Attempt to destroy any lingering sub-widgets and then remove the main entry
                 for key in ['frame', 'status_label', 'name_label']:
                     if key in self.props[prop_id] and self.props[prop_id][key] and self.props[prop_id][key].winfo_exists():
                         try:
                             self.props[prop_id][key].destroy()
                         except tk.TclError:
-                            pass # Already destroyed, ignore
-                del self.props[prop_id] # Remove the main entry
+                            pass
+                del self.props[prop_id]
         except Exception as e:
-            print(f"[prop control]Error in handle_prop_update: {e}")
+            print(f"[prop control]Unexpected error in _handle_prop_update_ui for {prop_id}: {e}. Traceback:\n{traceback.format_exc()}")
 
-            if self.current_room in self.popout_windows and self.popout_windows[self.current_room]['toplevel'].winfo_exists():
-                popout_controller = self.popout_windows[self.current_room]['controller']
-                popout_controller.update_prop_display(prop_id, prop_data)
-
-    def create_prop_widgets(self, prop_id, prop_data, order):
-        """Create new widgets for a prop"""
-        try:
-            prop_frame = ttk.Frame(self.props_frame)
-            button_frame = ttk.Frame(prop_frame)
-            button_frame.pack(side='left', padx=(0, 5))
-            
-            # Create control buttons
-            reset_btn = tk.Button(
-                button_frame,
-                text="R",
-                font=('Arial', 5, 'bold'),
-                command=lambda: self.send_command(prop_id, "reset"),
-                bg='#cc362b',
-                width=2,
-                height=4,
-                cursor="hand2"
-            )
-            # Store prop name for hover events
-            prop_name = prop_data.get("strName", "")
-            if prop_name:
-                reset_btn.bind('<Enter>', lambda e, name=prop_name: self.highlight_circuit_props(name, True))
-                reset_btn.bind('<Leave>', lambda e, name=prop_name: self.highlight_circuit_props(name, False))
-                #print(f"[prop control]Bound hover events for prop: {prop_name}")  # Debug print
-            reset_btn.pack(side='left', padx=1)
-            
-            activate_btn = tk.Button(
-                button_frame,
-                text="A",
-                font=('Arial', 5, 'bold'),
-                command=lambda: self.send_command(prop_id, "activate"),
-                bg='#ff8c00',
-                width=2,
-                height=4,
-                cursor="hand2"
-            )
-            activate_btn.pack(side='left', padx=1)
-            
-            finish_btn = tk.Button(
-                button_frame,
-                text="F",
-                font=('Arial', 5, 'bold'),
-                command=lambda: self.send_command(prop_id, "finish"),
-                bg='#28a745',
-                width=2,
-                height=4,
-                cursor="hand2"
-            )
-            finish_btn.pack(side='left', padx=1)
-            
-            mapped_name = self.get_mapped_prop_name(prop_data["strName"], self.current_room)
-            
-            # Create name label
-            name_label = ttk.Label(prop_frame, font=('Arial', 8, 'bold'), text=mapped_name)
-            if self.is_finishing_prop(self.current_room, prop_data['strName']):
-                name_label.config(font=('Arial', 8, 'bold', 'italic', 'underline'))
-            name_label.pack(side='left', padx=5)
-            
-            name_label.bind('<Button-1>', lambda e, name=prop_data["strName"]: self.notify_prop_select(name))
-            name_label.config(cursor="hand2")
-            
-            # Add hover events for cousin highlighting
-            name_label.bind('<Enter>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, True))
-            name_label.bind('<Leave>', lambda e, name=prop_data["strName"]: self.highlight_cousin_props(name, False))
-            
-            status_label = tk.Label(prop_frame)
-            status_label.pack(side='right', padx=5)
-            
-            # Store widget references
-            self.props[prop_id] = {
-                'frame': prop_frame,
-                'status_label': status_label,
-                'info': prop_data,
-                'last_update': time.time(),
-                'order': order,
-                'name_label': name_label,
-            }
-            
-            # Sort and repack widgets
-            sorted_props = sorted(self.props.items(), key=lambda x: x[1]['order'])
-            for _, prop_info in sorted_props:
-                if 'frame' in prop_info and prop_info['frame'].winfo_exists():
-                    prop_info['frame'].pack_forget()
-                    prop_info['frame'].pack(fill='x', pady=1)
-                    
-        except tk.TclError as e:
-            print(f"[prop control]Error creating prop widgets: {e}")
-            # Clean up any partially created widgets
-            if prop_id in self.props:
-                for key in ['name_label', 'status_label', 'frame']:
-                    if key in self.props[prop_id]:
-                        del self.props[prop_id][key]
 
     def get_prop_circuit(self, prop_name):
         """Get the circuit value for a prop if it exists"""
@@ -1728,15 +1538,12 @@ class PropControl:
 
     def highlight_circuit_props(self, prop_name, highlight):
         """Highlight or unhighlight props that share the same circuit"""
-        # Get the circuit value for the hovered prop
-        #print(f"[prop control]Highlighting circuit props for {prop_name}")
+        # This method is called from the main thread (Tkinter event binding)
         circuit = self.get_prop_circuit(prop_name)
         if not circuit:
              return
              
-        # Find all props with the same circuit value
-        room_key = self.ROOM_MAP[self.current_room]
-        if self.current_room not in self.ROOM_MAP: # Should have been caught by get_prop_circuit, but defensive
+        if self.current_room not in self.ROOM_MAP:
             return
         room_key = self.ROOM_MAP[self.current_room]
         
@@ -1746,39 +1553,37 @@ class PropControl:
             
         circuit_props = []
         
-        # Get all props that share this circuit
-        for name, info in self.prop_name_mappings[room_key]['mappings'].items(): # Now safer
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
              if info.get('circuit') == circuit:
                  circuit_props.append(name)
                 
-        # Find and highlight/unhighlight the name labels for these props
-        for prop_id, prop_data in self.props.items():
+        for prop_id, prop_data in list(self.props.items()): # Iterate over a copy
             if prop_data['info']['strName'] in circuit_props:
                 try:
                     prop_frame = prop_data.get('frame')
                     name_label = prop_data.get('name_label')
                     if prop_frame and prop_frame.winfo_exists() and name_label and name_label.winfo_exists():
                         if highlight:
-                            # Add visual highlighting
                             prop_frame.configure(style='Circuit.TFrame')
                             name_label.configure(style='Circuit.TLabel')
                         else:
-                            # Remove visual highlighting
                             prop_frame.configure(style='TFrame')
                             name_label.configure(style='TLabel')
                 except tk.TclError:
-                    continue
+                    # Widget destroyed, remove reference
+                    if prop_id in self.props:
+                        del self.props[prop_id] # Remove the whole prop entry if its widgets are gone
+                except Exception as e:
+                    print(f"[prop control]Error highlighting circuit prop {prop_id}: {e}")
 
     def highlight_cousin_props(self, prop_name, highlight):
         """Highlight or unhighlight props that are cousins"""
-        # Get the cousin value for the hovered prop
+        # This method is called from the main thread (Tkinter event binding)
         cousin = self.get_prop_cousin(prop_name)
         if not cousin:
              return
              
-        # Find all props with the same cousin value
-        room_key = self.ROOM_MAP[self.current_room]
-        if self.current_room not in self.ROOM_MAP: # Should have been caught by get_prop_cousin, but defensive
+        if self.current_room not in self.ROOM_MAP:
             return
         room_key = self.ROOM_MAP[self.current_room]
 
@@ -1788,28 +1593,28 @@ class PropControl:
 
         cousin_props = []
         
-        # Get all props that share this cousin value
-        for name, info in self.prop_name_mappings[room_key]['mappings'].items(): # Now safer
+        for name, info in self.prop_name_mappings[room_key]['mappings'].items():
              if info.get('cousin') == cousin:
                  cousin_props.append(name)
                 
-        # Find and highlight/unhighlight the name labels for these props
-        for prop_id, prop_data in self.props.items():
+        for prop_id, prop_data in list(self.props.items()): # Iterate over a copy
             if prop_data['info']['strName'] in cousin_props:
                 try:
                     prop_frame = prop_data.get('frame')
                     name_label = prop_data.get('name_label')
                     if prop_frame and prop_frame.winfo_exists() and name_label and name_label.winfo_exists():
                         if highlight:
-                            # Add visual highlighting with pale green
                             prop_frame.configure(style='Cousin.TFrame')
                             name_label.configure(style='Cousin.TLabel')
                         else:
-                            # Remove visual highlighting
                             prop_frame.configure(style='TFrame')
                             name_label.configure(style='TLabel')
                 except tk.TclError:
-                    continue
+                    # Widget destroyed, remove reference
+                    if prop_id in self.props:
+                        del self.props[prop_id]
+                except Exception as e:
+                    print(f"[prop control]Error highlighting cousin prop {prop_id}: {e}")
 
     def is_finishing_prop(self, room_number, prop_name):
         """Check if a prop is marked as a finishing prop"""
@@ -1827,6 +1632,7 @@ class PropControl:
         return prop_info.get('finishing_prop', False)
 
     def check_finishing_prop_status(self, prop_id, prop_data):
+        # This method is called from the main thread
         if not hasattr(self, 'prop_name_mappings'):
             self.load_prop_name_mappings()
 
@@ -1839,56 +1645,39 @@ class PropControl:
 
         room_key = self.ROOM_MAP[self.current_room]
 
-        assigned_kiosk = None
-        for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
-            if room_num == self.current_room:
-                assigned_kiosk = computer_name
-                break
-
-        if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
-            # This method no longer needs to handle game-finish state directly.
-            # Its purpose is solely to check for flagged prop finishes, and to
-            # call handle_prop_update.
-            pass
+        # This method is purely for internal logic and doesn't directly interact with kiosks or network
+        # The kiosk interaction logic is handled in update_all_props_status.
+        pass
 
     def reset_game_finish_state(self, room_number):
-        print("[prop control]reset game finish state")
+        # This method is called from the main thread
+        print(f"[prop control]reset game finish state for room {room_number}")
         if room_number in self.fate_sent:
             self.fate_sent[room_number] = False
 
-        if room_number in self.finish_sound_played: #also reset prop control finish flag
+        if room_number in self.finish_sound_played:
             self.finish_sound_played[room_number] = False
 
-        # Kiosk highlight reset is now handled in update_all_props_status
-
-        #audio_manager = AdminAudioManager() #removed audio manager logic
-        #if room_number in audio_manager.sound_states:
-            #audio_manager.sound_states[room_number]['game_finish'] = False
-
     def update_kiosk_highlight(self, room_number, is_finished, is_activated, timer_expired=False):
+        # This method is called from the main thread
         assigned_kiosk = None
         for computer_name, room_num in self.app.kiosk_tracker.kiosk_assignments.items():
             if room_num == room_number:
                 assigned_kiosk = computer_name
                 break
 
-        if not assigned_kiosk or assigned_kiosk not in self.app.interface_builder.connected_kiosks:
+        if not assigned_kiosk:
             return
 
         kiosk_data = self.app.interface_builder.connected_kiosks.get(assigned_kiosk)
-        if not kiosk_data: # Kiosk data might have been removed
+        if not kiosk_data:
             return
 
         kiosk_frame = kiosk_data.get('frame')
-        if not kiosk_frame or not kiosk_frame.winfo_exists(): # Check if frame exists
-            # print(f"[prop control] Kiosk frame for {assigned_kiosk} does not exist in update_kiosk_highlight.")
+        if not kiosk_frame or not kiosk_frame.winfo_exists():
             return
 
         try:
-            # audio_manager = AdminAudioManager() # This line seems unused here
-            # audio_manager.handle_timer_expired(timer_expired, room_number)
-            # audio_manager.handle_game_finish(is_finished, room_number)
-
             if timer_expired:
                 new_color = '#FFB6C1' # Light Pink
             elif is_finished:
@@ -1896,76 +1685,74 @@ class PropControl:
             elif is_activated:
                 new_color = '#faf8ca' # Pale Yellow
             else:
-                # Attempt to get the system default face color, fallback to a generic grey
                 try:
-                    new_color = kiosk_frame.winfo_toplevel().option_get('background', '') or 'SystemButtonFace'
-                    if not new_color or new_color == '': # Ensure it's a valid color
-                        new_color = ttk.Style().lookup('TFrame', 'background') or "#F0F0F0" # Another fallback
+                    new_color = kiosk_frame.winfo_toplevel().option_get('background', '') or ttk.Style().lookup('TFrame', 'background') or "#F0F0F0"
                 except tk.TclError:
-                    new_color = "#F0F0F0" # Final fallback
+                    new_color = "#F0F0F0"
 
-
-            if kiosk_frame.winfo_exists(): # Double check before configure
-                kiosk_frame.configure(bg=new_color)
-                for widget in kiosk_frame.winfo_children():
-                    if widget.winfo_exists(): # Check child widget
-                        if not isinstance(widget, (tk.Button, ttk.Combobox, ttk.Menubutton)): # Exclude Menubutton too
-                            try:
-                                widget.configure(bg=new_color)
-                            except tk.TclError:
-                                # This specific child might have a style that prevents bg change, or was destroyed
-                                pass # Safely ignore if a child can't be configured
+            kiosk_frame.configure(bg=new_color)
+            for widget in kiosk_frame.winfo_children():
+                if widget.winfo_exists():
+                    if not isinstance(widget, (tk.Button, ttk.Combobox, ttk.Menubutton)):
+                        try:
+                            widget.configure(bg=new_color)
+                        except tk.TclError:
+                            pass
         except tk.TclError:
-            # This catch is for kiosk_frame itself or other unexpected TclErrors
-            print(f"[prop control]Main TclError: Widget for kiosk {assigned_kiosk} was (likely) destroyed during update_kiosk_highlight")
+            print(f"[prop control]TclError: Widget for kiosk {assigned_kiosk} was (likely) destroyed during update_kiosk_highlight")
         except Exception as e:
-            print(f"[prop control]Error updating kiosk highlight for {assigned_kiosk}: {e}")
-
-    def schedule_status_update(self, prop_id):
-        """Schedule periodic updates of prop status"""
-        if prop_id in self.props:
-            self.update_prop_status(prop_id)
-            # Schedule next update in 1 second
-            self.app.root.after(1000, lambda: self.schedule_status_update(prop_id))
+            print(f"[prop control]Error updating kiosk highlight for {assigned_kiosk}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def _send_victory_message(self, room_number, computer_name):
         """Sends a victory message to the kiosk (internal use) with a cooldown."""
+        # This method is called from the main thread
         current_time = time.time()
 
         if hasattr(self.app, 'network_handler') and self.app.network_handler:
             try:
-                # Use the network handler
                 self.app.network_handler.send_victory_message(room_number, computer_name)
-                self.fate_sent[room_number] = True # set prop control flag for the room
-                self.last_fate_message_time[computer_name] = current_time # Update the last sent time for this computer
-                #print(f"[prop control]Successfully sent victory message for room {room_number} to kiosk {computer_name}. Next message for this kiosk available in {self.FATE_COOLDOWN_SECONDS}s.")
+                self.fate_sent[room_number] = True
+                self.last_fate_message_time[computer_name] = current_time
             except Exception as e:
-                print(f"[prop control]Error sending victory message for room {room_number} to kiosk {computer_name}: {e}")
-                # Do not set fate_sent to True if sending failed
+                print(f"[prop control]Error sending victory message for room {room_number} to kiosk {computer_name}: {e}. Traceback:\n{traceback.format_exc()}")
         else:
             print("[prop control]Network handler not available, cannot send victory message.")
 
     def send_command(self, prop_id, command):
         """Send command to standard props"""
-        if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("[prop control]No active room selected")
+        # This method is called from the main thread
+        target_room = self.current_room
+        if target_room is None:
+            print("[prop control]No active room selected to send command.")
             return
             
-        client = self.mqtt_clients[self.current_room]
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(target_room)
+
+        if not client:
+            print(f"[prop control]MQTT client not available for room {target_room}.")
+            return
+        
+        if not client.is_connected():
+            print(f"[prop control]MQTT client for room {target_room} is not connected, command '{command}' to {prop_id} aborted.")
+            self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
+            return
+
         topic = f"/er/{prop_id}/cmd"
         try:
             client.publish(topic, command)
-            print(f"[prop control]Command sent successfully to room {self.current_room}")
+            print(f"[prop control]Command '{command}' sent successfully to prop '{prop_id}' in room {target_room}.")
         except Exception as e:
-            print(f"[prop control]Failed to send command: {e}")
+            print(f"[prop control]Failed to send command '{command}' to prop '{prop_id}' in room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def send_special_command(self, prop_name, command):
         """Send command to special pneumatic props"""
-        if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print(f"[prop control]No active room selected")
+        # This method is called from the main thread
+        target_room = self.current_room
+        if target_room is None:
+            print(f"[prop control]No active room selected to send special command.")
             return
             
-        # Map the friendly names to their actual MQTT topics
         prop_map = {
             'barrel': 'pnevmo2',
             'kitchen': 'pnevmo1',
@@ -1973,215 +1760,254 @@ class PropControl:
             'door': 'pnevmo4'
         }
         
-        # Get the actual topic name for this prop
         if prop_name not in prop_map:
-            print(f"[prop control]Unknown prop: {prop_name}")
+            print(f"[prop control]Unknown special prop: {prop_name}")
             return
             
-        client = self.mqtt_clients[self.current_room]
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(target_room)
+        
+        if not client:
+            print(f"[prop control]MQTT client not available for room {target_room} for special command.")
+            return
+
+        if not client.is_connected():
+            print(f"[prop control]MQTT client for room {target_room} is not connected, special command '{command}' to {prop_name} aborted.")
+            self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
+            return
+
         topic = f"/er/{prop_map[prop_name]}"
         
         try:
-            print(f"[prop control]Sending pneumatic prop command:")
-            print(f"[prop control]Room: {self.current_room}")
-            print(f"[prop control]Prop: {prop_name}")
-            print(f"[prop control]Topic: {topic}")
-            
-            # Send the exact command the props expect
+            print(f"[prop control]Sending pneumatic prop command: Room: {target_room}, Prop: {prop_name}, Topic: {topic}")
             client.publish(topic, "trigger", qos=0, retain=False)
-            print(f"[prop control]Command sent successfully to {prop_name}")
-            
+            print(f"[prop control]Command sent successfully to special prop {prop_name}.")
         except Exception as e:
-            print(f"[prop control]Failed to send command: {e}")
+            print(f"[prop control]Failed to send special command to {prop_name} in room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def on_frame_configure(self, event=None):
         """Reconfigure the canvas scrolling region"""
+        # This method is called from the main thread (Tkinter event binding)
         try:
-            if self.canvas.winfo_exists() and self.props_frame.winfo_exists(): # Check widgets exist
+            if self.canvas.winfo_exists() and self.props_frame.winfo_exists():
                 self.canvas.configure(scrollregion=self.canvas.bbox("all"))
-                
-                # Ensure props_frame spans the full width
                 width = self.canvas.winfo_width()
                 self.canvas.itemconfig(self.canvas_frame, width=width)
         except tk.TclError:
-            # Canvas or props_frame might have been destroyed
             print("[prop control]TclError in on_frame_configure, likely widget destroyed.")
-            pass 
+            pass # Safely ignore if widgets are gone
+        except Exception as e:
+            print(f"[prop control]Error in on_frame_configure: {e}. Traceback:\n{traceback.format_exc()}")
 
     def notify_prop_select(self, prop_name):
         """Notify all registered callbacks about prop selection"""
+        # This method is called from the main thread (Tkinter event binding)
         if hasattr(self, 'prop_select_callbacks'):
-            for callback in list(self.prop_select_callbacks): # Iterate over a copy if callbacks can modify the list
+            for callback in list(self.prop_select_callbacks): # Iterate over a copy for safety
                 try:
                     callback(prop_name)
                 except Exception as e:
-                    print(f"[prop control]Error in prop_select_callback: {e}")
+                    print(f"[prop control]Error in prop_select_callback for {prop_name}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def add_prop_select_callback(self, callback):
         """Add a callback to be called when a prop is selected"""
+        # This method is called from the main thread
         if not hasattr(self, 'prop_select_callbacks'):
             self.prop_select_callbacks = []
         self.prop_select_callbacks.append(callback)
 
     def on_canvas_configure(self, event):
         """Handle canvas resize"""
+        # This method is called from the main thread (Tkinter event binding)
         try:
-            if self.canvas.winfo_exists() and self.props_frame.winfo_exists(): # Check widgets exist
+            if self.canvas.winfo_exists() and self.props_frame.winfo_exists():
                 width = event.width
                 self.canvas.itemconfig(self.canvas_frame, width=width)
-                
-                # Recalculate column widths
-                col_width = (width - 40) // 3  # Subtract padding and divide by 3 columns
-                for i in range(3):
-                    self.props_frame.grid_columnconfigure(i, minsize=col_width)
         except tk.TclError:
-            # Canvas or props_frame might have been destroyed
             print("[prop control]TclError in on_canvas_configure, likely widget destroyed.")
             pass
+        except Exception as e:
+            print(f"[prop control]Error in on_canvas_configure: {e}. Traceback:\n{traceback.format_exc()}")
         
     def create_popout_window(self):
         """Creates a new popout window for the currently selected room's props."""
+        # This method is called from the main thread
         if self.current_room is None:
             print("[prop control]Cannot popout: No room currently selected.")
             return
 
-        # Check if a popout for this room already exists and is open
         if self.current_room in self.popout_windows and self.popout_windows[self.current_room]['toplevel'].winfo_exists():
             print(f"[prop control]Popout for room {self.current_room} already open. Bringing to front.")
-            self.popout_windows[self.current_room]['toplevel'].lift() # Bring to front
+            self.popout_windows[self.current_room]['toplevel'].lift()
             return
 
         room_name = self.ROOM_MAP.get(self.current_room, f"Room {self.current_room}")
         print(f"[prop control]Creating popout window for room {room_name} (ID: {self.current_room}).")
 
         try:
-            # Create a Toplevel window
             toplevel = tk.Toplevel(self.app.root)
-            toplevel.transient(self.app.root) # Make it transient to the main window
-            toplevel.geometry("300x500") # Set a default size
+            toplevel.transient(self.app.root)
+            toplevel.geometry("300x500")
 
-            # Instantiate the PropControlPopout class inside this Toplevel
             popout_controller = PropControlPopout(toplevel, self, self.current_room)
 
-            # Store the reference to the popout window and its controller
             self.popout_windows[self.current_room] = {
                 'toplevel': toplevel,
                 'controller': popout_controller
             }
 
         except Exception as e:
-            print(f"[prop control]Error creating popout window for room {self.current_room}: {e}")
-            import traceback
-            traceback.print_exc()
-            # Clean up if creation failed
+            print(f"[prop control]Error creating popout window for room {self.current_room}: {e}. Traceback:\n{traceback.format_exc()}")
             if self.current_room in self.popout_windows:
                 if 'toplevel' in self.popout_windows[self.current_room] and \
                    self.popout_windows[self.current_room]['toplevel'].winfo_exists():
                     self.popout_windows[self.current_room]['toplevel'].destroy()
                 del self.popout_windows[self.current_room]
 
-
     def popout_closed(self, room_number):
         """Callback from PropControlPopout when it is closed."""
+        # This method is called from the main thread (via popout window's protocol handler)
         if room_number in self.popout_windows:
             print(f"[prop control]Popout for room {room_number} closed.")
             del self.popout_windows[room_number]
 
     def shutdown(self):
-        for client in self.mqtt_clients.values():
-            try:
-                client.loop_stop()
-            except Exception as e:
-                print(f"[prop control]Error stopping MQTT loop for client: {e}")
-            try:
-                client.disconnect()
-            except Exception as e:
-                print(f"[prop control]Error disconnecting MQTT client: {e}")
+        """Performs a graceful shutdown of all MQTT clients and popout windows."""
+        # This method is called from the main thread during app shutdown
+        with self._mqtt_clients_lock: # Ensure no other threads are accessing/modifying clients
+            for room_num in list(self.mqtt_clients.keys()): # Iterate over copy of keys
+                client = self.mqtt_clients.get(room_num)
+                if client:
+                    try:
+                        client.loop_stop()
+                        print(f"[prop control]Stopped MQTT loop for room {room_num}.")
+                    except Exception as e:
+                        print(f"[prop control]Error stopping MQTT loop for client for room {room_num}: {e}")
+                    try:
+                        client.disconnect()
+                        print(f"[prop control]Disconnected MQTT client for room {room_num}.")
+                    except Exception as e:
+                        print(f"[prop control]Error disconnecting MQTT client for room {room_num}: {e}")
+                    del self.mqtt_clients[room_num] # Remove from tracking after shutdown
 
-        # NEW: Close all popout windows on shutdown
-        for room_num in list(self.popout_windows.keys()): # Iterate over keys in a copy
+        for room_num in list(self.popout_windows.keys()):
             popout_info = self.popout_windows.get(room_num)
             if popout_info and popout_info['toplevel'].winfo_exists():
-                popout_info['toplevel'].destroy()
-            del self.popout_windows[room_num] # Remove from tracking dictionary
+                try:
+                    popout_info['toplevel'].destroy()
+                    print(f"[prop control]Closed popout window for room {room_num}.")
+                except tk.TclError:
+                    pass # Already destroyed, ignore
+            if room_num in self.popout_windows: # Double check in case already removed by popout_closed
+                del self.popout_windows[room_num]
         print("[prop control]All popout windows closed during shutdown.")
 
-    def start_game(self, room_number=None): # MODIFIED: Added room_number argument
+    def start_game(self, room_number=None):
         """Send start game command to the specified room or current room if None."""
-        target_room = room_number if room_number is not None else self.current_room # MODIFIED: Determine target room
+        # This method is called from the main thread
+        target_room = room_number if room_number is not None else self.current_room
 
         if target_room is None:
             print("[prop control]Start game: No target room specified or selected.")
             return
         
-        # Ensure the target_room is actually a valid room number that has an MQTT client
-        if target_room not in self.mqtt_clients or not self.mqtt_clients[target_room]:
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(target_room)
+
+        if not client:
             room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
-            print(f"[prop control]Start game: MQTT client not available or not configured for room '{room_name_for_log}' (ID: {target_room}).")
+            print(f"[prop control]Start game: MQTT client not available for room '{room_name_for_log}' (ID: {target_room}).")
+            return
+
+        if not client.is_connected():
+            print(f"[prop control]MQTT client for room {target_room} is not connected, start game command aborted.")
+            self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
             return
             
-        client = self.mqtt_clients[target_room]
         try:
             client.publish("/er/cmd", "start")
-            room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}") # Get friendly name for logging
-            print(f"[prop control]Start game command sent to room '{room_name_for_log}' (ID: {target_room}).") # MODIFIED: Logging
+            room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
+            print(f"[prop control]Start game command sent to room '{room_name_for_log}' (ID: {target_room}).")
             
             # Reset progress/state tracking for the started room
-            # Ensure keys exist before assignment, though they should if client exists
-            if target_room not in self.last_progress_times:
-                 self.last_progress_times[target_room] = time.time()
-            else: # If it exists, update it
-                 self.last_progress_times[target_room] = time.time()
-            
-            if target_room not in self.stale_sound_played:
-                 self.stale_sound_played[target_room] = False
-            else: # If it exists, update it
-                 self.stale_sound_played[target_room] = False
-
+            self.last_progress_times[target_room] = time.time()
+            self.stale_sound_played[target_room] = False
             self.fate_sent[target_room] = False
                  
         except Exception as e:
             room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
-            print(f"[prop control]Failed to send start game command to room '{room_name_for_log}' (ID: {target_room}): {e}")
+            print(f"[prop control]Failed to send start game command to room '{room_name_for_log}' (ID: {target_room}): {e}. Traceback:\n{traceback.format_exc()}")
 
     def reset_all(self):
         """Send reset all command to current room"""
-        if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("[prop control]No active room selected")
+        # This method is called from the main thread
+        target_room = self.current_room
+        if target_room is None:
+            print("[prop control]No active room selected to reset.")
             return
             
-        client = self.mqtt_clients[self.current_room]
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(target_room)
+
+        if not client:
+            print(f"[prop control]MQTT client not available for room {target_room} to reset.")
+            return
+
+        if not client.is_connected():
+            print(f"[prop control]MQTT client for room {target_room} is not connected, reset command aborted.")
+            self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
+            return
+            
         try:
             client.publish("/er/cmd", "reset")
-            print(f"[prop control]Reset all command sent to room {self.current_room}")
+            print(f"[prop control]Reset all command sent to room {target_room}")
             # Also reset progress/state tracking for the reset room
-            self.last_progress_times[self.current_room] = time.time()  # Reset progress time
-            self.stale_sound_played[self.current_room] = False
-        except Exception as e:
-            print(f"[prop control]Failed to send reset all command: {e}")
+            self.last_progress_times[target_room] = time.time()
+            self.stale_sound_played[target_room] = False
+            self.fate_sent[target_room] = False # Reset fate_sent on game reset
+            self.finish_sound_played[target_room] = False # Reset finish_sound_played on game reset
+            self.standby_played[target_room] = False # Reset standby_played on game reset
 
-    
+        except Exception as e:
+            print(f"[prop control]Failed to send reset all command to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def send_quest_command(self, quest_type):
-        if self.current_room is None or self.current_room not in self.mqtt_clients:
-            print("[prop control]No active room selected")
+        """Send quest command to the current room."""
+        # This method is called from the main thread
+        target_room = self.current_room
+        if target_room is None:
+            print("[prop control]No active room selected to send quest command.")
             return
             
-        client = self.mqtt_clients[self.current_room]
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(target_room)
+
+        if not client:
+            print(f"[prop control]MQTT client not available for room {target_room} to send quest command.")
+            return
+
+        if not client.is_connected():
+            print(f"[prop control]MQTT client for room {target_room} is not connected, quest command '{quest_type}' aborted.")
+            self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
+            return
+
         topic = "/er/quest"
         try:
             client.publish(topic, quest_type)
-            print(f"[prop control]Quest command '{quest_type}' sent successfully to room {self.current_room}")
+            print(f"[prop control]Quest command '{quest_type}' sent successfully to room {target_room}")
         except Exception as e:
-            print(f"[prop control]Failed to send quest command: {e}")
+            print(f"[prop control]Failed to send quest command '{quest_type}' to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
 
     def _schedule_retry(self, room_number, delay, callback):
         """Cancels any pending retry for the room and schedules a new one."""
+        # This method is called from the main thread
         if room_number in self.retry_timer_ids and self.retry_timer_ids[room_number] is not None:
-            # print(f"[prop control]Cancelling existing timer {self.retry_timer_ids[room_number]} for room {room_number}") # Optional debug
-            self.app.root.after_cancel(self.retry_timer_ids[room_number])
-            self.retry_timer_ids[room_number] = None  # Clear the old ID
+            try:
+                self.app.root.after_cancel(self.retry_timer_ids[room_number])
+            except ValueError:
+                # Timer might have already fired or been cancelled
+                pass
+            self.retry_timer_ids[room_number] = None
 
         timer_id = self.app.root.after(delay, callback)
         self.retry_timer_ids[room_number] = timer_id
-        # print(f"[prop control]Scheduled new timer {timer_id} for room {room_number}") # Optional debug
