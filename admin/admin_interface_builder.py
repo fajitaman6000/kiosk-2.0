@@ -1966,14 +1966,14 @@ class AdminInterfaceBuilder:
         if hint_text_label and hint_text_label.winfo_exists():
             if hint_text:
                 hint_text_label.config(text=f"Displayed Hint: {hint_text}")
-                hint_text_label.pack(fill='x', padx=8, pady=(2,0), anchor='w')
+                #hint_text_label.pack(fill='both', padx=12, pady=(5), anchor='nw')
             else:
-                hint_text_label.config(text="No hint text.")
+                hint_text_label.config(text="No hint text")
                 #hint_text_label.pack_forget()
         if hint_image_label and hint_image_label.winfo_exists():
             if hint_image:
                 hint_image_label.config(text=f"Displayed Hint Image: {hint_image}")
-                hint_image_label.pack(fill='x', padx=8, pady=(0,4), anchor='w')
+                #hint_image_label.pack(fill='x', padx=8, pady=(0,4), anchor='sw')
             else:
                 hint_image_label.config(text="No hint image.")
                 #hint_image_label.pack_forget()

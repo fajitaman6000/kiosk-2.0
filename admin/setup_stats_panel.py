@@ -794,16 +794,16 @@ def setup_stats_panel(interface_builder, computer_name):
 
     # Frame for hint info (left side)
     hint_info_frame = tk.Frame(bottom_controls_container)
-    hint_info_frame.pack(side='left', fill='y', padx=(0, 10), anchor='sw')
+    hint_info_frame.pack(side='left', fill='y', padx=10, anchor='sw')
 
     # Frame for other controls (right side)
     other_controls_frame = tk.Frame(bottom_controls_container, borderwidth=1, relief='solid')
-    other_controls_frame.pack(side='left', fill='y', anchor='sw')
+    other_controls_frame.pack(side='right', fill='y', anchor='se')
     interface_builder.stats_elements['other_controls_frame'] = other_controls_frame
 
     # Use a canvas + frame for scrollable area
-    hint_scroll_canvas = tk.Canvas(hint_info_frame, width=180, height=100, highlightthickness=0)
-    hint_scroll_canvas.pack(side='left', expand=False, padx=0, pady=0)
+    hint_scroll_canvas = tk.Canvas(hint_info_frame, width=140, height=300, highlightthickness=0)
+    hint_scroll_canvas.pack(side='left', expand=False, padx=2, pady=0)
     hint_scrollbar = ttk.Scrollbar(hint_info_frame, orient='vertical', command=hint_scroll_canvas.yview)
     #hint_scrollbar.pack(side='right', fill='y')
     hint_scroll_canvas.configure(yscrollcommand=hint_scrollbar.set)
@@ -827,8 +827,8 @@ def setup_stats_panel(interface_builder, computer_name):
         fg='#333333',
         anchor='w',
         justify='left',
-        wraplength=200,
-        height=2  # About 2 lines tall
+        wraplength=100,
+        #height=5  # About 2 lines tall
     )
     interface_builder.stats_elements['current_hint_text_label'].pack(fill='x', padx=8, pady=(2,0), anchor='w')
 
@@ -840,7 +840,7 @@ def setup_stats_panel(interface_builder, computer_name):
         anchor='w',
         justify='left',
         wraplength=200,
-        height=1  # About 1 line tall
+        #height=1  # About 1 line tall
     )
     interface_builder.stats_elements['current_hint_image_label'].pack(fill='x', padx=8, pady=(0,4), anchor='w')
 
