@@ -10,6 +10,8 @@ rods hint is atlantis voice, not wizard
 ##############################################################################################################################
 # beta to do
 
+fix current image hint text
+
 zombie audio choppy either on intros or hints
 
 film video solutions
