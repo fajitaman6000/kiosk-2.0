@@ -205,6 +205,9 @@ class NetworkBroadcastHandler:
                 # Process based on message type
                 msg_type = msg.get('type')
 
+                # Get interface_builder safely for UI updates
+                interface_builder = getattr(self.app, 'interface_builder', None)
+
                 # --- Handle ACKs ---
                 if msg_type == 'ack':
                     received_hash = msg.get('request_hash')
@@ -245,14 +248,12 @@ class NetworkBroadcastHandler:
                             if room != current_room and current_room is not None:
                                 print(f"[network broadcast handler] Processing room change for {computer_name}, Previous room: {current_room}, New room: {room}")
                                 # Note: Repacking for room changes is handled in AdminInterfaceBuilder.on_room_select
-
                         # Update kiosk tracker and UI
                         self.app.kiosk_tracker.update_kiosk_stats(computer_name, msg)
                         # Add or update the UI element for this kiosk.
-                        # This method in AdminInterfaceBuilder will handle *whether* to create a new frame
-                        # and will trigger repack_kiosk_frames *only* if a new frame is created.
-                        self.app.root.after(0, lambda cn=computer_name:
-                            self.app.interface_builder.add_kiosk_to_ui(cn))
+                        if interface_builder and hasattr(interface_builder, 'add_kiosk_to_ui'):
+                            self.app.root.after(0, lambda cn=computer_name:
+                                interface_builder.add_kiosk_to_ui(cn))
 
                         # Update specific details like room assignment (if it wasn't a room_assignment message)
                         # and then update its display within its existing frame.
@@ -262,32 +263,18 @@ class NetworkBroadcastHandler:
                             if msg['room'] != current_assigned_room:
                                 # Update tracker assignment
                                 self.app.kiosk_tracker.kiosk_assignments[computer_name] = msg['room']
-                                # Update UI display within the existing frame
-                                if hasattr(self.app.interface_builder, 'update_kiosk_display'):
+                                if interface_builder and hasattr(interface_builder, 'update_kiosk_display'):
                                         self.app.root.after(0, lambda cn=computer_name:
-                                            self.app.interface_builder.update_kiosk_display(cn))
-                                # Repacking for room change is handled by the dropdown's on_room_select handler
-                                # when the assignment is *set* there. If a kiosk re-announces with a different room
-                                # *after* the admin has manually assigned it, this might become inconsistent.
-                                # A better approach might be to *only* trust room assignments set by the admin UI
-                                # and ignore room announcements if a room is already assigned, *unless*
-                                # the kiosk is announcing 'unassigned' or some error state.
-                                # For now, let's let it update the tracker but rely on the admin UI's assign_kiosk
-                                # to trigger the repack based on intended admin action.
+                                            interface_builder.update_kiosk_display(cn))
 
                         # Update stats display for this specific kiosk if it's the currently selected one
-                        if self.app.interface_builder.selected_kiosk == computer_name:
-                            if hasattr(self.app.interface_builder, 'update_stats_display'):
+                        if interface_builder and interface_builder.selected_kiosk == computer_name:
+                            if hasattr(interface_builder, 'update_stats_display'):
                                 self.app.root.after(0, lambda cn=computer_name:
-                                    self.app.interface_builder.update_stats_display(cn))
-
-                        # --- REMOVED: The call to repack_kiosk_frames is removed here ---
-                        # It's now handled by AdminInterfaceBuilder.add_kiosk_to_ui for new additions,
-                        # and by AdminInterfaceBuilder.on_room_select for room changes initiated by the admin.
+                                    interface_builder.update_stats_display(cn))
 
 
                 # --- Handle Sync Confirmations/Completions/Failures (Sent by Kiosk Downloader) ---
-                # These are informational, no ACK/resend needed *from here* for these specific messages
                 elif msg_type == 'sync_confirmation':
                     computer_name = msg.get('computer_name')
                     sync_id = msg.get('sync_id')
@@ -297,40 +284,34 @@ class NetworkBroadcastHandler:
 
                 elif msg_type == 'sync_complete':
                     computer_name = msg.get('computer_name')
-                    sync_id = msg.get('sync_id') # Kiosk should include this
+                    sync_id = msg.get('sync_id')
                     print(f"[network broadcast handler] Received sync_complete from {computer_name} - SyncID: {sync_id}")
                     # Update UI or logs
-
                 elif msg_type == 'sync_failed':
                     computer_name = msg.get('computer_name')
-                    sync_id = msg.get('sync_id') # Kiosk should include this
+                    sync_id = msg.get('sync_id')
                     reason = msg.get('reason', 'Unknown')
                     print(f"[network broadcast handler] Received sync_failed from {computer_name} - SyncID: {sync_id}, Reason: {reason}")
                     # Update UI or logs
-
                 # --- Handle Help Requests ---
                 elif msg_type == 'help_request':
                     computer_name = msg.get('computer_name')
-                    if computer_name in self.app.interface_builder.connected_kiosks:
-                        # Directly update the state that mark_help_requested checks
-                        if computer_name in self.app.kiosk_tracker.kiosk_stats:
-                            print(f"[network broadcast handler] Setting hint_requested=True in kiosk_stats for {computer_name} upon help_request receipt.")
-                            self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = True
-                        else:
-                            # Handle case where stats might not exist yet (though unlikely if kiosk is connected)
-                            print(f"[network broadcast handler] Warning: Received help_request for {computer_name} but no entry in kiosk_stats. Initializing minimal stats.")
-                            # Initialize minimal stats including the hint request
-                            self.app.kiosk_tracker.kiosk_stats[computer_name] = {'hint_requested': True, 'total_hints': 0, 'hints_received': 0, 'timer_running': False, 'timer_time': 2700, 'video_playing': False, 'auto_start': False, 'music_playing': False, 'music_volume_level': 7, 'hint_volume_level': 7}
+                    # Directly update the state that mark_help_requested checks
+                    if computer_name in self.app.kiosk_tracker.kiosk_stats:
+                        print(f"[network broadcast handler] Setting hint_requested=True in kiosk_stats for {computer_name} upon help_request receipt.")
+                        self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = True
+                    else:
+                        print(f"[network broadcast handler] Warning: Received help_request for {computer_name} but no entry in kiosk_stats. Initializing minimal stats.")
+                        self.app.kiosk_tracker.kiosk_stats[computer_name] = {'hint_requested': True, 'total_hints': 0, 'hints_received': 0, 'timer_running': False, 'timer_time': 2700, 'video_playing': False, 'auto_start': False, 'music_playing': False, 'music_volume_level': 7, 'hint_volume_level': 7}
 
+                    self.app.kiosk_tracker.add_help_request(computer_name)
 
-                        # We can potentially remove the call to add_help_request if the hint_requested flag is sufficient
-                        # Let's keep it for now as it might be used elsewhere for filtering or lists.
-                        self.app.kiosk_tracker.add_help_request(computer_name)
-
-                        # Schedule UI update for this specific kiosk and the global update check
+                    # Schedule UI update for this specific kiosk and the global update check
+                    if interface_builder and hasattr(interface_builder, 'mark_help_requested'):
                         self.app.root.after(0, lambda cn=computer_name:
-                            self.app.interface_builder.mark_help_requested(cn))
-                        self.app.root.after(0, self.app.interface_builder.update_all_kiosk_hint_statuses)
+                            interface_builder.mark_help_requested(cn))
+                    if interface_builder and hasattr(interface_builder, 'update_all_kiosk_hint_statuses'):
+                        self.app.root.after(0, interface_builder.update_all_kiosk_hint_statuses)
 
 
                 elif msg_type == 'soundcheck_status':
@@ -340,10 +321,8 @@ class NetworkBroadcastHandler:
                     audio_data = msg.get('audio_data') # Base64 string or None
                     if computer_name and test_type is not None and result is not None:
                         if self.soundcheck_instance and not self.soundcheck_instance.closed:
-                            # Use after to ensure UI update happens on main thread
                             self.app.root.after(0, self.soundcheck_instance.update_status,
                                                 computer_name, test_type, result, audio_data)
-                        # else: print(f"Received soundcheck status for {computer_name}, but no active window.")
                     else:
                         print(f"[Network Handler] Invalid soundcheck_status message received: {msg}")
 
@@ -351,15 +330,16 @@ class NetworkBroadcastHandler:
                 elif msg_type == 'intro_video_completed':
                     computer_name = msg['computer_name']
                     print(f"[network broadcast handler] Received intro video complete signal from: {computer_name}")
-                    # Pass computer_name to the handler
-                    self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.handle_intro_video_complete(cn))
+                    if interface_builder and hasattr(interface_builder, 'handle_intro_video_complete'):
+                        self.app.root.after(0, lambda cn=computer_name: interface_builder.handle_intro_video_complete(cn))
 
                 # --- Handle GM Assistance Acceptance ---
                 elif msg_type == 'gm_assistance_accepted':
                     computer_name = msg['computer_name']
                     room = self.app.kiosk_tracker.kiosk_assignments.get(computer_name, "Unknown Room")
                     print(f"[network broadcast handler] GM assistance accepted by: {computer_name} (Room {room})")
-                    self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.handle_gm_assistance_accepted(cn))
+                    if interface_builder and hasattr(interface_builder, 'handle_gm_assistance_accepted'):
+                        self.app.root.after(0, lambda cn=computer_name: interface_builder.handle_gm_assistance_accepted(cn))
 
 
                 # --- Handle Kiosk Disconnect ---
@@ -374,11 +354,9 @@ class NetworkBroadcastHandler:
                         print(f"[network broadcast handler] Clearing pending ACKs for disconnected kiosk {computer_name} (Type: {k[1]})")
                         del self.pending_acknowledgments[k]
                     # Update UI - remove_kiosk handles repacking
-                    self.app.root.after(0, lambda n=computer_name:
-                        self.app.interface_builder.remove_kiosk(n))
-                    # Optionally, remove from self.kiosk_ips if desired, or let it timeout/be overwritten
-                    # if computer_name in self.kiosk_ips:
-                    #     del self.kiosk_ips[computer_name]
+                    if interface_builder and hasattr(interface_builder, 'remove_kiosk'):
+                        self.app.root.after(0, lambda n=computer_name:
+                            interface_builder.remove_kiosk(n))
 
 
                 # --- Handle Screenshots ---
@@ -389,33 +367,6 @@ class NetworkBroadcastHandler:
                         if hasattr(self.app, 'screenshot_handler'):
                             self.app.screenshot_handler.handle_screenshot(computer_name, image_data)
 
-                # --- Watchdog Log Reception ---
-                elif msg_type in ('watchdog_log', 'watchdog_error'):
-                    print("received watchdog log")
-                    computer_name = msg.get('computer_name', 'unknown')
-                    log_entries = msg.get('log', [])
-                    if not isinstance(log_entries, list):
-                        log_entries = [log_entries]
-                    if computer_name not in self.watchdog_logs:
-                        self.watchdog_logs[computer_name] = []
-                    # Add each entry, preserving order
-                    for entry in log_entries:
-                        # Ensure entry has required fields
-                        ts = entry.get('timestamp', msg.get('timestamp'))
-                        text = entry.get('text', str(entry))
-                        is_error = entry.get('is_error', msg_type == 'watchdog_error')
-                        self.watchdog_logs[computer_name].append({
-                            'timestamp': ts,
-                            'text': text,
-                            'is_error': is_error
-                        })
-                    # Optionally, limit log size per kiosk
-                    if len(self.watchdog_logs[computer_name]) > 1000:
-                        self.watchdog_logs[computer_name] = self.watchdog_logs[computer_name][-1000:]
-                    # Optionally, notify UI to update if a log window is open
-                    if hasattr(self.app.interface_builder, 'on_watchdog_log_update'):
-                        self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.on_watchdog_log_update(cn))
-                    continue  # Don't process further as a kiosk message
 
                 # --- Other message types can be added here ---
 
@@ -425,7 +376,7 @@ class NetworkBroadcastHandler:
                 if self.running: # Avoid errors during shutdown
                     print(f"[network broadcast handler] Error in listen_for_messages: {e}")
                     import traceback
-                    traceback.print_exc() # Print full traceback for debugging
+                    traceback.print_exc()
 
     def stop(self):
         """Stops the listening thread and closes sockets."""
@@ -441,6 +392,8 @@ class NetworkBroadcastHandler:
             self.socket.close()
         if self.reboot_socket:
             self.reboot_socket.close()
+        if self.watchdog_log_socket: # Ensure watchdog log socket is closed
+            self.watchdog_log_socket.close()
         print("[network broadcast handler] Network handler stopped.")
 
 
@@ -723,7 +676,6 @@ class NetworkBroadcastHandler:
                 msg = json.loads(data.decode())
                 msg_type = msg.get('type')
                 if msg_type in ('watchdog_log', 'watchdog_error'):
-                    #print("received watchdog log")
                     computer_name = msg.get('computer_name', 'unknown')
                     log_entries = msg.get('log', [])
                     if not isinstance(log_entries, list):
@@ -741,7 +693,13 @@ class NetworkBroadcastHandler:
                         })
                     if len(self.watchdog_logs[computer_name]) > 1000:
                         self.watchdog_logs[computer_name] = self.watchdog_logs[computer_name][-1000:]
-                    if hasattr(self.app.interface_builder, 'on_watchdog_log_update'):
-                        self.app.root.after(0, lambda cn=computer_name: self.app.interface_builder.on_watchdog_log_update(cn))
+                    
+                    # FIX: Check if interface_builder exists before trying to access it
+                    interface_builder = getattr(self.app, 'interface_builder', None)
+                    if interface_builder and hasattr(interface_builder, 'on_watchdog_log_update'):
+                        self.app.root.after(0, lambda cn=computer_name: interface_builder.on_watchdog_log_update(cn))
             except Exception as e:
-                print(f"[network broadcast handler] Error in watchdog log listener: {e}")
+                # This error can happen if socket is closed during recvfrom, or other network issues.
+                # If self.running is False during shutdown, it's expected.
+                if self.running:
+                    print(f"[network broadcast handler] Error in watchdog log listener: {e}")

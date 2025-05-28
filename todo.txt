@@ -4,9 +4,6 @@
 [ADMIN] [network broadcast handler] Error in watchdog log listener: 'AdminApplication' object has no 
 attribute 'interface_builder'
 
-
-standby and room finish being announced upon sending reset command
-
 ##############################################################################################################################
 # beta to do
 
