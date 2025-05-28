@@ -1,9 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-[ADMIN] [network broadcast handler] Error in watchdog log listener: 'AdminApplication' object has no 
-attribute 'interface_builder'
-
 ##############################################################################################################################
 # beta to do
 
