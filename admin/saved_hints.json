@@ -75,7 +75,7 @@
             },
             "Drawers": {
                 "line it up": {
-                    "text": "The drawers have numbers on their fronts. There are also numbers inside. It's a giant combination lock: line up the drawers inner numbers according to their top outer numbers.",
+                    "text": "The drawers have numbers on their fronts. There are also numbers inside. \n\nIt's a giant combination lock: line up the drawers inner numbers according to their outer numbers with keys..",
                     "image": "drawer.png"
                 }
             },
@@ -106,8 +106,12 @@
                 }
             },
             "Spinning Lamp": {
-                "spin the lamp": {
+                "notice lamp": {
                     "text": "That funky lamp on the wall, weren't we messing with that last night?"
+                },
+                "spin it": {
+                    "text": "The lamp on the wall spins. Do so, and something nearby will open.",
+                    "image": "spin.png"
                 }
             },
             "Case Code": {
@@ -115,7 +119,8 @@
                     "text": "I think when I tried to use the computer I deleted a whole lot of files. I hope it wasn't anything important!"
                 },
                 "check recycling bin": {
-                    "text": "Open the recycling bin on the computer in the top right of the screen and double click the icon inside."
+                    "text": "Open the recycling bin on the computer in the top right of the screen and double click the icon inside.",
+                    "image": "open_bin.png"
                 }
             },
             "Weight Game": {
@@ -132,7 +137,8 @@
                     "text": "Ever played \"Operation\"? Keep the buzzer away from the metal pipes and try to get it to the end. If the light turns red you must go all the way back to restart it."
                 },
                 "fast then slow": {
-                    "text": "The system resets every five seconds. You can make four errors before the alarm goes off. Go fast and hard but stop just before it alarms and just wait five seconds to refresh your chances."
+                    "text": "The system resets every five seconds. You can make four errors before the alarm goes off. Go fast and hard but stop just before it alarms and just wait five seconds to refresh your chances.",
+                    "image": "buzzwire instructions.png"
                 }
             },
             "Sliding Shelf": {
@@ -143,11 +149,15 @@
             "Memory Hotel": {
                 "in order": {
                     "text": "As the story is being told, one light will turn on per location. Watch for them. They must be pressed in order, and ensure that when you hold the button down, it turns red before you proceed."
+                },
+                "solution": {
+                    "text": "These buttons are the ones you must press and hold in order to complete the puzzle.",
+                    "image": "solution.png"
                 }
             },
             "Drawers": {
                 "line it up": {
-                    "text": "The drawers have numbers on their fronts. There are also numbers inside. It's a giant combination lock: line up the drawers inner numbers according to their top outer numbers."
+                    "text": "The drawers have numbers on their fronts. There are also numbers inside. \n\nIt's a giant combination lock: line up the drawers inner numbers according to their outer numbers with keys.."
                 }
             },
             "Plant Bombs": {
@@ -486,6 +496,9 @@
                 "spinning activates podium": {
                     "text": "Look at the \"Galaxy Podium\" while you spin the globe. The symbols shown there are somewhere else in the room.",
                     "image": "galaxy GLOBE.png"
+                },
+                "what globe is for": {
+                    "text": "Spin the globe. When the globe spins, lights on the podium activate. Two lights will turn on. \n\nOne will tell you the item to use. The other will be a symbol found on the shelf. Place that item there."
                 }
             },
             "Veiny Orb": {
@@ -535,10 +548,15 @@
                     "image": "rod holes.png"
                 },
                 "how to align": {
-                    "text": "Set the rods from left to right to the colors of the crystal ball. Make sure the end with the yellow symbol is visible and the lines are facing up"
+                    "text": "The crystal ball when activated shows three colors.\n\nPlace the rods with their lines facing up, aligned with the first, second, or third color. Make sure the end with the yellow symbol is visible. Ensure the lines are facing up",
+                    "image": "rod holes.png"
                 },
                 "rod solution": {
                     "text": "Insert the blank end of the rod first into the bed then starting by the wall align them red, blue, green to the opening. the lines should be facing up"
+                },
+                "rod locations": {
+                    "text": "These are the locations for the three rods. You'll need these for the bed and will find square holes to put them into.",
+                    "image": "rod_locations.jpg"
                 }
             },
             "Fireplace": {
