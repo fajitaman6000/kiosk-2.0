@@ -1,10 +1,11 @@
 ##############################################################################################################################
 # Test notes
 
-"ignore_progress" is being.. ignored.
+[ADMIN] [network broadcast handler] Error in watchdog log listener: 'AdminApplication' object has no 
+attribute 'interface_builder'
 
-rods hint is atlantis voice, not wizard
 
+standby and room finish being announced upon sending reset command
 
 ##############################################################################################################################
 # beta to do
@@ -24,8 +25,6 @@ film video solutions
 # todo
 
 prop monitoring
-
-video playback performance
 
 upload single files instead of uploading everything? with that text string methodology?
 
@@ -64,23 +63,20 @@ mqtt makes separate connections for ma and casino
 blackout screen button for haunted
 refill cylinders button
 add ways for game masters to enjoyably interact with guests
+    "wave back" button
+    "your host/gamemaster's name" shown at victory/loss(?) screen
+    mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 xyz finished their game (instead of generic victory sound)
 kiosk relaunch after sync finish
-periodic setting of casino/morning after according to room?
-"wave back" button
 log video solution usage to discourage excessive use
 save props' status for blackbox, delete save upon load
 "enable drink menu" by default on
 dark theme
-"your host/gamemaster's name" shown at victory/loss(?) screen
 LLM translator call
 AI generated text hint based on room state
 announce to lobby: room states for automatic standbys/room victory/out of time 
-mqtt LEDs for GMs to point out items (checkbox on hints, available or not based on "has_light" flag in prop naming json)
 kiosk responds to prop finishes with vfx
 dark theme
-profile creation,
-profile deletion (admin only)
 
 ##############################################################################################################################
 
