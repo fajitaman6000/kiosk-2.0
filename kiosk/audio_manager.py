@@ -169,22 +169,19 @@ class AudioManager:
         Stops any currently playing background music.
         """
         try:
-            if pygame.mixer.get_init() and pygame.mixer.music.get_busy():
+            if not pygame.mixer.get_init():
+                 print("[audio manager] pygame.mixer not initialized, cannot stop music.", flush=True)
+                 return
+
+            # If mixer is initialized, calling pygame.mixer.music.stop() is safe
+            # whether music is playing, paused, or not loaded. It simply ensures it's stopped.
+            if pygame.mixer.music.get_busy() or self.current_music: # Check if busy OR if we *think* something is loaded
                 pygame.mixer.music.stop()
-                # Optional: unload music to free memory, but might be needed for quick resume
-                # pygame.mixer.music.unload()
                 self.current_music = None
-                self.is_playing = False # Reflect that music is stopped
+                self.is_playing = False
                 print("[audio manager]Stopped background music", flush=True)
-            elif pygame.mixer.get_init() and pygame.mixer.music.get_init():
-                 # If not busy but loaded (e.g. stopped but not unloaded)
-                 pygame.mixer.music.stop()
-                 # pygame.mixer.music.unload()
-                 self.current_music = None
-                 self.is_playing = False
-                 print("[audio manager]Background music was not busy but stopped/unloaded anyway.", flush=True)
             else:
-                 print("[audio manager]No background music playing or mixer not initialized.", flush=True)
+                 print("[audio manager]No background music playing or was loaded.", flush=True)
         except pygame.error as pe:
              print(f"[audio manager]Pygame error stopping background music: {pe}", flush=True)
         except Exception as e:
@@ -281,15 +278,34 @@ class AudioManager:
                     sound = pygame.mixer.Sound(audio_path)
                     sound.set_volume(self.hint_volume_actual) # Apply hint volume to loss audio? Or should it have its own? Using hint for now.
                     # Use channel 3 for loss audio (channel 0-2 potentially used)
+                    
+                    # Try to get channel 3, or find a free one
+                    # Create the Channel object. If mixer is in a bad state, this might return a corrupted object.
                     sound_channel = pygame.mixer.Channel(3)
-                    if sound_channel.get_busy():
+                    
+                    if sound_channel.get_busy(): # If preferred channel 3 is busy, try to find any free channel
                          sound_channel = pygame.mixer.find_channel()
-                         if not sound_channel:
+                         if not sound_channel: # If find_channel also returns None (no free channels)
                              print("[audio manager] No free audio channels available to play loss audio.", flush=True)
                              return # Cannot play loss audio
 
                     sound_channel.play(sound) # Play once
-                    print(f"[audio manager]Playing loss audio {audio_file} on channel {sound_channel.get_id()}", flush=True)
+                    
+                    # --- Defensive logging for channel ID ---
+                    channel_info_str = "N/A (Error during debug info retrieval)"
+                    try:
+                        if isinstance(sound_channel, pygame.mixer.Channel) and hasattr(sound_channel, 'get_id'):
+                            channel_info_str = f"channel {sound_channel.get_id()}"
+                        else:
+                            # This block would execute if sound_channel is not a Pygame Channel or lacks get_id()
+                            channel_info_str = f"object (Type: {type(sound_channel)}, has_get_id: {hasattr(sound_channel, 'get_id')})"
+                            print(f"[audio manager] WARNING: Unexpected sound_channel object in play_loss_audio: {channel_info_str}", flush=True)
+                    except Exception as _e:
+                        print(f"[audio manager] CRITICAL WARNING: Failed to retrieve sound_channel ID due to unexpected error: {_e}", flush=True)
+                    
+                    print(f"[audio manager]Playing loss audio {audio_file} on {channel_info_str} at volume {self.hint_volume_actual:.2f}", flush=True)
+                    # --- End defensive logging ---
+
                 else:
                     print(f"[audio manager]Loss audio not found: {audio_path}", flush=True)
             else:

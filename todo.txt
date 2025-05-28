@@ -6,9 +6,14 @@
 rods hint is atlantis voice, not wizard
 
 
-
 ##############################################################################################################################
 # beta to do
+
+microphone reliability
+sync button reliability
+loss screen reliability
+
+drink ordering behavior
 
 fix current image hint text
 
@@ -18,6 +23,10 @@ film video solutions
 
 ##############################################################################################################################
 # todo
+
+prop monitoring
+
+video playback performance
 
 upload single files instead of uploading everything? with that text string methodology?
 
