@@ -517,7 +517,7 @@ class PropControl:
         if client_to_check and not client_to_check.is_connected():
             print(f"[prop control]Connection to room {room_number} timed out")
             room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-            timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
+            timeout_msg = f"{room_name} props timed out;\n is the room powered on?"
             self.connection_states[room_number] = timeout_msg
             
             # Only update UI if this is the current room
@@ -1117,7 +1117,7 @@ class PropControl:
                         print(f"[prop control] Connection to room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' stable for 5s. Clearing rc=7 history.")
                         del self.disconnect_rc7_history[room_number]
             
-            self.app.root.after(5000, clear_disconnect_history_main_thread)
+            self.app.root.after(10000, clear_disconnect_history_main_thread)
 
         else:
             status = {
