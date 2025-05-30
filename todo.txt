@@ -8,6 +8,9 @@ Reset commands failed from rightside pc after leftside pc sent some
 ##############################################################################################################################
 # beta to do
 
+route main audio to speakers
+route room audio to headphones
+
 "room has 2 minutes remaining"
 
 microphone reliability
