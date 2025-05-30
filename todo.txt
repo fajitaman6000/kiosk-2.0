@@ -8,6 +8,8 @@ Reset commands failed from rightside pc after leftside pc sent some
 ##############################################################################################################################
 # beta to do
 
+"room has 2 minutes remaining"
+
 microphone reliability
 sync button reliability
 
