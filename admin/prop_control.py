@@ -1957,6 +1957,13 @@ class PropControl:
             print(f"[prop control]MQTT client for room {target_room} is not connected, reset command aborted.")
             self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
             return
+        
+        try:
+            client.publish("/er/cmd", "reset")
+            print(f"[prop control]Reset all command sent to room {target_room}")
+        except Exception as e:
+            print(f"[prop control]Failed to send reset all command to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
+            
             
         self.app.root.after(5000,lambda: self._status_reset_upon_reset(target_room))
 
