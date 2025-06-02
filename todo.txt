@@ -14,10 +14,9 @@ Audio choppiness on slower computers (Time Machine, Zombie)
 ##############################################################################################################################
 # beta to do
 
-microphone input device list has way too many entries
+sign-in and log system for gm accountability
 
-route main audio to speakers
-route room audio to headphones
+microphone input device list has way too many entries
 
 "room has 2 minutes remaining"
 
