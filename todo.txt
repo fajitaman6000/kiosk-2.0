@@ -3,24 +3,29 @@
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
-Reset commands failed from rightside pc after leftside pc sent some
+##############################################################################################################################
+# Priority
+
+Microphone consistency
+
+Audio choppiness on slower computers (Time Machine, Zombie)
+
 
 ##############################################################################################################################
 # beta to do
+
+microphone input device list has way too many entries
 
 route main audio to speakers
 route room audio to headphones
 
 "room has 2 minutes remaining"
 
-microphone reliability
 sync button reliability
 
 drink ordering behavior
 
 fix current image hint text
-
-zombie audio choppy either on intros or hints
 
 film video solutions
 

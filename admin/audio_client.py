@@ -7,6 +7,8 @@ import numpy as np
 import math
 import time
 import traceback
+import sys
+import subprocess # For calling external script
 
 class AudioClient:
     def __init__(self):
@@ -21,6 +23,7 @@ class AudioClient:
         self.selected_input_device_index = None
         self._pyaudio_initialized = False
         self._lock = threading.Lock() # Lock for protecting stream/speaking state
+        self._cached_output_device_index = None # NEW: Cache for Windows communication device index
 
         # Audio parameters
         self.CHUNK = 1024
@@ -39,6 +42,133 @@ class AudioClient:
             self.audio = None
             self._pyaudio_initialized = False
             print("[audio client] Audio functionality is disabled.")
+
+    def _run_windows_comm_device_script(self):
+        """
+        Executes the external script to get the Windows Default Communication Device name.
+        Returns the device name string on success, None on failure.
+        """
+        script_path = "get_windows_comm_device.py" # Assumes script is in the same directory
+
+        print(f"[audio client] Running external script to get comm device: '{script_path}'...")
+        try:
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+
+            if result.returncode == 0:
+                comm_device_name_str = result.stdout.strip()
+                if not comm_device_name_str:
+                    print(f"[audio client] Script '{script_path}' returned no device name (stdout empty).")
+                    if result.stderr:
+                         print(f"[audio client] Script stderr: {result.stderr.strip()}")
+                    return None
+                print(f"[audio client] Script returned Windows Default Communication Device: '{comm_device_name_str}'")
+                return comm_device_name_str
+            else:
+                print(f"[audio client] Script '{script_path}' failed with exit code {result.returncode}.")
+                if result.stdout: print(f"[audio client] Script stdout: {result.stdout.strip()}")
+                if result.stderr: print(f"[audio client] Script stderr: {result.stderr.strip()}")
+                return None
+        except FileNotFoundError:
+            print(f"[audio client] ERROR: Script '{script_path}' not found. Cannot determine communication device.")
+            return None
+        except Exception as e:
+            print(f"[audio client] ERROR: Exception running script '{script_path}': {e}")
+            traceback.print_exc()
+            return None
+
+    def _get_pyaudio_index_from_device_name(self, target_name):
+        """
+        Finds the PyAudio device index that matches the given target_name (exact or partial).
+        Returns the PyAudio device index (int) or None.
+        """
+        if not self._pyaudio_initialized or self.audio is None:
+            print("[audio client] PyAudio not initialized. Cannot match device name.")
+            return None
+
+        pyaudio_index = None
+        matched_device_name = None
+        num_devices = self.audio.get_device_count()
+
+        # First pass: exact match
+        for i in range(num_devices):
+            dev_info = self.audio.get_device_info_by_index(i)
+            if dev_info.get('maxOutputChannels', 0) > 0:
+                pyaudio_dev_name = dev_info['name']
+                if isinstance(pyaudio_dev_name, bytes):
+                    try: pyaudio_dev_name = pyaudio_dev_name.decode('utf-8', errors='ignore')
+                    except UnicodeDecodeError: continue 
+
+                if pyaudio_dev_name == target_name:
+                    pyaudio_index = i
+                    matched_device_name = pyaudio_dev_name
+                    break
+        
+        if pyaudio_index is not None:
+            print(f"[audio client] Found exact PyAudio match: '{matched_device_name}' (Index: {pyaudio_index}) for target name '{target_name}'")
+        else: # Second pass: partial match
+            print("[audio client] No exact name match. Trying partial match for output device...")
+            candidate_partial_match_idx = None
+            candidate_partial_match_name = None
+            for i in range(num_devices):
+                dev_info = self.audio.get_device_info_by_index(i)
+                if dev_info.get('maxOutputChannels', 0) > 0:
+                    pyaudio_dev_name = dev_info['name']
+                    if isinstance(pyaudio_dev_name, bytes):
+                        try: pyaudio_dev_name = pyaudio_dev_name.decode('utf-8', errors='ignore')
+                        except UnicodeDecodeError: continue
+                    
+                    if target_name and pyaudio_dev_name: # Ensure not empty
+                        # Simple substring check (target name in PyAudio name or vice-versa)
+                        if target_name.lower() in pyaudio_dev_name.lower() or \
+                           pyaudio_dev_name.lower() in target_name.lower():
+                            candidate_partial_match_idx = i
+                            candidate_partial_match_name = pyaudio_dev_name
+                            break 
+            
+            if candidate_partial_match_idx is not None:
+                pyaudio_index = candidate_partial_match_idx
+                print(f"[audio client] Found partial PyAudio match: '{candidate_partial_match_name}' (Index: {pyaudio_index}) for target name '{target_name}'")
+        
+        if pyaudio_index is None:
+            print(f"[audio client] Could not find a matching PyAudio output device for target name '{target_name}'. Listing available PyAudio output devices:")
+            for i in range(num_devices):
+                dev_info = self.audio.get_device_info_by_index(i)
+                if dev_info.get('maxOutputChannels', 0) > 0:
+                    name_to_print = dev_info['name']
+                    if isinstance(name_to_print, bytes):
+                        try: name_to_print = name_to_print.decode('utf-8', errors='replace')
+                        except: name_to_print = "<undecodable name>"
+                    print(f"  PyAudio Output Device Index {i}: {name_to_print}")
+        
+        return pyaudio_index
+
+
+    def _determine_output_device_index_for_windows_comm_device(self):
+        """
+        Determines the PyAudio output device index for Windows' Default Communication Device.
+        Uses a cached value if available, otherwise runs external script and finds PyAudio match.
+        Returns: PyAudio device index (int) or None.
+        """
+        if self._cached_output_device_index is not None:
+            print(f"[audio client] Using cached Windows communication device index: {self._cached_output_device_index}")
+            return self._cached_output_device_index
+
+        print("[audio client] Cache empty. Attempting to determine Windows Default Communication Device for output.")
+        comm_device_name_from_script = self._run_windows_comm_device_script()
+        
+        if comm_device_name_from_script:
+            comm_pyaudio_index = self._get_pyaudio_index_from_device_name(comm_device_name_from_script)
+            self._cached_output_device_index = comm_pyaudio_index # Cache the result
+            return comm_pyaudio_index
+        else:
+            print("[audio client] Could not determine Windows Default Communication Device name via script. Falling back to PyAudio default.")
+            return None
+
 
     def connect(self, host, port=8090):
         """Connects to the audio server and starts the receiving stream."""
@@ -68,14 +198,22 @@ class AudioClient:
                 return False
 
             print("[audio client] Opening output stream...")
+            output_device_idx_to_use = None
+            if sys.platform == 'win32':
+                output_device_idx_to_use = self._determine_output_device_index_for_windows_comm_device()
+            else:
+                 print("[audio client] Not on Windows. Using PyAudio default output device.")
+            
             self.output_stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
                 rate=self.RATE,
                 output=True,
-                frames_per_buffer=self.CHUNK
+                frames_per_buffer=self.CHUNK,
+                output_device_index=output_device_idx_to_use # PyAudio handles None as default
             )
-            print("[audio client] Output stream opened.")
+            selected_dev_msg = f"(Device index: {output_device_idx_to_use})" if output_device_idx_to_use is not None else "(PyAudio Default)"
+            print(f"[audio client] Output stream opened {selected_dev_msg}.")
 
             # Start receiving thread
             print("[audio client] Starting receive thread...")
@@ -119,7 +257,9 @@ class AudioClient:
                     break # Exit loop
 
                 chunk_size = struct.unpack("Q", size_data)[0]
-                if chunk_size <= 0 or chunk_size > self.CHUNK * 20: # Sanity check size
+                # Sanity check size for float32 data (4 bytes per sample)
+                # Corrected: Use pyaudio.get_sample_size(self.FORMAT) instead of struct.calcsize(self.FORMAT)
+                if chunk_size <= 0 or chunk_size > self.CHUNK * pyaudio.get_sample_size(self.FORMAT) * 20: 
                      print(f"[audio client] Receive loop: Invalid chunk size received ({chunk_size}). Closing.")
                      break
 
@@ -137,17 +277,12 @@ class AudioClient:
                         # Check if stream is active *before* writing
                         if current_output_stream.is_active():
                              current_output_stream.write(bytes(audio_data))
-                        # else: # Optional: Log if stream inactive? Can be noisy.
-                        #    print("[audio client] Receive loop: Output stream inactive, dropping packet.")
                     except OSError as e:
                          # Common error if stream is closed unexpectedly
                          print(f"[audio client] Receive loop: OSError writing to output stream: {e}")
-                         # Consider attempting to reopen the output stream here if needed, or just break.
                          break # Exit loop on stream write errors
                     except Exception as e:
                          print(f"[audio client] Receive loop: Error playing audio chunk: {e}")
-                         # Continue for minor errors, but break could be safer
-                         # break
 
             except socket.error as e:
                 if self.running: # Only log if not intentionally stopped
@@ -160,9 +295,6 @@ class AudioClient:
                 break # Exit loop on other major errors
 
         print("[audio client] Audio reception loop ended.")
-        # Consider calling disconnect here if the loop exits unexpectedly while running
-        # if self.running:
-        #     self.disconnect()
 
     def start_speaking(self):
         """Starts capturing and sending audio. Protected by lock."""
@@ -316,9 +448,7 @@ class AudioClient:
             # --- Blocking Read ---
             try:
                 # Use the stream reference captured at the start of the loop iteration
-                # print("[audio client] Send loop: Reading chunk...") # DEBUG: Very noisy
                 data = current_stream.read(self.CHUNK, exception_on_overflow=False)
-                # print(f"[audio client] Send loop: Read {len(data)} bytes.") # DEBUG: Very noisy
             except IOError as e:
                 # This is the *expected* way to exit when stop_speaking closes the stream
                 # Check the speaking flag again to differentiate expected vs unexpected IOErrors
@@ -419,6 +549,7 @@ class AudioClient:
         """Disconnects, closes streams, and cleans up resources."""
         print("[audio client] Disconnecting audio client...")
         self.running = False # Signal all loops to stop *first*
+        self._cached_output_device_index = None # NEW: Clear cache on disconnect
 
         # Close socket - triggers threads blocked on socket ops to exit
         socket_to_close = self.current_socket
@@ -474,7 +605,8 @@ class AudioClient:
 
         # Terminate PyAudio only if initialized and not already None
         audio_instance = self.audio # Local ref
-        if audio_instance and self._pyaudio_initialized:
+        pyaudio_was_initialized = self._pyaudio_initialized # Capture state before clearing
+        if audio_instance and pyaudio_was_initialized:
             print("[audio client] __del__: Terminating PyAudio instance...")
             try:
                 audio_instance.terminate()
@@ -501,10 +633,15 @@ class AudioClient:
             for i in range(num_devices):
                 try:
                     dev_info = self.audio.get_device_info_by_index(i)
-                    # Check if it's an input device AND supports our format/rate (optional but good)
-                    # For now, just check maxInputChannels
+                    # Handle potential byte strings for device names
+                    dev_name = dev_info['name']
+                    if isinstance(dev_name, bytes):
+                        try: dev_name = dev_name.decode('utf-8', errors='ignore')
+                        except UnicodeDecodeError: dev_name = f"Undecodable Device Name (Index {i})"
+                    
+                    # Check if it's an input device
                     if dev_info.get('maxInputChannels', 0) > 0:
-                        devices.append({'index': i, 'name': dev_info['name']})
+                        devices.append({'index': i, 'name': dev_name})
                 except Exception as e_dev:
                      print(f"[audio client] Error getting info for device index {i}: {e_dev}")
                      # Continue to next device
@@ -516,10 +653,14 @@ class AudioClient:
                      try:
                          default_info = self.audio.get_default_input_device_info()
                          default_index = default_info.get('index')
+                         default_name = default_info.get('name')
+                         if isinstance(default_name, bytes):
+                            default_name = default_name.decode('utf-8', errors='ignore')
+
                          # Verify default index is in our list of usable devices
                          if any(d['index'] == default_index for d in devices):
                              self.selected_input_device_index = default_index
-                             print(f"[audio client] Default input device set to: index {default_index} Name: {default_info.get('name')}")
+                             print(f"[audio client] Default input device set to: index {default_index} Name: {default_name}")
                          elif devices: # Default not usable, pick first from our list
                              self.selected_input_device_index = devices[0]['index']
                              print(f"[audio client] Default device unusable, set to first available: index {self.selected_input_device_index} Name: {devices[0]['name']}")
@@ -603,4 +744,4 @@ class AudioClient:
 
         except Exception:
             # print(f"[audio client] Error calculating volume: {e}") # Avoid log spam
-            return 0.0 # Return 0 on error
+            return 0.0
