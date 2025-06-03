@@ -3,6 +3,8 @@
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
+Game out of time doesn't play sound
+
 ##############################################################################################################################
 # Priority
 

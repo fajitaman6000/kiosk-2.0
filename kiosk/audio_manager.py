@@ -18,7 +18,7 @@ class AudioManager:
         print("[audio_manager] Initializing pygame.mixer...", flush=True)
         # Check if mixer is already initialized (useful if multiple parts of app use pygame)
         if not pygame.mixer.get_init():
-             pygame.mixer.init()
+             pygame.mixer.init(frequency=44100, buffer=4096)
              print("[audio_manager] Initialized pygame.mixer.", flush=True)
         else:
              print("[audio_manager] pygame.mixer already initialized.", flush=True)

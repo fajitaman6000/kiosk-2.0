@@ -63,7 +63,7 @@ class VideoManager:
         # Initialize Pygame mixer (idempotent)
         try:
             print("[video manager] Initializing Pygame mixer...", flush=True)
-            pygame.mixer.init(frequency=44100)
+            pygame.mixer.init(frequency=44100, buffer=4096)
             print("[video manager] Pygame mixer initialized.", flush=True)
         except pygame.error as mixer_err:
             print(f"[video manager] Warning: Pygame mixer init error: {mixer_err}. Audio might not work.", flush=True)
@@ -71,7 +71,7 @@ class VideoManager:
             try:
                  print("[video manager] Attempting mixer re-initialization...", flush=True)
                  pygame.mixer.quit()
-                 pygame.mixer.init(frequency=44100)
+                 pygame.mixer.init(frequency=44100, buffer=4096)
                  print("[video manager] Pygame mixer re-initialized after error.", flush=True)
             except Exception as reinit_err:
                  print(f"[video manager] Failed to re-initialize mixer: {reinit_err}", flush=True)
