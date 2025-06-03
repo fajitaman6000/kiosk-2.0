@@ -11,10 +11,8 @@ Game out of time doesn't play sound
 Microphone consistency
 
 Audio choppiness on slower computers (Time Machine, Zombie)
-
-
 ##############################################################################################################################
-# beta to do
+# Beta to do
 
 sign-in and log system for gm accountability
 
@@ -31,7 +29,7 @@ fix current image hint text
 film video solutions
 
 ##############################################################################################################################
-# todo
+# Todo
 
 prop monitoring
 

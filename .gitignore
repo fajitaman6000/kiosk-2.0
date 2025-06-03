@@ -50,3 +50,5 @@ kiosk/logs/**
 admin/bug_manager_debug.log
 kiosk/kiosk_state.json
 admin/logs/**
+bar/images/**
+kiosk/images/**
