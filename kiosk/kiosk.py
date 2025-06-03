@@ -356,11 +356,27 @@ class KioskApp:
         self.clear_hints()
         # Display game loss screen via Overlay
         Overlay.show_loss_screen()
+        print("[kiosk] Handling game loss", flush=True)
+        if(self.audio_manager):
+            self.audio_manager.stop_background_music()
+            if self.assigned_room:
+                print(f"[kiosk] Playing loss audio for room {self.assigned_room}.", flush=True)
+                self.audio_manager.play_loss_audio(self.kiosk_app.assigned_room)
+            else:
+                print("[kiosk] No room assigned, cannot play loss audio.", flush=True)
+        else:
+            print("[kiosk] ERROR: No audio manager found")
+
     
     def handle_game_win(self):
         """Displays the game win screen"""
         print("[kiosk main]Displaying game win screen...")
         try:
+            # Stop the music
+            if(self.audio_manager):
+                self.audio_manager.stop_background_music()
+            else:
+                print("[kiosk main] ERROR: No audio manager found")
             # Pause the timer
             if self.timer.is_running:
                 print("[kiosk main]Pausing timer due to victory")

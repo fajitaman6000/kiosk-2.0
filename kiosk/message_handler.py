@@ -527,7 +527,6 @@ class MessageHandler:
                 print("[message handler][DEBUG] Scheduling GUI reset operations...")
                 self.schedule_timer(0, self._execute_reset_gui_operations)
 
-
             elif msg_type == 'toggle_music_command' and is_targeted:
                 print(f"[message handler][DEBUG] Received toggle music command (Command ID: {command_id})")
                 # Schedule audio toggle on main thread
