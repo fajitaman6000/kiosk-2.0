@@ -5,6 +5,10 @@ Admin app appears to stall when all(?) rooms are powered off. Timeout handling n
 
 Game out of time doesn't play sound
 
+
+Need to show room name above prop page to avoid accidental resets
+Need to make which room is currently selected more clear
+
 ##############################################################################################################################
 # Priority
 
