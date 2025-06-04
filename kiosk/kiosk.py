@@ -361,7 +361,7 @@ class KioskApp:
             self.audio_manager.stop_background_music()
             if self.assigned_room:
                 print(f"[kiosk] Playing loss audio for room {self.assigned_room}.", flush=True)
-                self.audio_manager.play_loss_audio(self.kiosk_app.assigned_room)
+                self.audio_manager.play_loss_audio(self.assigned_room)
             else:
                 print("[kiosk] No room assigned, cannot play loss audio.", flush=True)
         else:
