@@ -5,9 +5,9 @@ Admin app appears to stall when all(?) rooms are powered off. Timeout handling n
 
 Game out of time doesn't play sound
 
+time capacitor instructions hint quiet
 
-Need to show room name above prop page to avoid accidental resets
-Need to make which room is currently selected more clear
+
 
 ##############################################################################################################################
 # Priority
@@ -17,6 +17,8 @@ Microphone consistency
 Audio choppiness on slower computers (Time Machine, Zombie)
 ##############################################################################################################################
 # Beta to do
+
+average prop finish time measurement
 
 sign-in and log system for gm accountability
 
