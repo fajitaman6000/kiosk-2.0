@@ -107,6 +107,7 @@ class PropControl:
         self.standby_played = {} #standby tracking
         self.stale_sound_played = {}
         self.popout_windows = {}
+        self.audio_manager = AdminAudioManager()
 
         self.last_fate_message_time = {} # computer_name -> timestamp
 
@@ -831,9 +832,9 @@ class PropControl:
                 self.flagged_props[room_number][prop_id] and
                 status == "Finished"):
 
-                audio_manager = AdminAudioManager()
-                audio_manager.play_flagged_finish_notification()
-                print(f"[prop control] flagged prop {prop_id} finished")
+                if(self.audio_manager is not None):
+                    self.audio_manager.play_flagged_finish_notification()
+                    print(f"[prop control] flagged prop {prop_id} finished")
 
                 self.flagged_props[room_number][prop_id] = False
             
@@ -860,33 +861,42 @@ class PropControl:
 
     def play_standby_sound(self, room_number):
         """Plays the room-specific standby sound."""
-        print(f"[prop_control] Playing standby sound for room {room_number}")
+        #print(f"[prop_control] Playing standby sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_standby.mp3"
-        audio_manager = AdminAudioManager()
-        audio_manager._load_sound(f"{room_name}_standby", sound_file)
-        audio_manager.play_sound(f"{room_name}_standby")
+        if not self.audio_manager:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager._load_sound(f"{room_name}_standby", sound_file)
+        self.audio_manager.play_sound(f"{room_name}_standby")
 
     def play_stale_sound(self, room_number):
         """Plays the room-specific stale sound."""
-        print(f"[prop_control] Playing stale sound for room {room_number}")
+        #print(f"[prop_control] Playing stale sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_stale.mp3"
-        audio_manager = AdminAudioManager()
-        audio_manager._load_sound(f"{room_name}_stale", sound_file)
-        audio_manager.play_sound(f"{room_name}_stale")
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager._load_sound(f"{room_name}_stale", sound_file)
+        self.audio_manager.play_sound(f"{room_name}_stale")
 
     def play_finish_sound(self, room_number):
         """Plays the room-specific finish sound."""
-        print(f"[prop_control] Playing finish sound for room {room_number}")
-        audio_manager = AdminAudioManager()
-        audio_manager.play_sound("game_finish")
+        #print(f"[prop_control] Playing finish sound for room {room_number}")
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager.play_sound("game_finish")
+
+    def play_loss_sound(self, room_number):
+        """Plays the room-specific loss sound."""
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager.play_sound("game_fail")
 
     def update_all_props_status(self, room_number):
         # This method is called from the main thread
@@ -1692,6 +1702,13 @@ class PropControl:
 
         try:
             if timer_expired:
+                if not self.audio_manager.loss_sound_played.get(room_number, False):
+                    #print(f"[interface builder] Timer expired for room {room_number}. Playing loss sound.")
+                    self.play_loss_sound(room_number)
+                    if(self.audio_manager is not None):
+                        self.audio_manager.loss_sound_played[room_number] = True
+                    else:
+                        self.audio_manager = AdminAudioManager()
                 new_color = '#FFB6C1' # Light Pink
             elif is_finished:
                 new_color = '#90EE90' # Light Green

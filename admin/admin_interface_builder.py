@@ -42,6 +42,7 @@ class AdminInterfaceBuilder:
         self.hint_manager = ManagerSettings(app, self)  # Initialize hint manager
         self.auto_reset_timer_ids = {}
         self.no_kiosks_label = None  # Initialize reference to no kiosks label
+        self.audio_manager = AdminAudioManager()
         self.setup_ui()
         
         # Start timer update loop using app's root
@@ -754,6 +755,16 @@ class AdminInterfaceBuilder:
         
         # Reset hint requested flag
         self.app.kiosk_tracker.kiosk_stats[computer_name]['hint_requested'] = False
+
+        room_num_for_kiosk = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+        self.audio_manager.loss_sound_played
+        if self.audio_manager is None:
+            self.audio_manager = AdminAudioManager()
+        if room_num_for_kiosk and self.audio_manager is not None:
+            if room_num_for_kiosk in self.audio_manager.loss_sound_played:
+                #print(f"[interface builder] Resetting loss sound flag for room {room_num_for_kiosk} due to kiosk reset.")
+                self.app.root.after(5000,lambda:self.audio_manager.clear_loss_sound_played(room_num_for_kiosk)) # Delay clear sound played to allow reset to finish
+                #self.audio_manager.loss_sound_played[room_num_for_kiosk] = False
         
         # Update tracking state
         if not hasattr(self, '_last_hint_request_states'):

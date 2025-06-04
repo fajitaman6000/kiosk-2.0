@@ -3,18 +3,13 @@
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
-Game out of time doesn't play sound
-
-time capacitor instructions hint quiet
-
-
-
 ##############################################################################################################################
 # Priority
 
-Microphone consistency
-
 Audio choppiness on slower computers (Time Machine, Zombie)
+
+"room has 2 minutes remaining"
+
 ##############################################################################################################################
 # Beta to do
 
@@ -23,8 +18,6 @@ average prop finish time measurement
 sign-in and log system for gm accountability
 
 microphone input device list has way too many entries
-
-"room has 2 minutes remaining"
 
 sync button reliability
 
