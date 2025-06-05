@@ -131,98 +131,79 @@ class VideoManager:
     def play_video(self, video_path, on_complete=None):
         """Play a video file using PyQt overlay for display."""
         print(f"[video manager] play_video requested: {video_path}", flush=True)
-        # --- Ensure Overlay and bridge are initialized ---
         if not Overlay._bridge:
-             print("[video manager] Error: Overlay Bridge not initialized. Cannot play video.", flush=True)
-             if on_complete:
-                  # Replace root.after with QTimer.singleShot
-                  QTimer.singleShot(0, on_complete) # Call completion callback to signal failure
-             return
+            print("[video manager] Error: Overlay Bridge not initialized. Cannot play video.", flush=True)
+            if on_complete:
+                QTimer.singleShot(0, on_complete) # Signal failure to ensure state progression
+            return
 
-        with self._lock: # Ensure atomic operation for starting playback
-            print(f"[video manager][PLAY_VIDEO] Checking state. Current state: is_playing={self.is_playing}, should_stop={self.should_stop}, resetting={self.resetting}", flush=True)
+        player_to_stop = None
+        bridge_exists = Overlay._bridge is not None # Check once outside the lock
+
+        with self._lock:
+            print(f"[video manager][PLAY_VIDEO] Lock acquired. Checking state: is_playing={self.is_playing}", flush=True)
             if self.is_playing:
-                print("[video manager][PLAY_VIDEO] Warning: Playback already in progress. Forcing stop of previous video.", flush=True)
-                # Perform force_stop while holding the lock to ensure atomicity
-                bridge_exists = Overlay._bridge is not None
-                player_instance = self.video_player
-                
-                print("[video manager][PLAY_VIDEO] Setting state for cleanup...", flush=True)
-                self.resetting = True # Mark as resetting
-                self.should_stop = True # Signal any active player to stop
-                self.is_playing = False # Assume stopped state immediately
-                self.video_player = None # Clear player reference
-                self.completion_callback = None # Clear callback
-                
-                # Release lock before potentially blocking operations
-                self._lock.release()
-                try:
-                    # Stop player if it exists
-                    if player_instance:
-                        print(f"[video manager][PLAY_VIDEO] Force stopping video player instance: {player_instance}...", flush=True)
-                        player_instance.force_stop()
-                        print(f"[video manager][PLAY_VIDEO] Video player force_stop completed.", flush=True)
-                    
-                    # Force destroy video display
-                    if bridge_exists:
-                        print("[video manager][PLAY_VIDEO] Force destroying video display (Auto connection)...", flush=True)
-                        QMetaObject.invokeMethod(
-                            Overlay._bridge,
-                            "destroy_video_display_slot",
-                            Qt.AutoConnection  # CHANGED: Let Qt decide based on thread context
-                        )
-                        print("[video manager][PLAY_VIDEO] Video display destroy request sent.", flush=True)
-                        # Add a small delay to allow Qt events to process
-                        time.sleep(0.1)
-                        print("[video manager][PLAY_VIDEO] Waited for Qt event processing.", flush=True)
-                finally:
-                    # Re-acquire lock
-                    self._lock.acquire()
-                    
-            # Reset state for new playback (regardless of whether we had to force stop)
+                print("[video manager][PLAY_VIDEO] Warning: Playback already in progress. Preparing to stop previous video.", flush=True)
+                player_to_stop = self.video_player # Capture the player to stop it outside the lock
+                # Immediately reset state related to the old video.
+                self.resetting = True # Mark as resetting to prevent its callback from running.
+                self.should_stop = True # Signal old player threads to stop.
+                self.video_player = None
+                self.completion_callback = None
+                # is_playing will be overwritten for the new video.
+
+            # Set state for the *new* video playback
             print(f"[video manager][PLAY_VIDEO] Starting new video playback process for: {video_path}", flush=True)
             self.is_playing = True
             self.should_stop = False
-            self.resetting = False # Ensure resetting is false for the new playback
-            self.completion_callback = on_complete # Store the final callback
-            print(f"[video manager][PLAY_VIDEO] New state set: is_playing=True, should_stop=False, resetting=False", flush=True)
+            self.resetting = False
+            self.completion_callback = on_complete
+            print(f"[video manager][PLAY_VIDEO] New state set: is_playing=True, should_stop=False", flush=True)
 
+        # --- Cleanup of previous video (OUTSIDE the lock) ---
+        if player_to_stop:
+            print(f"[video manager][PLAY_VIDEO] Force stopping previous player instance: {player_to_stop}...", flush=True)
+            player_to_stop.force_stop()
+            print(f"[video manager][PLAY_VIDEO] Previous player force_stop completed.", flush=True)
+
+            if bridge_exists:
+                print("[video manager][PLAY_VIDEO] Force destroying previous video display...", flush=True)
+                QMetaObject.invokeMethod(
+                    Overlay._bridge,
+                    "destroy_video_display_slot",
+                    Qt.AutoConnection
+                )
+                print("[video manager][PLAY_VIDEO] Previous display destroy request sent.", flush=True)
+                time.sleep(0.1) # Allow a moment for Qt to process the event.
+
+        # --- Start new video playback (OUTSIDE the lock) ---
         try:
-            # 1. Fade out background music (can run in this thread)
+            # 1. Fade out background music
             print("[video manager] Fading out background music...", flush=True)
-            self._fade_background_music(0.3) # Fade down to 30%
+            self._fade_background_music(0.3)
 
-            # 2. Prepare Qt video display (Invoke slot on bridge)
+            # 2. Prepare Qt video display
             is_skippable = "video_solutions" in video_path.lower().replace("\\", "/")
             print(f"[video manager] Video skippable: {is_skippable}", flush=True)
-
-            # Use QueuedConnection for asynchronous preparation. This avoids deadlocks.
-            # The update_video_frame_slot has checks to handle frames arriving before
-            # preparation is fully complete in the Qt thread.
-            print("[video manager] Invoking prepare_video_display_slot...", flush=True)
             QMetaObject.invokeMethod(
-                Overlay._bridge, # Target the bridge instance
-                "prepare_video_display_slot", # Call the slot
-                Qt.QueuedConnection, # <<< CHANGED FROM BlockingQueuedConnection
-                # Arguments passed to the slot
+                Overlay._bridge,
+                "prepare_video_display_slot",
+                Qt.QueuedConnection,
                 Q_ARG(bool, is_skippable),
-                Q_ARG(object, self._handle_video_skip_request) # Pass method reference
+                Q_ARG(object, self._handle_video_skip_request)
             )
             print("[video manager] prepare_video_display_slot invoked.", flush=True)
-            # invokeMethod now returns immediately.
 
-            # 3. Show Qt video display (Invoke slot on bridge) - Keep as Queued
-            print("[video manager] Invoking show_video_display_slot...", flush=True)
+            # 3. Show Qt video display
             QMetaObject.invokeMethod(Overlay._bridge, "show_video_display_slot", Qt.QueuedConnection)
             print("[video manager] show_video_display_slot invoked.", flush=True)
 
             # 4. Instantiate VideoPlayer
             print("[video manager] Instantiating VideoPlayer...", flush=True)
-            # --- Ensure player is created only if bridge calls succeed ---
             self.video_player = VideoPlayer(self.ffmpeg_path)
             print("[video manager] VideoPlayer instantiated.", flush=True)
 
-            # 5. Extract audio (can run in this thread)
+            # 5. Extract audio
             print("[video manager] Extracting audio...", flush=True)
             audio_path = self.video_player.extract_audio(video_path)
             if audio_path:
@@ -230,7 +211,7 @@ class VideoManager:
             else:
                 print("[video manager] Audio extraction failed or no audio track.", flush=True)
 
-            # 6. Start VideoPlayer playback (runs its own thread)
+            # 6. Start VideoPlayer playback in its own thread
             print("[video manager] Starting video player...", flush=True)
             self.video_player.play_video(
                 video_path,
@@ -240,11 +221,10 @@ class VideoManager:
             )
             print("[video manager] Video player started.", flush=True)
 
-
         except Exception as e:
             print("[video manager] Critical error during play_video setup:", flush=True)
             traceback.print_exc()
-            self._cleanup_after_error() # Ensure cleanup on setup failure
+            self._cleanup_after_error()
 
 
     def _handle_frame_update(self, frame_data):
