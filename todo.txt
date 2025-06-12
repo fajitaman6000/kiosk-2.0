@@ -1,28 +1,34 @@
 ##############################################################################################################################
 # Test notes
 
-Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
-
-Game out of time doesn't play sound
-
-
-Need to show room name above prop page to avoid accidental resets
-Need to make which room is currently selected more clear
 
 ##############################################################################################################################
 # Priority
 
-Microphone consistency
-
 Audio choppiness on slower computers (Time Machine, Zombie)
+    restarting kiosk application resulted in fix
+        memory leak? task manager showed no unusual (albeit high) usage
+
+viewing image results in reset command not working
+
+restart app command resulted in crash during video playback (while choppiness issue was occurring)
+
 ##############################################################################################################################
 # Beta to do
+
+disabling mic via room change does not result in clearing of red overlay
+
+Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
+
+"room has 2 minutes remaining"
+
+"detected offline prop in room xyz"
+
+average prop finish time measurement
 
 sign-in and log system for gm accountability
 
 microphone input device list has way too many entries
-
-"room has 2 minutes remaining"
 
 sync button reliability
 

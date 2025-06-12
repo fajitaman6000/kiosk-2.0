@@ -78,19 +78,32 @@ class AudioManager:
             if os.path.exists(sound_path):
                 # Create sound object and force it to use a different channel than video
                 sound = pygame.mixer.Sound(sound_path)
-                # Use channel 1 for sound effects (channel 0 is often reserved for video audio)
-                # Check if channel 1 is available or get a free channel if not
-                sound_channel = pygame.mixer.Channel(1)
-                if sound_channel.get_busy(): # If channel 1 is busy, try finding another free channel
-                     sound_channel = pygame.mixer.find_channel()
-                     if not sound_channel:
-                         print("[audio manager] No free audio channels available to play sound.", flush=True)
-                         return # Cannot play sound
+                
+                sound_channel = None  # Start with no channel assigned
+                preferred_channel_id = 1 # Use channel 1 for sound effects
 
+                # First, check if the preferred channel ID is valid before trying to use it.
+                if preferred_channel_id < pygame.mixer.get_num_channels():
+                    ch = pygame.mixer.Channel(preferred_channel_id)
+                    if not ch.get_busy():
+                        # It's valid and not busy, so we'll use it.
+                        sound_channel = ch
+                
+                # If we couldn't get our preferred channel, try to find any other free channel.
+                if sound_channel is None:
+                    sound_channel = pygame.mixer.find_channel()
+
+                # Now, we must check if we successfully secured ANY channel before playing.
+                if not sound_channel:
+                    print("[audio manager] No free audio channels available to play sound.", flush=True)
+                    return  # Cannot play sound
+
+                # We have a valid channel, now we can safely play the sound.
                 sound_channel.play(sound)
                 self._last_played = sound_name
                 self._last_played_time = current_time
-                print(f"[audio manager]Playing sound {sound_name} on channel {sound_channel.get_id()}", flush=True)
+                channel_id_str = str(sound_channel.get_id()) if hasattr(sound_channel, 'get_id') else "N/A"
+                print(f"[audio manager]Playing sound {sound_name} on channel {channel_id_str}", flush=True)
             else:
                     print(f"[audio manager]Sound file not found: {sound_path}", flush=True)
         except pygame.error as pe:
@@ -109,17 +122,30 @@ class AudioManager:
             if os.path.exists(audio_path):
                 sound = pygame.mixer.Sound(audio_path)
                 sound.set_volume(self.hint_volume_actual) # Apply current hint volume
-                # Use channel 2 for audio hints (channel 0 is reserved for video and 1 for sfx)
-                # Check if channel 2 is available or get a free channel if not
-                sound_channel = pygame.mixer.Channel(2)
-                if sound_channel.get_busy(): # If channel 2 is busy, try finding another free channel
-                     sound_channel = pygame.mixer.find_channel()
-                     if not sound_channel:
-                         print("[audio manager] No free audio channels available to play hint audio.", flush=True)
-                         return # Cannot play hint
+                
+                sound_channel = None  # Start with no channel assigned
+                preferred_channel_id = 2 # Use channel 2 for audio hints
 
+                # First, check if the preferred channel ID is valid before trying to use it.
+                if preferred_channel_id < pygame.mixer.get_num_channels():
+                    ch = pygame.mixer.Channel(preferred_channel_id)
+                    if not ch.get_busy():
+                        # It's valid and not busy, so we'll use it.
+                        sound_channel = ch
+                
+                # If we couldn't get our preferred channel, try to find any other free channel.
+                if sound_channel is None:
+                    sound_channel = pygame.mixer.find_channel()
+
+                # Now, we must check if we successfully secured ANY channel before playing.
+                if not sound_channel:
+                    print("[audio manager] No free audio channels available to play hint audio.", flush=True)
+                    return  # Cannot play hint
+
+                # We have a valid channel, now we can safely play the sound.
                 sound_channel.play(sound)
-                print(f"[audio manager]Playing audio hint {audio_name} on channel {sound_channel.get_id()} at volume {self.hint_volume_actual:.2f}", flush=True)
+                channel_id_str = str(sound_channel.get_id()) if hasattr(sound_channel, 'get_id') else "N/A"
+                print(f"[audio manager]Playing audio hint {audio_name} on channel {channel_id_str} at volume {self.hint_volume_actual:.2f}", flush=True)
 
             else:
                     print(f"[audio manager]Audio hint file not found: {audio_path}", flush=True)
@@ -281,14 +307,28 @@ class AudioManager:
                     
                     # Try to get channel 3, or find a free one
                     # Create the Channel object. If mixer is in a bad state, this might return a corrupted object.
-                    sound_channel = pygame.mixer.Channel(3)
-                    
-                    if sound_channel.get_busy(): # If preferred channel 3 is busy, try to find any free channel
-                         sound_channel = pygame.mixer.find_channel()
-                         if not sound_channel: # If find_channel also returns None (no free channels)
-                             print("[audio manager] No free audio channels available to play loss audio.", flush=True)
-                             return # Cannot play loss audio
+                    sound_channel = None  # Start with no channel assigned
+                    preferred_channel_id = 3
 
+                    # First, check if the preferred channel ID is valid before trying to use it.
+                    if preferred_channel_id < pygame.mixer.get_num_channels():
+                        # The channel ID is valid, so we can safely get the Channel object.
+                        ch = pygame.mixer.Channel(preferred_channel_id)
+                        if not ch.get_busy():
+                            # It's valid and not busy, so we'll use it.
+                            sound_channel = ch
+                    
+                    # If we couldn't get our preferred channel (because it was invalid or busy),
+                    # try to find any other free channel.
+                    if sound_channel is None:
+                        sound_channel = pygame.mixer.find_channel()
+
+                    # Now, we must check if we successfully secured ANY channel before playing.
+                    if not sound_channel:
+                        print("[audio manager] No free audio channels available to play loss audio.", flush=True)
+                        return  # Cannot play loss audio
+
+                    # We have a valid channel, now we can safely play the sound.
                     sound_channel.play(sound) # Play once
                     
                     # --- Defensive logging for channel ID ---

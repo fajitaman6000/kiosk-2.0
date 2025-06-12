@@ -35,6 +35,8 @@ class AdminAudioManager:
         # Sound file paths
         self.sound_dir = Path("app_sounds")
         self.sounds = {}
+
+        self.loss_sound_played = {}
         
         # Predefined sound mappings
         self._load_sound("hint_notification", "hint_notification.mp3")
@@ -44,6 +46,13 @@ class AdminAudioManager:
         
         self._initialized = True
     
+    def clear_loss_sound_played(self,room_number):
+        if room_number in self.loss_sound_played:
+                self.loss_sound_played[room_number] = False
+        else:
+            self.loss_sound_played[room_number] = False
+            print(f"[audio manager] loss sound set false for room {room_number} despite no pre-existing state")
+
     def play_hint_notification(self):
         """Plays the hint notification sound."""
         self.play_sound("hint_notification")

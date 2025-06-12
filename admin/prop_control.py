@@ -24,6 +24,17 @@ class PropControl:
         6: "atlantis",
         7: "time"  # Time Machine room
     }
+
+    FULLNAME_ROOM_MAP = {
+        3: "Wizard Trials",
+        1: "Casino Heist",
+        2: "Morning After",
+        5: "Haunted Manor",
+        4: "Zombie Outbreak",
+        6: "Atlantis Rising",
+        7: "Time Machine"  # Time Machine room
+    }
+
     # Room-specific MQTT configurations
     ROOM_CONFIGS = {
         4: {  # Zombie Outbreak
@@ -96,6 +107,7 @@ class PropControl:
         self.standby_played = {} #standby tracking
         self.stale_sound_played = {}
         self.popout_windows = {}
+        self.audio_manager = AdminAudioManager()
 
         self.last_fate_message_time = {} # computer_name -> timestamp
 
@@ -113,9 +125,9 @@ class PropControl:
         style.configure('Cousin.TFrame', background='#e6ffe6', borderwidth=2, relief='solid')
         style.configure('Cousin.TLabel', background='#e6ffe6', font=('Arial', 8, 'bold'))
 
-        # Title label (optional, currently commented out)
-        # title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 12, 'bold'))
-        # title_label.pack(fill='x', pady=(0, 10))
+        # Title label
+        self.title_label = ttk.Label(self.frame, text="Prop Controls", font=('Arial', 14, 'bold'), justify="center")
+        self.title_label.pack(fill='x', pady=(0, 2), anchor="center")
 
         # 1. Global controls section (TOP SECTION)
         self.global_controls = ttk.Frame(self.frame)
@@ -668,6 +680,9 @@ class PropControl:
             if hasattr(self, 'popout_button') and self.popout_button.winfo_exists():
                 self.popout_button.pack_forget() # Hide if no room selected
 
+        if(self.current_room is not None):
+            self.title_label.config(text=f"{self.FULLNAME_ROOM_MAP.get(room_number, f'number {room_number}')}")
+
     def sort_and_repack_props(self):
         """Sorts props based on their 'order' for the *current* room and repacks them."""
         # This method is called from the main thread
@@ -817,9 +832,9 @@ class PropControl:
                 self.flagged_props[room_number][prop_id] and
                 status == "Finished"):
 
-                audio_manager = AdminAudioManager()
-                audio_manager.play_flagged_finish_notification()
-                print(f"[prop control] flagged prop {prop_id} finished")
+                if(self.audio_manager is not None):
+                    self.audio_manager.play_flagged_finish_notification()
+                    print(f"[prop control] flagged prop {prop_id} finished")
 
                 self.flagged_props[room_number][prop_id] = False
             
@@ -846,33 +861,42 @@ class PropControl:
 
     def play_standby_sound(self, room_number):
         """Plays the room-specific standby sound."""
-        print(f"[prop_control] Playing standby sound for room {room_number}")
+        #print(f"[prop_control] Playing standby sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_standby.mp3"
-        audio_manager = AdminAudioManager()
-        audio_manager._load_sound(f"{room_name}_standby", sound_file)
-        audio_manager.play_sound(f"{room_name}_standby")
+        if not self.audio_manager:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager._load_sound(f"{room_name}_standby", sound_file)
+        self.audio_manager.play_sound(f"{room_name}_standby")
 
     def play_stale_sound(self, room_number):
         """Plays the room-specific stale sound."""
-        print(f"[prop_control] Playing stale sound for room {room_number}")
+        #print(f"[prop_control] Playing stale sound for room {room_number}")
         if room_number not in self.ROOM_MAP:
             return
 
         room_name = self.ROOM_MAP[room_number]
         sound_file = f"{room_name}_stale.mp3"
-        audio_manager = AdminAudioManager()
-        audio_manager._load_sound(f"{room_name}_stale", sound_file)
-        audio_manager.play_sound(f"{room_name}_stale")
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager._load_sound(f"{room_name}_stale", sound_file)
+        self.audio_manager.play_sound(f"{room_name}_stale")
 
     def play_finish_sound(self, room_number):
         """Plays the room-specific finish sound."""
-        print(f"[prop_control] Playing finish sound for room {room_number}")
-        audio_manager = AdminAudioManager()
-        audio_manager.play_sound("game_finish")
+        #print(f"[prop_control] Playing finish sound for room {room_number}")
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager.play_sound("game_finish")
+
+    def play_loss_sound(self, room_number):
+        """Plays the room-specific loss sound."""
+        if self.audio_manager is not None:
+            self.audio_manager = AdminAudioManager()
+        self.audio_manager.play_sound("game_fail")
 
     def update_all_props_status(self, room_number):
         # This method is called from the main thread
@@ -1168,7 +1192,6 @@ class PropControl:
                 print(f"[prop control]Status label widget was destroyed while trying to update for room {room_number}.")
             except Exception as e:
                 print(f"[prop control]Unexpected error updating connection state UI for room {room_number}: {e}")
-
 
     def setup_special_buttons(self, room_number):
         # This method is called from the main thread
@@ -1679,6 +1702,13 @@ class PropControl:
 
         try:
             if timer_expired:
+                if not self.audio_manager.loss_sound_played.get(room_number, False):
+                    #print(f"[interface builder] Timer expired for room {room_number}. Playing loss sound.")
+                    self.play_loss_sound(room_number)
+                    if(self.audio_manager is not None):
+                        self.audio_manager.loss_sound_played[room_number] = True
+                    else:
+                        self.audio_manager = AdminAudioManager()
                 new_color = '#FFB6C1' # Light Pink
             elif is_finished:
                 new_color = '#90EE90' # Light Green
@@ -1984,7 +2014,6 @@ class PropControl:
             print(f"[prop control]Failed to send reset all command to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
             if self.current_room == target_room:
                 self.status_label.config(text=f"Failed to reset props: {e}", fg='red')
-        
 
     def send_quest_command(self, quest_type):
         """Send quest command to the current room."""
