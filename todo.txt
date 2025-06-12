@@ -1,17 +1,18 @@
 ##############################################################################################################################
 # Test notes
 
-
 ##############################################################################################################################
 # Priority
+
 
 Audio choppiness on slower computers (Time Machine, Zombie)
     restarting kiosk application resulted in fix
         memory leak? task manager showed no unusual (albeit high) usage
+    restart app command resulted in crash during video playback (while choppiness issue was occurring)
 
-viewing image results in reset command not working
+viewing image results in reset kiosk command not working
 
-restart app command resulted in crash during video playback (while choppiness issue was occurring)
+kiosk crash without watchdog reboot (watchdog crash?)
 
 ##############################################################################################################################
 # Beta to do
