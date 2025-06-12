@@ -3,6 +3,7 @@
 
 
 video solution playback is freezing occasionally midway (at specifically, consistently, 5 second intervals)
+    self.help_button_timer.start(5000), found in kiosk.py, is the cause of this issue
 
 
 
@@ -31,8 +32,6 @@ kiosk crash without watchdog reboot (watchdog crash?)
 
 ##############################################################################################################################
 # Beta to do
-
-disabling mic via room change does not result in clearing of red overlay
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
