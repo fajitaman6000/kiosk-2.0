@@ -220,7 +220,7 @@ class KioskApp:
         print("[kiosk main] Setting up help button update timer...", flush=True)
         self.help_button_timer = QTimer()
         self.help_button_timer.timeout.connect(self._actual_help_button_update)
-        self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
+        self.help_button_timer.start(1000)
         print("[kiosk main] Help button update timer started.", flush=True)
         
         print("[kiosk main] Initializing StateTracker...", flush=True)
