@@ -291,7 +291,7 @@ class PropControl:
         # Check if a kiosk is currently selected in the UI
         if self.app.interface_builder.selected_kiosk:
             kiosk_name = self.app.interface_builder.selected_kiosk
-            print(f"[prop control] Also resetting kiosk '{kiosk_name}' via AdminInterfaceBuilder.")
+            # print(f"[prop control] Also resetting kiosk '{kiosk_name}' via AdminInterfaceBuilder.")
             # Call the reset_kiosk method from AdminInterfaceBuilder
             self.app.interface_builder.reset_kiosk(kiosk_name)
         else:
@@ -517,7 +517,7 @@ class PropControl:
         if client_to_check and not client_to_check.is_connected():
             print(f"[prop control]Connection to room {room_number} timed out")
             room_name = self.app.rooms.get(room_number, f"Room {room_number}")
-            timeout_msg = f"Connection to {room_name} props timed out; is the room powered on? Retrying in 10 seconds..."
+            timeout_msg = f"{room_name} props timed out;\n is the room powered on?"
             self.connection_states[room_number] = timeout_msg
             
             # Only update UI if this is the current room
@@ -1117,7 +1117,7 @@ class PropControl:
                         print(f"[prop control] Connection to room '{self.ROOM_MAP.get(room_number, f'number {room_number}')}' stable for 5s. Clearing rc=7 history.")
                         del self.disconnect_rc7_history[room_number]
             
-            self.app.root.after(5000, clear_disconnect_history_main_thread)
+            self.app.root.after(10000, clear_disconnect_history_main_thread)
 
         else:
             status = {
@@ -1957,19 +1957,34 @@ class PropControl:
             print(f"[prop control]MQTT client for room {target_room} is not connected, reset command aborted.")
             self.update_connection_state(target_room, f"Not connected to {self.ROOM_MAP.get(target_room, f'Room {target_room}')}")
             return
-            
+        
         try:
             client.publish("/er/cmd", "reset")
             print(f"[prop control]Reset all command sent to room {target_room}")
+        except Exception as e:
+            print(f"[prop control]Failed to send reset all command to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
+            
+            
+        self.app.root.after(5000,lambda: self._status_reset_upon_reset(target_room))
+
+    def _status_reset_upon_reset(self, target_room):
+        try:
             # Also reset progress/state tracking for the reset room
             self.last_progress_times[target_room] = time.time()
             self.stale_sound_played[target_room] = False
             self.fate_sent[target_room] = False # Reset fate_sent on game reset
             self.finish_sound_played[target_room] = False # Reset finish_sound_played on game reset
             self.standby_played[target_room] = False # Reset standby_played on game reset
+            
+            # Clear status label after successful reset
+            if self.current_room == target_room:
+                self.status_label.config(text="Props reset successfully.", fg='black')
 
         except Exception as e:
             print(f"[prop control]Failed to send reset all command to room {target_room}: {e}. Traceback:\n{traceback.format_exc()}")
+            if self.current_room == target_room:
+                self.status_label.config(text=f"Failed to reset props: {e}", fg='red')
+        
 
     def send_quest_command(self, quest_type):
         """Send quest command to the current room."""

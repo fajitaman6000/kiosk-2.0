@@ -802,7 +802,7 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['other_controls_frame'] = other_controls_frame
 
     # Use a canvas + frame for scrollable area
-    hint_scroll_canvas = tk.Canvas(hint_info_frame, width=140, height=300, highlightthickness=0)
+    hint_scroll_canvas = tk.Canvas(hint_info_frame, width=140, height=200, highlightthickness=0)
     hint_scroll_canvas.pack(side='left', expand=False, padx=2, pady=0)
     hint_scrollbar = ttk.Scrollbar(hint_info_frame, orient='vertical', command=hint_scroll_canvas.yview)
     #hint_scrollbar.pack(side='right', fill='y')

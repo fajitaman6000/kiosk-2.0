@@ -1,0 +1,23 @@
+[
+  {
+    "id": "apple",
+    "name": "Red Apple",
+    "image_source_path": "red",
+    "description": "A crisp, juicy red apple.",
+    "image_file": "apple.png"
+  },
+  {
+    "id": "banana",
+    "name": "Yellow Banana",
+    "image_source_path": "yellow",
+    "description": "A sweet, ripe banana.",
+    "image_file": "banana.png"
+  },
+  {
+    "id": "99",
+    "name": "turdburger 6000",
+    "description": "turd burger",
+    "image_source_path": "",
+    "image_file": "99.png"
+  }
+]

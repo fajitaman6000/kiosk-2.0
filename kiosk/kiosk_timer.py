@@ -156,14 +156,6 @@ class KioskTimer:
 
                     # Trigger game loss audio and UI changes via kiosk_app
                     if self.kiosk_app:
-                        print("[kiosk timer] Triggering game loss handling.", flush=True)
-                        self.kiosk_app.audio_manager.stop_background_music()
-                        if self.kiosk_app.assigned_room:
-                            print(f"[kiosk timer] Playing loss audio for room {self.kiosk_app.assigned_room}.", flush=True)
-                            self.kiosk_app.audio_manager.play_loss_audio(self.kiosk_app.assigned_room)
-                        else:
-                            print("[kiosk timer] No room assigned, cannot play loss audio.", flush=True)
-                        print("[kiosk timer] Calling kiosk_app.handle_game_loss().", flush=True)
                         self.kiosk_app.handle_game_loss() # Tell kiosk app game is lost
                     else:
                         print("[kiosk timer] KioskApp reference missing, cannot handle game loss.", flush=True)

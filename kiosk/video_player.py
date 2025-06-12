@@ -523,7 +523,7 @@ class VideoPlayer:
             "-vn",                  # No video
             "-acodec", "pcm_s16le", # Standard WAV codec
             "-ar", "44100",         # Audio sample rate
-            "-ac", "2",             # Stereo audio
+            "-ac", "1",             # Mono audio
             "-y",                   # Overwrite output file without asking
             temp_audio,
         ]
