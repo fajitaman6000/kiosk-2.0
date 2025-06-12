@@ -189,6 +189,12 @@
                 },
                 "infinity loop": {
                     "text": "The metal hoop on the wall has your key for the drawer. It's possible to pull it off with just a bit of creative rotation."
+                },
+                "body-parts-explanation": {
+                    "text": "The drawers have three faces, with their respective body parts in red:\n\nSpeak no evil, see no evil, hear no evil. Have a look at those jars."
+                },
+                "drawer combo solution": {
+                    "text": "Speak no evil, see no evil, hear no evil.\n\nIn those jars on the shelf: 2 tongues, 1 eye, 4 ears.\n\n2-1-4"
                 }
             },
             "Bench Lights": {
