@@ -514,40 +514,36 @@ class Overlay:
             traceback.print_exc()
 
     @classmethod
-    def hide_fullscreen_hint(cls):
-        """Hides the fullscreen hint overlay and restores the normal UI."""
-        # print("[qt overlay] Hiding fullscreen hint.") # Debug
+    def hide_fullscreen_hint(cls, restore_ui=True):
+        """Hides the fullscreen hint overlay and optionally restores the normal UI."""
         if cls._fullscreen_hint_window and cls._fullscreen_hint_initialized:
+            # Always hide the window and clear its content
             if cls._fullscreen_hint_window.isVisible():
                 cls._fullscreen_hint_window.hide()
                 # Clear the pixmap item to free memory
                 cls._fullscreen_hint_pixmap_item.setPixmap(QPixmap())
                 cls._fullscreen_hint_pixmap = None # Clear stored pixmap
 
-            # Explicitly hide the view image button
-            cls.hide_view_image_button()
+            if restore_ui:
+                # This is the original logic for when a user clicks to close the image.
+                cls.hide_view_image_button()
+                cls.show_all_overlays()
 
-            # Restore other overlays *first*
-            cls.show_all_overlays()
-
-            # Call the UI restoration logic *after* hiding and showing others
-            if cls._fullscreen_hint_ui_instance:
-                # Use invokeMethod or after(0) if direct call causes issues
-                # Direct call likely okay as hide is triggered by user click in main thread
-                try:
-                    print("[qt overlay] Calling restore_hint_view...")
-                    cls._fullscreen_hint_ui_instance.restore_hint_view()
-                except Exception as e:
-                    print(f"[qt overlay] Error calling restore_hint_view: {e}")
-                    traceback.print_exc()
-                finally:
-                    # Clear reference once called
-                    cls._fullscreen_hint_ui_instance = None
+                if cls._fullscreen_hint_ui_instance:
+                    try:
+                        print("[qt overlay] Calling restore_hint_view...")
+                        cls._fullscreen_hint_ui_instance.restore_hint_view()
+                    except Exception as e:
+                        print(f"[qt overlay] Error calling restore_hint_view: {e}")
+                        traceback.print_exc()
             else:
-                 print("[qt overlay] Warning: No UI instance found to call restore_hint_view.")
-
-        # else:
-            # print("[qt overlay] Fullscreen hint window not visible or not initialized.") # Debug
+                # This is the logic for a hard reset: just reset the flag in the UI manager.
+                if cls._fullscreen_hint_ui_instance and hasattr(cls._fullscreen_hint_ui_instance, 'image_is_fullscreen'):
+                    cls._fullscreen_hint_ui_instance.image_is_fullscreen = False
+            
+            # In both cases, the UI instance reference should be cleared after it's handled.
+            if cls._fullscreen_hint_ui_instance:
+                cls._fullscreen_hint_ui_instance = None
 
     @classmethod
     def _init_view_image_button(cls):
@@ -1751,8 +1747,8 @@ class Overlay:
         cls.hide_hint_request_text()
         cls.hide_gm_assistance()
         cls.hide_waiting_screen_label()
-        cls.hide_background() # Hide the main background
-        cls.hide_fullscreen_hint()
+        #cls.hide_background()
+        cls.hide_fullscreen_hint(restore_ui=False)
         cls.hide_view_image_button()
         cls.hide_view_solution_button()
         cls.hide_video_display() # Hide video display if it's showing

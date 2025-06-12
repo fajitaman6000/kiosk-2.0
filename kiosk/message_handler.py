@@ -148,8 +148,9 @@ class MessageHandler:
             
             # --- Hide Qt Overlays ---
             print("[message handler] Hiding all Qt overlays...")
-            Overlay.hide() # Hides all standard overlays including timer, buttons, hints etc.
-            Overlay.hide_gm_assistance()
+            #Overlay.hide() # Hides all standard overlays including timer, buttons, hints etc.
+            #Overlay.hide_gm_assistance()
+            Overlay.hide_all_overlays()
             # Explicitly hide win/loss screens
             Overlay.hide_victory_screen()
             Overlay.hide_loss_screen()

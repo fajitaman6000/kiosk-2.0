@@ -1,6 +1,23 @@
 ##############################################################################################################################
 # Test notes
 
+
+video solution playback is freezing occasionally midway (at specifically, consistently, 5 second intervals)
+
+
+
+[KIOSK] [audio server]New audio connection from ('192.168.0.109', 49792)
+[KIOSK] [audio server] Opening audio input stream...
+[KIOSK] [audio server] Audio input stream opened.
+[KIOSK] [audio server]Starting audio streaming to admin
+[KIOSK] [audio server]Starting audio reception from admin
+[KIOSK] [audio server] Opening audio output stream...
+[KIOSK] [audio server] Audio output stream opened.
+[KIOSK] [audio_server] Recv timeout in _recv_exactly
+[KIOSK] [audio server]No size data received
+[KIOSK] [audio server]Audio reception ended
+
+
 ##############################################################################################################################
 # Priority
 
@@ -9,8 +26,6 @@ Audio choppiness on slower computers (Time Machine, Zombie)
     restarting kiosk application resulted in fix
         memory leak? task manager showed no unusual (albeit high) usage
     restart app command resulted in crash during video playback (while choppiness issue was occurring)
-
-viewing image results in reset kiosk command not working
 
 kiosk crash without watchdog reboot (watchdog crash?)
 
