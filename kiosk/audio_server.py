@@ -122,11 +122,35 @@ class AudioServer:
             print("[audio server]Audio streaming ended", flush=True)
             
     def receive_audio(self, client):
-        """Receive and play audio from admin"""
-        print("[audio server]Starting audio reception from admin", flush=True)
+        """Receive and play audio from admin. Uses lazy initialization for the output stream."""
+        print("[audio server]Starting audio reception from admin (waiting for first packet)...", flush=True)
+        # We will initialize self.output_stream ONLY when we first receive data.
+        
         try:
-            # Create playback stream
-            print("[audio server] Opening audio output stream...", flush=True)
+            # --- LAZY INITIALIZATION STAGE ---
+            # Wait for the first packet before opening the audio device.
+            # Use a longer timeout or no timeout for this first read, as we don't know
+            # when the admin will start talking. Here we remove the timeout temporarily.
+            client.settimeout(None) # Block indefinitely until data arrives or connection closes
+            
+            # 1. Receive the first chunk size
+            size_data = self._recv_exactly(client, struct.calcsize("Q"))
+            if not size_data:
+                print("[audio server] ERROR: Did not receive initial packet from admin.", flush=True)
+
+            chunk_size = struct.unpack("Q", size_data)[0]
+
+            # Sanity check the size before proceeding
+            if chunk_size <= 0 or chunk_size > self.CHUNK * 4 * 20: # 4 is for paFloat32
+                print(f"[audio server] ERROR: Invalid initial chunk size received ({chunk_size}).", flush=True)
+
+            # 2. Receive the first audio data chunk
+            audio_data = self._recv_exactly(client, chunk_size)
+            if not audio_data:
+                print("[audio server] ERROR: Did not receive initial audio data.", flush=True)
+
+            # --- DATA IS ARRIVING - INITIALIZE AND PLAY ---
+            print("[audio server] First audio packet received. Opening audio output stream...", flush=True)
             self.output_stream = self.audio.open(
                 format=self.FORMAT,
                 channels=self.CHANNELS,
@@ -134,62 +158,74 @@ class AudioServer:
                 output=True,
                 frames_per_buffer=self.CHUNK
             )
-            print("[audio server] Audio output stream opened.", flush=True)
+            print("[audio server] Audio output stream opened. Playing initial packet.", flush=True)
             
+            # Play the first chunk we already received
+            if self.output_stream.is_active():
+                self.output_stream.write(bytes(audio_data))
+
+            # --- REGULAR RECEIVE LOOP ---
+            # Now that we are active, we can use a shorter timeout for subsequent reads.
+            client.settimeout(2.0)
+
             while self.running:
                 try:
                     # Get chunk size
                     size_data = self._recv_exactly(client, struct.calcsize("Q"))
                     if not size_data:
-                        print("[audio server]No size data received", flush=True)
+                        print("[audio server]No more size data received, stream likely ended.", flush=True)
                         break
                     chunk_size = struct.unpack("Q", size_data)[0]
                     
                     # Get audio data
                     audio_data = self._recv_exactly(client, chunk_size)
                     if not audio_data:
-                        print("[audio server]No audio data received", flush=True)
+                        print("[audio server]No more audio data received, stream likely ended.", flush=True)
                         break
                     
                     # Play the audio
-                    try:
-                        if self.output_stream.is_active():
-                            self.output_stream.write(bytes(audio_data))
-                    except Exception as e:
-                        print(f"[audio server]Error playing audio: {e}", flush=True)
-                        continue
+                    if self.output_stream and self.output_stream.is_active():
+                        self.output_stream.write(bytes(audio_data))
                         
                 except socket.error as e:
                     print(f"[audio server]Socket error in receive loop: {e}", flush=True)
-                    break
+                    break # Exit on socket errors
                 except Exception as e:
+                    # Catching generic exception here is broad, but okay for this context
                     print(f"[audio server]Error in receive loop: {e}", flush=True)
                     if not self.running:
-                        break
-                    continue
+                        break # Exit if server is stopping
+                    continue # Otherwise, try to continue
                         
         except Exception as e:
-            print(f"[audio server]Audio receiving error: {e}", flush=True)
+            # This will catch errors during the initial blocking read
+            if self.running:
+                print(f"[audio server]Audio receiving error (initial setup or loop): {e}", flush=True)
         finally:
             print("[audio server]Audio reception ended", flush=True)
             if self.output_stream:
                 try:
-                    self.output_stream.stop_stream()
+                    if self.output_stream.is_active():
+                        self.output_stream.stop_stream()
                     self.output_stream.close()
-                except:
-                    pass
-                
+                    self.output_stream = None # Clear reference
+                    print("[audio server] Output stream closed.", flush=True)
+                except Exception as e:
+                    print(f"[audio server] Error closing output stream: {e}", flush=True)
+
     def _recv_exactly(self, client, size):
         """Helper to receive exact number of bytes"""
-        client.settimeout(2.0) # add timeout
+        # Note: The timeout is now set by the calling function (receive_audio)
         data = bytearray()
         while len(data) < size:
             try:
+                # We expect the socket to be in blocking mode or have a timeout set externally
                 packet = client.recv(min(size - len(data), 4096))
                 if not packet:
+                    # Connection closed by peer
                     return None
                 data.extend(packet)
-            except socket.timeout: # Catch timeout
+            except socket.timeout:
                 print("[audio_server] Recv timeout in _recv_exactly", flush=True)
                 return None
             except socket.error as e:
