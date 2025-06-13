@@ -1,12 +1,6 @@
 ##############################################################################################################################
 # Test notes
 
-
-video solution playback is freezing occasionally midway (at specifically, consistently, 5 second intervals)
-    self.help_button_timer.start(5000), found in kiosk.py, is the cause of this issue
-
-
-
 [KIOSK] [audio server]New audio connection from ('192.168.0.109', 49792)
 [KIOSK] [audio server] Opening audio input stream...
 [KIOSK] [audio server] Audio input stream opened.
@@ -56,17 +50,14 @@ film video solutions
 ##############################################################################################################################
 # Todo
 
+voice commands
+
 prop monitoring
 
-upload single files instead of uploading everything? with that text string methodology?
-
 sync system makes it unfriendly for anyone else to create hints currently
+    upload single files instead of uploading everything? with that text string methodology?
 
 tap to close hint, instead opening image automatically on reception with text below it?
-
-times touched screen stat
-
-"switch sides" button for prop control
 
 "currently displayed hint"
 "please select nudge frequency"
@@ -86,12 +77,18 @@ technician app (e.g "finish all" button)
 ##############################################################################################################################
 # known bugs
 
+hint cooldown text can become stuck when playing intro videos at unusual time
+    fixed by clearing hints
+
 mqtt connections get crippled while running file sync
 mqtt makes separate connections for ma and casino
 
 ##############################################################################################################################
 # ambitious extra ideas:
 
+times touched screen stat
+
+"switch sides" button for prop control
 blackout screen button for haunted
 refill cylinders button
 add ways for game masters to enjoyably interact with guests
