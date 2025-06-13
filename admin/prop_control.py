@@ -2025,7 +2025,7 @@ class PropControl:
             
         try:
             # The publish call itself is thread-safe
-            #client.publish("/er/cmd", "reset")
+            client.publish("/er/cmd", "reset")
             room_name_for_log = self.app.rooms.get(room_number, f"number {room_number}")
             print(f"[prop control.reset_room_props]: Reset command sent to room '{room_name_for_log}' (ID: {room_number}).")
             
