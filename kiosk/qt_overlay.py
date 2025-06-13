@@ -276,7 +276,7 @@ class Overlay:
     _current_hint_text_color = "#ffffff"
     _current_timer_text_color = "#ffffff"
 
-    #_hint_background_cache = {}
+    _hint_background_cache = {}
     
     @classmethod
     def init(cls):
@@ -963,7 +963,7 @@ class Overlay:
 
     @classmethod
     def _actual_hint_text_update(cls, data):
-        """Update the hint text in the main thread."""
+        """Update the hint text in the main thread, using a cache for backgrounds."""
         try:
             if not cls._hint_text['window']:
                 print("[qt overlay]Error: Hint text window not initialized")
@@ -988,34 +988,46 @@ class Overlay:
             
             # Update hint background only if a room number is present
             if room_number:
-                background_name = None
-                background_map = {
-                    1: "casino_heist.png",
-                    2: "morning_after.png",
-                    3: "wizard_trials.png",
-                    4: "zombie_outbreak.png",
-                    5: "haunted_manor.png",
-                    6: "atlantis_rising.png",
-                    7: "time_machine.png"
-                }
+                pixmap = None
+                # Check if the pixmap for this room is already in the cache
+                if room_number in cls._hint_background_cache:
+                    pixmap = cls._hint_background_cache[room_number]
+                else:
+                    # --- If not cached, do the expensive work ONCE ---
+                    background_name = None
+                    background_map = {
+                        1: "casino_heist.png",
+                        2: "morning_after.png",
+                        3: "wizard_trials.png",
+                        4: "zombie_outbreak.png",
+                        5: "haunted_manor.png",
+                        6: "atlantis_rising.png",
+                        7: "time_machine.png"
+                    }
 
-                if room_number in background_map:
-                    background_name = background_map[room_number]
+                    if room_number in background_map:
+                        background_name = background_map[room_number]
 
-                if background_name:
-                   # Load and resize the background image
-                    bg_path = os.path.join("hint_backgrounds", background_name)
-                    if os.path.exists(bg_path):
-                         bg_img = Image.open(bg_path)
-                         bg_img = bg_img.resize((width, height))
-                         # Convert to QPixmap
-                         buf = io.BytesIO()
-                         bg_img.save(buf, format='PNG')
-                         qimg = QImage()
-                         qimg.loadFromData(buf.getvalue())
-                         pixmap = QPixmap.fromImage(qimg)
-                         cls._hint_text['bg_image_item'].setPixmap(pixmap)
-                         cls._hint_text['current_background'] = pixmap
+                    if background_name:
+                       # Load and resize the background image
+                        bg_path = os.path.join("hint_backgrounds", background_name)
+                        if os.path.exists(bg_path):
+                            print(f"[qt overlay] Caching hint background for room {room_number}...")
+                            bg_img = Image.open(bg_path)
+                            bg_img = bg_img.resize((width, height))
+                            # Convert to QPixmap
+                            buf = io.BytesIO()
+                            bg_img.save(buf, format='PNG')
+                            qimg = QImage()
+                            qimg.loadFromData(buf.getvalue())
+                            pixmap = QPixmap.fromImage(qimg)
+                            # Store the generated pixmap in the cache
+                            cls._hint_background_cache[room_number] = pixmap
+                
+                # Now, use the (potentially cached) pixmap
+                if pixmap:
+                    cls._hint_text['bg_image_item'].setPixmap(pixmap)
+                    cls._hint_text['current_background'] = pixmap
                          
             # Clear the existing text before updating
             cls._hint_text['text_item'].setHtml("")
@@ -1060,7 +1072,7 @@ class Overlay:
                 (height - text_width) / 2
             )
             
-            # ADDED CHECK: Only show if no video is playing.
+            # Only show if no video is playing.
             if not cls._kiosk_app.video_manager.is_playing:
                 # Show the window but don't raise it above other elements
                 cls._hint_text['window'].show()
