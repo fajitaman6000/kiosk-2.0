@@ -586,7 +586,6 @@ class MessageHandler:
                 # of the soundcheck widget on the main Qt thread.
                 if Overlay._bridge:
                     print("[Message Handler] Using OverlayBridge to schedule soundcheck start.")
-                    # QTimer.singleShot(200, deferred_start) # <-- REMOVE or COMMENT OUT THIS LINE
 
                     # Schedule deferred_start function to run on the main thread
                     QMetaObject.invokeMethod(
