@@ -275,6 +275,8 @@ class Overlay:
     
     _current_hint_text_color = "#ffffff"
     _current_timer_text_color = "#ffffff"
+
+    #_hint_background_cache = {}
     
     @classmethod
     def init(cls):
@@ -540,10 +542,6 @@ class Overlay:
                 # This is the logic for a hard reset: just reset the flag in the UI manager.
                 if cls._fullscreen_hint_ui_instance and hasattr(cls._fullscreen_hint_ui_instance, 'image_is_fullscreen'):
                     cls._fullscreen_hint_ui_instance.image_is_fullscreen = False
-            
-            # In both cases, the UI instance reference should be cleared after it's handled.
-            if cls._fullscreen_hint_ui_instance:
-                cls._fullscreen_hint_ui_instance = None
 
     @classmethod
     def _init_view_image_button(cls):
@@ -1626,15 +1624,6 @@ class Overlay:
                     # Reset the room ID so it reloads fresh on next show
                     cls._help_button_room_id = None
                     print("[qt overlay] Help button hidden")
-            
-            # 5. Restore hint text if necessary (existing logic)
-            if ui.current_hint:
-                hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
-                if hint_text and hint_text.strip():
-                    cls.show_hint_text(hint_text, assigned_room)
-            else:
-                Overlay.hide_hint_text()
-
         except Exception as e:
            print(f"[qt overlay] Exception during help button update: {e}")
            traceback.print_exc()
