@@ -117,11 +117,11 @@ try:
             }
             
             # Initialize components (existing code)
+            self.interface_builder = AdminInterfaceBuilder(self)
+            self.prop_control = PropControl(self)
             self.kiosk_tracker = KioskStateTracker(self)
             self.network_handler = NetworkBroadcastHandler(self)
             self.bug_report_manager = BugReportManager(self)
-            self.interface_builder = AdminInterfaceBuilder(self)
-            self.prop_control = PropControl(self)
 
             # Initialize password manager (existing code)
             self.password_manager = AdminPasswordManager(self)

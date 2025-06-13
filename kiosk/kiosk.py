@@ -76,6 +76,15 @@ try:
 except ImportError:
     print("[kiosk main] WARNING: Could not import screen_rotation_manager.py. Screen rotation will be skipped.", flush=True)
     rotate_to_preferred_landscape = None
+print("[kiosk main] Importing TapDetector from tap_detector...", flush=True)
+try:
+    from tap_detector import TapDetector
+    TAP_DETECTOR_ENABLED = True
+except Exception as e:
+    print(f"[kiosk main] WARNING: Could not import or use TapDetector. Secret tap pattern will be disabled. Error: {e}", flush=True)
+    TapDetector = None
+    TAP_DETECTOR_ENABLED = False
+print("[kiosk main] Tap Detector", flush=True)
 print("[kiosk main] Ending imports ...", flush=True)
 
 class KioskApp:
@@ -237,8 +246,34 @@ class KioskApp:
         # Volume levels (0-10 integer representation)
         self.music_volume_level = 7  # Default 7/10 (70%)
         self.hint_volume_level = 7   # Default 7/10 (70%)
+
+        # Init tap detector for reset commands
+        self.tap_detector = None
+        if TAP_DETECTOR_ENABLED and TapDetector:
+            print("[kiosk main] Initializing TapDetector...", flush=True)
+            try:
+                # Pass a method from this class as the callback
+                self.tap_detector = TapDetector(pattern_callback=self.on_tap_pattern_detected)
+                self.tap_detector.start()
+                print("[kiosk main] TapDetector started.", flush=True)
+            except Exception as e:
+                print(f"[kiosk main] ERROR: Failed to start TapDetector: {e}", flush=True)
+                self.tap_detector = None # Ensure it's None on failure
         
         print("[kiosk main] KioskApp initialization complete.", flush=True)
+
+    def on_tap_pattern_detected(self):
+        """
+        Callback function executed by the TapDetector when the secret pattern is detected.
+        """
+        print("[kiosk main] Secret tap pattern detected! Relaying to message handler.", flush=True)
+        if hasattr(self, 'message_handler'):
+            # The tap detector callback runs in its own thread.
+            # We use the message_handler's scheduler to safely call the final
+            # function on the main Qt thread.
+            self.message_handler.schedule_timer(0, self.message_handler.handle_tap_pattern_detected)
+        else:
+            print("[kiosk main] ERROR: message_handler not found, cannot process tap pattern.", flush=True)
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
@@ -646,6 +681,15 @@ class KioskApp:
             # Can't use log_exception here as logger is being stopped
             traceback.print_exc()
         
+        # Kill tap detector
+        try:
+            if hasattr(self, 'tap_detector') and self.tap_detector:
+                print("[kiosk main] Stopping tap detector...")
+                self.tap_detector.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping tap detector: {e}")
+            log_exception(e, "Error stopping tap detector")
+
         # Cancel soundcheck if active
         try:
             # Access soundcheck_widget via message_handler

@@ -697,3 +697,22 @@ class MessageHandler:
         """Slot called when the soundcheck widget is closed/finished."""
         print("[Message Handler] Soundcheck widget reported finished.")
         self.soundcheck_widget = None # Clear the reference
+
+    def handle_tap_pattern_detected(self):
+        """
+        Handles the event when the secret tap pattern is detected.
+        This method is called from the KioskApp's main thread via a scheduled timer.
+        Sends a 'secret_tap_detected' message to the admin application.
+        """
+        # Create the message payload
+        message = {
+            'type': 'secret_tap_detected',
+            'computer_name': self.kiosk_app.computer_name,
+            'room': self.kiosk_app.assigned_room
+        }
+        
+        print(f"[message handler] Secret tap pattern detected. Sending message to admin: {message}")
+        
+        # Send the message using the app's network handler. This will broadcast it.
+        # The network handler on the admin side will pick it up.
+        self.kiosk_app.network.send_message(message)
