@@ -14,7 +14,7 @@ class TapDetector:
     # --- 1. TUNABLE PARAMETERS ---
 
     # The volume threshold for detecting a "tap". You'll need to adjust this.
-    LOUDNESS_THRESHOLD = 100
+    LOUDNESS_THRESHOLD = 140
 
     # The sample rate of your microphone
     SAMPLE_RATE = 44100
