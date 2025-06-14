@@ -136,6 +136,13 @@ class KioskApp:
         print("[kiosk main] Creating Qt application...", flush=True)
         self.qt_app = QtKioskApp(self)
         print("[kiosk main] Qt application created.", flush=True)
+
+        print("[kiosk main] Setting up proactive state saving timer...", flush=True)
+        self.state_save_timer = QTimer()
+        self.state_save_timer.timeout.connect(self.save_state_periodically)
+        # Save state every 10 seconds. Adjust as needed.
+        self.state_save_timer.start(10000)
+        print("[kiosk main] State saving timer started.", flush=True)
         
         # Set the proper application ID for Windows taskbar grouping
         # This should be a registered application identifier for your app
@@ -841,13 +848,14 @@ class KioskApp:
 
     def save_state(self):
         """Save current state to kiosk_state.json"""
+        #print("saving state", flush=True)
         try:
             state = {
                 'game_running': self.timer.is_running if hasattr(self, 'timer') else False,
                 'timer_remaining_seconds': self.timer.time_remaining if hasattr(self, 'timer') else 0,
                 'hints_requested_count': self.hints_requested,
                 'hints_received_count': self.hints_received,
-                'music_position_ms': self.audio_manager.get_music_position() if hasattr(self, 'audio_manager') else -1,
+                'music_position_ms': self.audio_manager.get_music_position_ms() if hasattr(self, 'audio_manager') else -1,
                 'timestamp_utc': time.time()
             }
 
@@ -857,6 +865,17 @@ class KioskApp:
         except Exception as e:
             print(f"[kiosk main] Error saving state: {e}")
             traceback.print_exc()
+
+    def save_state_periodically(self):
+        """
+        Called by a QTimer to periodically save the application state.
+        This is the primary defense against data loss from a hard crash.
+        """
+        # Don't save if the game isn't running or if we are closing down.
+        if self.is_closing or not self.timer.is_running:
+            return
+            
+        self.save_state() # This already has the logic and error handling
 
 def main():
     """Main entry point for the kiosk application."""
