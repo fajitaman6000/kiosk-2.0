@@ -16,6 +16,7 @@
 ##############################################################################################################################
 # Priority
 
+investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
 
 Audio choppiness on slower computers (Time Machine, Zombie)
     restarting kiosk application resulted in fix
@@ -26,6 +27,8 @@ kiosk crash without watchdog reboot (watchdog crash?)
 
 ##############################################################################################################################
 # Beta to do
+
+move video player to c++ (python-vlc/libvlc)
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
