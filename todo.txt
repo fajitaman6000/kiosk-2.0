@@ -16,6 +16,7 @@
 ##############################################################################################################################
 # Priority
 
+
 investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
 
 Audio choppiness on slower computers (Time Machine, Zombie)
@@ -27,6 +28,8 @@ kiosk crash without watchdog reboot (watchdog crash?)
 
 ##############################################################################################################################
 # Beta to do
+
+switch audio device to headphones only when using microphone?
 
 move video player to c++ (python-vlc/libvlc)
 
@@ -52,8 +55,6 @@ film video solutions
 
 ##############################################################################################################################
 # Todo
-
-voice commands
 
 prop monitoring
 
@@ -84,7 +85,7 @@ hint cooldown text can become stuck when playing intro videos at unusual time
     fixed by clearing hints
 
 mqtt connections get crippled while running file sync
-mqtt makes separate connections for ma and casino
+mqtt makes separate connections for ma and casino, causing double reset and standby audio
 
 ##############################################################################################################################
 # ambitious extra ideas:
@@ -162,20 +163,6 @@ Zombie
     Cables Box
     Zombie Loops
     Motorcycle
-Atlantis
-    Pickaxes
-    Dynamite
-    Stone Pieces (+ vase)
-    Door
-    Light Maze
-    Floor Panels
-    Levers
-    Color Buttons
-    Cryptex
-    Harp
-    Pyramid
-    Laser Crown
-    Trident
 Time Machine
     Professor doors
     Clock
