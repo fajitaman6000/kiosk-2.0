@@ -22,6 +22,7 @@ class NetworkBroadcastHandler:
         self.soundcheck_instance = None # Will hold ref to AdminSoundcheckWindow
 
         self.prop_control = self.app.prop_control
+        self.interface_builder = self.app.interface_builder
 
         self.kiosk_ips = {} # Maps computer_name to IP address for watchdog commands
         self.WATCHDOG_CMD_PORT = 12347 # Port watchdog listens on for commands
@@ -293,7 +294,9 @@ class NetworkBroadcastHandler:
                         
                         # Send the "reset kiosk" command to the specific kiosk.
                         # This triggers the full software reset on the kiosk application.
-                        self.send_reset_kiosk_command(computer_name) # reset kiosk
+                        
+                        self.interface_builder.reset_kiosk(computer_name) # reset kiosk via interface builder instead
+                        #self.send_reset_kiosk_command(computer_name) # reset kiosk
                         self.prop_control.reset_room_props(room) # reset props
                     else:
                         print(f"[network broadcast handler] Received 'secret_tap_detected' but 'computer_name' was missing. Cannot send reset commands. Message: {msg}")
