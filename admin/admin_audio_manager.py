@@ -9,6 +9,16 @@ class AdminAudioManager:
     Manages sound effects for the admin interface.
     Uses singleton pattern to ensure only one instance handles audio playback.
     """
+    ROOM_MAP = {
+        3: "wizard",
+        1: "casino",
+        2: "ma",
+        5: "haunted",
+        4: "zombie",
+        6: "atlantis",
+        7: "time"  # Time Machine room
+    }
+    
     _instance = None
     _lock = Lock()
     
@@ -98,6 +108,93 @@ class AdminAudioManager:
         else:
             print(f"[audio manager]Sound not found: {sound_id}")
     
+    def play_finish_sound(self, room_number=None):
+        """
+        Plays the finish sound. Always plays the generic finish sound,
+        and also plays a room-specific one if it exists.
+        
+        Args:
+            room_number (int, optional): The room number to play a specific sound for. Defaults to None.
+        """
+        # Always play the generic, pre-loaded game finish sound
+        self.play_sound("game_finish")
+
+        # Try to find and play a room-specific sound
+        room_name = self.ROOM_MAP.get(room_number)
+        if room_name:
+            # Construct the sound ID and filename
+            sound_id = f"{room_name}_finish"
+            filename = f"{room_name}-finish.mp3"
+            
+            # Dynamically load the sound if it's not already in memory
+            # The _load_sound method checks for file existence.
+            if sound_id not in self.sounds:
+                self._load_sound(sound_id, filename)
+            
+            # If the sound was successfully loaded, play it
+            if sound_id in self.sounds:
+                self.play_sound(sound_id)
+        elif room_number is not None:
+            print(f"[audio manager] Room number {room_number} not in ROOM_MAP. Cannot play specific finish sound.")
+
+    def play_finish_sound(self, room_number=None):
+        """
+        Plays the finish sound. Always plays the generic finish sound,
+        and also plays a room-specific one if it exists.
+        
+        Args:
+            room_number (int, optional): The room number to play a specific sound for. Defaults to None.
+        """
+        # Always play the generic, pre-loaded game finish sound
+        self.play_sound("game_finish")
+
+        # Try to find and play a room-specific sound
+        room_name = self.ROOM_MAP.get(room_number)
+        if room_name:
+            # Construct the sound ID and filename
+            sound_id = f"{room_name}_finish"
+            filename = f"{room_name}-finish.mp3"
+            
+            # Dynamically load the sound if it's not already in memory
+            # The _load_sound method checks for file existence.
+            if sound_id not in self.sounds:
+                self._load_sound(sound_id, filename)
+            
+            # If the sound was successfully loaded, play it
+            if sound_id in self.sounds:
+                self.play_sound(sound_id)
+        elif room_number is not None:
+            print(f"[audio manager] Room number {room_number} not in ROOM_MAP. Cannot play specific finish sound.")
+
+    def play_loss_sound(self, room_number=None):
+        """
+        Plays the loss sound. Always plays the generic loss sound,
+        and also plays a room-specific one if it exists.
+        
+        Args:
+            room_number (int, optional): The room number to play a specific sound for. Defaults to None.
+        """
+        # Always play the generic, pre-loaded game finish sound
+        self.play_sound("game_fail")
+
+        # Try to find and play a room-specific sound
+        room_name = self.ROOM_MAP.get(room_number)
+        if room_name:
+            # Construct the sound ID and filename
+            sound_id = f"{room_name}_fail"
+            filename = f"{room_name}-fail.mp3"
+            
+            # Dynamically load the sound if it's not already in memory
+            # The _load_sound method checks for file existence.
+            if sound_id not in self.sounds:
+                self._load_sound(sound_id, filename)
+            
+            # If the sound was successfully loaded, play it
+            if sound_id in self.sounds:
+                self.play_sound(sound_id)
+        elif room_number is not None:
+            print(f"[audio manager] Room number {room_number} not in ROOM_MAP. Cannot play specific loss sound.")
+
     def handle_game_finish(self, is_finished, room_number):  # Added room_number parameter
         # REMOVED sound_state logic
         pass

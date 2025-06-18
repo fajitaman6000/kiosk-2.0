@@ -886,17 +886,16 @@ class PropControl:
         self.audio_manager.play_sound(f"{room_name}_stale")
 
     def play_finish_sound(self, room_number):
-        """Plays the room-specific finish sound."""
-        #print(f"[prop_control] Playing finish sound for room {room_number}")
+        """Plays the room-specific finish sound via the audio manager."""
+        # print(f"[prop_control] Relaying finish sound request for room {room_number} to audio manager.")
         if self.audio_manager is not None:
-            self.audio_manager = AdminAudioManager()
-        self.audio_manager.play_sound("game_finish")
+            self.audio_manager.play_finish_sound(room_number)
 
     def play_loss_sound(self, room_number):
-        """Plays the room-specific loss sound."""
+        """Plays the room-specific loss sound via the audio manager."""
+        # print(f"[prop_control] Relaying loss sound request for room {room_number} to audio manager.")
         if self.audio_manager is not None:
-            self.audio_manager = AdminAudioManager()
-        self.audio_manager.play_sound("game_fail")
+            self.audio_manager.play_loss_sound(room_number)
 
     def update_all_props_status(self, room_number):
         # This method is called from the main thread
