@@ -104,6 +104,7 @@ class PropControl:
         self.flagged_props = {}  # room_number -> {prop_id: True/False}
         self.fate_sent = {}  # room_number -> bool
         self.finish_sound_played = {}  # room_number -> bool ADDED FINISH TRACKING
+        self.one_minute_sound_played = {}
         self.standby_played = {} #standby tracking
         self.stale_sound_played = {}
         self.popout_windows = {}
@@ -239,6 +240,7 @@ class PropControl:
             self.last_mqtt_updates[room_number] = {}
             self.flagged_props[room_number] = {}
             self.stale_sound_played[room_number] = False
+            self.one_minute_sound_played.setdefault(room_number, False)
             self.fate_sent.setdefault(room_number, False)
             self.finish_sound_played.setdefault(room_number, False)
             self.standby_played.setdefault(room_number, False)
@@ -599,6 +601,13 @@ class PropControl:
         # Run the retry logic (especially cleanup) in a separate thread
         self.app.root.after(0, lambda: threading.Thread(target=do_retry, daemon=True).start())
 
+    def clear_one_minute_sound_played(self,room_number):
+        if room_number in self.one_minute_sound_played:
+                self.one_minute_sound_played[room_number] = False
+        else:
+            self.one_minute_sound_played[room_number] = False
+            print(f"[prop control] one minute sound set false for room {room_number} despite no pre-existing state")
+
     def connect_to_room(self, room_number):
         """Switch to controlling a different room with proper cleanup and initialize prop states."""
         # This method is called from the main thread
@@ -658,6 +667,9 @@ class PropControl:
             self.standby_played[room_number] = False
         if room_number not in self.finish_sound_played:
             self.finish_sound_played[room_number] = False
+        if room_number not in self.one_minute_sound_played:
+            self.one_minute_sound_played[room_number] = False
+
 
         if room_number in self.connection_states and hasattr(self, 'status_label') and self.status_label.winfo_exists():
             try:
@@ -897,6 +909,12 @@ class PropControl:
         if self.audio_manager is not None:
             self.audio_manager.play_loss_sound(room_number)
 
+    def play_one_minute_sound(self, room_number):
+        """Plays the room-specific one minute remaining sound via the audio manager."""
+        # print(f"[prop_control] Relaying one minute sound request for room {room_number} to audio manager.")
+        if self.audio_manager is not None:
+            self.audio_manager.play_one_minute_sound(room_number)
+
     def update_all_props_status(self, room_number):
         # This method is called from the main thread
         if room_number not in self.all_props:
@@ -985,6 +1003,14 @@ class PropControl:
                     timer_expired = timer_time <= 0
                 assigned_kiosk = computer_name
                 break
+
+        # --- ONE MINUTE WARNING ---
+        if 'kiosk_stat_data' in locals() and kiosk_stat_data and not timer_expired:
+            timer_time = kiosk_stat_data.get('timer_time', 2700)
+            if 0 < timer_time <= 60 and not self.one_minute_sound_played.get(room_number, False):
+                # print(f"[prop_control] Room {room_number} has less than one minute remaining. Playing sound.")
+                self.play_one_minute_sound(room_number)
+                self.one_minute_sound_played[room_number] = True
 
         # Update kiosk highlight (this should always run, regardless of victory status)
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
@@ -1962,6 +1988,7 @@ class PropControl:
             self.last_progress_times[target_room] = time.time()
             self.stale_sound_played[target_room] = False
             self.fate_sent[target_room] = False
+            self.one_minute_sound_played[target_room] = False
                  
         except Exception as e:
             room_name_for_log = self.app.rooms.get(target_room, f"number {target_room}")
@@ -2041,6 +2068,7 @@ class PropControl:
             self.last_progress_times[target_room] = time.time()
             self.stale_sound_played[target_room] = False
             self.fate_sent[target_room] = False # Reset fate_sent on game reset
+            self.one_minute_sound_played[target_room] = False
             self.finish_sound_played[target_room] = False # Reset finish_sound_played on game reset
             self.standby_played[target_room] = False # Reset standby_played on game reset
             

@@ -59,36 +59,7 @@ class AdminInterfaceBuilder:
         7: "#FF8C00",  # Time Machine - orange
         3: "#9240a8",  # Wizard - dark teal
         5: "#808080",  # Haunted - grey
-    }
-
-    def start_auto_reset_timer(self, computer_name):
-        """Starts (or restarts) the auto-reset timer."""
-
-        duration = 120
-
-        # Cancel any existing timer for this kiosk
-        if computer_name in self.auto_reset_timer_ids:
-            self.app.root.after_cancel(self.auto_reset_timer_ids[computer_name])
-            del self.auto_reset_timer_ids[computer_name]
-
-        # Initial update of the label
-        self.update_auto_reset_timer_display(computer_name, duration)
-
-        def reset_and_clear():
-            self.reset_kiosk(computer_name)
-            if computer_name in self.auto_reset_timer_ids:
-                del self.auto_reset_timer_ids[computer_name]
-            # Clear dropdown text instead of label
-            if computer_name in self.connected_kiosks and 'dropdown' in self.connected_kiosks[computer_name]:
-                dropdown = self.connected_kiosks[computer_name]['dropdown']
-                dropdown.set('')
-
-        # Schedule the reset_kiosk call and store the after_id
-        after_id = self.app.root.after(duration*1000, reset_and_clear)
-        self.auto_reset_timer_ids[computer_name] = after_id
-
-        # Start countdown
-        self.auto_reset_countdown(computer_name, duration) # Start the countdown 
+    } 
 
     def auto_reset_countdown(self, computer_name, remaining_seconds):
         """Countdown for auto-reset timer"""
@@ -760,11 +731,14 @@ class AdminInterfaceBuilder:
         self.audio_manager.loss_sound_played
         if self.audio_manager is None:
             self.audio_manager = AdminAudioManager()
-        if room_num_for_kiosk and self.audio_manager is not None:
-            if room_num_for_kiosk in self.audio_manager.loss_sound_played:
-                #print(f"[interface builder] Resetting loss sound flag for room {room_num_for_kiosk} due to kiosk reset.")
-                self.app.root.after(5000,lambda:self.audio_manager.clear_loss_sound_played(room_num_for_kiosk)) # Delay clear sound played to allow reset to finish
-                #self.audio_manager.loss_sound_played[room_num_for_kiosk] = False
+
+        if room_num_for_kiosk is not None:
+            if self.audio_manager is not None:
+                if room_num_for_kiosk in self.audio_manager.loss_sound_played:
+                    self.app.root.after(5000,lambda:self.audio_manager.clear_loss_sound_played(room_num_for_kiosk)) # Delay clear sound played to allow reset to finish
+            if self.app.prop_control is not None:
+                if room_num_for_kiosk in self.app.prop_control.one_minute_sound_played:
+                    self.app.root.after(5000,lambda:self.app.prop_control.clear_one_minute_sound_played(room_num_for_kiosk)) # Delay clear sound played to allow reset to finish
         
         # Update tracking state
         if not hasattr(self, '_last_hint_request_states'):

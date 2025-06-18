@@ -360,6 +360,27 @@ class NetworkBroadcastHandler:
                     if interface_builder and hasattr(interface_builder, 'handle_gm_assistance_accepted'):
                         self.app.root.after(0, lambda cn=computer_name: interface_builder.handle_gm_assistance_accepted(cn))
 
+                elif msg_type == 'reset_completed':
+                    computer_name = msg.get('computer_name')
+                    if not computer_name:
+                        print(f"[network_handler] Received 'reset_completed' message with no computer_name. Cannot proceed.")
+                        return
+
+                    print(f"[network_handler] Kiosk '{computer_name}' has confirmed its reset is complete.")
+                    
+                    # Look up the room number assigned to this computer
+                    room_number = self.app.kiosk_tracker.kiosk_assignments.get(computer_name)
+                    
+                    if room_number is not None:
+                        # We found the room, now we can tell prop_control to reset its flags
+                        print(f"[network_handler] Kiosk '{computer_name}' is assigned to room {room_number}. Resetting prop flags.")
+                        if hasattr(self.app, 'prop_control') and self.app.prop_control:
+                            # Use after(0, ...) to ensure this runs on the main UI thread safely
+                            self.app.root.after(0, lambda rn=room_number: self.app.prop_control.reset_one_minute_warning(rn))
+                            self.app.root.after(0, lambda rn=room_number: self.app.audio_manager.clear_loss_sound_played(rn))
+                            # Add any other prop_control or audio_manager resets needed here in the future
+                    else:
+                        print(f"[network_handler] Kiosk '{computer_name}' sent 'reset_completed', but it is not currently assigned to a room. No prop flags will be reset.")
 
                 # --- Handle Kiosk Disconnect ---
                 elif msg_type == 'kiosk_disconnect':

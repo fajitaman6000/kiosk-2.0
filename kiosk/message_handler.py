@@ -527,6 +527,7 @@ class MessageHandler:
                 # --- Schedule the GUI-related operations ---
                 print("[message handler][DEBUG] Scheduling GUI reset operations...")
                 self.schedule_timer(0, self._execute_reset_gui_operations)
+                self.schedule_timer(0, self.send_reset_completed)
 
             elif msg_type == 'toggle_music_command' and is_targeted:
                 print(f"[message handler][DEBUG] Received toggle music command (Command ID: {command_id})")
@@ -714,4 +715,15 @@ class MessageHandler:
         
         # Send the message using the app's network handler. This will broadcast it.
         # The network handler on the admin side will pick it up.
+        self.kiosk_app.network.send_message(message)
+
+    def send_reset_completed(self):
+        message = {
+            'type': 'reset_completed',
+            'computer_name': self.kiosk_app.computer_name,
+            'room': self.kiosk_app.assigned_room
+        }
+        
+        print(f"[message handler] Reset completed. Sending message to admin: {message}")
+    
         self.kiosk_app.network.send_message(message)

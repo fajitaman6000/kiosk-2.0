@@ -195,6 +195,31 @@ class AdminAudioManager:
         elif room_number is not None:
             print(f"[audio manager] Room number {room_number} not in ROOM_MAP. Cannot play specific loss sound.")
 
+    def play_one_minute_sound(self, room_number=None):
+        """
+        Plays the one minute remaining sound.
+        
+        Args:
+            room_number (int, optional): The room number to play a specific sound for. Defaults to None.
+        """
+        # Try to find and play a room-specific sound
+        room_name = self.ROOM_MAP.get(room_number)
+        if room_name:
+            # Construct the sound ID and filename
+            sound_id = f"{room_name}_one"
+            filename = f"{room_name}-one.mp3"
+            
+            # Dynamically load the sound if it's not already in memory
+            # The _load_sound method checks for file existence.
+            if sound_id not in self.sounds:
+                self._load_sound(sound_id, filename)
+            
+            # If the sound was successfully loaded, play it
+            if sound_id in self.sounds:
+                self.play_sound(sound_id)
+        elif room_number is not None:
+            print(f"[audio manager] Room number {room_number} not in ROOM_MAP. Cannot play specific one minute sound.")
+
     def handle_game_finish(self, is_finished, room_number):  # Added room_number parameter
         # REMOVED sound_state logic
         pass
