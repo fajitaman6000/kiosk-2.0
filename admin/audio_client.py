@@ -22,6 +22,7 @@ class AudioClient:
         self.current_volume = 0.0
         self.selected_input_device_index = None
         self.current_output_mode = None # Can be 'default' or 'communication'
+        self.output_volume = 1.0
         self._pyaudio_initialized = False
         self._lock = threading.Lock() # Lock for protecting stream/speaking state
         self._cached_output_device_index = None # NEW: Cache for Windows communication device index
@@ -43,6 +44,12 @@ class AudioClient:
             self.audio = None
             self._pyaudio_initialized = False
             print("[audio client] Audio functionality is disabled.")
+
+    def set_output_volume(self, volume_level: float):
+        """Sets the playback volume for received audio."""
+        # Clamp the volume between 0.0 (silent) and 1.0 (full)
+        self.output_volume = max(0.0, min(1.0, volume_level))
+        print(f"[audio client] Output volume set to {self.output_volume:.2f}")
 
     def _run_windows_comm_device_script(self):
         """
@@ -310,13 +317,28 @@ class AudioClient:
                         print("[audio client] Receive loop: Failed to get audio data (connection closed?).")
                     break # Exit loop
 
+                # --- NEW: Apply volume control ---
+                # Only perform the expensive conversion/multiplication if volume is not at max
+                if self.output_volume < 1.0:
+                    try:
+                        # Convert bytes to numpy array, apply volume, convert back to bytes
+                        audio_np = np.frombuffer(audio_data, dtype=np.float32)
+                        audio_np *= self.output_volume
+                        audio_data_to_write = audio_np.tobytes()
+                    except Exception as e:
+                        print(f"[audio client] Error applying volume: {e}")
+                        audio_data_to_write = audio_data # Fallback to original data
+                else:
+                    audio_data_to_write = audio_data
+                # --- END of new logic ---
+
                 # 3. Play audio data
                 current_output_stream = self.output_stream # Local ref for safety
                 if current_output_stream and self.running:
                     try:
                         # Check if stream is active *before* writing
                         if current_output_stream.is_active():
-                             current_output_stream.write(bytes(audio_data))
+                             current_output_stream.write(bytes(audio_data_to_write))
                     except OSError as e:
                          # Common error if stream is closed unexpectedly
                          print(f"[audio client] Receive loop: OSError writing to output stream: {e}")

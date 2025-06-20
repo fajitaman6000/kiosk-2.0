@@ -693,6 +693,44 @@ def setup_stats_panel(interface_builder, computer_name):
     interface_builder.stats_elements['listen_btn'] = listen_btn
     interface_builder.stats_elements['speak_btn'] = speak_btn
 
+
+    # --- ADD SPEAKER MODE CHECKBOX/VOLUME SECTION ---
+    speaker_mode_frame = tk.Frame(video_controls_container, bg='systemButtonFace')
+    speaker_mode_frame.pack(side='bottom', fill='x', pady=(2,0), anchor='sw')
+
+    speaker_mode_check = tk.Checkbutton(
+        speaker_mode_frame,
+        text="Speaker Mode",
+        font=('Arial', 8),
+        variable=interface_builder.speaker_mode_var,
+        command=interface_builder._on_speaker_mode_toggled,
+        bg='systemButtonFace',
+        activebackground='systemButtonFace',
+        fg='black',
+        selectcolor='systemButtonFace' # Makes checkbox background match parent
+    )
+    speaker_mode_check.pack(side='left', padx=2)
+
+    # --- ADD VOLUME SLIDER ---
+    output_volume_slider = ttk.Scale(
+        speaker_mode_frame,
+        from_=0.0,
+        to=1.0,
+        orient='horizontal',
+        # The command must pass the computer_name and the new value from the slider
+        command=lambda value, cn=computer_name: interface_builder._set_kiosk_output_volume(cn, value)
+    )
+    # Set initial value (will be updated by select_kiosk)
+    initial_volume = interface_builder.kiosk_output_volumes.get(computer_name, 1.0)
+    output_volume_slider.set(initial_volume)
+    output_volume_slider.pack(side='right', padx=(10, 5), fill='x', expand=True)
+    
+    # Store the slider so it can be updated when kiosks are switched
+    interface_builder.stats_elements['output_volume_slider'] = output_volume_slider
+    # --- END OF VOLUME SLIDER ---
+
+    # --- END OF SPEAKER MODE CHECKBOX/VOLUME SECTION ---
+
     # ===========================================
     # Video Solutions Section
     # ===========================================
