@@ -409,6 +409,15 @@ def setup_stats_panel(interface_builder, computer_name):
     )
     interface_builder.stats_elements['clear_btn'].pack(side='left', padx=5, pady=(5))
 
+    interface_builder.stats_elements['speak_hint_checkbox'] = tk.Checkbutton(
+        interface_builder.stats_elements['hint_buttons_frame'],
+        text="Speak hint out loud",
+        variable=interface_builder.speak_hint_var, # Use the var from interface_builder
+        font=('Arial', 9),
+        cursor="hand2"
+    )
+    interface_builder.stats_elements['speak_hint_checkbox'].pack(side='left', padx=10, pady=(5))
+
     # Set the base directory for image hints
     interface_builder.image_root = os.path.join(os.path.dirname(__file__), "sync_directory", "hint_image_files")
 

@@ -46,6 +46,7 @@ class AdminInterfaceBuilder:
         self.kiosk_output_volumes = {}
         self.setup_ui()
         self.speaker_mode_var = tk.BooleanVar(value=True)
+        self.speak_hint_var = tk.BooleanVar(value=True)
         
         # Start timer update loop using app's root
         self.app.root.after(1000, self.update_timer_display)
@@ -2068,8 +2069,14 @@ class AdminInterfaceBuilder:
         # Get room number
         room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
 
-        # Send the hint
-        self.app.network_handler.send_hint(room_number, hint_data)
+        # Get speak_aloud value from checkbox
+        speak_aloud = self.speak_hint_var.get()
+
+        # Get room number
+        room_number = self.app.kiosk_tracker.kiosk_assignments[computer_name]
+
+        # Send the hint, passing the speak_aloud flag
+        self.app.network_handler.send_hint(room_number, hint_data, speak_aloud)
 
         # Stop GM assistance icon if it's blinking
         self.stop_gm_assistance_icon(computer_name)

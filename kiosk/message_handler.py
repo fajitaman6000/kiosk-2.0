@@ -359,6 +359,10 @@ class MessageHandler:
                 if msg.get('room') == self.kiosk_app.assigned_room:
                     print(f"[message handler][DEBUG] Processing hint (Command ID: {command_id})")
                     hint_data = None # Initialize
+
+                    speak_aloud = msg.get('speak_aloud', False)
+                    text_for_tts = msg.get('text', '')
+
                     # --- Image processing (safe in network thread) ---
                     if msg.get('has_image') and 'image_path' in msg:
                         image_path = os.path.join(os.path.dirname(__file__), msg['image_path'])
@@ -385,7 +389,14 @@ class MessageHandler:
                     print(f"[message handler][Kiosk] handle_message: Received hint, clearing hint_requested_flag for room {self.kiosk_app.assigned_room}")
 
                     # --- Play hint sound (schedule on main thread) ---
+                    #if not speak_aloud:
                     self.schedule_timer(0, lambda: self.kiosk_app.audio_manager.play_sound("hint_received.mp3"))
+
+                    # Schedule TTS Playback if requested
+                    if speak_aloud and text_for_tts:
+                        print(f"[message handler] Scheduling TTS for hint text: '{text_for_tts}'")
+                        # We add a small delay to let the "hint_received.mp3" sound start first.
+                        self.schedule_timer(250, lambda text=text_for_tts: self.kiosk_app.audio_manager.speak_text(text))
 
                     # --- GUI update (schedule on main thread) ---
                     if hint_data is not None: # Ensure we have data before scheduling

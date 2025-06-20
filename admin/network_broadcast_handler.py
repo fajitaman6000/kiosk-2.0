@@ -461,7 +461,7 @@ class NetworkBroadcastHandler:
     # --- Command Sending Methods ---
     # All these methods now generate a command_id and call _send_tracked_message
 
-    def send_hint(self, room_number, hint_data):
+    def send_hint(self, room_number, hint_data, speak_aloud=False):
         """Sends a hint message to the appropriate kiosk."""
         computer_name = None
         for k, v in self.app.kiosk_tracker.kiosk_assignments.items():
@@ -476,7 +476,8 @@ class NetworkBroadcastHandler:
                 'text': hint_data.get('text', ''),
                 'has_image': bool(hint_data.get('image_path')),
                 'image_path': hint_data.get('image_path'),
-                'computer_name': computer_name # Target specific computer
+                'computer_name': computer_name, # Target specific computer
+                'speak_aloud': speak_aloud
             }
             self._send_tracked_message(message, computer_name)
         else:

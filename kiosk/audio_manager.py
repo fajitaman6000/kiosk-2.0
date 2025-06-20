@@ -13,6 +13,16 @@ import time
 print("[audio_manager] Imported time.", flush=True)
 print("[audio_manager] Ending imports ...", flush=True)
 
+import threading
+try:
+    from elevenlabs import play, VoiceSettings
+    from elevenlabs.client import ElevenLabs
+    ELEVENLABS_AVAILABLE = True
+    print("[audio_manager] Imported elevenlabs.", flush=True)
+except ImportError:
+    ELEVENLABS_AVAILABLE = False
+    print("[audio_manager] Warning: 'elevenlabs' package not found. TTS will be disabled.", flush=True)
+
 class AudioManager:
     def __init__(self, kiosk_app):
         print("[audio_manager] Initializing pygame.mixer...", flush=True)
@@ -36,6 +46,19 @@ class AudioManager:
         self.kiosk_app = kiosk_app  # Keep the reference to KioskApp
         self.hint_audio_dir = "hint_audio_files"
         self.loss_audio_dir = "loss_audio"
+
+        self.tts_client = None
+        if ELEVENLABS_AVAILABLE:
+            try:
+                # It's best practice to use an environment variable for the API key.
+                # e.g., os.environ.get("ELEVEN_API_KEY")
+                self.tts_client = ElevenLabs(
+                    api_key="sk_43baf5aee5f1ce913b22ee1f43d1cbafa873361bb2f38e2f", # From your tts_test.py
+                )
+                print("[audio_manager] ElevenLabs client initialized.", flush=True)
+            except Exception as e:
+                print(f"[audio_manager] Failed to initialize ElevenLabs client: {e}", flush=True)
+                self.tts_client = None
 
         # Room to music mapping (moved INSIDE AudioManager)
         self.room_music_map = {
@@ -111,6 +134,53 @@ class AudioManager:
              print(f"[audio manager]Pygame error playing sound {sound_name}: {pe}", flush=True)
         except Exception as e:
             print(f"[audio manager]Error playing sound {sound_name}: {e}", flush=True)
+
+    def speak_text(self, text_to_speak):
+        """
+        Generates audio from text using ElevenLabs and plays it in a non-blocking thread.
+        """
+        if not self.tts_client:
+            print("[audio_manager] TTS client not available. Cannot speak text.", flush=True)
+            return
+
+        if not text_to_speak or not text_to_speak.strip():
+            print("[audio_manager] No text provided to speak.", flush=True)
+            return
+
+        print(f"[audio_manager] Preparing to speak: '{text_to_speak}'", flush=True)
+
+        def _play_in_thread(audio_stream_generator):
+            """Target function for the playback thread."""
+            try:
+                print("[audio_manager] TTS playback thread started.", flush=True)
+                # This call is blocking, which is why it's in its own thread.
+                play(audio_stream_generator)
+                print("[audio_manager] TTS playback thread finished.", flush=True)
+            except Exception as e:
+                print(f"[audio_manager] Error during TTS playback in thread: {e}", flush=True)
+
+        try:
+            # Generate the audio stream using settings from the working example
+            audio_stream = self.tts_client.text_to_speech.convert(
+                voice_id="pNInz6obpgDQGcFmaJgB",  # Adam pre-made voice
+                optimize_streaming_latency="0",
+                output_format="mp3_22050_32",
+                text=text_to_speak,
+                model_id="eleven_turbo_v2",
+                voice_settings=VoiceSettings(
+                    stability=0.0,
+                    similarity_boost=1.0,
+                    style=0.0,
+                    use_speaker_boost=True,
+                ),
+            )
+
+            # Create and start a daemon thread for playback
+            # This ensures the main application thread is not blocked.
+            playback_thread = threading.Thread(target=_play_in_thread, args=(audio_stream,), daemon=True)
+            playback_thread.start()
+        except Exception as e:
+            print(f"[audio_manager] Error generating TTS audio stream: {e}", flush=True)
 
     def play_hint_audio(self, audio_name):
         """Plays a sound file from the hint_audio_files directory."""
