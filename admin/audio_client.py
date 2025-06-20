@@ -21,6 +21,7 @@ class AudioClient:
         self.speaking = False
         self.current_volume = 0.0
         self.selected_input_device_index = None
+        self.current_output_mode = None # Can be 'default' or 'communication'
         self._pyaudio_initialized = False
         self._lock = threading.Lock() # Lock for protecting stream/speaking state
         self._cached_output_device_index = None # NEW: Cache for Windows communication device index
@@ -101,7 +102,7 @@ class AudioClient:
                 pyaudio_dev_name = dev_info['name']
                 if isinstance(pyaudio_dev_name, bytes):
                     try: pyaudio_dev_name = pyaudio_dev_name.decode('utf-8', errors='ignore')
-                    except UnicodeDecodeError: continue 
+                    except UnicodeDecodeError: continue
 
                 if pyaudio_dev_name == target_name:
                     pyaudio_index = i
@@ -128,7 +129,7 @@ class AudioClient:
                            pyaudio_dev_name.lower() in target_name.lower():
                             candidate_partial_match_idx = i
                             candidate_partial_match_name = pyaudio_dev_name
-                            break 
+                            break
             
             if candidate_partial_match_idx is not None:
                 pyaudio_index = candidate_partial_match_idx
@@ -198,11 +199,9 @@ class AudioClient:
                 return False
 
             print("[audio client] Opening output stream...")
+            # MODIFICATION: Always start with the default device.
+            # The logic for switching to the comms device is now in `set_output_device`.
             output_device_idx_to_use = None
-            if sys.platform == 'win32':
-                output_device_idx_to_use = self._determine_output_device_index_for_windows_comm_device()
-            else:
-                 print("[audio client] Not on Windows. Using PyAudio default output device.")
             
             self.output_stream = self.audio.open(
                 format=self.FORMAT,
@@ -212,8 +211,8 @@ class AudioClient:
                 frames_per_buffer=self.CHUNK,
                 output_device_index=output_device_idx_to_use # PyAudio handles None as default
             )
-            selected_dev_msg = f"(Device index: {output_device_idx_to_use})" if output_device_idx_to_use is not None else "(PyAudio Default)"
-            print(f"[audio client] Output stream opened {selected_dev_msg}.")
+            self.current_output_mode = 'default' # Set initial mode
+            print(f"[audio client] Output stream opened on default device.")
 
             # Start receiving thread
             print("[audio client] Starting receive thread...")
@@ -230,6 +229,47 @@ class AudioClient:
             traceback.print_exc()
             self.disconnect() # Ensure cleanup on other errors
             return False
+
+    def set_output_device(self, use_communication_device: bool):
+        """
+        Switches the audio output device between default and default communication.
+        This should be called while the client is connected and receiving.
+        """
+        if not self.running or not self.audio:
+            return
+
+        target_mode = 'communication' if use_communication_device else 'default'
+        if self.current_output_mode == target_mode:
+            return # No change needed
+
+        print(f"[audio client] Switching output device to '{target_mode}'...")
+
+        # Determine target device index
+        target_device_index = None
+        if use_communication_device and sys.platform == 'win32':
+            target_device_index = self._determine_output_device_index_for_windows_comm_device()
+
+        # Safely stop and close the existing output stream
+        old_stream = self.output_stream
+        self.output_stream = None # Clear the reference
+        if old_stream:
+            try:
+                if old_stream.is_active(): old_stream.stop_stream()
+                old_stream.close()
+            except Exception as e:
+                print(f"[audio client] Error closing old output stream: {e}")
+
+        # Open the new output stream
+        try:
+            self.output_stream = self.audio.open(
+                format=self.FORMAT, channels=self.CHANNELS, rate=self.RATE,
+                output=True, frames_per_buffer=self.CHUNK,
+                output_device_index=target_device_index
+            )
+            self.current_output_mode = target_mode
+        except Exception as e:
+            print(f"[audio client] FAILED to open new output stream: {e}. Disconnecting.")
+            self.disconnect()
 
     def _safe_receive_loop(self):
         """Wrapper for receive_audio to handle exceptions within the thread."""
@@ -259,7 +299,7 @@ class AudioClient:
                 chunk_size = struct.unpack("Q", size_data)[0]
                 # Sanity check size for float32 data (4 bytes per sample)
                 # Corrected: Use pyaudio.get_sample_size(self.FORMAT) instead of struct.calcsize(self.FORMAT)
-                if chunk_size <= 0 or chunk_size > self.CHUNK * pyaudio.get_sample_size(self.FORMAT) * 20: 
+                if chunk_size <= 0 or chunk_size > self.CHUNK * pyaudio.get_sample_size(self.FORMAT) * 20:
                      print(f"[audio client] Receive loop: Invalid chunk size received ({chunk_size}). Closing.")
                      break
 
@@ -549,6 +589,7 @@ class AudioClient:
         """Disconnects, closes streams, and cleans up resources."""
         print("[audio client] Disconnecting audio client...")
         self.running = False # Signal all loops to stop *first*
+        self.current_output_mode = None # Reset the mode
         self._cached_output_device_index = None # NEW: Clear cache on disconnect
 
         # Close socket - triggers threads blocked on socket ops to exit

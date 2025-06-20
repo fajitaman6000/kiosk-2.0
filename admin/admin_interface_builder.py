@@ -2250,128 +2250,87 @@ class AdminInterfaceBuilder:
         self.app.network_handler.send_toggle_auto_start_command(computer_name)
 
     def toggle_speaking(self, computer_name):
-        """Toggle microphone for speaking to kiosk"""
+        """Toggle microphone for speaking to kiosk, switching audio output device."""
         is_active = self.audio_active.get(computer_name, False)
         if not is_active:
-                print(f"[interface builder] Cannot toggle speaking for {computer_name}: audio not active.")
-                return
+            print(f"[interface builder] Cannot toggle speaking for {computer_name}: audio not active.")
+            return
 
-        # --- Get the audio client for this computer ---
         audio_client = self.audio_clients.get(computer_name)
         if not audio_client:
             print(f"[interface builder] Error: No audio client found for {computer_name} during toggle_speaking.")
             return
-        # ---------------------------------------------
 
-        is_speaking_aib = self.speaking.get(computer_name, False) # AdminInterfaceBuilder's flag
-        listen_btn = self.stats_elements.get('listen_btn')
+        is_speaking_aib = self.speaking.get(computer_name, False)
         speak_btn = self.stats_elements.get('speak_btn')
 
-        if is_speaking_aib: # If AdminInterfaceBuilder thinks it's speaking, try to STOP
+        if is_speaking_aib:  # --- STOP SPEAKING ---
             try:
                 print(f"[interface builder] Stopping speaking for {computer_name}")
-                if audio_client:
-                    audio_client.stop_speaking() # Command the client to stop sending audio data
+                audio_client.stop_speaking()
+                audio_client.set_output_device(use_communication_device=False) # Switch back to default output
 
-                self.speaking[computer_name] = False # Update AIB's state: no longer speaking
+                self.speaking[computer_name] = False
 
                 # Update UI to reflect that speaking has stopped
-                if computer_name == self.selected_kiosk: # Check if it's the currently selected kiosk
-                    if self.app.root and self.app.root.winfo_exists():
-                        self.app.root.configure(bg='systemButtonFace')  # Reset main window background
-                        self.stats_frame.configure(bg='systemButtonFace')
+                if computer_name == self.selected_kiosk:
+                    self.toggle_red_overlay(False)
 
                 if speak_btn and speak_btn.winfo_exists():
-                    # Reset speak button to "Enable Microphone" appearance
                     if hasattr(speak_btn, 'enable_mic_icon'):
-                        speak_btn.config(
-                            image=speak_btn.enable_mic_icon,
-                            text="Enable Microphone",
-                            bg='systemButtonFace',       # Reset background color
-                            activebackground='systemButtonFace'  # Reset active background color
-                        )
+                        speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone")
                     else:
-                        speak_btn.config(
-                            text="Enable Microphone",
-                            bg='systemButtonFace',
-                            activebackground='systemButtonFace'
-                        )
-                    # The speak_btn state (normal/disabled) is primarily managed by 'toggle_audio'.
-                    # If audio is still active, speak_btn should be in a 'normal' state here.
+                        speak_btn.config(text="Enable Microphone")
 
             except Exception as e:
                 print(f"[interface builder] Error stopping speaking for {computer_name}: {e}")
                 self.speaking[computer_name] = False # Ensure state is false on error
                 # Attempt to reset UI as well
                 if computer_name == self.selected_kiosk:
-                    if self.app.root and self.app.root.winfo_exists():
-                        self.app.root.configure(bg='systemButtonFace')
-                        self.stats_frame.configure(bg='systemButtonFace')
+                    self.toggle_red_overlay(False)
                 if speak_btn and speak_btn.winfo_exists():
                     if hasattr(speak_btn, 'enable_mic_icon'):
-                        speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone", bg='systemButtonFace', activebackground='systemButtonFace')
+                        speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone")
                     else:
-                        speak_btn.config(text="Enable Microphone", bg='systemButtonFace', activebackground='systemButtonFace')
-        else: # If AdminInterfaceBuilder thinks it's not speaking, try to START
+                        speak_btn.config(text="Enable Microphone")
+
+        else:  # --- START SPEAKING ---
             try:
                 print(f"[interface builder] Starting speaking for {computer_name}")
-                if audio_client.start_speaking(): 
+                audio_client.set_output_device(use_communication_device=True) # Switch to communication device
+
+                if audio_client.start_speaking():
                     self.speaking[computer_name] = True
 
                     if computer_name == self.selected_kiosk:
-                            self.app.root.configure(bg='#f50202')  # Light red
-                            self.stats_frame.configure(bg='#f50202')
+                        self.toggle_red_overlay(True)
 
-                    if speak_btn:
+                    if speak_btn and speak_btn.winfo_exists():
                         if hasattr(speak_btn, 'disable_mic_icon'):
-                            self.toggle_red_overlay(True)
-                            speak_btn.config(
-                                image=speak_btn.disable_mic_icon,
-                                text="Disable Microphone",
-                                #activebackground='#ffcccc'
-                            )
+                            speak_btn.config(image=speak_btn.disable_mic_icon, text="Disable Microphone")
                         else:
-                            self.toggle_red_overlay(True)
-                            speak_btn.config(
-                                text="Disable Microphone",
-                                #activebackground='#ffcccc'
-                            )
-                else: # This block executes if audio_client.start_speaking() returned False
+                            speak_btn.config(text="Disable Microphone")
+                else:  # This block executes if audio_client.start_speaking() returned False
                     print(f"[interface builder] audio_client.start_speaking() failed for {computer_name}.")
-                    self.speaking[computer_name] = False # Ensure AIB's flag is false
+                    audio_client.set_output_device(use_communication_device=False) # Switch back on failure
+                    self.speaking[computer_name] = False
                     # Reset button to "Enable Microphone" state
-                    if speak_btn:
+                    if speak_btn and speak_btn.winfo_exists():
                         if hasattr(speak_btn, 'enable_mic_icon'):
-                            speak_btn.config(
-                                image=speak_btn.enable_mic_icon,
-                                text="Enable Microphone",
-                                bg='systemButtonFace',
-                                activebackground='systemButtonFace'
-                            )
+                            speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone")
                         else:
-                            speak_btn.config(
-                                text="Enable Microphone",
-                                bg='systemButtonFace',
-                                activebackground='systemButtonFace'
-                            )
+                            speak_btn.config(text="Enable Microphone")
+
             except Exception as e:
                 print(f"[interface builder] Error enabling microphone for {computer_name}: {e}")
-                self.speaking[computer_name] = False # Ensure state is false on error
-                    # Also reset button UI on exception during start attempt
-                if speak_btn:
+                audio_client.set_output_device(use_communication_device=False) # Switch back on error
+                self.speaking[computer_name] = False
+                # Also reset button UI on exception during start attempt
+                if speak_btn and speak_btn.winfo_exists():
                     if hasattr(speak_btn, 'enable_mic_icon'):
-                        speak_btn.config(
-                            image=speak_btn.enable_mic_icon,
-                            text="Enable Microphone",
-                            bg='systemButtonFace',
-                            activebackground='systemButtonFace'
-                        )
+                        speak_btn.config(image=speak_btn.enable_mic_icon, text="Enable Microphone")
                     else:
-                        speak_btn.config(
-                            text="Enable Microphone",
-                            bg='systemButtonFace',
-                            activebackground='systemButtonFace'
-                        )
+                        speak_btn.config(text="Enable Microphone")
 
     def update_no_kiosks_message(self):
         """Show or hide the 'No kiosks found' message based on connection status"""
