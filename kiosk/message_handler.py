@@ -396,7 +396,7 @@ class MessageHandler:
                     if speak_aloud and text_for_tts:
                         print(f"[message handler] Scheduling TTS for hint text: '{text_for_tts}'")
                         # We add a small delay to let the "hint_received.mp3" sound start first.
-                        self.schedule_timer(250, lambda text=text_for_tts: self.kiosk_app.audio_manager.speak_text(text))
+                        self.schedule_timer(250, lambda text=text_for_tts: self.kiosk_app.audio_manager.speak_text(text,self.kiosk_app.assigned_room))
 
                     # --- GUI update (schedule on main thread) ---
                     if hint_data is not None: # Ensure we have data before scheduling

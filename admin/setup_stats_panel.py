@@ -411,7 +411,7 @@ def setup_stats_panel(interface_builder, computer_name):
 
     interface_builder.stats_elements['speak_hint_checkbox'] = tk.Checkbutton(
         interface_builder.stats_elements['hint_buttons_frame'],
-        text="Speak hint out loud",
+        text="Speak hint outloud",
         variable=interface_builder.speak_hint_var, # Use the var from interface_builder
         font=('Arial', 9),
         cursor="hand2"

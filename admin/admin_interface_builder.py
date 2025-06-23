@@ -46,7 +46,7 @@ class AdminInterfaceBuilder:
         self.kiosk_output_volumes = {}
         self.setup_ui()
         self.speaker_mode_var = tk.BooleanVar(value=True)
-        self.speak_hint_var = tk.BooleanVar(value=True)
+        self.speak_hint_var = tk.BooleanVar(value=False)
         
         # Start timer update loop using app's root
         self.app.root.after(1000, self.update_timer_display)

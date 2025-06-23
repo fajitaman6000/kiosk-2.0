@@ -11,6 +11,7 @@ print("[audio_manager] Imported pygame.", flush=True)
 print("[audio_manager] Importing time...", flush=True)
 import time
 print("[audio_manager] Imported time.", flush=True)
+from dataclasses import dataclass, asdict # <-- ADDED FOR VOICE PROFILES
 print("[audio_manager] Ending imports ...", flush=True)
 
 import threading
@@ -23,6 +24,26 @@ except ImportError:
     ELEVENLABS_AVAILABLE = False
     print("[audio_manager] Warning: 'elevenlabs' package not found. TTS will be disabled.", flush=True)
 
+
+# --- NEW: Dataclass to cleanly store voice profile settings ---
+@dataclass
+class VoiceProfile:
+    """A dataclass to hold all settings for an ElevenLabs voice."""
+    id: str = "enTsZzw3jC7Ix5D4b6G4" # Jake by default
+    speed: float = 1.0
+    stability: float = 1.0
+    similarity_boost: float = 0.33
+    style: float = 0.6
+    use_speaker_boost: bool = True
+
+    def get_voice_settings_dict(self):
+        """Returns a dict of settings suitable for the elevenlabs VoiceSettings object."""
+        full_dict = asdict(self)
+        # We don't need 'id'
+        del full_dict['id']
+        return full_dict
+
+
 class AudioManager:
     def __init__(self, kiosk_app):
         print("[audio_manager] Initializing pygame.mixer...", flush=True)
@@ -32,6 +53,16 @@ class AudioManager:
              print("[audio_manager] Initialized pygame.mixer.", flush=True)
         else:
              print("[audio_manager] pygame.mixer already initialized.", flush=True)
+
+        self.ROOM_VOICES = {
+            1: VoiceProfile(id="ULDQYJJrwNNyGesqciiv", speed=1.0, stability=1.0, similarity_boost=0.15, style=1.0), # Casino, Mr. Martini
+            2: VoiceProfile(), # MA, Jake
+            3: VoiceProfile(), # Wizard
+            4: VoiceProfile(id="zjNczNNODXtx7CmZMnQW", speed=0.83, stability=1.0, similarity_boost=0.1), # Zombie
+            5: VoiceProfile(id="RmwYdAgHgaIElEGGJibh", speed=0.83, similarity_boost=0.10), # Haunted 
+            6: VoiceProfile(), # Atlantis
+            7: VoiceProfile(id="HYa84RMjesA45nc1eHzy"), # Time Machine, Dr. Hoffman
+        }
 
 
         self.sound_dir = "kiosk_sounds"
@@ -135,9 +166,11 @@ class AudioManager:
         except Exception as e:
             print(f"[audio manager]Error playing sound {sound_name}: {e}", flush=True)
 
-    def speak_text(self, text_to_speak):
+    # --- MODIFIED: speak_text now takes a room_number to select the dynamic voice ---
+    def speak_text(self, text_to_speak, room_number):
         """
         Generates audio from text using ElevenLabs and plays it in a non-blocking thread.
+        Uses the voice profile associated with the given room_number.
         """
         if not self.tts_client:
             print("[audio_manager] TTS client not available. Cannot speak text.", flush=True)
@@ -147,7 +180,13 @@ class AudioManager:
             print("[audio_manager] No text provided to speak.", flush=True)
             return
 
-        print(f"[audio_manager] Preparing to speak: '{text_to_speak}'", flush=True)
+        # Get the voice profile for the specified room
+        voice_profile = self.ROOM_VOICES.get(room_number)
+        if not voice_profile:
+            print(f"[audio_manager] No voice profile found for room {room_number}. Cannot speak text.", flush=True)
+            return
+
+        #print(f"[audio_manager] Preparing to speak with voice '{voice_profile.name}': '{text_to_speak}'", flush=True)
 
         def _play_in_thread(audio_stream_generator):
             """Target function for the playback thread."""
@@ -160,19 +199,16 @@ class AudioManager:
                 print(f"[audio_manager] Error during TTS playback in thread: {e}", flush=True)
 
         try:
-            # Generate the audio stream using settings from the working example
+            # Generate the audio stream using settings from the dynamic voice profile
             audio_stream = self.tts_client.text_to_speech.convert(
-                voice_id="pNInz6obpgDQGcFmaJgB",  # Adam pre-made voice
+                voice_id=voice_profile.id,
+                text=text_to_speak,
+                voice_settings=VoiceSettings(**voice_profile.get_voice_settings_dict()),
+                
+                # These parameters are fixed based on your original code
                 optimize_streaming_latency="0",
                 output_format="mp3_22050_32",
-                text=text_to_speak,
-                model_id="eleven_turbo_v2",
-                voice_settings=VoiceSettings(
-                    stability=0.0,
-                    similarity_boost=1.0,
-                    style=0.0,
-                    use_speaker_boost=True,
-                ),
+                model_id="eleven_flash_v2_5",
             )
 
             # Create and start a daemon thread for playback
@@ -181,6 +217,7 @@ class AudioManager:
             playback_thread.start()
         except Exception as e:
             print(f"[audio_manager] Error generating TTS audio stream: {e}", flush=True)
+
 
     def play_hint_audio(self, audio_name):
         """Plays a sound file from the hint_audio_files directory."""
