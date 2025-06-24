@@ -376,8 +376,8 @@ class NetworkBroadcastHandler:
                         print(f"[network_handler] Kiosk '{computer_name}' is assigned to room {room_number}. Resetting prop flags.")
                         if hasattr(self.app, 'prop_control') and self.app.prop_control:
                             # Use after(0, ...) to ensure this runs on the main UI thread safely
-                            self.app.root.after(0, lambda rn=room_number: self.app.prop_control.reset_one_minute_warning(rn))
-                            self.app.root.after(0, lambda rn=room_number: self.app.audio_manager.clear_loss_sound_played(rn))
+                            self.app.root.after(0, lambda rn=room_number: self.app.prop_control.clear_one_minute_sound_played(rn))
+                            self.app.root.after(0, lambda rn=room_number: self.app.interface_builder.audio_manager.clear_loss_sound_played(rn))
                             # Add any other prop_control or audio_manager resets needed here in the future
                     else:
                         print(f"[network_handler] Kiosk '{computer_name}' sent 'reset_completed', but it is not currently assigned to a room. No prop flags will be reset.")
