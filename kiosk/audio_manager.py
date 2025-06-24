@@ -57,10 +57,10 @@ class AudioManager:
         self.ROOM_VOICES = {
             1: VoiceProfile(id="ULDQYJJrwNNyGesqciiv", speed=0.85, stability=1.0, similarity_boost=0.15, style=1.0), # Casino, Mr. Martini
             2: VoiceProfile(), # MA, Jake
-            3: VoiceProfile(), # Wizard
+            3: VoiceProfile(id="NBbJNtl1xd6WPMEIFp5U", speed=0.9, stability=1.0, similarity_boost=.75), # Wizard
             4: VoiceProfile(id="zjNczNNODXtx7CmZMnQW", speed=0.75, stability=1.0, similarity_boost=0.1), # Zombie
             5: VoiceProfile(id="RmwYdAgHgaIElEGGJibh", speed=0.83, similarity_boost=0.10), # Haunted 
-            6: VoiceProfile(), # Atlantis
+            6: VoiceProfile(id="mz1mcN1ctdXkK7HzDP57", speed=0.9, stability=0,similarity_boost=0), # Atlantis
             7: VoiceProfile(id="HYa84RMjesA45nc1eHzy", speed=0.85), # Time Machine, Dr. Hoffman
         }
 
