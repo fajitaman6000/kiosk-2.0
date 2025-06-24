@@ -21,7 +21,7 @@ class ManagerSettings:
         self.tree_items = {}
         self.current_prop_info = None
         self.highlighted_cousin_items = set()
-        self.image_listbox_data = []  # Add this line to store (filename, source_prop_display_name) tuples
+        self.image_listbox_data = []
         
         # Full room names mapping
         self.room_full_names = {

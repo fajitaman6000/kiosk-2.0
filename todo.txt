@@ -1,22 +1,34 @@
 ##############################################################################################################################
 # Test notes
 
+[KIOSK] [audio server]New audio connection from ('192.168.0.109', 49792)
+[KIOSK] [audio server] Opening audio input stream...
+[KIOSK] [audio server] Audio input stream opened.
+[KIOSK] [audio server]Starting audio streaming to admin
+[KIOSK] [audio server]Starting audio reception from admin
+[KIOSK] [audio server] Opening audio output stream...
+[KIOSK] [audio server] Audio output stream opened.
+[KIOSK] [audio_server] Recv timeout in _recv_exactly
+[KIOSK] [audio server]No size data received
+[KIOSK] [audio server]Audio reception ended
+
 
 ##############################################################################################################################
 # Priority
 
+investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
+
 Audio choppiness on slower computers (Time Machine, Zombie)
     restarting kiosk application resulted in fix
         memory leak? task manager showed no unusual (albeit high) usage
+    restart app command resulted in crash during video playback (while choppiness issue was occurring)
 
-viewing image results in reset command not working
-
-restart app command resulted in crash during video playback (while choppiness issue was occurring)
+kiosk crash without watchdog reboot (watchdog crash?)
 
 ##############################################################################################################################
 # Beta to do
 
-disabling mic via room change does not result in clearing of red overlay
+move video player to c++ (python-vlc/libvlc)
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
@@ -41,17 +53,14 @@ film video solutions
 ##############################################################################################################################
 # Todo
 
+voice commands
+
 prop monitoring
 
-upload single files instead of uploading everything? with that text string methodology?
-
 sync system makes it unfriendly for anyone else to create hints currently
+    upload single files instead of uploading everything? with that text string methodology?
 
 tap to close hint, instead opening image automatically on reception with text below it?
-
-times touched screen stat
-
-"switch sides" button for prop control
 
 "currently displayed hint"
 "please select nudge frequency"
@@ -71,12 +80,18 @@ technician app (e.g "finish all" button)
 ##############################################################################################################################
 # known bugs
 
+hint cooldown text can become stuck when playing intro videos at unusual time
+    fixed by clearing hints
+
 mqtt connections get crippled while running file sync
 mqtt makes separate connections for ma and casino
 
 ##############################################################################################################################
 # ambitious extra ideas:
 
+times touched screen stat
+
+"switch sides" button for prop control
 blackout screen button for haunted
 refill cylinders button
 add ways for game masters to enjoyably interact with guests

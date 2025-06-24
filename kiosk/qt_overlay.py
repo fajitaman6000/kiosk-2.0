@@ -275,6 +275,8 @@ class Overlay:
     
     _current_hint_text_color = "#ffffff"
     _current_timer_text_color = "#ffffff"
+
+    _hint_background_cache = {}
     
     @classmethod
     def init(cls):
@@ -514,40 +516,32 @@ class Overlay:
             traceback.print_exc()
 
     @classmethod
-    def hide_fullscreen_hint(cls):
-        """Hides the fullscreen hint overlay and restores the normal UI."""
-        # print("[qt overlay] Hiding fullscreen hint.") # Debug
+    def hide_fullscreen_hint(cls, restore_ui=True):
+        """Hides the fullscreen hint overlay and optionally restores the normal UI."""
         if cls._fullscreen_hint_window and cls._fullscreen_hint_initialized:
+            # Always hide the window and clear its content
             if cls._fullscreen_hint_window.isVisible():
                 cls._fullscreen_hint_window.hide()
                 # Clear the pixmap item to free memory
                 cls._fullscreen_hint_pixmap_item.setPixmap(QPixmap())
                 cls._fullscreen_hint_pixmap = None # Clear stored pixmap
 
-            # Explicitly hide the view image button
-            cls.hide_view_image_button()
+            if restore_ui:
+                # This is the original logic for when a user clicks to close the image.
+                cls.hide_view_image_button()
+                cls.show_all_overlays()
 
-            # Restore other overlays *first*
-            cls.show_all_overlays()
-
-            # Call the UI restoration logic *after* hiding and showing others
-            if cls._fullscreen_hint_ui_instance:
-                # Use invokeMethod or after(0) if direct call causes issues
-                # Direct call likely okay as hide is triggered by user click in main thread
-                try:
-                    print("[qt overlay] Calling restore_hint_view...")
-                    cls._fullscreen_hint_ui_instance.restore_hint_view()
-                except Exception as e:
-                    print(f"[qt overlay] Error calling restore_hint_view: {e}")
-                    traceback.print_exc()
-                finally:
-                    # Clear reference once called
-                    cls._fullscreen_hint_ui_instance = None
+                if cls._fullscreen_hint_ui_instance:
+                    try:
+                        print("[qt overlay] Calling restore_hint_view...")
+                        cls._fullscreen_hint_ui_instance.restore_hint_view()
+                    except Exception as e:
+                        print(f"[qt overlay] Error calling restore_hint_view: {e}")
+                        traceback.print_exc()
             else:
-                 print("[qt overlay] Warning: No UI instance found to call restore_hint_view.")
-
-        # else:
-            # print("[qt overlay] Fullscreen hint window not visible or not initialized.") # Debug
+                # This is the logic for a hard reset: just reset the flag in the UI manager.
+                if cls._fullscreen_hint_ui_instance and hasattr(cls._fullscreen_hint_ui_instance, 'image_is_fullscreen'):
+                    cls._fullscreen_hint_ui_instance.image_is_fullscreen = False
 
     @classmethod
     def _init_view_image_button(cls):
@@ -969,7 +963,7 @@ class Overlay:
 
     @classmethod
     def _actual_hint_text_update(cls, data):
-        """Update the hint text in the main thread."""
+        """Update the hint text in the main thread, using a cache for backgrounds."""
         try:
             if not cls._hint_text['window']:
                 print("[qt overlay]Error: Hint text window not initialized")
@@ -994,34 +988,46 @@ class Overlay:
             
             # Update hint background only if a room number is present
             if room_number:
-                background_name = None
-                background_map = {
-                    1: "casino_heist.png",
-                    2: "morning_after.png",
-                    3: "wizard_trials.png",
-                    4: "zombie_outbreak.png",
-                    5: "haunted_manor.png",
-                    6: "atlantis_rising.png",
-                    7: "time_machine.png"
-                }
+                pixmap = None
+                # Check if the pixmap for this room is already in the cache
+                if room_number in cls._hint_background_cache:
+                    pixmap = cls._hint_background_cache[room_number]
+                else:
+                    # --- If not cached, do the expensive work ONCE ---
+                    background_name = None
+                    background_map = {
+                        1: "casino_heist.png",
+                        2: "morning_after.png",
+                        3: "wizard_trials.png",
+                        4: "zombie_outbreak.png",
+                        5: "haunted_manor.png",
+                        6: "atlantis_rising.png",
+                        7: "time_machine.png"
+                    }
 
-                if room_number in background_map:
-                    background_name = background_map[room_number]
+                    if room_number in background_map:
+                        background_name = background_map[room_number]
 
-                if background_name:
-                   # Load and resize the background image
-                    bg_path = os.path.join("hint_backgrounds", background_name)
-                    if os.path.exists(bg_path):
-                         bg_img = Image.open(bg_path)
-                         bg_img = bg_img.resize((width, height))
-                         # Convert to QPixmap
-                         buf = io.BytesIO()
-                         bg_img.save(buf, format='PNG')
-                         qimg = QImage()
-                         qimg.loadFromData(buf.getvalue())
-                         pixmap = QPixmap.fromImage(qimg)
-                         cls._hint_text['bg_image_item'].setPixmap(pixmap)
-                         cls._hint_text['current_background'] = pixmap
+                    if background_name:
+                       # Load and resize the background image
+                        bg_path = os.path.join("hint_backgrounds", background_name)
+                        if os.path.exists(bg_path):
+                            print(f"[qt overlay] Caching hint background for room {room_number}...")
+                            bg_img = Image.open(bg_path)
+                            bg_img = bg_img.resize((width, height))
+                            # Convert to QPixmap
+                            buf = io.BytesIO()
+                            bg_img.save(buf, format='PNG')
+                            qimg = QImage()
+                            qimg.loadFromData(buf.getvalue())
+                            pixmap = QPixmap.fromImage(qimg)
+                            # Store the generated pixmap in the cache
+                            cls._hint_background_cache[room_number] = pixmap
+                
+                # Now, use the (potentially cached) pixmap
+                if pixmap:
+                    cls._hint_text['bg_image_item'].setPixmap(pixmap)
+                    cls._hint_text['current_background'] = pixmap
                          
             # Clear the existing text before updating
             cls._hint_text['text_item'].setHtml("")
@@ -1066,7 +1072,7 @@ class Overlay:
                 (height - text_width) / 2
             )
             
-            # ADDED CHECK: Only show if no video is playing.
+            # Only show if no video is playing.
             if not cls._kiosk_app.video_manager.is_playing:
                 # Show the window but don't raise it above other elements
                 cls._hint_text['window'].show()
@@ -1551,157 +1557,87 @@ class Overlay:
         
     @classmethod
     def _actual_help_button_update(cls, button_data):
-        """Actual help button update method that runs in the main thread"""
-        ui = button_data['ui']
-        timer = button_data['timer']
-        hints_requested = button_data['hints_requested']
-        time_exceeded_45 = button_data['time_exceeded_45']
-        assigned_room = button_data['assigned_room']
-        current_minutes = timer.time_remaining / 60
-
-        # Check visibility conditions
-        show_button = (
-            not ui.hint_cooldown and
-            not (current_minutes > 42 and current_minutes <= 45 and not time_exceeded_45) and
-            not timer.game_lost and # Don't show if game is lost
-            not timer.game_won and # Don't show if game is won
-            not cls._kiosk_app.hint_requested_flag # Don't show if hint is requested
-        )
-
+        """
+        Actual help button update method that runs in the main thread.
+        This version is optimized to create widgets only once and then show/hide/update them.
+        """
         try:
-            # Check if we should show the button and it's not already showing
-            button_exists = hasattr(cls, '_button_window') and cls._button_window is not None
-            button_visible = button_exists and cls._button_window.isVisible()
+            ui = button_data['ui']
+            timer = button_data['timer']
+            assigned_room = button_data['assigned_room']
+            current_minutes = timer.time_remaining / 60
+
+            # 1. Determine if the button *should* be visible based on game logic
+            show_button_logic = (
+                not ui.hint_cooldown and
+                not (current_minutes > 42 and current_minutes <= 45 and not button_data['time_exceeded_45']) and
+                not timer.game_lost and
+                not timer.game_won and
+                not cls._kiosk_app.hint_requested_flag
+            )
+
+            # 2. Determine if the button *can* be shown based on UI state (no video/fullscreen image)
+            can_show_ui = not cls._kiosk_app.video_manager.is_playing and not cls._kiosk_app.ui.image_is_fullscreen
             
-            # Only show if conditions are met AND no video is playing AND not in fullscreen image mode
-            should_show = show_button and not cls._kiosk_app.video_manager.is_playing and not cls._kiosk_app.ui.image_is_fullscreen
-            
-            # Create button if it should be shown but doesn't exist or isn't visible
-            if should_show and not button_visible:
-                # Create/recreate the button only if needed
-                if button_exists:
+            should_show = show_button_logic and can_show_ui
+
+            # 3. Initialize button components if they don't exist yet
+            if not hasattr(cls, '_button_window') or not cls._button_window:
+                cls.init_help_button()
+                # Set a class variable to track the room the button is configured for
+                if not hasattr(cls, '_help_button_room_id'):
+                    cls._help_button_room_id = None
+
+            # Ensure components are valid before proceeding
+            if not hasattr(cls, '_button_window') or not cls._button_window:
+                print("[qt overlay] Critical error: Help button failed to initialize.")
+                return
+
+            # 4. Handle visibility and content updates
+            button_visible = cls._button_window.isVisible()
+
+            if should_show:
+                # If the button should be shown, check if its content (image) is correct
+                if cls._help_button_room_id != assigned_room:
+                    if cls.load_button_images(assigned_room):
+                        # On successful load, update the state
+                        cls._help_button_room_id = assigned_room
+                        
+                        # Re-connect the click signal to ensure it's correct
+                        cls._button_view.set_skippable(True)
+                        try:
+                            cls._button_view.clicked.disconnect()
+                        except TypeError:
+                            pass # No connection existed, which is fine
+                        
+                        cls._button_view.clicked.connect(ui.message_handler.request_help)
+                        
+                        # Set rotation and position (these are cheap operations)
+                        cls._button['bg_image_item'].setRotation(360)
+                        cls._button['bg_image_item'].setPos(-40, -73)
+                        cls._button['shadow_item'].setPos(0, 0)
+                        print(f"[qt overlay] Help button images loaded for room {assigned_room}")
+                    else:
+                        print(f"[qt overlay] Failed to load button images for room {assigned_room}. Button will not be shown.")
+                        # If images fail to load, ensure button is hidden
+                        if button_visible:
+                            cls._button_window.hide()
+                        return # Abort if images can't be loaded
+
+                # Now that content is correct, ensure it's visible
+                if not button_visible:
+                    cls._button_window.show()
+                    cls._button_window.raise_()
+                    print("[qt overlay] Help button shown")
+
+            else: # If should_show is False
+                if button_visible:
                     cls._button_window.hide()
-                    cls._button_window.deleteLater()
-                    cls._button_window = None
-                
-                # Create a separate window for the button
-                cls._button_window = QWidget(cls._window)
-                cls._button_window.setAttribute(Qt.WA_TranslucentBackground)
-                cls._button_window.setWindowFlags(
-                    Qt.FramelessWindowHint |
-                    Qt.WindowStaysOnTopHint |
-                    Qt.Tool |
-                    Qt.WindowDoesNotAcceptFocus
-                )
-                cls._button_window.setAttribute(Qt.WA_ShowWithoutActivating)
-
-                # Set up button scene and view using ClickableView instead of QGraphicsView
-                cls._button['scene'] = QGraphicsScene()
-                cls._button_view = ClickableVideoView(cls._button['scene'], cls._button_window)
-
-                # Define view dimensions (increased to accommodate shadow)
-                width = 440  # Increased width
-                height = 780  # Increased height
-
-                # Configure view
-                cls._button_view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-                cls._button_view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-                cls._button_view.setRenderHints(QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
-                cls._button_view.setViewportUpdateMode(QGraphicsView.FullViewportUpdate)
-                cls._button_view.setFrameStyle(0)
-                cls._button_view.setStyleSheet("background: transparent;")
-
-                # Set view geometry
-                cls._button_view.setGeometry(0, 0, width, height)
-
-                # Set scene rect to match view
-                scene_rect = QRectF(0, 0, width, height)
-                cls._button['scene'].setSceneRect(scene_rect)
-
-                # Set up placeholders for images
-                cls._button['shadow_item'] = cls._button['scene'].addPixmap(QPixmap())
-                cls._button['bg_image_item'] = cls._button['scene'].addPixmap(QPixmap())
-
-                # Position button window
-                cls._button_window.setGeometry(340, 290, width, height) # Adjusted button window size
-
-                if cls._parent_hwnd:
-                    style = win32gui.GetWindowLong(int(cls._button_window.winId()), win32con.GWL_EXSTYLE)
-                    win32gui.SetWindowLong(
-                        int(cls._button_window.winId()),
-                        win32con.GWL_EXSTYLE,
-                        style | win32con.WS_EX_NOACTIVATE
-                    )
-
-                # Load images
-                if not cls.load_button_images(assigned_room):
-                    print("[qt overlay]Failed to load button images.")
-                    return
-
-                # Set the origin for rotation to the center of the pixmap
-                button_rect = cls._button['bg_image_item'].boundingRect()
-                cls._button['bg_image_item'].setTransformOriginPoint(button_rect.width() / 2, button_rect.height() / 2)
-
-                # Make the button view "skippable" (which means clickable in this context)
-                cls._button_view.set_skippable(True)
-
-                # Set up click handling using Qt signals/slots
-                try:
-                    # Disconnect any previous connections first to avoid duplicates
-                    cls._button_view.clicked.disconnect()
-                except TypeError:
-                    # No connections existed, which is fine
-                    pass
-                except Exception as e:
-                    # Catch potential errors during disconnection
-                    print(f"[qt overlay] Error disconnecting previous button click signal: {e}")
-
-                # Connect the request_help function to the clicked signal
-                cls._button_view.clicked.connect(ui.message_handler.request_help)
-                print("[qt overlay] Connected help button click signal.")
-
-                # Rotate the button image item 90 degrees clockwise
-                cls._button['bg_image_item'].setRotation(360)
-
-                # MANUAL POSITIONING BEGINS HERE
-                # Define offsets for position
-                button_x_offset = -40 # Adjust to move the button within it's parent window
-                button_y_offset = -73 # Adjust to move the button within it's parent window
-
-                shadow_x_offset = 0  # Adjust to move the shadow within it's parent window
-                shadow_y_offset = 0 # Adjust to move the shadow within it's parent window
-
-                cls._button['bg_image_item'].setPos(button_x_offset, button_y_offset)
-                cls._button['shadow_item'].setPos(shadow_x_offset, shadow_y_offset)
-
-                # RE-APPLY PARENTING RIGHT BEFORE SHOWING
-                if cls._parent_hwnd:
-                    win32gui.SetParent(int(cls._button_window.winId()), cls._parent_hwnd)
-
-                # Show
-                cls._button_window.show()
-                cls._button_window.raise_()
-                cls._button_view.viewport().update()
-                print("[qt overlay] Help button created and shown")
-            elif not should_show and button_visible:
-                # Hide the button if it should not be shown but is currently visible
-                cls._button_window.hide()
-                print("[qt overlay] Help button hidden")
-
-            # Only show hint text if it's not empty
-            if ui.current_hint:  # First, check for the existence of current_hint
-                hint_text = ui.current_hint if isinstance(ui.current_hint, str) else ui.current_hint.get('text', '')
-                if hint_text is not None and hint_text.strip() != "":
-                    if(cls.TIMER_DEBUG): ("[qt_overlay] Restoring hint text from within _actual_help_button_update")
-                    cls.show_hint_text(hint_text, assigned_room)  # Show if not empty
-                else:
-                    if(cls.TIMER_DEBUG): ("[qt_overlay] Hint text is empty, not restoring from within _actual_help_button_update")
-                    pass
-            else:
-                if(cls.TIMER_DEBUG): ("[qt overlay]current hint is None, hiding hint text window from update_help_button.")
-                Overlay.hide_hint_text()
+                    # Reset the room ID so it reloads fresh on next show
+                    cls._help_button_room_id = None
+                    print("[qt overlay] Help button hidden")
         except Exception as e:
-           print(f"[qt overlay]Exception during help button update: {e}")
+           print(f"[qt overlay] Exception during help button update: {e}")
            traceback.print_exc()
 
     @classmethod
@@ -1751,8 +1687,8 @@ class Overlay:
         cls.hide_hint_request_text()
         cls.hide_gm_assistance()
         cls.hide_waiting_screen_label()
-        cls.hide_background() # Hide the main background
-        cls.hide_fullscreen_hint()
+        #cls.hide_background()
+        cls.hide_fullscreen_hint(restore_ui=False)
         cls.hide_view_image_button()
         cls.hide_view_solution_button()
         cls.hide_video_display() # Hide video display if it's showing

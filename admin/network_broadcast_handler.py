@@ -21,6 +21,8 @@ class NetworkBroadcastHandler:
         self.MAX_RESEND_ATTEMPTS = 3 # Max resends before giving up
         self.soundcheck_instance = None # Will hold ref to AdminSoundcheckWindow
 
+        self.prop_control = self.app.prop_control
+
         self.kiosk_ips = {} # Maps computer_name to IP address for watchdog commands
         self.WATCHDOG_CMD_PORT = 12347 # Port watchdog listens on for commands
 
@@ -282,6 +284,20 @@ class NetworkBroadcastHandler:
                     print(f"[network broadcast handler] Received sync_confirmation from {computer_name} - SyncID: {sync_id}, Status: {status}")
                     # Update UI or logs if needed
 
+                elif msg_type == 'secret_tap_detected':
+                    computer_name = msg.get('computer_name')
+                    room = msg.get('room', 'Unassigned')
+                    
+                    if computer_name:
+                        print(f"!!! Secret tap detected on '{computer_name}' (Room: {room}). Sending prop reset and kiosk reset. !!!")
+                        
+                        # Send the "reset kiosk" command to the specific kiosk.
+                        # This triggers the full software reset on the kiosk application.
+                        self.send_reset_kiosk_command(computer_name) # reset kiosk
+                        self.prop_control.reset_room_props(room) # reset props
+                    else:
+                        print(f"[network broadcast handler] Received 'secret_tap_detected' but 'computer_name' was missing. Cannot send reset commands. Message: {msg}")
+
                 elif msg_type == 'sync_complete':
                     computer_name = msg.get('computer_name')
                     sync_id = msg.get('sync_id')
@@ -534,6 +550,7 @@ class NetworkBroadcastHandler:
             'computer_name': computer_name
         }
         self._send_tracked_message(message, computer_name)
+        print(f"[network_broadcast_handler] Sent {message} to {computer_name}")
 
     def send_toggle_music_command(self, computer_name):
         """Sends a command to toggle background music."""
@@ -602,8 +619,6 @@ class NetworkBroadcastHandler:
         except Exception as e:
             print(f"[network broadcast handler] Failed to send reboot signal to {target_ip}:{self.REBOOT_PORT}: {e}")
 
-    # --- File Sync Initiation ---
-    # This sends a SYNC message which is also tracked for ACK/Resend
     def send_sync_command(self, computer_name, admin_ip):
         """Sends a command to initiate file sync with the admin server."""
         sync_id = str(uuid.uuid4()) # Unique ID for this sync operation

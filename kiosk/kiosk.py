@@ -76,6 +76,15 @@ try:
 except ImportError:
     print("[kiosk main] WARNING: Could not import screen_rotation_manager.py. Screen rotation will be skipped.", flush=True)
     rotate_to_preferred_landscape = None
+print("[kiosk main] Importing TapDetector from tap_detector...", flush=True)
+try:
+    from tap_detector import TapDetector
+    TAP_DETECTOR_ENABLED = True
+except Exception as e:
+    print(f"[kiosk main] WARNING: Could not import or use TapDetector. Secret tap pattern will be disabled. Error: {e}", flush=True)
+    TapDetector = None
+    TAP_DETECTOR_ENABLED = False
+print("[kiosk main] Tap Detector", flush=True)
 print("[kiosk main] Ending imports ...", flush=True)
 
 class KioskApp:
@@ -127,6 +136,13 @@ class KioskApp:
         print("[kiosk main] Creating Qt application...", flush=True)
         self.qt_app = QtKioskApp(self)
         print("[kiosk main] Qt application created.", flush=True)
+
+        print("[kiosk main] Setting up proactive state saving timer...", flush=True)
+        self.state_save_timer = QTimer()
+        self.state_save_timer.timeout.connect(self.save_state_periodically)
+        # Save state every 10 seconds. Adjust as needed.
+        self.state_save_timer.start(10000)
+        print("[kiosk main] State saving timer started.", flush=True)
         
         # Set the proper application ID for Windows taskbar grouping
         # This should be a registered application identifier for your app
@@ -220,7 +236,7 @@ class KioskApp:
         print("[kiosk main] Setting up help button update timer...", flush=True)
         self.help_button_timer = QTimer()
         self.help_button_timer.timeout.connect(self._actual_help_button_update)
-        self.help_button_timer.start(5000)  # Update every 5 seconds instead of every 1 second
+        self.help_button_timer.start(5000)
         print("[kiosk main] Help button update timer started.", flush=True)
         
         print("[kiosk main] Initializing StateTracker...", flush=True)
@@ -237,8 +253,34 @@ class KioskApp:
         # Volume levels (0-10 integer representation)
         self.music_volume_level = 7  # Default 7/10 (70%)
         self.hint_volume_level = 7   # Default 7/10 (70%)
+
+        # Init tap detector for reset commands
+        self.tap_detector = None
+        if TAP_DETECTOR_ENABLED and TapDetector:
+            print("[kiosk main] Initializing TapDetector...", flush=True)
+            try:
+                # Pass a method from this class as the callback
+                self.tap_detector = TapDetector(pattern_callback=self.on_tap_pattern_detected)
+                self.tap_detector.start()
+                print("[kiosk main] TapDetector started.", flush=True)
+            except Exception as e:
+                print(f"[kiosk main] ERROR: Failed to start TapDetector: {e}", flush=True)
+                self.tap_detector = None # Ensure it's None on failure
         
         print("[kiosk main] KioskApp initialization complete.", flush=True)
+
+    def on_tap_pattern_detected(self):
+        """
+        Callback function executed by the TapDetector when the secret pattern is detected.
+        """
+        print("[kiosk main] Secret tap pattern detected! Relaying to message handler.", flush=True)
+        if hasattr(self, 'message_handler'):
+            # The tap detector callback runs in its own thread.
+            # We use the message_handler's scheduler to safely call the final
+            # function on the main Qt thread.
+            self.message_handler.schedule_timer(0, self.message_handler.handle_tap_pattern_detected)
+        else:
+            print("[kiosk main] ERROR: message_handler not found, cannot process tap pattern.", flush=True)
 
     def _actual_help_button_update(self):
         """Check timer and update help button state"""
@@ -646,6 +688,15 @@ class KioskApp:
             # Can't use log_exception here as logger is being stopped
             traceback.print_exc()
         
+        # Kill tap detector
+        try:
+            if hasattr(self, 'tap_detector') and self.tap_detector:
+                print("[kiosk main] Stopping tap detector...")
+                self.tap_detector.stop()
+        except Exception as e:
+            print(f"[kiosk main] Error stopping tap detector: {e}")
+            log_exception(e, "Error stopping tap detector")
+
         # Cancel soundcheck if active
         try:
             # Access soundcheck_widget via message_handler
@@ -797,13 +848,14 @@ class KioskApp:
 
     def save_state(self):
         """Save current state to kiosk_state.json"""
+        #print("saving state", flush=True)
         try:
             state = {
                 'game_running': self.timer.is_running if hasattr(self, 'timer') else False,
                 'timer_remaining_seconds': self.timer.time_remaining if hasattr(self, 'timer') else 0,
                 'hints_requested_count': self.hints_requested,
                 'hints_received_count': self.hints_received,
-                'music_position_ms': self.audio_manager.get_music_position() if hasattr(self, 'audio_manager') else -1,
+                'music_position_ms': self.audio_manager.get_music_position_ms() if hasattr(self, 'audio_manager') else -1,
                 'timestamp_utc': time.time()
             }
 
@@ -813,6 +865,17 @@ class KioskApp:
         except Exception as e:
             print(f"[kiosk main] Error saving state: {e}")
             traceback.print_exc()
+
+    def save_state_periodically(self):
+        """
+        Called by a QTimer to periodically save the application state.
+        This is the primary defense against data loss from a hard crash.
+        """
+        # Don't save if the game isn't running or if we are closing down.
+        if self.is_closing or not self.timer.is_running:
+            return
+            
+        self.save_state() # This already has the logic and error handling
 
 def main():
     """Main entry point for the kiosk application."""

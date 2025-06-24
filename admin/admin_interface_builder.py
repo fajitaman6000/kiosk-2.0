@@ -1584,6 +1584,7 @@ class AdminInterfaceBuilder:
                     # No need to update old UI buttons as they are destroyed/recreated
 
                 # --- Stop Audio if active for the previous kiosk ---
+                self.toggle_red_overlay(False)
                 audio_client = self.audio_clients.get(previous_kiosk_name)
                 if audio_client and self.audio_active.get(previous_kiosk_name, False):
                     print(f"[interface builder] Disconnecting audio for {previous_kiosk_name} due to kiosk switch.")
@@ -2197,8 +2198,7 @@ class AdminInterfaceBuilder:
                     except tk.TclError: 
                         pass
                         
-                    if speak_btn.cget('activebackground') == '#ffcccc' or current_speak_btn_bg == '#ffcccc':
-                            speak_btn.config(bg='systemButtonFace', activebackground='systemButtonFace')
+                    self.toggle_red_overlay(False)
             
             except Exception as e:
                 print(f"[interface builder] Error stopping audio for {computer_name}: {e}")
@@ -2350,15 +2350,17 @@ class AdminInterfaceBuilder:
 
                     if speak_btn:
                         if hasattr(speak_btn, 'disable_mic_icon'):
+                            self.toggle_red_overlay(True)
                             speak_btn.config(
                                 image=speak_btn.disable_mic_icon,
                                 text="Disable Microphone",
-                                activebackground='#ffcccc'
+                                #activebackground='#ffcccc'
                             )
                         else:
+                            self.toggle_red_overlay(True)
                             speak_btn.config(
                                 text="Disable Microphone",
-                                activebackground='#ffcccc'
+                                #activebackground='#ffcccc'
                             )
                 else: # This block executes if audio_client.start_speaking() returned False
                     print(f"[interface builder] audio_client.start_speaking() failed for {computer_name}.")
@@ -2814,6 +2816,17 @@ class AdminInterfaceBuilder:
             print(f"[InterfaceBuilder] Double-click: is_current_image_valid is False. Image preview/selection likely failed or window closed. Attach aborted.")
             # No additional error message needed here, as _on_browser_thumbnail_select
             # already provided feedback if it failed to load the image.
+
+    def toggle_red_overlay(self, should_be_red):
+        """Toggles the red overlay on the root window and stats frame."""
+        color = '#f50202' if should_be_red else 'systemButtonFace'
+        try:
+            if self.app.root and self.app.root.winfo_exists():
+                self.app.root.configure(bg=color)
+            if self.stats_frame and self.stats_frame.winfo_exists():
+                self.stats_frame.configure(bg=color)
+        except tk.TclError as e:
+            print(f"[interface builder] Error toggling red overlay: {e}")
 
     def repack_kiosk_frames(self):
         """Forgets all kiosk frames and repacks them in the desired order."""

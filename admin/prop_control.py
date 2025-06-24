@@ -1997,6 +1997,45 @@ class PropControl:
             
         self.app.root.after(5000,lambda: self._status_reset_upon_reset(target_room))
 
+    def reset_room_props(self, room_number):
+        """
+        Sends a reset command to the props of a specific room,
+        regardless of the currently selected room in the UI.
+        This is intended to be called programmatically (e.g., by the network handler).
+        """
+        if room_number is None or not isinstance(room_number, int):
+            print(f"[prop control.reset_room_props]: Invalid room_number provided: {room_number}.")
+            return
+
+        print(f"[prop control.reset_room_props]: Programmatic request to reset props for room {room_number}.")
+        
+        # The paho-mqtt client's publish method is thread-safe.
+        with self._mqtt_clients_lock: # Protect access to self.mqtt_clients
+            client = self.mqtt_clients.get(room_number)
+
+        if not client:
+            room_name_for_log = self.app.rooms.get(room_number, f"number {room_number}")
+            print(f"[prop control.reset_room_props]: MQTT client not found for room '{room_name_for_log}' (ID: {room_number}). Cannot reset.")
+            return
+
+        if not client.is_connected():
+            room_name_for_log = self.app.rooms.get(room_number, f"number {room_number}")
+            print(f"[prop control.reset_room_props]: MQTT client for room '{room_name_for_log}' (ID: {room_number}) is not connected. Cannot reset.")
+            return
+            
+        try:
+            # The publish call itself is thread-safe
+            client.publish("/er/cmd", "reset")
+            room_name_for_log = self.app.rooms.get(room_number, f"number {room_number}")
+            print(f"[prop control.reset_room_props]: Reset command sent to room '{room_name_for_log}' (ID: {room_number}).")
+            
+            # Schedule the state variable reset to happen on the main Tkinter thread.
+            self.app.root.after(5000, lambda: self._status_reset_upon_reset(room_number))
+
+        except Exception as e:
+            room_name_for_log = self.app.rooms.get(room_number, f"number {room_number}")
+            print(f"[prop control.reset_room_props]: Failed to send reset command to room '{room_name_for_log}' (ID: {room_number}): {e}")
+
     def _status_reset_upon_reset(self, target_room):
         try:
             # Also reset progress/state tracking for the reset room
