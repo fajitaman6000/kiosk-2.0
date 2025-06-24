@@ -933,14 +933,20 @@ class PropControl:
             self.standby_played[room_number] = False
         if room_number not in self.finish_sound_played:
             self.finish_sound_played[room_number] = False
-
-        for prop_id, prop_info in list(self.all_props[room_number].items()): # Iterate over copy for safety
+        props_to_check = {}
+        with self._mqtt_data_lock:
+            if room_number in self.all_props:
+                # A simple copy is enough here since we're just reading top-level keys
+                props_to_check = self.all_props[room_number].copy()
+                
+        # Now iterate over the safe copy
+        for prop_id, prop_info in props_to_check.items():
             if 'info' not in prop_info:
                 continue
-
+            
             # Access last_mqtt_updates safely with a lock
             prop_last_mqtt_update = 0
-            with self._mqtt_data_lock:
+            with self._mqtt_data_lock: # Already used correctly here, which is good
                 prop_last_mqtt_update = self.last_mqtt_updates.get(room_number, {}).get(prop_id, 0)
 
             is_offline = (current_time - prop_last_mqtt_update > 3)

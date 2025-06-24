@@ -6,6 +6,8 @@
 ##############################################################################################################################
 # Priority
 
+bar script
+
 update sync to be simple and nuke current contents to avoid dealing with file hashing.
 
 investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
@@ -14,6 +16,8 @@ kiosk stability AND watchdog stability
 
 ##############################################################################################################################
 # Beta to do
+
+fix spinner to more likely to be available symbol
 
 add auto ffmpeg installer to whatever runs through requirements.txt
 

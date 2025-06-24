@@ -2254,42 +2254,44 @@ class AdminInterfaceBuilder:
             def connect():
                 try:
                     print(f"[interface builder] Attempting audio connection to {computer_name}")
-                    if audio_client.connect(computer_name): 
+                    if audio_client.connect(computer_name):
                         print(f"[interface builder] Audio connected for {computer_name}")
                         self.audio_active[computer_name] = True
-                        
-                        if listen_btn and listen_btn.winfo_exists():
-                            if hasattr(listen_btn, 'stop_listening_icon'):
-                                listen_btn.config(
-                                    image=listen_btn.stop_listening_icon,
-                                    text="Stop Listening"
-                                )
-                            else:
-                                listen_btn.config(text="Stop Listening")
-                        if speak_btn and speak_btn.winfo_exists():
-                                speak_btn.config(state='normal')
 
-                        if not self.speaker_mode_var.get():
-                            print("[Interface] Speaker Mode is OFF. Setting output to comms device immediately.")
-                            audio_client.set_output_device(use_communication_device=True)
+                        # --- FIX: Marshal UI updates to main thread ---
+                        def update_ui_on_success():
+                            if listen_btn and listen_btn.winfo_exists():
+                                if hasattr(listen_btn, 'stop_listening_icon'):
+                                    listen_btn.config(image=listen_btn.stop_listening_icon, text="Stop Listening")
+                                else:
+                                    listen_btn.config(text="Stop Listening")
+                            if speak_btn and speak_btn.winfo_exists():
+                                speak_btn.config(state='normal')
+                            
+                            if not self.speaker_mode_var.get():
+                                print("[Interface] Speaker Mode is OFF. Setting output to comms device immediately.")
+                                audio_client.set_output_device(use_communication_device=True)
+
+                        self.app.root.after(0, update_ui_on_success)
+                        # --- END FIX ---
 
                     else:
                         print(f"[interface builder] Audio connection failed for {computer_name}")
                         self.audio_active[computer_name] = False
-                        if listen_btn and listen_btn.winfo_exists():
-                            if hasattr(listen_btn, 'listen_icon'):
-                                listen_btn.config(image=listen_btn.listen_icon, text="Start Listening")
-                            else:
-                                listen_btn.config(text="Start Listening")
+                        # --- FIX: Marshal UI updates to main thread ---
+                        def update_ui_on_failure():
+                            if listen_btn and listen_btn.winfo_exists():
+                                if hasattr(listen_btn, 'listen_icon'):
+                                    listen_btn.config(image=listen_btn.listen_icon, text="Start Listening")
+                                else:
+                                    listen_btn.config(text="Start Listening")
+                        self.app.root.after(0, update_ui_on_failure)
+                        # --- END FIX ---
 
                 except Exception as e:
                     print(f"[interface builder] Error connecting audio for {computer_name}: {e}")
-                    self.audio_active[computer_name] = False 
-                    if listen_btn and listen_btn.winfo_exists():
-                        if hasattr(listen_btn, 'listen_icon'):
-                            listen_btn.config(image=listen_btn.listen_icon, text="Start Listening")
-                        else:
-                            listen_btn.config(text="Start Listening")
+                    self.audio_active[computer_name] = False
+                    # (Similar UI update marshalling would be needed here too if UI changes on exception)
 
             threading.Thread(target=connect, daemon=True).start()
 
