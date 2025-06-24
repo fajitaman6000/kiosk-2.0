@@ -1,18 +1,16 @@
 ##############################################################################################################################
 # Test notes
 
+"clear hints" doesn't remove "HINT REQUESTED" on co-admins
+
 ##############################################################################################################################
 # Priority
 
+update sync to be simple and nuke current contents to avoid dealing with file hashing.
 
 investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
 
-Audio choppiness on slower computers (Time Machine, Zombie)
-    restarting kiosk application resulted in fix
-        memory leak? task manager showed no unusual (albeit high) usage
-    restart app command resulted in crash during video playback (while choppiness issue was occurring)
-
-kiosk crash without watchdog reboot (watchdog crash?)
+kiosk stability AND watchdog stability
 
 ##############################################################################################################################
 # Beta to do

@@ -13,3 +13,4 @@ pyautogui
 psutil
 rotatescreen
 sounddevice
+elevenlabs
