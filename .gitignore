@@ -52,3 +52,4 @@ kiosk/kiosk_state.json
 admin/logs/**
 bar/images/**
 kiosk/images/**
+kiosk/EL_API

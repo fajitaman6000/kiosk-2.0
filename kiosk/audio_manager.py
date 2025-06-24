@@ -64,6 +64,17 @@ class AudioManager:
             7: VoiceProfile(id="HYa84RMjesA45nc1eHzy"), # Time Machine, Dr. Hoffman
         }
 
+        self_dir = os.path.dirname(__file__)
+        key_file_path = os.path.join(self_dir, 'EL_API')
+
+        try:
+            with open(key_file_path, 'r') as f:
+                # .strip() is important to remove any leading/trailing whitespace or newlines
+                self.API_KEY = f.read().strip()
+        except FileNotFoundError:
+            print("ERROR: 'EL_API' not found.")
+            print("Please create the file and place your API key in it.")
+            self.API_KEY = None # Or exit, or handle the error appropriately
 
         self.sound_dir = "kiosk_sounds"
         self.music_dir = "music"
@@ -84,7 +95,7 @@ class AudioManager:
                 # It's best practice to use an environment variable for the API key.
                 # e.g., os.environ.get("ELEVEN_API_KEY")
                 self.tts_client = ElevenLabs(
-                    api_key="sk_43baf5aee5f1ce913b22ee1f43d1cbafa873361bb2f38e2f", # From your tts_test.py
+                    api_key=self.API_KEY, # From your tts_test.py
                 )
                 print("[audio_manager] ElevenLabs client initialized.", flush=True)
             except Exception as e:
