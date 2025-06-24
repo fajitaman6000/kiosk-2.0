@@ -928,6 +928,7 @@ class PropControl:
         finishing_prop_offline = False
         is_standby = False
         standby_prop_offline = False
+        is_game_active = False
 
         if room_number not in self.standby_played:
             self.standby_played[room_number] = False
@@ -1007,6 +1008,9 @@ class PropControl:
                 if kiosk_stat_data:
                     timer_time = kiosk_stat_data.get('timer_time', 2700)
                     timer_expired = timer_time <= 0
+                    # <--- MODIFIED: This is the key check. A game is active if its timer is running.
+                    if kiosk_stat_data.get('timer_running', False):
+                        is_game_active = True
                 assigned_kiosk = computer_name
                 break
 
@@ -1022,7 +1026,8 @@ class PropControl:
         self.update_kiosk_highlight(room_number, is_finished, is_activated, timer_expired)
 
         # --- VICTORY MESSAGE DECISION LOGIC ---
-        if is_finished and not self.fate_sent.get(room_number, False):
+        # <--- MODIFIED: Check if game is active before sending victory message.
+        if is_finished and is_game_active and not self.fate_sent.get(room_number, False):
             if assigned_kiosk and assigned_kiosk in self.app.interface_builder.connected_kiosks:
                 if assigned_kiosk not in self.app.interface_builder.auto_reset_timer_ids:
                     last_sent = self.last_fate_message_time.get(assigned_kiosk)
@@ -1046,18 +1051,19 @@ class PropControl:
 
 
         # --- STANDBY SOUND HANDLING ---
-        if is_standby and not self.standby_played[room_number]:
+        # <--- MODIFIED: Only trigger sound if the game for THIS room is active.
+        if is_standby and is_game_active and not self.standby_played.get(room_number, False):
             self.standby(room_number)
             self.standby_played[room_number] = True
-        # --- END MODIFIED STANDBY HANDLING ---
-
+        
         # --- FINISH SOUND HANDLING ---
-        if is_finished and not self.finish_sound_played[room_number]:
+        # <--- MODIFIED: Only trigger sound if the game for THIS room is active.
+        if is_finished and is_game_active and not self.finish_sound_played.get(room_number, False):
             self.play_finish_sound(room_number)
             self.finish_sound_played[room_number] = True
         elif not is_finished:
+            # Also reset the flag if the game is no longer finished
             self.finish_sound_played[room_number] = False
-
 
         # --- UI UPDATES FOR CURRENTLY SELECTED ROOM ---
         if room_number == self.current_room:
@@ -1070,7 +1076,8 @@ class PropControl:
         # --- STALE GAME CHECK ---
         if room_number in self.last_progress_times:
             time_since_last_progress = time.time() - self.last_progress_times[room_number]
-            if (is_activated and not is_finished and not timer_expired and
+            # <--- MODIFIED: Check if game is active before declaring it stale.
+            if (is_game_active and is_activated and not is_finished and not timer_expired and
                 time_since_last_progress >= self.STALE_THRESHOLD and
                 not self.stale_sound_played.get(room_number, False)):
                 room_key = self.ROOM_MAP.get(room_number)
