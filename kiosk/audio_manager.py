@@ -30,7 +30,7 @@ except ImportError:
 class VoiceProfile:
     """A dataclass to hold all settings for an ElevenLabs voice."""
     id: str = "enTsZzw3jC7Ix5D4b6G4" # Jake by default
-    speed: float = 1.0
+    speed: float = 0.88
     stability: float = 1.0
     similarity_boost: float = 0.33
     style: float = 0.6
@@ -55,13 +55,13 @@ class AudioManager:
              print("[audio_manager] pygame.mixer already initialized.", flush=True)
 
         self.ROOM_VOICES = {
-            1: VoiceProfile(id="ULDQYJJrwNNyGesqciiv", speed=1.0, stability=1.0, similarity_boost=0.15, style=1.0), # Casino, Mr. Martini
+            1: VoiceProfile(id="ULDQYJJrwNNyGesqciiv", speed=0.85, stability=1.0, similarity_boost=0.15, style=1.0), # Casino, Mr. Martini
             2: VoiceProfile(), # MA, Jake
             3: VoiceProfile(), # Wizard
-            4: VoiceProfile(id="zjNczNNODXtx7CmZMnQW", speed=0.83, stability=1.0, similarity_boost=0.1), # Zombie
+            4: VoiceProfile(id="zjNczNNODXtx7CmZMnQW", speed=0.75, stability=1.0, similarity_boost=0.1), # Zombie
             5: VoiceProfile(id="RmwYdAgHgaIElEGGJibh", speed=0.83, similarity_boost=0.10), # Haunted 
             6: VoiceProfile(), # Atlantis
-            7: VoiceProfile(id="HYa84RMjesA45nc1eHzy"), # Time Machine, Dr. Hoffman
+            7: VoiceProfile(id="HYa84RMjesA45nc1eHzy", speed=0.85), # Time Machine, Dr. Hoffman
         }
 
         self_dir = os.path.dirname(__file__)
