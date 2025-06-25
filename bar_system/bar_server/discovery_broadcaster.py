@@ -48,8 +48,8 @@ class DiscoveryBroadcaster(QObject):
         }
         message_bytes = json.dumps(message_payload).encode('utf-8')
 
-        print(f"Starting UDP broadcast on port {DISCOVERY_PORT}")
-        print(f"Broadcasting connection info: {server_ip}:{config.PORT}")
+        print(f"[discovery_broadcaster] Starting UDP broadcast on port {DISCOVERY_PORT}")
+        print(f"[discovery_broadcaster] Broadcasting connection info: {server_ip}:{config.PORT}")
 
         while self._is_running:
             # '<broadcast>' sends to 255.255.255.255
@@ -60,11 +60,11 @@ class DiscoveryBroadcaster(QObject):
                     break
                 time.sleep(1)
 
-        print("UDP broadcast stopped.")
+        print("[discovery_broadcaster] UDP broadcast stopped.")
         if self.udp_socket:
             self.udp_socket.close()
 
     @pyqtSlot()
     def stop(self):
-        print("Stopping UDP broadcaster...")
+        print("[discovery_broadcaster] Stopping UDP broadcaster...")
         self._is_running = False

@@ -131,7 +131,7 @@ class BarManagerWindow(QMainWindow):
         self.delete_btn.setEnabled(True)
 
     def add_item(self):
-        # ... (This method is unchanged)
+        
         dialog = ItemDialog(self)
         if dialog.exec_():
             data = dialog.get_data()
@@ -148,7 +148,7 @@ class BarManagerWindow(QMainWindow):
             self.load_and_display_items()
 
     def edit_selected_item(self):
-        # ... (This method is unchanged)
+        
         if not self.selected_item_id: return
         item_to_edit = self.items_map.get(self.selected_item_id)
         dialog = ItemDialog(self, item_to_edit)
@@ -162,7 +162,7 @@ class BarManagerWindow(QMainWindow):
             self.load_and_display_items()
             
     def delete_selected_item(self):
-        # ... (This method is unchanged)
+        
         if not self.selected_item_id: return
         item_name = self.items_map[self.selected_item_id]['name']
         reply = QMessageBox.question(self, 'Delete Item', f"Delete '{item_name}'?", QMessageBox.Yes | QMessageBox.No)
@@ -174,7 +174,7 @@ class BarManagerWindow(QMainWindow):
 
 
     def refresh_order_list(self):
-        # ... (This method is unchanged)
+        
         self.pending_orders_list.clear()
         for order in self.order_manager.get_pending_orders():
             quantity = order.get("sender_stats", {}).get("quantity", 1)
@@ -185,7 +185,7 @@ class BarManagerWindow(QMainWindow):
             self.pending_orders_list.addItem(item)
     
     def complete_selected_order(self):
-        # ... (This method is unchanged)
+        
         selected_item = self.pending_orders_list.currentItem()
         if not selected_item:
             QMessageBox.warning(self, "No Order Selected", "Please select an order from the list to complete.")
@@ -211,11 +211,11 @@ class BarManagerWindow(QMainWindow):
     def start_server(self):
         if not self.server_thread.isRunning():
             self.server_thread.start()
-            self.log_message("Server TCP listener thread started.")
+            self.log_message("[app_main_window] Server TCP listener thread started.")
         
         if not self.discovery_thread.isRunning(): # <-- START BROADCASTER
             self.discovery_thread.start()
-            self.log_message("Server UDP discovery thread started.")
+            self.log_message("[app_main_window] Server UDP discovery thread started.")
             
         self.server_status_label.setText(f"Server Status: Running and Broadcasting on {config.HOST}:{config.PORT}")
 
@@ -239,7 +239,7 @@ class BarManagerWindow(QMainWindow):
         self.client_handlers[client_socket] = handler
         
         thread.start()
-        self.log_message(f"Client {address} handler moved to new thread. Total clients: {len(self.client_handlers)}")
+        self.log_message(f"[app_main_window] Client {address} handler moved to new thread. Total clients: {len(self.client_handlers)}")
 
     @pyqtSlot(socket.socket)
     def remove_client(self, client_socket):
@@ -312,17 +312,17 @@ class BarManagerWindow(QMainWindow):
                 
                 payload = {"filename": filename, "hash": image_hash, "data": b64_data}
                 client_handler.send_message("IMAGE_DATA", payload)
-                self.log_message(f"Sent image {filename} to {client_handler.address}")
+                self.log_message(f"[app_main_window] Sent image {filename} to {client_handler.address}")
             except Exception as e:
-                self.log_message(f"Error sending image {filename}: {e}")
+                self.log_message(f"[app_main_window] Error sending image {filename}: {e}")
         else:
-            self.log_message(f"Client requested non-existent image: {filename}")
+            self.log_message(f"[app_main_window] Client requested non-existent image: {filename}")
 
     def broadcast_item_list_update(self):
         if not (hasattr(self, 'server_worker') and self.server_worker._is_running): return
         if not self.client_handlers: return # No one to broadcast to
 
-        self.log_message(f"Broadcasting item list update to {len(self.client_handlers)} clients.")
+        self.log_message(f"[app_main_window] Broadcasting item list update to {len(self.client_handlers)} clients.")
         
         client_item_list = [
             {"id": i["id"], "name": i["name"], "description": i.get("description"),
@@ -341,7 +341,7 @@ class BarManagerWindow(QMainWindow):
         print(f"SERVER LOG: [{timestamp}] {message}")
 
     def closeEvent(self, event):
-        self.log_message("Application closing. Shutting down server...")
+        self.log_message("[app_main_window] Application closing. Shutting down server...")
         # Stop all client handlers
         for handler in list(self.client_handlers.values()):
             handler.stop()

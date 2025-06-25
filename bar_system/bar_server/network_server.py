@@ -28,9 +28,9 @@ class ServerWorker(QObject):
         try:
             self.server_socket.bind((config.HOST, config.PORT))
             self.server_socket.listen(10) # Increased backlog for multiple clients
-            self.log_message_signal.emit(f"Server listening on {config.HOST}:{config.PORT}")
+            self.log_message_signal.emit(f"[network_server] Server listening on {config.HOST}:{config.PORT}")
         except OSError as e:
-            self.log_message_signal.emit(f"FATAL: Could not bind to {config.HOST}:{config.PORT} - {e}")
+            self.log_message_signal.emit(f"[network_server] FATAL: Could not bind to {config.HOST}:{config.PORT} - {e}")
             self._is_running = False
             return
 
@@ -39,26 +39,26 @@ class ServerWorker(QObject):
         while self._is_running:
             try:
                 conn, addr = self.server_socket.accept()
-                self.log_message_signal.emit(f"Accepted connection from {addr}")
+                self.log_message_signal.emit(f"[network_server] Accepted connection from {addr}")
                 # Pass the new connection to the main window to be managed
                 self.new_connection_signal.emit(conn, addr)
             except socket.timeout:
                 continue
             except OSError:
                 if self._is_running:
-                     self.log_message_signal.emit("Server socket accept error. Shutting down listener.")
+                     self.log_message_signal.emit("[network_server] Server socket accept error. Shutting down listener.")
                 break
         
         if self.server_socket:
             self.server_socket.close()
             self.server_socket = None
             
-        self.log_message_signal.emit("Server listener has stopped.")
+        self.log_message_signal.emit("[network_server] Server listener has stopped.")
         self.server_stopped_signal.emit()
 
     @pyqtSlot()
     def stop(self):
-        self.log_message_signal.emit("Stopping server listener...")
+        self.log_message_signal.emit("[network_server] Stopping server listener...")
         self._is_running = False
         # To unblock the accept() call, we can just close the socket from this thread
         if self.server_socket:
