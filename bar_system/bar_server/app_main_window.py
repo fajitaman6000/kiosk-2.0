@@ -179,7 +179,7 @@ class BarManagerWindow(QMainWindow):
         for order in self.order_manager.get_pending_orders():
             quantity = order.get("sender_stats", {}).get("quantity", 1)
             customer = order.get("sender_stats", {}).get("customer_name", "N/A")
-            text = f"[{quantity}x] {order['item_name']} for {customer} (ID: ...{order['order_id'][-12:]})"
+            text = f"[{quantity}x] {order['item_name']} for {customer} (from: {order['sender_hostname']}) (ID: ...{order['order_id'][-12:]})"
             item = QListWidgetItem(text)
             item.setData(Qt.UserRole, order['order_id'])
             self.pending_orders_list.addItem(item)

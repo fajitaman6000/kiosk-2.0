@@ -5,8 +5,8 @@ from PyQt5.QtWidgets import (
     QInputDialog, QTextEdit, QHBoxLayout
 )
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal
-import os # For placeholder
+from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal, QTimer
+import os
 import time
 import config
 from network_worker import NetworkWorker
@@ -75,9 +75,6 @@ class ItemTileWidget(QFrame):
 
 
 class AppClientWindow(QMainWindow):
-    # --- FIX --- The signal is no longer needed for sending messages
-    # send_message_signal = pyqtSignal(str, dict)
-
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"Bar Kiosk - {config.CLIENT_HOSTNAME}")
@@ -93,8 +90,7 @@ class AppClientWindow(QMainWindow):
         self.cache_manager = ImageCacheManager(self.network_worker)
         self._setup_ui()
         
-        # Start searching immediately on launch
-        self.toggle_connection()
+        self.start_connection_process()
 
     def _setup_ui(self):
         main_widget = QWidget()
@@ -104,12 +100,8 @@ class AppClientWindow(QMainWindow):
         # Status Bar
         status_layout = QHBoxLayout()
         self.status_label = QLabel("Status: Initializing...")
-        self.connect_button = QPushButton("Connect")
-        self.connect_button.setCheckable(True)
-        self.connect_button.clicked.connect(self.toggle_connection)
         status_layout.addWidget(self.status_label)
         status_layout.addStretch()
-        status_layout.addWidget(self.connect_button)
         main_layout.addLayout(status_layout)
 
         # Item Display Area
@@ -135,11 +127,13 @@ class AppClientWindow(QMainWindow):
         self.network_thread = QThread()
         self.network_worker = NetworkWorker()
         self.network_worker.moveToThread(self.network_thread)
-        # (connections for network_worker are the same as before)
         self.network_worker.status_updated.connect(self.log_message)
         self.network_worker.status_updated.connect(self.update_status_bar)
         self.network_worker.items_received.connect(self.handle_items_update)
-        # ... (all other network_worker connections are the same)
+        self.network_worker.image_received.connect(self.handle_image_update)
+        self.network_worker.order_acknowledged.connect(self.handle_order_ack)
+        self.network_worker.order_rejected.connect(self.handle_order_nack)
+        self.network_worker.server_error.connect(self.handle_server_error)
         self.network_worker.disconnected.connect(self.on_disconnected)
         self.network_thread.started.connect(self.network_worker.run)
 
@@ -150,42 +144,29 @@ class AppClientWindow(QMainWindow):
         self.discovery_listener.log_message.connect(self.log_message)
         self.discovery_listener.server_found.connect(self.on_server_discovered)
         self.discovery_thread.started.connect(self.discovery_listener.run)
+    
+    @pyqtSlot()
+    def start_connection_process(self):
+        if self.network_thread.isRunning() or self.discovery_thread.isRunning():
+            return
         
-    def toggle_connection(self):
-        # This button now controls the entire connect/disconnect process
-        if self.connect_button.isChecked():
-            # Start the search
-            if not self.discovery_thread.isRunning():
-                self.connect_button.setText("Searching...")
-                self.connect_button.setEnabled(False) # Disable until search completes or is cancelled
-                self.update_status_bar("Searching for server...")
-                self.discovery_thread.start()
-        else:
-            # User clicked "Disconnect" or wants to stop searching
-            self.log_message("Manual disconnect initiated.")
-            # Stop whichever thread is active
-            if self.discovery_thread.isRunning():
-                self.discovery_listener.stop()
-                self.discovery_thread.quit()
-                self.discovery_thread.wait()
-            if self.network_thread.isRunning():
-                self.network_worker.stop()
-            # The on_disconnected slot will handle UI cleanup
-
+        self.items_cache.clear()
+        self.update_items_display()
+        
+        self.update_status_bar("Searching for server...")
+        self.discovery_thread.start()
+        
     @pyqtSlot(str, int)
     def on_server_discovered(self, host, port):
-        """Called when the discovery listener finds the server."""
-        # Stop the discovery process
-        self.discovery_listener.stop()
-        self.discovery_thread.quit()
-        self.discovery_thread.wait()
+        if self.discovery_thread.isRunning():
+            self.discovery_listener.stop()
+            self.discovery_thread.quit()
+            self.discovery_thread.wait()
 
         # Save the server details and start the main TCP connection worker
         self.log_message(f"Server found. Connecting to {host}:{port} via TCP...")
-        self.network_worker.set_server_details(host, port) # We need to add this method
+        self.network_worker.set_server_details(host, port)
         self.network_thread.start()
-        self.connect_button.setText("Disconnect")
-        self.connect_button.setEnabled(True)
 
     @pyqtSlot(str)
     def update_status_bar(self, status):
@@ -193,9 +174,7 @@ class AppClientWindow(QMainWindow):
 
     @pyqtSlot(dict)
     def handle_items_update(self, items_dict):
-        # --- REFACTOR --- Detect if a full redraw is needed or just an update
         if set(self.items_cache.keys()) != set(items_dict.keys()):
-            # If the item list itself changed (items added/removed), do a full redraw.
             self.items_cache = items_dict
             self.log_message(f"Received full item list update with {len(items_dict)} items.")
             self.update_items_display(full_redraw=True)
@@ -205,10 +184,8 @@ class AppClientWindow(QMainWindow):
             self.log_message(f"Received item data update for {len(items_dict)} items.")
             self.update_items_display(full_redraw=False)
 
-
     @pyqtSlot(dict)
     def handle_image_update(self, image_payload):
-        """ --- REFACTORED --- More efficient image update. """
         local_path = self.cache_manager.save_image_from_server(image_payload)
         if not local_path:
             return
@@ -231,58 +208,56 @@ class AppClientWindow(QMainWindow):
             # Fallback to a full redraw if something is out of sync
             self.update_items_display(full_redraw=True)
 
-
+    # --- METHOD ACTUALLY FIXED THIS TIME ---
     def update_items_display(self, full_redraw=True):
         """
-        Updates the item grid. If full_redraw is True, it rebuilds the entire grid.
-        Otherwise, it assumes the widgets are there and just updates their data (future optimization).
+        Updates the item grid. Clears the existing grid and repopulates it based
+        on the current state of self.items_cache. This is now stateless and safe.
         """
-        # For now, any update triggers a full redraw for simplicity.
-        # The main optimization is in handle_image_update which now avoids this.
-        if not full_redraw and self.tile_widgets:
-             # This block is for a future optimization where we update text in-place.
-             # For now, we only enter here if it's a data update, but we still redraw.
-             pass
-
-        # Clear existing widgets
+        # 1. Clear all existing widgets from the layout
         for i in reversed(range(self.tiles_layout.count())):
             widget = self.tiles_layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
+        
+        # Always clear the tile widget map when doing a redraw
         self.tile_widgets.clear()
 
+        # 2. Decide what to display based on the current cache
         if not self.items_cache:
-            return
-
-        row, col = 0, 0
-        max_cols = 3
-        # Sort items alphabetically for a consistent display
-        sorted_items = sorted(self.items_cache.values(), key=lambda x: x.get('name', ''))
-        
-        for item_data in sorted_items:
-            local_image_path = self.cache_manager.check_and_request_image(item_data)
+            # If cache is empty, display a temporary "waiting" message.
+            waiting_label = QLabel("Searching for server...")
+            waiting_label.setAlignment(Qt.AlignCenter)
+            waiting_label.setStyleSheet("font-size: 22px; color: #888;")
+            self.tiles_layout.addWidget(waiting_label, 0, 0, 1, 3)
+        else:
+            # If we have items, populate the grid with tiles
+            row, col = 0, 0
+            max_cols = 3
+            sorted_items = sorted(self.items_cache.values(), key=lambda x: x.get('name', ''))
             
-            tile = ItemTileWidget(item_data, local_image_path)
-            tile.order_button.clicked.connect(
-                lambda checked, i=item_data['id']: self.prompt_and_send_order(i)
-            )
-            
-            self.tiles_layout.addWidget(tile, row, col)
-            self.tile_widgets[item_data['id']] = tile
-            col += 1
-            if col >= max_cols:
-                col = 0
-                row += 1
+            for item_data in sorted_items:
+                local_image_path = self.cache_manager.check_and_request_image(item_data)
+                
+                tile = ItemTileWidget(item_data, local_image_path)
+                tile.order_button.clicked.connect(
+                    lambda checked, i=item_data['id']: self.prompt_and_send_order(i)
+                )
+                
+                self.tiles_layout.addWidget(tile, row, col)
+                self.tile_widgets[item_data['id']] = tile
+                col += 1
+                if col >= max_cols:
+                    col = 0
+                    row += 1
 
     def prompt_and_send_order(self, item_id):
         if not self.network_thread.isRunning():
-            QMessageBox.warning(self, "Not Connected", "Please connect to the server to place an order.")
+            QMessageBox.warning(self, "Not Connected", "Could not place order: not connected to the server.")
             return
 
         item = self.items_cache.get(item_id)
-        if not item:
-            self.log_message(f"ERROR: Item ID {item_id} not found in cache during order.")
-            return
+        if not item: return
 
         quantity, ok = QInputDialog.getInt(self, "Order Quantity", f"Enter quantity for {item['name']}:", 1, 1, 99)
         if not ok: return
@@ -292,20 +267,14 @@ class AppClientWindow(QMainWindow):
         
         order_id = f"{config.CLIENT_HOSTNAME}_{int(time.time())}_{item_id}"
         order_payload = {
-            "order_id": order_id,
-            "item_id": item_id,
-            "sender_stats": {
-                "quantity": quantity,
-                "customer_name": customer_name or "Anonymous",
-                "order_time_local": time.strftime("%Y-%m-%d %H:%M:%S")
-            },
+            "order_id": order_id, "item_id": item_id,
+            "sender_stats": {"quantity": quantity, "customer_name": customer_name or "Anonymous",
+                             "order_time_local": time.strftime("%Y-%m-%d %H:%M:%S")},
             "sender_hostname": config.CLIENT_HOSTNAME
         }
         
-        # --- FIX --- Call the worker's method directly. This is now thread-safe.
         self.network_worker.send_message("ORDER_ITEM", order_payload)
         
-        # UX: Disable button to prevent double-sends
         tile = self.tile_widgets.get(item_id)
         if tile:
             tile.order_button.setEnabled(False)
@@ -344,18 +313,18 @@ class AppClientWindow(QMainWindow):
     @pyqtSlot()
     def on_disconnected(self):
         self.log_message("Connection closed.")
-        self.update_status_bar("Disconnected. Click 'Connect' to search again.")
-        self.connect_button.setChecked(False)
-        self.connect_button.setText("Connect")
-        self.connect_button.setEnabled(True) # Re-enable the button
+        self.update_status_bar("Disconnected. Will try to reconnect...")
         
         if self.network_thread.isRunning():
             self.network_thread.quit()
             self.network_thread.wait()
+            
+        QTimer.singleShot(3000, self.start_connection_process)
 
     def closeEvent(self, event):
         self.log_message("Application closing...")
-        # Stop discovery thread if it's running
+        self.on_disconnected = lambda: None
+        
         if self.discovery_thread.isRunning():
             self.discovery_listener.stop()
             self.discovery_thread.quit()
