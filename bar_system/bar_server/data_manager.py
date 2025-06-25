@@ -93,17 +93,22 @@ def load_items_from_config():
         return default_items
 
 def save_items_to_config(items_data):
-    """Saves the list of item data to the JSON config file."""
-    # We don't save the hash, it's generated on load.
+    """Saves the list of item data to the JSON config file atomically."""
     items_to_save = []
     for item in items_data:
-        # Create a copy and remove runtime-only keys
         item_copy = item.copy()
         item_copy.pop('image_hash', None)
         items_to_save.append(item_copy)
 
+    temp_file_path = config.ITEMS_CONFIG_FILE + ".tmp"
     try:
-        with open(config.ITEMS_CONFIG_FILE, 'w') as f:
+        with open(temp_file_path, 'w') as f:
             json.dump(items_to_save, f, indent=4)
+        # If write is successful, atomically rename the temp file to the final file
+        os.replace(temp_file_path, config.ITEMS_CONFIG_FILE)
     except Exception as e:
         print(f"Error saving to {config.ITEMS_CONFIG_FILE}: {e}")
+    finally:
+        # Ensure the temp file is cleaned up on error
+        if os.path.exists(temp_file_path):
+            os.remove(temp_file_path)

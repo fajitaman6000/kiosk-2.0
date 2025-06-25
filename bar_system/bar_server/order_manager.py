@@ -1,5 +1,6 @@
 # bar_server/order_manager.py
 import json
+import os  # --- NEW --- Need os for os.replace and os.remove
 from datetime import datetime, timezone
 from PyQt5.QtCore import QObject, pyqtSignal
 
@@ -15,18 +16,40 @@ class OrderManager(QObject):
         self._load_orders()
 
     def _load_orders(self):
-        if not config.os.path.exists(config.ORDER_LOG_FILE):
+        # We can add more robust loading here if needed, but for now this is fine.
+        if not os.path.exists(config.ORDER_LOG_FILE):
             return
-        with open(config.ORDER_LOG_FILE, 'r') as f:
-            all_orders = json.load(f)
-        self.pending_orders = [o for o in all_orders if o.get('status') == 'Pending']
-        self.completed_orders = [o for o in all_orders if o.get('status') == 'Completed']
-        print(f"Loaded {len(self.pending_orders)} pending and {len(self.completed_orders)} completed orders.")
+        try:
+            with open(config.ORDER_LOG_FILE, 'r') as f:
+                all_orders = json.load(f)
+            self.pending_orders = [o for o in all_orders if o.get('status') == 'Pending']
+            self.completed_orders = [o for o in all_orders if o.get('status') == 'Completed']
+            print(f"Loaded {len(self.pending_orders)} pending and {len(self.completed_orders)} completed orders.")
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Error loading order history from {config.ORDER_LOG_FILE}: {e}. Starting fresh.")
+            # Optional: attempt to load a backup file if one exists
+            self.pending_orders = []
+            self.completed_orders = []
 
+
+    # --- MODIFIED --- This method is now atomic and safe from corruption on crash.
     def _save_orders(self):
+        """Saves the current order lists to the log file atomically."""
         all_orders = self.pending_orders + self.completed_orders
-        with open(config.ORDER_LOG_FILE, 'w') as f:
-            json.dump(all_orders, f, indent=4)
+        temp_file_path = config.ORDER_LOG_FILE + ".tmp"
+        
+        try:
+            with open(temp_file_path, 'w') as f:
+                json.dump(all_orders, f, indent=4)
+            # Atomically rename the temp file to the final file.
+            # This is much safer than writing directly to the original file.
+            os.replace(temp_file_path, config.ORDER_LOG_FILE)
+        except Exception as e:
+            print(f"Error saving to {config.ORDER_LOG_FILE}: {e}")
+        finally:
+            # Ensure the temp file is cleaned up if it still exists
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
 
     def add_order(self, order_data, item_map):
         order_id = order_data.get("order_id")
@@ -35,7 +58,7 @@ class OrderManager(QObject):
 
         if not item_info:
             print(f"Cannot process order {order_id}: Item ID {item_id} not found.")
-            return None # Indicate failure
+            return None
 
         new_order = {
             **order_data,
@@ -49,7 +72,7 @@ class OrderManager(QObject):
         self._save_orders()
         self.order_updated.emit()
         print(f"Added new pending order: {order_id}")
-        return new_order # Indicate success
+        return new_order
 
     def complete_order(self, order_id):
         order_to_complete = None

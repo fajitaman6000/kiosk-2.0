@@ -10,3 +10,10 @@ bartender needs:
 
 room name
 order quantity
+
+
+
+#########################
+# Extras
+
+analytics
