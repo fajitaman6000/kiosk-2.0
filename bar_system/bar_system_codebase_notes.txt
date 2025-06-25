@@ -24,4 +24,7 @@ pop up as a window overlay as a child of the main kiosk QT application.
 The following will be notes regarding specifics in the code. If you see anything that is no longer true, remove it:
 ##################################
 
-
+  - Both client and server use a producer-consumer pattern for sending messages to network threads. The main thread `put`s a message onto a `queue.Queue`, and the worker thread `get`s it and sends it over the socket. This is a robust, thread-safe design.
+  - Communication from worker threads back to the main UI thread is handled by Qt's signal/slot mechanism, which is also thread-safe.
+  - Both `data_manager.py` and `order_manager.py` use an atomic write pattern (save to `.tmp` file, then `os.replace`). This prevents data corruption on crash.
+  - Optimized the client UI refresh logic. Instead of redrawing all item tiles when a single image arrives, `app_client_window.py` now finds the specific tile and updates its pixmap directly, which is far more efficient.

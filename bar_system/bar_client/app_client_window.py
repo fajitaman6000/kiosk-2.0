@@ -29,23 +29,11 @@ class ItemTileWidget(QFrame):
         self.image_label = QLabel()
         self.image_label.setFixedSize(150, 150)
         self.image_label.setAlignment(Qt.AlignCenter)
-        if image_path:
-            pixmap = QPixmap(image_path)
-            self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        else:
-            # Using a placeholder image for better visual consistency
-            # Make sure you have a 'placeholder.png' in your client app directory
-            placeholder_path = os.path.join(config.APP_ROOT, "placeholder.png")
-            pixmap = QPixmap(placeholder_path)
-            if not pixmap.isNull():
-                 self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-            else:
-                self.image_label.setText("(Loading Image...)")
-                self.image_label.setStyleSheet("border: 1px solid gray; background-color: #eee;")
+        self.set_image(image_path) # Use helper method
         layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
 
         # Name and Price
-        price = item_data.get("price") 
+        price = item_data.get("price")
         if price is None:
             price = 0.0 # Default to 0.0 if price is None
 
@@ -69,6 +57,21 @@ class ItemTileWidget(QFrame):
         self.order_button = QPushButton("Order Now")
         layout.addWidget(self.order_button)
 
+    def set_image(self, image_path):
+        """Helper method to set the image label's pixmap from a path."""
+        if image_path and os.path.exists(image_path):
+            pixmap = QPixmap(image_path)
+            self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        else:
+            # Using a placeholder image for better visual consistency
+            placeholder_path = os.path.join(config.APP_ROOT, "placeholder.png")
+            pixmap = QPixmap(placeholder_path)
+            if not pixmap.isNull():
+                 self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                self.image_label.setText("(Loading Image...)")
+                self.image_label.setStyleSheet("border: 1px solid gray; background-color: #eee;")
+
 
 class AppClientWindow(QMainWindow):
     # --- FIX --- The signal is no longer needed for sending messages
@@ -80,7 +83,7 @@ class AppClientWindow(QMainWindow):
         self.setGeometry(100, 100, 850, 600)
 
         self.items_cache = {} # {item_id: item_data}
-        self.tile_widgets = {} # To easily access tiles by item_id
+        self.tile_widgets = {} # To easily access tiles by item_id: {item_id: ItemTileWidget}
 
         self._setup_network()
         # --- FIX --- Pass the worker directly to the cache manager
@@ -159,27 +162,65 @@ class AppClientWindow(QMainWindow):
 
     @pyqtSlot(dict)
     def handle_items_update(self, items_dict):
-        self.items_cache = items_dict
-        self.log_message(f"Received {len(items_dict)} items from server.")
-        self.update_items_display()
-        
+        # --- REFACTOR --- Detect if a full redraw is needed or just an update
+        if set(self.items_cache.keys()) != set(items_dict.keys()):
+            # If the item list itself changed (items added/removed), do a full redraw.
+            self.items_cache = items_dict
+            self.log_message(f"Received full item list update with {len(items_dict)} items.")
+            self.update_items_display(full_redraw=True)
+        else:
+            # If it's just a data update (e.g., price change), update in place.
+            self.items_cache = items_dict
+            self.log_message(f"Received item data update for {len(items_dict)} items.")
+            self.update_items_display(full_redraw=False)
+
+
     @pyqtSlot(dict)
     def handle_image_update(self, image_payload):
+        """ --- REFACTORED --- More efficient image update. """
         local_path = self.cache_manager.save_image_from_server(image_payload)
-        if local_path:
-            self.log_message(f"Image '{image_payload.get('filename')}' cached.")
-            self.update_items_display()
+        if not local_path:
+            return
 
-    def update_items_display(self):
+        self.log_message(f"Image '{image_payload.get('filename')}' cached.")
+        
+        # Find which item this image belongs to
+        item_id_to_update = None
+        for item_id, item_data in self.items_cache.items():
+            if item_data.get("image_file") == image_payload.get("filename"):
+                item_id_to_update = item_id
+                break
+        
+        # If we found the corresponding item and its tile widget exists, update it directly
+        if item_id_to_update and item_id_to_update in self.tile_widgets:
+            tile = self.tile_widgets[item_id_to_update]
+            tile.set_image(local_path)
+            self.log_message(f"Updated tile image for item '{item_data.get('name')}'.")
+        else:
+            # Fallback to a full redraw if something is out of sync
+            self.update_items_display(full_redraw=True)
+
+
+    def update_items_display(self, full_redraw=True):
+        """
+        Updates the item grid. If full_redraw is True, it rebuilds the entire grid.
+        Otherwise, it assumes the widgets are there and just updates their data (future optimization).
+        """
+        # For now, any update triggers a full redraw for simplicity.
+        # The main optimization is in handle_image_update which now avoids this.
+        if not full_redraw and self.tile_widgets:
+             # This block is for a future optimization where we update text in-place.
+             # For now, we only enter here if it's a data update, but we still redraw.
+             pass
+
         # Clear existing widgets
-        for i in reversed(range(self.tiles_layout.count())): 
+        for i in reversed(range(self.tiles_layout.count())):
             widget = self.tiles_layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
         self.tile_widgets.clear()
 
         if not self.items_cache:
-            # You can add a placeholder label here if you want
             return
 
         row, col = 0, 0
