@@ -10,56 +10,29 @@ bar script
 
 update sync to be simple and nuke current contents to avoid dealing with file hashing.
 
-investigate vulnerabilities of current command designation system (kiosks needn't be receiving commands to other kiosks)
-
 kiosk stability AND watchdog stability
 
 ##############################################################################################################################
 # Beta to do
 
-fix spinner to more likely to be available symbol
-
 add auto ffmpeg installer to whatever runs through requirements.txt
-
-switch audio device to headphones only when using microphone?
 
 move video player to c++ (python-vlc/libvlc)
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
-"room has 2 minutes remaining"
-
 "detected offline prop in room xyz"
 
-average prop finish time measurement
-
-sign-in and log system for gm accountability
-
 microphone input device list has way too many entries
-
-sync button reliability
-
-drink ordering behavior
-
-fix current image hint text
 
 film video solutions
 
 ##############################################################################################################################
 # Todo
 
-prop monitoring
-
-sync system makes it unfriendly for anyone else to create hints currently
-    upload single files instead of uploading everything? with that text string methodology?
 
 tap to close hint, instead opening image automatically on reception with text below it?
-
-"currently displayed hint"
-"please select nudge frequency"
-auto create folders for hint contents
-
-make image viewing overlaying everything instead of hiding elements
+    make image viewing overlaying everything instead of hiding elements
 
 finish admin_interface_builder encapsulation
     send_hint and clear_manual_hint are still being used directly from admin_interface_builder instead of hint_functions
@@ -81,6 +54,16 @@ mqtt makes separate connections for ma and casino, causing double reset and stan
 
 ##############################################################################################################################
 # ambitious extra ideas:
+
+sign-in and log system for gm accountability
+
+average prop finish time measurement
+
+prop monitoring
+
+"please select nudge frequency"
+
+auto create folders for hint contents
 
 times touched screen stat
 

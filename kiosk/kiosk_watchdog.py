@@ -54,7 +54,12 @@ reader_thread = None
 monitor_active_flag_for_reader = threading.Event()
 restart_count = 0
 lock = threading.Lock()
-spinner_chars = ["⠁", "⠂", "⠄", "⡀", "⡈", "⡐", "⡠", "⣀", "⣁", "⣂", "⣄", "⣌", "⣔", "⣤", "⣥", "⣦", "⣮", "⣶", "⣷", "⣿", "⡿", "⠿", "⢟", "⠟", "⡛", "⠛", "⠫", "⢋", "⠋", "⠍", "⡉", "⠉", "⠑", "⠡", "⢁"]
+spinner_chars = [
+			"-",
+			"\\",
+			"|",
+			"/"
+		]
 spinner_idx = 0
 last_heartbeat_time = 0.0
 is_crash_restart = False  # Track if this is a crash restart
