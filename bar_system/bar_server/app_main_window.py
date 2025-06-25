@@ -17,6 +17,7 @@ from network_server import ServerWorker
 from client_handler import ClientHandler # NEW: Import the client handler
 from app_widgets import TileWidget, ItemDialog
 from order_manager import OrderManager
+from discovery_broadcaster import DiscoveryBroadcaster
 
 class BarManagerWindow(QMainWindow):
     def __init__(self):
@@ -193,20 +194,30 @@ class BarManagerWindow(QMainWindow):
         self.order_manager.complete_order(order_id)
         
     def _setup_network_server(self):
+        # --- TCP Server for Clients ---
         self.server_thread = QThread()
         self.server_worker = ServerWorker()
         self.server_worker.moveToThread(self.server_thread)
-        
-        # Connect signals from the main server listener
         self.server_worker.log_message_signal.connect(self.log_message)
         self.server_worker.new_connection_signal.connect(self.add_new_client)
         self.server_thread.started.connect(self.server_worker.run)
 
+        # --- UDP Broadcaster for Discovery ---
+        self.discovery_thread = QThread()
+        self.discovery_broadcaster = DiscoveryBroadcaster()
+        self.discovery_broadcaster.moveToThread(self.discovery_thread)
+        self.discovery_thread.started.connect(self.discovery_broadcaster.run)
+
     def start_server(self):
-        if self.server_thread.isRunning(): return
-        self.server_thread.start()
-        self.server_status_label.setText(f"Server Status: Running on {config.HOST}:{config.PORT}")
-        self.log_message("Server thread started.")
+        if not self.server_thread.isRunning():
+            self.server_thread.start()
+            self.log_message("Server TCP listener thread started.")
+        
+        if not self.discovery_thread.isRunning(): # <-- START BROADCASTER
+            self.discovery_thread.start()
+            self.log_message("Server UDP discovery thread started.")
+            
+        self.server_status_label.setText(f"Server Status: Running and Broadcasting on {config.HOST}:{config.PORT}")
 
     @pyqtSlot(socket.socket, tuple)
     def add_new_client(self, client_socket, address):
@@ -335,6 +346,12 @@ class BarManagerWindow(QMainWindow):
         for handler in list(self.client_handlers.values()):
             handler.stop()
         
+        # Stop the discovery broadcaster
+        if self.discovery_thread.isRunning(): # <-- STOP BROADCASTER
+            self.discovery_broadcaster.stop()
+            self.discovery_thread.quit()
+            self.discovery_thread.wait(3000)
+
         # Stop the main server listener
         if self.server_thread.isRunning():
             self.server_worker.stop()

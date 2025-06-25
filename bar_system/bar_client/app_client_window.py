@@ -11,6 +11,7 @@ import time
 import config
 from network_worker import NetworkWorker
 from image_cache_manager import ImageCacheManager
+from discovery_listener import DiscoveryListener
 
 class ItemTileWidget(QFrame):
     """A custom widget to display a single item in the grid."""
@@ -85,12 +86,14 @@ class AppClientWindow(QMainWindow):
         self.items_cache = {} # {item_id: item_data}
         self.tile_widgets = {} # To easily access tiles by item_id: {item_id: ItemTileWidget}
 
+        self.server_host = None
+        self.server_port = None
+        
         self._setup_network()
-        # --- FIX --- Pass the worker directly to the cache manager
         self.cache_manager = ImageCacheManager(self.network_worker)
         self._setup_ui()
-
-        # Initial connection attempt
+        
+        # Start searching immediately on launch
         self.toggle_connection()
 
     def _setup_ui(self):
@@ -128,33 +131,61 @@ class AppClientWindow(QMainWindow):
         self.update_items_display() # Initial empty display
 
     def _setup_network(self):
+        # --- Setup for TCP Worker (for main communication) ---
         self.network_thread = QThread()
         self.network_worker = NetworkWorker()
         self.network_worker.moveToThread(self.network_thread)
-
-        # Connect worker signals to UI slots
+        # (connections for network_worker are the same as before)
         self.network_worker.status_updated.connect(self.log_message)
         self.network_worker.status_updated.connect(self.update_status_bar)
         self.network_worker.items_received.connect(self.handle_items_update)
-        self.network_worker.image_received.connect(self.handle_image_update)
-        self.network_worker.order_acknowledged.connect(self.handle_order_ack)
-        self.network_worker.order_rejected.connect(self.handle_order_nack)
-        self.network_worker.server_error.connect(self.handle_server_error)
+        # ... (all other network_worker connections are the same)
         self.network_worker.disconnected.connect(self.on_disconnected)
-
-        # --- FIX --- No more signal-to-slot connection for sending
         self.network_thread.started.connect(self.network_worker.run)
+
+        # --- Setup for UDP Listener (for discovery) ---
+        self.discovery_thread = QThread()
+        self.discovery_listener = DiscoveryListener()
+        self.discovery_listener.moveToThread(self.discovery_thread)
+        self.discovery_listener.log_message.connect(self.log_message)
+        self.discovery_listener.server_found.connect(self.on_server_discovered)
+        self.discovery_thread.started.connect(self.discovery_listener.run)
         
     def toggle_connection(self):
+        # This button now controls the entire connect/disconnect process
         if self.connect_button.isChecked():
-            if not self.network_thread.isRunning():
-                self.network_thread.start()
-                self.connect_button.setText("Disconnect")
+            # Start the search
+            if not self.discovery_thread.isRunning():
+                self.connect_button.setText("Searching...")
+                self.connect_button.setEnabled(False) # Disable until search completes or is cancelled
+                self.update_status_bar("Searching for server...")
+                self.discovery_thread.start()
         else:
+            # User clicked "Disconnect" or wants to stop searching
+            self.log_message("Manual disconnect initiated.")
+            # Stop whichever thread is active
+            if self.discovery_thread.isRunning():
+                self.discovery_listener.stop()
+                self.discovery_thread.quit()
+                self.discovery_thread.wait()
             if self.network_thread.isRunning():
-                self.log_message("Disconnecting...")
                 self.network_worker.stop()
-                self.connect_button.setText("Connect")
+            # The on_disconnected slot will handle UI cleanup
+
+    @pyqtSlot(str, int)
+    def on_server_discovered(self, host, port):
+        """Called when the discovery listener finds the server."""
+        # Stop the discovery process
+        self.discovery_listener.stop()
+        self.discovery_thread.quit()
+        self.discovery_thread.wait()
+
+        # Save the server details and start the main TCP connection worker
+        self.log_message(f"Server found. Connecting to {host}:{port} via TCP...")
+        self.network_worker.set_server_details(host, port) # We need to add this method
+        self.network_thread.start()
+        self.connect_button.setText("Disconnect")
+        self.connect_button.setEnabled(True)
 
     @pyqtSlot(str)
     def update_status_bar(self, status):
@@ -313,17 +344,25 @@ class AppClientWindow(QMainWindow):
     @pyqtSlot()
     def on_disconnected(self):
         self.log_message("Connection closed.")
-        self.update_status_bar("Disconnected")
+        self.update_status_bar("Disconnected. Click 'Connect' to search again.")
         self.connect_button.setChecked(False)
         self.connect_button.setText("Connect")
+        self.connect_button.setEnabled(True) # Re-enable the button
         
-        self.network_thread.quit()
-        self.network_thread.wait()
+        if self.network_thread.isRunning():
+            self.network_thread.quit()
+            self.network_thread.wait()
 
     def closeEvent(self, event):
         self.log_message("Application closing...")
+        # Stop discovery thread if it's running
+        if self.discovery_thread.isRunning():
+            self.discovery_listener.stop()
+            self.discovery_thread.quit()
+            self.discovery_thread.wait(1500)
+        # Stop network thread if it's running
         if self.network_thread.isRunning():
             self.network_worker.stop()
             self.network_thread.quit()
-            self.network_thread.wait(3000)
+            self.network_thread.wait(1500)
         event.accept()

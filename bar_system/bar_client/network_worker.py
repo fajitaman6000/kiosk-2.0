@@ -25,23 +25,31 @@ class NetworkWorker(QObject):
         super().__init__()
         self.sock = None
         self._is_running = False
-        # --- FIX --- A thread-safe queue for outgoing messages
+
         self.send_queue = Queue()
+        self.server_host = None
+        self.server_port = None
+
+    def set_server_details(self, host, port):
+        """Sets the server address and port to connect to."""
+        self.server_host = host
+        self.server_port = port
 
     @pyqtSlot()
     def run(self):
         """The main loop for the network worker."""
-        if self._is_running:
+        if self._is_running or not self.server_host or not self.server_port:
+            self.status_updated.emit("Cannot connect: Server details not set.")
+            self._handle_disconnect()
             return
-
+        
         self._is_running = True
         
-        # --- Initial connection logic is now part of the run loop ---
         try:
-            self.status_updated.emit(f"Connecting to {config.SERVER_HOST}:{config.SERVER_PORT}...")
+            self.status_updated.emit(f"Connecting to {self.server_host}:{self.server_port}...")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(5.0)
-            self.sock.connect((config.SERVER_HOST, config.SERVER_PORT))
+            self.sock.connect((self.server_host, self.server_port))
             self.sock.settimeout(0.1)  # Short timeout for non-blocking operations
             self.status_updated.emit("Connected")
             self.send_message("REQUEST_ITEMS", {}) # Initial request

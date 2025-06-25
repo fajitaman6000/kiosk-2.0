@@ -8,7 +8,7 @@ CLIENT_HOSTNAME = socket.gethostname()
 
 # --- Network ---
 # CHANGE THIS to the IP address or hostname of the server computer
-SERVER_HOST = 'localhost' 
+# SERVER_HOST = 'localhost' 
 SERVER_PORT = 50888 # Must match server's port
 
 # --- Cache ---
