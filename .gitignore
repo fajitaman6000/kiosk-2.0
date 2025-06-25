@@ -53,3 +53,9 @@ admin/logs/**
 bar/images/**
 kiosk/images/**
 kiosk/EL_API
+images/**
+items_config.json
+bar_system/bar_client/client_cache/images/**
+bar_system/bar_client/client_cache/cache_manifest.json
+bar_system/bar_server/order_history.json
+bar_system/bar_server/images/**

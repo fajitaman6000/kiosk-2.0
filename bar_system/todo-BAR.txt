@@ -1,0 +1,12 @@
+########################
+# Current Issues
+
+images created in parent directory, not same directory as main.py
+
+########################
+# To do 
+
+bartender needs:
+
+room name
+order quantity
