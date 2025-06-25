@@ -1,4 +1,5 @@
 # bar_server/app_widgets.py
+import os  # --- NEW --- Direct import for clarity
 from PyQt5.QtWidgets import (
     QFrame, QVBoxLayout, QLabel, QHBoxLayout, QLineEdit, QFileDialog,
     QDialog, QFormLayout, QPushButton, QTextEdit, QDoubleSpinBox
@@ -11,6 +12,8 @@ import data_manager
 
 class TileWidget(QFrame):
     tile_clicked = pyqtSignal(str, QFrame)
+    tile_double_clicked = pyqtSignal()
+
 
     def __init__(self, item_data):
         super().__init__()
@@ -26,18 +29,28 @@ class TileWidget(QFrame):
 
         layout = QVBoxLayout(self)
 
-        # Image
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignCenter)
-        image_full_path = data_manager.os.path.join(config.IMAGE_DIR, item_data.get("image_file", ""))
-        if data_manager.os.path.exists(image_full_path):
+        
+        # --- MODIFIED BLOCK START ---
+        image_full_path = os.path.join(config.IMAGE_DIR, item_data.get("image_file", ""))
+        
+        if os.path.exists(image_full_path):
             pixmap = QPixmap(image_full_path)
             image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            image_label.setText("No Image")
+            # Fallback to a standard placeholder image, just like the client
+            placeholder_path = os.path.join(config.IMAGE_DIR, "_placeholder.png")
+            pixmap = QPixmap(placeholder_path)
+            if not pixmap.isNull():
+                image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                # If even the placeholder is missing, show text.
+                image_label.setText("No Image\n(placeholder missing)")
+        # --- MODIFIED BLOCK END ---
+
         layout.addWidget(image_label)
 
-        # Name & Price
         price = item_data.get("price", 0.0)
         name_label = QLabel(f"{item_data['name']}\n(${price:.2f})")
         name_label.setAlignment(Qt.AlignCenter)
@@ -45,7 +58,6 @@ class TileWidget(QFrame):
         name_label.setWordWrap(True)
         layout.addWidget(name_label)
 
-        # Description
         desc = item_data.get("description", "No description.")
         description_label = QLabel(desc)
         description_label.setWordWrap(True)
@@ -60,18 +72,24 @@ class TileWidget(QFrame):
             self.tile_clicked.emit(self.item_id, self)
         super().mousePressEvent(event)
 
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.tile_double_clicked.emit()
+        super().mouseDoubleClickEvent(event)
+
     def set_selected(self, is_selected):
         if is_selected:
-            self.setStyleSheet(f"border: 3px solid blue;")
+            self.setStyleSheet(f"border: 3px solid #0078d7;") # A nicer blue
         else:
             self.setStyleSheet(self._original_stylesheet)
 
     def indicate_order(self):
         original_style = self.styleSheet()
-        self.setStyleSheet(f"background-color: #aaffaa; border: 3px solid green;")
+        self.setStyleSheet(f"background-color: #dff0d8; border: 3px solid #3c763d;")
         from PyQt5.QtCore import QTimer
-        QTimer.singleShot(500, lambda: self.setStyleSheet(original_style))
+        QTimer.singleShot(750, lambda: self.setStyleSheet(original_style))
 
+# ... ItemDialog class remains unchanged ...
 class ItemDialog(QDialog):
     def __init__(self, parent=None, item_data=None):
         super().__init__(parent)
@@ -87,7 +105,6 @@ class ItemDialog(QDialog):
         self.name_edit = QLineEdit(self.item_data.get("name", ""))
         layout.addRow("Name:", self.name_edit)
         
-        # ADDED PRICE FIELD
         self.price_edit = QDoubleSpinBox()
         self.price_edit.setDecimals(2)
         self.price_edit.setMinimum(0)

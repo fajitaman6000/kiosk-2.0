@@ -5,8 +5,9 @@ import base64
 import config
 
 class ImageCacheManager:
-    def __init__(self, network_client):
-        self.network_client = network_client
+    def __init__(self, network_worker):
+        # --- FIX --- Pass the worker object directly again
+        self.network_worker = network_worker
         self.manifest = {}
         self._load_manifest()
 
@@ -46,9 +47,9 @@ class ImageCacheManager:
             # Image is cached and up-to-date
             return local_path
         else:
-            # Image is missing or outdated, request it
+            # --- FIX --- Call the worker's method directly, which is now safe
             print(f"Requesting image download for: {filename}")
-            self.network_client.send_message("REQUEST_IMAGE", {"filename": filename})
+            self.network_worker.send_message("REQUEST_IMAGE", {"filename": filename})
             return None # No path available until it's downloaded
 
     def save_image_from_server(self, payload):

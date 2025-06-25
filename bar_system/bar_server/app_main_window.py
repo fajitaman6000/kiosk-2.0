@@ -2,19 +2,21 @@
 import sys
 import json
 import time
+import base64
+import os
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QLabel, QScrollArea, QGridLayout,
     QTextEdit, QPushButton, QHBoxLayout, QMessageBox, QTabWidget, QListWidget, QListWidgetItem
 )
-from PyQt5.QtCore import Qt, QThread
+from PyQt5.QtCore import Qt, QThread, pyqtSlot
 
 import socket
 import config
 import data_manager
 from network_server import ServerWorker
+from client_handler import ClientHandler # NEW: Import the client handler
 from app_widgets import TileWidget, ItemDialog
 from order_manager import OrderManager
-from client_manager import ClientManager # --- NEW --- Import the new manager
 
 class BarManagerWindow(QMainWindow):
     def __init__(self):
@@ -22,27 +24,26 @@ class BarManagerWindow(QMainWindow):
         self.setWindowTitle(f"Bar Order Manager - {config.SERVER_HOSTNAME}")
         self.setGeometry(100, 100, 1000, 800)
 
-        # --- Data & State ---
         self.items_data = []
         self.items_map = {}
         self.tile_widgets_map = {}
-        # self.connected_clients = [] # --- REMOVED --- This is now handled by ClientManager
         self.selected_item_id = None
         
-        # --- Managers and Workers ---
-        self.order_manager = OrderManager()
-        self.client_manager = ClientManager() # --- NEW --- Instantiate the manager
-        self._setup_network_worker()
+        # --- NEW --- State for managing client threads and handlers
+        self.client_threads = {} # {socket: QThread}
+        self.client_handlers = {} # {socket: ClientHandler}
 
-        # --- UI Setup ---
+        self.order_manager = OrderManager()
+        self._setup_network_server()
+
         self._setup_ui()
         
-        # --- Initial Load ---
         self.load_and_display_items()
         self.refresh_order_list()
         self.start_server()
 
     def _setup_ui(self):
+        # ... (UI setup is unchanged, so I'll omit it for brevity)
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         self.item_management_tab = QWidget()
@@ -92,6 +93,7 @@ class BarManagerWindow(QMainWindow):
         layout.addWidget(self.server_status_label)
         self.order_manager.order_updated.connect(self.refresh_order_list)
 
+
     def load_and_display_items(self):
         self.items_data = data_manager.load_items_from_config()
         self.items_map = {item['id']: item for item in self.items_data}
@@ -100,15 +102,19 @@ class BarManagerWindow(QMainWindow):
 
     def refresh_all_tiles(self):
         for i in reversed(range(self.tiles_layout.count())): 
-            self.tiles_layout.itemAt(i).widget().deleteLater()
+            widget = self.tiles_layout.itemAt(i).widget()
+            if widget: widget.deleteLater()
         self.tile_widgets_map.clear()
         self.selected_item_id = None
         self.edit_btn.setEnabled(False)
         self.delete_btn.setEnabled(False)
         row, col = 0, 0
-        for item_data in self.items_data:
+        sorted_items = sorted(self.items_data, key=lambda x: x.get('name', ''))
+        for item_data in sorted_items:
             tile = TileWidget(item_data)
             tile.tile_clicked.connect(self.handle_tile_clicked)
+            # UX Improvement: Allow double-clicking to edit
+            tile.tile_double_clicked.connect(self.edit_selected_item)
             self.tiles_layout.addWidget(tile, row, col)
             self.tile_widgets_map[item_data["id"]] = tile
             col = (col + 1) % config.MAX_TILE_COLUMNS
@@ -124,6 +130,7 @@ class BarManagerWindow(QMainWindow):
         self.delete_btn.setEnabled(True)
 
     def add_item(self):
+        # ... (This method is unchanged)
         dialog = ItemDialog(self)
         if dialog.exec_():
             data = dialog.get_data()
@@ -140,6 +147,7 @@ class BarManagerWindow(QMainWindow):
             self.load_and_display_items()
 
     def edit_selected_item(self):
+        # ... (This method is unchanged)
         if not self.selected_item_id: return
         item_to_edit = self.items_map.get(self.selected_item_id)
         dialog = ItemDialog(self, item_to_edit)
@@ -153,6 +161,7 @@ class BarManagerWindow(QMainWindow):
             self.load_and_display_items()
             
     def delete_selected_item(self):
+        # ... (This method is unchanged)
         if not self.selected_item_id: return
         item_name = self.items_map[self.selected_item_id]['name']
         reply = QMessageBox.question(self, 'Delete Item', f"Delete '{item_name}'?", QMessageBox.Yes | QMessageBox.No)
@@ -162,7 +171,9 @@ class BarManagerWindow(QMainWindow):
             data_manager.save_items_to_config(self.items_data)
             self.load_and_display_items()
 
+
     def refresh_order_list(self):
+        # ... (This method is unchanged)
         self.pending_orders_list.clear()
         for order in self.order_manager.get_pending_orders():
             quantity = order.get("sender_stats", {}).get("quantity", 1)
@@ -173,6 +184,7 @@ class BarManagerWindow(QMainWindow):
             self.pending_orders_list.addItem(item)
     
     def complete_selected_order(self):
+        # ... (This method is unchanged)
         selected_item = self.pending_orders_list.currentItem()
         if not selected_item:
             QMessageBox.warning(self, "No Order Selected", "Please select an order from the list to complete.")
@@ -180,17 +192,14 @@ class BarManagerWindow(QMainWindow):
         order_id = selected_item.data(Qt.UserRole)
         self.order_manager.complete_order(order_id)
         
-    def _setup_network_worker(self):
+    def _setup_network_server(self):
         self.server_thread = QThread()
         self.server_worker = ServerWorker()
         self.server_worker.moveToThread(self.server_thread)
-        # Connect signals
-        self.client_manager.log_message.connect(self.log_message) # --- NEW --- Connect manager's log
+        
+        # Connect signals from the main server listener
         self.server_worker.log_message_signal.connect(self.log_message)
-        self.server_worker.order_received_signal.connect(self.handle_order_request)
-        # --- MODIFIED --- Connect network signals to the client manager via handlers
-        self.server_worker.client_connected_signal.connect(self.handle_new_client)
-        self.server_worker.client_disconnected_signal.connect(self.handle_client_disconnect)
+        self.server_worker.new_connection_signal.connect(self.add_new_client)
         self.server_thread.started.connect(self.server_worker.run)
 
     def start_server(self):
@@ -198,43 +207,112 @@ class BarManagerWindow(QMainWindow):
         self.server_thread.start()
         self.server_status_label.setText(f"Server Status: Running on {config.HOST}:{config.PORT}")
         self.log_message("Server thread started.")
+
+    @pyqtSlot(socket.socket, tuple)
+    def add_new_client(self, client_socket, address):
+        """Creates a new thread and handler for a connecting client."""
+        thread = QThread()
+        handler = ClientHandler(client_socket, address)
+        handler.moveToThread(thread)
+
+        # Connect handler signals to main window slots
+        handler.message_received.connect(self.handle_client_message)
+        handler.client_disconnected.connect(self.remove_client)
+        handler.log_message.connect(self.log_message)
         
-    def handle_order_request(self, order_data):
-        socket = order_data.pop("_client_socket")
+        # Connect thread signals
+        thread.started.connect(handler.run)
+        
+        # Store references
+        self.client_threads[client_socket] = thread
+        self.client_handlers[client_socket] = handler
+        
+        thread.start()
+        self.log_message(f"Client {address} handler moved to new thread. Total clients: {len(self.client_handlers)}")
+
+    @pyqtSlot(socket.socket)
+    def remove_client(self, client_socket):
+        """Cleans up resources for a disconnected client."""
+        if client_socket in self.client_handlers:
+            handler = self.client_handlers.pop(client_socket)
+            handler.deleteLater() # Schedule for deletion
+        
+        if client_socket in self.client_threads:
+            thread = self.client_threads.pop(client_socket)
+            thread.quit()
+            thread.wait() # Wait for thread to finish cleanly
+
+        try:
+            client_socket.close()
+        except socket.error:
+            pass # Socket may already be closed
+
+        self.log_message(f"Cleaned up resources for disconnected client. Total clients: {len(self.client_handlers)}")
+
+    @pyqtSlot(socket.socket, dict)
+    def handle_client_message(self, client_socket, message):
+        """The central dispatcher for all incoming messages from all clients."""
+        msg_type = message.get("type")
+        payload = message.get("payload", {})
+        handler = self.client_handlers.get(client_socket)
+        if not handler: return
+
+        if msg_type == "REQUEST_ITEMS":
+            self.send_item_list_to_client(handler)
+        elif msg_type == "REQUEST_IMAGE":
+            self.send_image_to_client(handler, payload.get("filename"))
+        elif msg_type == "ORDER_ITEM":
+            self.handle_order_request(handler, payload)
+        else:
+            self.log_message(f"Unknown message type '{msg_type}' from {client_socket.getpeername()}")
+
+    def handle_order_request(self, client_handler, order_data):
         processed_order = self.order_manager.add_order(order_data, self.items_map)
         if processed_order:
             self.tile_widgets_map[processed_order["item_id"]].indicate_order()
             ack_payload = {"order_id": processed_order["order_id"], "item_id": processed_order["item_id"]}
-            self.send_message_to_client(socket, "ORDER_ACK", ack_payload)
+            client_handler.send_message("ORDER_ACK", ack_payload)
         else:
             nack_payload = {"order_id": order_data["order_id"], "item_id": order_data["item_id"], "reason": "Item not found"}
-            self.send_message_to_client(socket, "ORDER_NACK", nack_payload)
+            client_handler.send_message("ORDER_NACK", nack_payload)
 
-    # --- MODIFIED --- This method now delegates to the ClientManager
-    def handle_new_client(self, client_socket):
-        self.client_manager.add_client(client_socket)
-        self.log_message(f"New client connected: {client_socket.getpeername()}. Sending item list.")
-        self.send_item_list_to_client(client_socket)
-        
-    # --- MODIFIED --- This method now delegates to the ClientManager
-    def handle_client_disconnect(self, client_socket):
-        self.client_manager.remove_client(client_socket)
-
-    def send_item_list_to_client(self, client_socket, msg_type="AVAILABLE_ITEMS"):
+    def send_item_list_to_client(self, client_handler, msg_type="AVAILABLE_ITEMS"):
         client_item_list = [
             {"id": i["id"], "name": i["name"], "description": i.get("description"),
              "price": i.get("price", 0.0), "image_file": i.get("image_file"),
              "image_hash": i.get("image_hash")} 
             for i in self.items_data
         ]
-        self.send_message_to_client(client_socket, msg_type, {"items": client_item_list})
+        client_handler.send_message(msg_type, {"items": client_item_list})
 
-    # --- MODIFIED --- This method now uses the ClientManager to broadcast
+    def send_image_to_client(self, client_handler, filename):
+        if not filename or '..' in filename or filename.startswith('/'):
+            self.log_message(f"Client requested invalid image file: {filename}")
+            return
+
+        image_path = os.path.join(config.IMAGE_DIR, filename)
+        if os.path.exists(image_path):
+            try:
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
+                
+                image_hash = data_manager.get_file_hash(image_path)
+                b64_data = base64.b64encode(image_data).decode('utf-8')
+                
+                payload = {"filename": filename, "hash": image_hash, "data": b64_data}
+                client_handler.send_message("IMAGE_DATA", payload)
+                self.log_message(f"Sent image {filename} to {client_handler.address}")
+            except Exception as e:
+                self.log_message(f"Error sending image {filename}: {e}")
+        else:
+            self.log_message(f"Client requested non-existent image: {filename}")
+
     def broadcast_item_list_update(self):
         if not (hasattr(self, 'server_worker') and self.server_worker._is_running): return
-        self.log_message("Broadcasting item list update to all clients.")
+        if not self.client_handlers: return # No one to broadcast to
+
+        self.log_message(f"Broadcasting item list update to {len(self.client_handlers)} clients.")
         
-        # Prepare the payload once
         client_item_list = [
             {"id": i["id"], "name": i["name"], "description": i.get("description"),
              "price": i.get("price", 0.0), "image_file": i.get("image_file"),
@@ -243,24 +321,24 @@ class BarManagerWindow(QMainWindow):
         ]
         payload = {"items": client_item_list}
         
-        # Delegate the broadcast action to the manager
-        self.client_manager.broadcast("AVAILABLE_ITEMS_UPDATE", payload)
-
-    def send_message_to_client(self, client_socket, msg_type, payload):
-        message = {"type": msg_type, "payload": payload}
-        try:
-            client_socket.sendall(json.dumps(message).encode('utf-8') + b'\n')
-        except (socket.error, BrokenPipeError) as e:
-            self.log_message(f"Send error to {client_socket.getpeername()}: {e}. Removing.")
-            self.handle_client_disconnect(client_socket)
+        for handler in self.client_handlers.values():
+            handler.send_message("AVAILABLE_ITEMS_UPDATE", payload)
 
     def log_message(self, message):
         timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
         self.log_area.append(f"[{timestamp}] {message}")
+        print(f"SERVER LOG: [{timestamp}] {message}")
 
     def closeEvent(self, event):
         self.log_message("Application closing. Shutting down server...")
-        self.server_worker.stop()
-        self.server_thread.quit()
-        self.server_thread.wait(3000)
+        # Stop all client handlers
+        for handler in list(self.client_handlers.values()):
+            handler.stop()
+        
+        # Stop the main server listener
+        if self.server_thread.isRunning():
+            self.server_worker.stop()
+            self.server_thread.quit()
+            self.server_thread.wait(3000)
+            
         event.accept()

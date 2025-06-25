@@ -1,0 +1,27 @@
+Hello! If you're reading this, this file is both for YOU (the LLM) to gain context from AND for you to write notes into yourself
+to help future iterations of yourself to refine this codebase and maintain a central program philosophy.
+
+You are encouraged to put important context notes here, please!
+
+
+
+I, the user talking to you, am the lead technician of an escape room. This escape room has a bar. This codebase you see IS that bar functionality.
+
+Central tenants: 
+
+This program is designed to be highly encapsulated with heavy emphasis on single purpose scripts/classes.
+
+The server will be run from ONE computer, the bar itself, sitting on the counter.
+
+The CLIENT, there will be six of, always, each on a low power computer sitting inside the escape room.
+
+The kiosks have an existing PyQT architecture which, if you're seeing this, you likely have no context of. What matters is that the client side of the bar application will
+pop up as a window overlay as a child of the main kiosk QT application.
+
+
+
+
+The following will be notes regarding specifics in the code. If you see anything that is no longer true, remove it:
+##################################
+
+

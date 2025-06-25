@@ -80,9 +80,9 @@ def load_items_from_config():
     else:
         print(f"{config.ITEMS_CONFIG_FILE} not found. Creating default items.")
         default_items = [
-            {"id": "apple", "name": "Red Apple", "image_source_path": "red", "description": "A crisp, juicy red apple.", "price": 1.50},
-            {"id": "banana", "name": "Yellow Banana", "image_source_path": "yellow", "description": "A sweet, ripe banana.", "price": 0.75},
-            {"id": "orange", "name": "Juicy Orange", "image_source_path": "orange", "description": "A tangy orange.", "price": 1.25},
+            {"id": "1", "name": "Red", "image_source_path": "red", "description": "A red item description", "price": 1.50},
+            {"id": "2", "name": "Yellow", "image_source_path": "yellow", "description": "A yellow item description", "price": 0.75},
+            {"id": "3", "name": "Orange", "image_source_path": "orange", "description": "An orange item description", "price": 1.25},
         ]
         for item in default_items:
             item["image_file"] = ensure_image_exists(item["image_source_path"], item["id"])

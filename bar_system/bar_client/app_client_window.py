@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal
-
+import os # For placeholder
 import time
 import config
 from network_worker import NetworkWorker
@@ -33,8 +33,15 @@ class ItemTileWidget(QFrame):
             pixmap = QPixmap(image_path)
             self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
         else:
-            self.image_label.setText("(Loading Image...)")
-            self.image_label.setStyleSheet("border: 1px solid gray;")
+            # Using a placeholder image for better visual consistency
+            # Make sure you have a 'placeholder.png' in your client app directory
+            placeholder_path = os.path.join(config.APP_ROOT, "placeholder.png")
+            pixmap = QPixmap(placeholder_path)
+            if not pixmap.isNull():
+                 self.image_label.setPixmap(pixmap.scaled(150, 150, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+            else:
+                self.image_label.setText("(Loading Image...)")
+                self.image_label.setStyleSheet("border: 1px solid gray; background-color: #eee;")
         layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
 
         # Name and Price
@@ -64,8 +71,8 @@ class ItemTileWidget(QFrame):
 
 
 class AppClientWindow(QMainWindow):
-    # Signal to send a message via the network worker
-    send_message_signal = pyqtSignal(str, dict)
+    # --- FIX --- The signal is no longer needed for sending messages
+    # send_message_signal = pyqtSignal(str, dict)
 
     def __init__(self):
         super().__init__()
@@ -73,8 +80,10 @@ class AppClientWindow(QMainWindow):
         self.setGeometry(100, 100, 850, 600)
 
         self.items_cache = {} # {item_id: item_data}
+        self.tile_widgets = {} # To easily access tiles by item_id
 
         self._setup_network()
+        # --- FIX --- Pass the worker directly to the cache manager
         self.cache_manager = ImageCacheManager(self.network_worker)
         self._setup_ui()
 
@@ -130,8 +139,7 @@ class AppClientWindow(QMainWindow):
         self.network_worker.server_error.connect(self.handle_server_error)
         self.network_worker.disconnected.connect(self.on_disconnected)
 
-        # Connect UI signals to worker slots
-        #self.send_message_signal.connect(self.network_worker.send_message)
+        # --- FIX --- No more signal-to-slot connection for sending
         self.network_thread.started.connect(self.network_worker.run)
         
     def toggle_connection(self):
@@ -144,7 +152,6 @@ class AppClientWindow(QMainWindow):
                 self.log_message("Disconnecting...")
                 self.network_worker.stop()
                 self.connect_button.setText("Connect")
-                # The on_disconnected slot will handle final cleanup
 
     @pyqtSlot(str)
     def update_status_bar(self, status):
@@ -161,12 +168,15 @@ class AppClientWindow(QMainWindow):
         local_path = self.cache_manager.save_image_from_server(image_payload)
         if local_path:
             self.log_message(f"Image '{image_payload.get('filename')}' cached.")
-            self.update_items_display() # Redraw to show the new image
+            self.update_items_display()
 
     def update_items_display(self):
         # Clear existing widgets
         for i in reversed(range(self.tiles_layout.count())): 
-            self.tiles_layout.itemAt(i).widget().deleteLater()
+            widget = self.tiles_layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+        self.tile_widgets.clear()
 
         if not self.items_cache:
             # You can add a placeholder label here if you want
@@ -174,30 +184,32 @@ class AppClientWindow(QMainWindow):
 
         row, col = 0, 0
         max_cols = 3
-        for item_id, item_data in self.items_cache.items():
+        # Sort items alphabetically for a consistent display
+        sorted_items = sorted(self.items_cache.values(), key=lambda x: x.get('name', ''))
+        
+        for item_data in sorted_items:
             local_image_path = self.cache_manager.check_and_request_image(item_data)
             
             tile = ItemTileWidget(item_data, local_image_path)
-            # Use a lambda to capture the item_id for the click event
             tile.order_button.clicked.connect(
-                lambda checked, i=item_id: self.prompt_and_send_order(i)
+                lambda checked, i=item_data['id']: self.prompt_and_send_order(i)
             )
             
             self.tiles_layout.addWidget(tile, row, col)
+            self.tile_widgets[item_data['id']] = tile
             col += 1
             if col >= max_cols:
                 col = 0
                 row += 1
 
     def prompt_and_send_order(self, item_id):
-        print(f"DEBUG: 1. Click registered for item_id: {item_id}")
         if not self.network_thread.isRunning():
             QMessageBox.warning(self, "Not Connected", "Please connect to the server to place an order.")
             return
 
         item = self.items_cache.get(item_id)
         if not item:
-            print(f"DEBUG: ERROR - Item ID {item_id} not found in cache.")
+            self.log_message(f"ERROR: Item ID {item_id} not found in cache during order.")
             return
 
         quantity, ok = QInputDialog.getInt(self, "Order Quantity", f"Enter quantity for {item['name']}:", 1, 1, 99)
@@ -212,27 +224,46 @@ class AppClientWindow(QMainWindow):
             "item_id": item_id,
             "sender_stats": {
                 "quantity": quantity,
-                "customer_name": customer_name,
+                "customer_name": customer_name or "Anonymous",
                 "order_time_local": time.strftime("%Y-%m-%d %H:%M:%S")
             },
             "sender_hostname": config.CLIENT_HOSTNAME
         }
-        print(f"DEBUG: 2. Assembled payload for order {order_id}. Emitting signal.")
+        
+        # --- FIX --- Call the worker's method directly. This is now thread-safe.
         self.network_worker.send_message("ORDER_ITEM", order_payload)
-        self.log_message(f"Sent order for {quantity} of {item_id} (Order ID: {order_id}).")
+        
+        # UX: Disable button to prevent double-sends
+        tile = self.tile_widgets.get(item_id)
+        if tile:
+            tile.order_button.setEnabled(False)
+            tile.order_button.setText("Ordering...")
+
+        self.log_message(f"Sent order for {quantity} of {item['name']} (ID: {order_id}).")
 
     @pyqtSlot(str)
     def log_message(self, message):
         timestamp = time.strftime("%H:%M:%S")
         self.log_area.append(f"[{timestamp}] {message}")
+        print(f"CLIENT LOG: [{timestamp}] {message}")
         
     @pyqtSlot(dict)
     def handle_order_ack(self, payload):
-        QMessageBox.information(self, "Order Confirmed", f"Order for {payload.get('item_id')} was processed successfully!")
+        item_id = payload.get('item_id')
+        QMessageBox.information(self, "Order Confirmed", f"Order for item '{self.items_cache.get(item_id, {}).get('name', item_id)}' was processed successfully!")
+        tile = self.tile_widgets.get(item_id)
+        if tile: # UX: Re-enable button
+            tile.order_button.setEnabled(True)
+            tile.order_button.setText("Order Now")
 
     @pyqtSlot(dict)
     def handle_order_nack(self, payload):
-        QMessageBox.critical(self, "Order Rejected", f"Order for {payload.get('item_id')} was rejected: {payload.get('reason')}")
+        item_id = payload.get('item_id')
+        QMessageBox.critical(self, "Order Rejected", f"Order for item '{self.items_cache.get(item_id, {}).get('name', item_id)}' was rejected: {payload.get('reason')}")
+        tile = self.tile_widgets.get(item_id)
+        if tile: # UX: Re-enable button
+            tile.order_button.setEnabled(True)
+            tile.order_button.setText("Order Now")
 
     @pyqtSlot(str)
     def handle_server_error(self, message):
@@ -245,14 +276,13 @@ class AppClientWindow(QMainWindow):
         self.connect_button.setChecked(False)
         self.connect_button.setText("Connect")
         
-        # Stop the thread cleanly
         self.network_thread.quit()
         self.network_thread.wait()
 
     def closeEvent(self, event):
         self.log_message("Application closing...")
-        self.network_worker.stop()
         if self.network_thread.isRunning():
+            self.network_worker.stop()
             self.network_thread.quit()
-            self.network_thread.wait(3000) # Wait up to 3 seconds
+            self.network_thread.wait(3000)
         event.accept()

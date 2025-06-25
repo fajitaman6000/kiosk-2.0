@@ -2,18 +2,19 @@
 import socket
 import json
 import time
+from queue import Queue, Empty
 from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot
 
 import config
 
 class NetworkWorker(QObject):
     """
-    Handles all network communication in a separate thread.
-    Communicates with the main UI thread via signals.
+    Handles all network communication in a separate thread using a dedicated
+    producer-consumer queue for thread-safe message sending.
     """
-    # --- Signals to send data back to the UI ---
+    # Signals to send data back to the UI
     status_updated = pyqtSignal(str)
-    items_received = pyqtSignal(dict) # dict for easier lookup
+    items_received = pyqtSignal(dict)
     image_received = pyqtSignal(dict)
     order_acknowledged = pyqtSignal(dict)
     order_rejected = pyqtSignal(dict)
@@ -24,6 +25,8 @@ class NetworkWorker(QObject):
         super().__init__()
         self.sock = None
         self._is_running = False
+        # --- FIX --- A thread-safe queue for outgoing messages
+        self.send_queue = Queue()
 
     @pyqtSlot()
     def run(self):
@@ -33,14 +36,15 @@ class NetworkWorker(QObject):
 
         self._is_running = True
         
+        # --- Initial connection logic is now part of the run loop ---
         try:
-            self.status_updated.emit(f"Connecting to {config.SERVER_HOST}...")
+            self.status_updated.emit(f"Connecting to {config.SERVER_HOST}:{config.SERVER_PORT}...")
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.sock.settimeout(5.0)
             self.sock.connect((config.SERVER_HOST, config.SERVER_PORT))
-            self.sock.settimeout(1.0)  # For non-blocking recv
+            self.sock.settimeout(0.1)  # Short timeout for non-blocking operations
             self.status_updated.emit("Connected")
-            self.send_message("REQUEST_ITEMS", {})
+            self.send_message("REQUEST_ITEMS", {}) # Initial request
         except Exception as e:
             self.status_updated.emit(f"Connection Failed: {e}")
             self._handle_disconnect()
@@ -48,6 +52,19 @@ class NetworkWorker(QObject):
 
         buffer = b""
         while self._is_running:
+            # --- FIX --- Part 1: Process the send queue ---
+            try:
+                # Get a message without blocking the whole loop
+                msg_to_send = self.send_queue.get_nowait()
+                try:
+                    self.sock.sendall(json.dumps(msg_to_send).encode('utf-8') + b'\n')
+                except (socket.error, BrokenPipeError) as e:
+                    self.status_updated.emit(f"Send Error: {e}")
+                    break # Exit loop
+            except Empty:
+                pass # Queue is empty, which is normal
+
+            # --- FIX --- Part 2: Process the receive socket ---
             try:
                 chunk = self.sock.recv(4096)
                 if not chunk:
@@ -61,10 +78,13 @@ class NetworkWorker(QObject):
                         self._process_server_message(message_json)
 
             except socket.timeout:
-                continue # Allows checking self._is_running
+                continue # This is expected, allows the loop to check _is_running and the send_queue
             except (socket.error, json.JSONDecodeError) as e:
                 self.status_updated.emit(f"Network Error: {e}")
                 break # Exit loop
+            
+            # A small sleep prevents this loop from busy-waiting and eating CPU
+            time.sleep(0.01)
         
         self._handle_disconnect()
 
@@ -76,7 +96,6 @@ class NetworkWorker(QObject):
             payload = message.get("payload", {})
 
             if msg_type in ["AVAILABLE_ITEMS", "AVAILABLE_ITEMS_UPDATE"]:
-                # Convert list to dict for easier access
                 items_dict = {item['id']: item for item in payload.get("items", [])}
                 self.items_received.emit(items_dict)
             elif msg_type == "IMAGE_DATA":
@@ -89,7 +108,7 @@ class NetworkWorker(QObject):
                 self.server_error.emit(payload.get('message', 'Unknown server error'))
             elif msg_type == "SERVER_SHUTDOWN":
                 self.status_updated.emit("Server is shutting down.")
-                self.stop() # Trigger clean shutdown
+                self.stop()
             else:
                 print(f"Unknown message type received: {msg_type}")
 
@@ -112,14 +131,9 @@ class NetworkWorker(QObject):
         self._is_running = False
 
     def send_message(self, msg_type, payload):
-        """Public slot to allow the UI to send messages."""
-        if not self._is_running or not self.sock:
-            print(f"Cannot send '{msg_type}': Not connected.")
-            return
-        
+        """
+        Public method to be called from other threads.
+        It safely adds the message to a queue to be sent by the worker's run loop.
+        """
         message = {"type": msg_type, "payload": payload}
-        try:
-            self.sock.sendall(json.dumps(message).encode('utf-8') + b'\n')
-        except (socket.error, BrokenPipeError) as e:
-            self.status_updated.emit(f"Send Error: {e}")
-            self._handle_disconnect()
+        self.send_queue.put(message)
