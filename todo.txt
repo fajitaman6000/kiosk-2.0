@@ -3,6 +3,8 @@
 
 "clear hints" doesn't remove "HINT REQUESTED" on co-admins
 
+loss sound replays when resetting a lost room
+
 ##############################################################################################################################
 # Priority
 

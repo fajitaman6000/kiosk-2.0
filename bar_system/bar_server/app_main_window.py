@@ -13,6 +13,7 @@ import config
 import data_manager
 from app_widgets import TileWidget, ItemDialog
 from server_logic import ServerLogic
+from app_order_history_view import OrderHistoryView
 
 # --- WIDGET for a collapsible log/status area ---
 class CollapsibleLogWidget(QWidget):
@@ -225,6 +226,7 @@ class ItemManagementDialog(QDialog):
             self.load_and_display_items()
             self.items_changed.emit()
 
+
 # --- REFACTORED MAIN WINDOW (NOW A 'VIEW') ---
 class BarManagerWindow(QMainWindow):
     def __init__(self):
@@ -273,11 +275,19 @@ class BarManagerWindow(QMainWindow):
             QToolButton:hover { background-color: #e0e0e0; }
         """)
 
+        # Manage Items Action
         settings_icon_path = os.path.join(config.APP_ROOT, 'app_icons', 'item_config_settings.png')
         settings_icon = QIcon.fromTheme("preferences-system", QIcon(settings_icon_path)) 
         manage_items_action = QAction(settings_icon, "Manage Menu Items", self)
         manage_items_action.triggered.connect(self.open_item_management_dialog)
         toolbar.addAction(manage_items_action)
+
+        # Order History Action
+        history_icon_path = os.path.join(config.APP_ROOT, 'app_icons', 'order_history.png')
+        history_icon = QIcon(history_icon_path)
+        order_history_action = QAction(history_icon, "Order History", self)
+        order_history_action.triggered.connect(self.open_order_history_view)
+        toolbar.addAction(order_history_action)
 
         main_layout.addWidget(QLabel("<h2>Pending Orders</h2>"))
         self.pending_orders_list = QListWidget()
@@ -317,14 +327,26 @@ class BarManagerWindow(QMainWindow):
         dialog.exec_()
         self.log_widget.log_message("Item management dialog closed.")
 
+    def open_order_history_view(self):
+        """Opens the modal view for order history."""
+        self.log_widget.log_message("Opening order history view...")
+        # Pass the order manager from the server logic to the view
+        view = OrderHistoryView(self.server_logic.order_manager, self)
+        view.exec_()
+        self.log_widget.log_message("Order history view closed.")
+
     @pyqtSlot()
     def refresh_order_list(self):
         """Refreshes the pending orders list by querying the logic handler."""
         self.pending_orders_list.clear()
         for order in self.server_logic.order_manager.get_pending_orders():
-            quantity = order.get("sender_stats", {}).get("quantity", 1)
-            customer = order.get("sender_stats", {}).get("customer_name", "N/A")
-            text = f"[{quantity}x] {order['item_name']} for {customer} (from: {order['sender_hostname']}) (ID: ...{order['order_id'][-12:]})"
+            stats = order.get("sender_stats", {})
+            quantity = stats.get("quantity", 1)
+            customer = stats.get("customer_name", "N/A")
+            # --- MODIFIED --- Get room name from order data
+            room = stats.get("room", "Unknown Room")
+            # --- MODIFIED --- Add room name to the display text
+            text = f"[{quantity}x] {order['item_name']} for {customer} in {room} (from: {order['sender_hostname']})"
             item = QListWidgetItem(text)
             item.setData(Qt.UserRole, order['order_id'])
             self.pending_orders_list.addItem(item)
