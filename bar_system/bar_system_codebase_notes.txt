@@ -23,15 +23,18 @@ pop up as a window overlay as a child of the main kiosk QT application.
 
 This software will not be used by technicians or server managers but *bartenders*.
 
+The server side should feature a TOUCHSCREEN-esque UI because bartenders will be using it on a touchscreen, even if it is a Windows app.
+
 
 The following will be notes regarding specifics in the code. If you see anything that is no longer true, remove it:
 ##################################
-
+  - A new `ServerLogic` class in `server_logic.py` has been introduced to adhere to the Single Responsibility Principle. This class now handles all backend logic, including network management, client handling, message dispatching, and data state management.
+  - `app_main_window.py` has been refactored into a pure "View" component. It now delegates all business logic to the `ServerLogic` instance and updates the UI in response to signals from it.
   - Both client and server use a producer-consumer pattern for sending messages to network threads. The main thread `put`s a message onto a `queue.Queue`, and the worker thread `get`s it and sends it over the socket. This is a robust, thread-safe design.
   - Communication from worker threads back to the main UI thread is handled by Qt's signal/slot mechanism, which is also thread-safe.
   - Both `data_manager.py` and `order_manager.py` use an atomic write pattern (save to `.tmp` file, then `os.replace`). This prevents data corruption on crash.
   - Optimized the client UI refresh logic. Instead of redrawing all item tiles when a single image arrives, `app_client_window.py` now finds the specific tile and updates its pixmap directly, which is far more efficient.
-  - The server now uses a dedicated `AudioManager` class (`audio_manager.py`) to handle sound playback, maintaining SRP. A new `app_sounds` directory is expected at the root of the server application.
+  - The server now uses a dedicated `AudioManager` class (`bar_audio_manager.py`) to handle sound playback, maintaining SRP. A new `app_sounds` directory is expected at the root of the server application.
   - Order notifications on the server have been changed from a single-item flash to a global UI flash and an audible alert, triggered from `app_main_window.py`.
 
 

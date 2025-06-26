@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QTextEdit, QPushButton, QHBoxLayout, QMessageBox, QListWidget, QListWidgetItem,
     QDialog, QToolBar, QAction
 )
-from PyQt5.QtCore import Qt, pyqtSlot, QTimer, pyqtSignal
+from PyQt5.QtCore import Qt, pyqtSlot, QTimer, pyqtSignal, QSize
 from PyQt5.QtGui import QIcon
 
 import config
@@ -14,6 +14,7 @@ import data_manager
 from app_widgets import TileWidget, ItemDialog
 from server_logic import ServerLogic
 
+# --- WIDGET for a collapsible log/status area ---
 class CollapsibleLogWidget(QWidget):
     """A widget that can be collapsed to hide the detailed server log and status."""
     def __init__(self, parent=None):
@@ -28,7 +29,21 @@ class CollapsibleLogWidget(QWidget):
         # This button will control the visibility of the content area
         self.toggle_button = QPushButton("Show Server Log & Status")
         self.toggle_button.setCheckable(True)
-        self.toggle_button.setStyleSheet("text-align: left; padding: 5px; font-weight: bold;")
+        # --- MODIFIED FOR TOUCH --- Made button larger and more distinct
+        self.toggle_button.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                font-weight: bold;
+                text-align: left;
+                padding: 10px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background-color: #f0f0f0;
+            }
+            QPushButton:checked {
+                background-color: #e0e0e0;
+            }
+        """)
         
         # A separate widget to hold the content that will be hidden/shown
         self.content_widget = QWidget()
@@ -40,6 +55,7 @@ class CollapsibleLogWidget(QWidget):
         self.log_area.setMaximumHeight(150) # Keep the log area compact
         
         self.server_status_label = QLabel("Server Status: Initializing...")
+        self.server_status_label.setStyleSheet("font-size: 14px;") # Make status slightly larger
 
         content_layout.addWidget(QLabel("<h3>Server Log</h3>"))
         content_layout.addWidget(self.log_area)
@@ -76,7 +92,7 @@ class CollapsibleLogWidget(QWidget):
         self.server_status_label.setText(f"Server Status: {text}")
 
 
-# --- NEW DIALOG to handle all item management ---
+# --- DIALOG to handle all item management ---
 class ItemManagementDialog(QDialog):
     """
     A self-contained dialog for managing menu items. It handles its own
@@ -137,7 +153,6 @@ class ItemManagementDialog(QDialog):
         button_layout.addWidget(close_button)
         layout.addLayout(button_layout)
 
-    # --- The following methods were moved from the original BarManagerWindow ---
     def load_and_display_items(self):
         self.items_data = data_manager.load_items_from_config()
         self.items_map = {item['id']: item for item in self.items_data}
@@ -235,24 +250,50 @@ class BarManagerWindow(QMainWindow):
 
     def _setup_ui(self):
         main_widget = QWidget()
+        # --- MODIFIED --- Give the widget an object name for specific styling
+        main_widget.setObjectName("mainContentWidget")
+        # --- MODIFIED --- Crucial step: tell the widget to paint its background
+        main_widget.setAutoFillBackground(True)
         self.setCentralWidget(main_widget)
+        
         main_layout = QVBoxLayout(main_widget)
 
         toolbar = QToolBar("Main Toolbar")
         self.addToolBar(toolbar)
-        
+        toolbar.setMovable(False) 
+        toolbar.setIconSize(QSize(48, 48)) 
+        toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        toolbar.setStyleSheet("""
+            QToolBar {
+                spacing: 10px; padding: 8px; border: none;
+            }
+            QToolButton {
+                font-size: 18px; font-weight: bold; padding: 10px; border-radius: 5px;
+            }
+            QToolButton:hover { background-color: #e0e0e0; }
+        """)
+
         settings_icon_path = os.path.join(config.APP_ROOT, 'app_icons', 'item_config_settings.png')
-        settings_icon = QIcon.fromTheme("document-properties", QIcon(settings_icon_path))
+        settings_icon = QIcon.fromTheme("preferences-system", QIcon(settings_icon_path)) 
         manage_items_action = QAction(settings_icon, "Manage Menu Items", self)
         manage_items_action.triggered.connect(self.open_item_management_dialog)
         toolbar.addAction(manage_items_action)
 
         main_layout.addWidget(QLabel("<h2>Pending Orders</h2>"))
         self.pending_orders_list = QListWidget()
-        self.pending_orders_list.setStyleSheet("font-size: 16px;")
+        self.pending_orders_list.setStyleSheet("font-size: 20px; padding: 5px;")
         main_layout.addWidget(self.pending_orders_list, stretch=1)
         
         complete_button = QPushButton("Complete Selected Order")
+        complete_button.setStyleSheet("""
+            QPushButton {
+                font-size: 22px; font-weight: bold; padding: 20px;
+                background-color: #28a745; color: white;
+                border: none; border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #218838; }
+            QPushButton:pressed { background-color: #1e7e34; }
+        """)
         complete_button.clicked.connect(self.complete_selected_order)
         main_layout.addWidget(complete_button)
         
@@ -266,13 +307,12 @@ class BarManagerWindow(QMainWindow):
         self.server_logic.log_message.connect(self.log_widget.log_message)
         self.server_logic.server_status_update.connect(self.log_widget.set_status)
         self.server_logic.order_list_updated.connect(self.refresh_order_list)
-        self.server_logic.ui_notification.connect(self.flash_order_list)
+        self.server_logic.ui_notification.connect(self.flash_main_window)
 
     def open_item_management_dialog(self):
         """Opens the modal dialog for managing items."""
         self.log_widget.log_message("Opening item management dialog...")
         dialog = ItemManagementDialog(self)
-        # When the dialog signals changes, we tell the server logic to handle it.
         dialog.items_changed.connect(self.server_logic.on_items_changed)
         dialog.exec_()
         self.log_widget.log_message("Item management dialog closed.")
@@ -281,7 +321,6 @@ class BarManagerWindow(QMainWindow):
     def refresh_order_list(self):
         """Refreshes the pending orders list by querying the logic handler."""
         self.pending_orders_list.clear()
-        # The UI asks the logic for the data it needs to display
         for order in self.server_logic.order_manager.get_pending_orders():
             quantity = order.get("sender_stats", {}).get("quantity", 1)
             customer = order.get("sender_stats", {}).get("customer_name", "N/A")
@@ -298,22 +337,26 @@ class BarManagerWindow(QMainWindow):
             QMessageBox.warning(self, "No Order Selected", "Please select an order from the list to complete.")
             return
         order_id = selected_item.data(Qt.UserRole)
-        # The UI tells the logic to perform an action
         self.server_logic.order_manager.complete_order(order_id)
         
     @pyqtSlot()
-    def flash_order_list(self):
-        """Flashes the pending orders list in response to a signal."""
-        widget_to_flash = self.pending_orders_list
-        original_style = widget_to_flash.styleSheet()
-        flash_style_addon = "QListWidget { background-color: #fff3cd; border: 2px solid #ffeeba; }"
+    def flash_main_window(self):
+        """Flashes the entire window background to provide a clear visual cue for new orders."""
+        main_widget = self.centralWidget()
+        if not main_widget: return
+
+        original_style = main_widget.styleSheet()
+        
+        # --- MODIFIED --- Use the specific object name for a reliable style change
+        flash_style_addon = "#mainContentWidget { background-color: #fff3cd; }"
 
         def apply_flash():
-            widget_to_flash.setStyleSheet(original_style + flash_style_addon)
+            main_widget.setStyleSheet(original_style + flash_style_addon)
         
         def revert_style():
-            widget_to_flash.setStyleSheet(original_style)
+            main_widget.setStyleSheet(original_style)
 
+        # Create a blinking effect: on, off, on, off
         apply_flash()
         QTimer.singleShot(250, revert_style)
         QTimer.singleShot(500, apply_flash)
