@@ -1,18 +1,11 @@
 ########################
 # Current Issues
 
-images created in parent directory, not same directory as main.py
 
 ########################
 # To do 
 
-bartender needs:
-
-room name
-
-
-order notification
-
+order management screen is more important than item management which should be more backend
 
 
 #########################
