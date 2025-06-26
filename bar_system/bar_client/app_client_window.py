@@ -2,10 +2,11 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel,
     QScrollArea, QGridLayout, QFrame, QPushButton, QMessageBox,
-    QInputDialog, QTextEdit, QHBoxLayout
+    QInputDialog, QTextEdit, QHBoxLayout, QGraphicsView, QGraphicsScene,
+    QGraphicsProxyWidget
 )
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal, QTimer
+from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal, QTimer, QRectF
 import os
 import time
 import config
@@ -78,7 +79,8 @@ class AppClientWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle(f"Bar Kiosk - {config.CLIENT_HOSTNAME}")
-        self.setGeometry(100, 100, 850, 600)
+        # --- MODIFIED --- Window geometry is now portrait (swapped width/height)
+        self.setGeometry(100, 100, 600, 850)
 
         self.items_cache = {} # {item_id: item_data}
         self.tile_widgets = {} # To easily access tiles by item_id: {item_id: ItemTileWidget}
@@ -93,9 +95,12 @@ class AppClientWindow(QMainWindow):
         self.start_connection_process()
 
     def _setup_ui(self):
-        main_widget = QWidget()
-        self.setCentralWidget(main_widget)
-        main_layout = QVBoxLayout(main_widget)
+        # --- NEW: Graphics View Rotation ---
+        # 1. Create the original UI on a standard widget, as if it were not rotated.
+        #    This is our "source" widget.
+        source_widget = QWidget()
+        # --- MODIFIED --- This layout is the ORIGINAL landscape layout.
+        main_layout = QVBoxLayout(source_widget)
 
         # Status Bar
         status_layout = QHBoxLayout()
@@ -119,6 +124,33 @@ class AppClientWindow(QMainWindow):
         self.log_area.setMaximumHeight(100)
         main_layout.addWidget(self.log_area)
         
+        # We need to give the source widget a fixed size that matches the
+        # un-rotated dimensions we want.
+        source_widget.setFixedSize(850, 600)
+
+        # 2. Create a QGraphicsScene and a proxy to hold our source widget.
+        scene = QGraphicsScene()
+        proxy = QGraphicsProxyWidget()
+        proxy.setWidget(source_widget)
+        scene.addItem(proxy)
+
+        # 3. Create a QGraphicsView to display the scene. This view will be the
+        #    actual central widget of our main window.
+        view = QGraphicsView(self)
+        view.setScene(scene)
+        
+        # Remove borders and scrollbars for a clean look
+        view.setFrameStyle(QFrame.NoFrame)
+        view.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        view.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        # --- THE MAGIC --- Rotate the entire view 90 degrees clockwise.
+        view.rotate(90)
+        
+        # 4. Set the rotated view as the central widget.
+        self.setCentralWidget(view)
+        
+        # Final setup
         self.log_message("Client application started.")
         self.update_items_display() # Initial empty display
 
@@ -223,17 +255,19 @@ class AppClientWindow(QMainWindow):
         # Always clear the tile widget map when doing a redraw
         self.tile_widgets.clear()
 
+        # --- MODIFIED --- Reverted to original landscape column count
+        max_cols = 3 
+        
         # 2. Decide what to display based on the current cache
         if not self.items_cache:
             # If cache is empty, display a temporary "waiting" message.
             waiting_label = QLabel("Searching for server...")
             waiting_label.setAlignment(Qt.AlignCenter)
             waiting_label.setStyleSheet("font-size: 22px; color: #888;")
-            self.tiles_layout.addWidget(waiting_label, 0, 0, 1, 3)
+            self.tiles_layout.addWidget(waiting_label, 0, 0, 1, max_cols)
         else:
             # If we have items, populate the grid with tiles
             row, col = 0, 0
-            max_cols = 3
             sorted_items = sorted(self.items_cache.values(), key=lambda x: x.get('name', ''))
             
             for item_data in sorted_items:

@@ -292,6 +292,8 @@ class BarManagerWindow(QMainWindow):
         main_layout.addWidget(QLabel("<h2>Pending Orders</h2>"))
         self.pending_orders_list = QListWidget()
         self.pending_orders_list.setStyleSheet("font-size: 20px; padding: 5px;")
+        # --- MODIFIED --- Set a larger size for icons in the list to act as thumbnails.
+        self.pending_orders_list.setIconSize(QSize(64, 64))
         main_layout.addWidget(self.pending_orders_list, stretch=1)
         
         complete_button = QPushButton("Complete Selected Order")
@@ -337,19 +339,56 @@ class BarManagerWindow(QMainWindow):
 
     @pyqtSlot()
     def refresh_order_list(self):
-        """Refreshes the pending orders list by querying the logic handler."""
+        """
+        Refreshes the pending orders list, adding item thumbnails for each order
+        and preserving the current selection.
+        """
+        # Preserve the selected order_id to restore it after the refresh
+        current_item = self.pending_orders_list.currentItem()
+        selected_order_id = current_item.data(Qt.UserRole) if current_item else None
+
         self.pending_orders_list.clear()
+
+        # Get the item map once for efficiency
+        item_map = self.server_logic.items_map
+        item_to_reselect = None
+
         for order in self.server_logic.order_manager.get_pending_orders():
+            # --- Create display text ---
             stats = order.get("sender_stats", {})
             quantity = stats.get("quantity", 1)
             customer = stats.get("customer_name", "N/A")
-            # --- MODIFIED --- Use sender_hostname as the room identifier
             room = order.get("sender_hostname", "Unknown Room")
-            # --- MODIFIED --- Display room name clearly in the order text
             text = f"[{quantity}x] {order['item_name']} for {customer} (Room: {room})"
-            item = QListWidgetItem(text)
-            item.setData(Qt.UserRole, order['order_id'])
-            self.pending_orders_list.addItem(item)
+
+            # --- Create list item and set its data ---
+            list_item = QListWidgetItem(text)
+            order_id = order['order_id']
+            list_item.setData(Qt.UserRole, order_id)
+
+            # --- Find the item's image and set it as an icon ---
+            item_id = order.get("item_id")
+            item_details = item_map.get(item_id)
+            
+            # Default to a placeholder, then try to find the specific image
+            image_path = os.path.join(config.IMAGE_DIR, "_placeholder.png")
+            if item_details and item_details.get("image_file"):
+                specific_image_path = os.path.join(config.IMAGE_DIR, item_details["image_file"])
+                if os.path.exists(specific_image_path):
+                    image_path = specific_image_path
+            
+            list_item.setIcon(QIcon(image_path))
+            
+            # --- Add to list ---
+            self.pending_orders_list.addItem(list_item)
+
+            # --- Check if this item should be re-selected ---
+            if order_id == selected_order_id:
+                item_to_reselect = list_item
+
+        # Restore selection if an item was previously selected
+        if item_to_reselect:
+            self.pending_orders_list.setCurrentItem(item_to_reselect)
     
     @pyqtSlot()
     def complete_selected_order(self):
