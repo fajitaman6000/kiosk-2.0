@@ -73,25 +73,32 @@ class OrderHistoryView(QDialog):
         layout.addLayout(button_layout)
 
     def filter_orders(self, mode):
-        all_orders = self.order_manager.pending_orders + self.order_manager.completed_orders
-
+        # --- MODIFIED --- This logic is now more memory-efficient.
+        # It filters the (potentially very large) completed_orders list
+        # before combining it with the pending_orders list, avoiding the
+        # creation of a massive intermediate list in memory.
         now_utc = datetime.now(timezone.utc)
         filtered_list = []
+        cutoff_time = None
 
         if mode == "today":
-            today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-            filtered_list = [
-                o for o in all_orders
-                if datetime.fromisoformat(o['received_timestamp_utc']) >= today_start
-            ]
+            cutoff_time = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
         elif mode == "week":
-            week_ago = now_utc - timedelta(days=7)
-            filtered_list = [
-                o for o in all_orders
-                if datetime.fromisoformat(o['received_timestamp_utc']) >= week_ago
+            cutoff_time = now_utc - timedelta(days=7)
+
+        if cutoff_time:
+            # Filter each list individually before combining
+            filtered_pending = [
+                o for o in self.order_manager.pending_orders
+                if datetime.fromisoformat(o['received_timestamp_utc']) >= cutoff_time
             ]
+            filtered_completed = [
+                o for o in self.order_manager.completed_orders
+                if datetime.fromisoformat(o['received_timestamp_utc']) >= cutoff_time
+            ]
+            filtered_list = filtered_pending + filtered_completed
         else:  # "all"
-            filtered_list = all_orders
+            filtered_list = self.order_manager.pending_orders + self.order_manager.completed_orders
 
         # Sort by received time, newest first, before populating
         sorted_list = sorted(filtered_list, key=lambda o: o['received_timestamp_utc'], reverse=True)
@@ -122,7 +129,6 @@ class OrderHistoryView(QDialog):
             self.history_table.setItem(row_position, 3, QTableWidgetItem(customer))
 
             # --- Column 4: Room ---
-            # --- MODIFIED --- Use sender_hostname as the room identifier
             room = order.get("sender_hostname", "N/A")
             self.history_table.setItem(row_position, 4, QTableWidgetItem(room))
 

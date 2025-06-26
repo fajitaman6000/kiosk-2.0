@@ -25,6 +25,8 @@ This software will not be used by technicians or server managers but *bartenders
 
 The server side should feature a TOUCHSCREEN-esque UI because bartenders will be using it on a touchscreen, even if it is a Windows app.
 
+Data security is not really a concern with this project.
+
 
 The following will be notes regarding specifics in the code. If you see anything that is no longer true, remove it:
 ##################################
@@ -39,3 +41,22 @@ The following will be notes regarding specifics in the code. If you see anything
   - The entire client interface is inherently, intentionally sideways, as KIOSK SCREENS ARE IN LANDSCAPE, ROTATED 90 DEGREES CLOCKWISE.
 
 **Please always maintain comments when returning code, unless the code is clearly from a copy paste!**
+
+
+
+
+
+
+****PLANNED FEATURES****
+
+Weakness: Lack of Automated Tests
+Observation: There are no unit or integration tests.
+Impact: As the application grows, making a change in one place (e.g., OrderManager) can have unintended consequences elsewhere. Manually testing every feature after every change is time-consuming and error-prone.
+Recommendation: Introduce a testing framework like pytest.
+Start with OrderManager: You can write tests that call add_order and complete_order and assert that the internal lists are correct, without ever running the UI.
+Test data_manager: Write tests to ensure load_items_from_config handles missing files, corrupt JSON, etc., gracefully.
+This will give you a safety net to ensure the core business logic remains correct as you add features or refactor.
+
+
+
+Weakness: Lack of server-client heartbeat

@@ -2,8 +2,8 @@
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel,
     QScrollArea, QGridLayout, QFrame, QPushButton, QMessageBox,
-    QInputDialog, QTextEdit, QHBoxLayout, QGraphicsView, QGraphicsScene,
-    QGraphicsProxyWidget
+    QLineEdit, QTextEdit, QHBoxLayout, QGraphicsView, QGraphicsScene,
+    QGraphicsProxyWidget, QSpinBox
 )
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt, QThread, pyqtSlot, pyqtSignal, QTimer, QRectF
@@ -14,8 +14,16 @@ from network_worker import NetworkWorker
 from image_cache_manager import ImageCacheManager
 from discovery_listener import DiscoveryListener
 
+DEBUG = False
+
 class ItemTileWidget(QFrame):
-    """A custom widget to display a single item in the grid."""
+    """
+    A custom widget to display a single item, now with an integrated,
+    touch-friendly ordering interface that appears within the tile itself.
+    """
+    # This new signal is emitted when the user confirms an order.
+    order_placed = pyqtSignal(str, int, str) # item_id, quantity, customer_name
+
     def __init__(self, item_data, image_path, parent=None):
         super().__init__(parent)
         self.item_id = item_data['id']
@@ -31,33 +39,113 @@ class ItemTileWidget(QFrame):
         self.image_label = QLabel()
         self.image_label.setFixedSize(150, 150)
         self.image_label.setAlignment(Qt.AlignCenter)
-        self.set_image(image_path) # Use helper method
         layout.addWidget(self.image_label, alignment=Qt.AlignCenter)
 
         # Name and Price
-        price = item_data.get("price")
-        if price is None:
-            price = 0.0 # Default to 0.0 if price is None
-
-        name_text = f"{self.item_name}\n(${price:.2f})"
-        name_label = QLabel(name_text)
-        name_label.setAlignment(Qt.AlignCenter)
-        name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        name_label.setWordWrap(True)
-        layout.addWidget(name_label)
+        self.name_label = QLabel()
+        self.name_label.setAlignment(Qt.AlignCenter)
+        self.name_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.name_label.setWordWrap(True)
+        layout.addWidget(self.name_label)
 
         # Description
-        desc_label = QLabel(item_data.get("description", "No description."))
-        desc_label.setAlignment(Qt.AlignCenter)
-        desc_label.setWordWrap(True)
-        desc_label.setStyleSheet("font-size: 10px; color: #555;")
-        layout.addWidget(desc_label)
+        self.description_label = QLabel()
+        self.description_label.setAlignment(Qt.AlignCenter)
+        self.description_label.setWordWrap(True)
+        self.description_label.setStyleSheet("font-size: 10px; color: #555;")
+        layout.addWidget(self.description_label)
 
         layout.addStretch()
 
-        # Order Button
+        # --- NEW: Ordering UI (initially hidden) ---
+        self._setup_ordering_ui(layout)
+
+        # --- NEW: Browsing UI (initially visible) ---
         self.order_button = QPushButton("Order Now")
+        self.order_button.setStyleSheet("font-size: 16px; padding: 10px; font-weight: bold;")
+        self.order_button.clicked.connect(self._enter_ordering_mode)
         layout.addWidget(self.order_button)
+
+        # Set initial data and state
+        self.update_data(item_data, image_path)
+        self._enter_browsing_mode()
+
+    def _setup_ordering_ui(self, parent_layout):
+        """Creates the hidden widget containing controls for ordering."""
+        self.ordering_widget = QWidget()
+        ordering_layout = QVBoxLayout(self.ordering_widget)
+        ordering_layout.setContentsMargins(0, 5, 0, 5)
+        ordering_layout.setSpacing(8)
+
+        # Quantity input with large, touch-friendly buttons
+        qty_layout = QHBoxLayout()
+        qty_layout.addWidget(QLabel("<b>Quantity:</b>"))
+        self.quantity_spinbox = QSpinBox()
+        self.quantity_spinbox.setRange(1, 99)
+        self.quantity_spinbox.setButtonSymbols(QSpinBox.PlusMinus)
+        self.quantity_spinbox.setStyleSheet("QSpinBox { font-size: 16px; height: 35px; } QSpinBox::up-button, QSpinBox::down-button { width: 45px; }")
+        qty_layout.addWidget(self.quantity_spinbox)
+        ordering_layout.addLayout(qty_layout)
+
+        # Customer Name input
+        ordering_layout.addWidget(QLabel("<b>Name:</b> (optional)"))
+        self.customer_name_edit = QLineEdit()
+        self.customer_name_edit.setPlaceholderText("Anonymous")
+        self.customer_name_edit.setStyleSheet("font-size: 14px; padding: 5px;")
+        ordering_layout.addWidget(self.customer_name_edit)
+
+        # Action Buttons for confirming or canceling
+        button_layout = QHBoxLayout()
+        self.confirm_button = QPushButton("Confirm")
+        self.confirm_button.setStyleSheet("background-color: #28a745; color: white; font-weight: bold; padding: 8px; font-size: 14px;")
+        self.confirm_button.clicked.connect(self._confirm_order)
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setStyleSheet("background-color: #dc3545; color: white; font-weight: bold; padding: 8px; font-size: 14px;")
+        self.cancel_button.clicked.connect(self._enter_browsing_mode)
+        button_layout.addWidget(self.confirm_button)
+        button_layout.addWidget(self.cancel_button)
+        ordering_layout.addLayout(button_layout)
+        
+        parent_layout.addWidget(self.ordering_widget)
+
+    def _enter_browsing_mode(self):
+        """Shows the default view of the tile, hiding the order controls."""
+        self.description_label.show()
+        self.order_button.show()
+        self.ordering_widget.hide()
+        # Reset order button state in case it was "Ordering..."
+        self.order_button.setEnabled(True)
+        self.order_button.setText("Order Now")
+
+    def _enter_ordering_mode(self):
+        """Shows the ordering controls, hiding the default button and description."""
+        self.description_label.hide()
+        self.order_button.hide()
+        self.ordering_widget.show()
+        self.quantity_spinbox.setValue(1) # Reset to default
+        self.customer_name_edit.clear()
+        self.customer_name_edit.setFocus() # Focus for keyboard input
+
+    def _confirm_order(self):
+        """Gathers data and emits the order_placed signal for the main window to handle."""
+        quantity = self.quantity_spinbox.value()
+        customer_name = self.customer_name_edit.text().strip()
+        
+        # Visually indicate that the order is being processed
+        self.order_button.setText("Ordering...")
+        self.order_button.setEnabled(False)
+        self._enter_browsing_mode()
+
+        # Emit the signal
+        self.order_placed.emit(self.item_id, quantity, customer_name)
+
+    def update_data(self, item_data, image_path):
+        """Updates the tile's display with new data without recreating the whole widget."""
+        self.item_name = item_data['name']
+        price = item_data.get("price", 0.0)
+        self.name_label.setText(f"{self.item_name}\n(${price:.2f})")
+        self.description_label.setText(item_data.get("description", "No description."))
+        self.set_image(image_path)
 
     def set_image(self, image_path):
         """Helper method to set the image label's pixmap from a path."""
@@ -206,15 +294,10 @@ class AppClientWindow(QMainWindow):
 
     @pyqtSlot(dict)
     def handle_items_update(self, items_dict):
-        if set(self.items_cache.keys()) != set(items_dict.keys()):
-            self.items_cache = items_dict
-            self.log_message(f"Received full item list update with {len(items_dict)} items.")
-            self.update_items_display(full_redraw=True)
-        else:
-            # If it's just a data update (e.g., price change), update in place.
-            self.items_cache = items_dict
-            self.log_message(f"Received item data update for {len(items_dict)} items.")
-            self.update_items_display(full_redraw=False)
+        # The new item data is stored, and the display is updated intelligently.
+        self.items_cache = items_dict
+        self.log_message(f"Received item list update with {len(items_dict)} items.")
+        self.update_items_display()
 
     @pyqtSlot(dict)
     def handle_image_update(self, image_payload):
@@ -224,80 +307,80 @@ class AppClientWindow(QMainWindow):
 
         self.log_message(f"Image '{image_payload.get('filename')}' cached.")
         
-        # Find which item this image belongs to
-        item_id_to_update = None
+        # Find which item this image belongs to and update its tile directly
         for item_id, item_data in self.items_cache.items():
             if item_data.get("image_file") == image_payload.get("filename"):
-                item_id_to_update = item_id
+                if item_id in self.tile_widgets:
+                    self.tile_widgets[item_id].set_image(local_path)
+                    self.log_message(f"Updated tile image for item '{item_data.get('name')}'.")
                 break
         
-        # If we found the corresponding item and its tile widget exists, update it directly
-        if item_id_to_update and item_id_to_update in self.tile_widgets:
-            tile = self.tile_widgets[item_id_to_update]
-            tile.set_image(local_path)
-            self.log_message(f"Updated tile image for item '{item_data.get('name')}'.")
-        else:
-            # Fallback to a full redraw if something is out of sync
-            self.update_items_display(full_redraw=True)
-
-    # --- METHOD ACTUALLY FIXED THIS TIME ---
-    def update_items_display(self, full_redraw=True):
+    def update_items_display(self):
         """
-        Updates the item grid. Clears the existing grid and repopulates it based
-        on the current state of self.items_cache. This is now stateless and safe.
+        Updates the item grid intelligently. Instead of a full-redraw, this
+        method adds, removes, or updates only the necessary tiles, resulting
+        in a smoother, flicker-free user experience.
         """
-        # 1. Clear all existing widgets from the layout
-        for i in reversed(range(self.tiles_layout.count())):
-            widget = self.tiles_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
-        
-        # Always clear the tile widget map when doing a redraw
-        self.tile_widgets.clear()
+        # 1. Synchronize the set of visible tiles with the item cache
+        new_item_ids = set(self.items_cache.keys())
+        current_tile_ids = set(self.tile_widgets.keys())
 
-        # --- MODIFIED --- Reverted to original landscape column count
+        # Remove tiles for items that no longer exist in the cache
+        for item_id in current_tile_ids - new_item_ids:
+            tile_to_remove = self.tile_widgets.pop(item_id)
+            tile_to_remove.deleteLater()
+
+        # Clear the layout so we can re-add widgets in the correct sorted order
+        # This does NOT delete the widgets themselves, just their layout position
+        while self.tiles_layout.count():
+            child = self.tiles_layout.takeAt(0)
+            if child.widget():
+                child.widget().setParent(None)
+
+        # 2. Update existing tiles and create new ones
+        for item_id in new_item_ids:
+            item_data = self.items_cache[item_id]
+            # Check cache for image; this will request it if missing
+            local_image_path = self.cache_manager.check_and_request_image(item_data)
+            
+            if item_id in self.tile_widgets:
+                # If the tile widget already exists, just update its data in-place
+                self.tile_widgets[item_id].update_data(item_data, local_image_path)
+            else:
+                # If it's a new item, create a new tile widget
+                new_tile = ItemTileWidget(item_data, local_image_path)
+                # Connect the new tile's custom signal to our handler slot
+                new_tile.order_placed.connect(self.send_order_request)
+                self.tile_widgets[item_id] = new_tile
+
+        # 3. Repopulate the grid layout with all the up-to-date widgets, sorted by name
         max_cols = 3 
-        
-        # 2. Decide what to display based on the current cache
-        if not self.items_cache:
-            # If cache is empty, display a temporary "waiting" message.
-            waiting_label = QLabel("Searching for server...")
+        if not self.tile_widgets:
+            # If there are no items, display a "waiting" message
+            waiting_label = QLabel("Searching for server or waiting for items...")
             waiting_label.setAlignment(Qt.AlignCenter)
             waiting_label.setStyleSheet("font-size: 22px; color: #888;")
             self.tiles_layout.addWidget(waiting_label, 0, 0, 1, max_cols)
         else:
-            # If we have items, populate the grid with tiles
             row, col = 0, 0
-            sorted_items = sorted(self.items_cache.values(), key=lambda x: x.get('name', ''))
-            
-            for item_data in sorted_items:
-                local_image_path = self.cache_manager.check_and_request_image(item_data)
-                
-                tile = ItemTileWidget(item_data, local_image_path)
-                tile.order_button.clicked.connect(
-                    lambda checked, i=item_data['id']: self.prompt_and_send_order(i)
-                )
-                
+            # Sort tiles alphabetically by name for a consistent layout
+            sorted_tiles = sorted(self.tile_widgets.values(), key=lambda tile: tile.item_name)
+            for tile in sorted_tiles:
                 self.tiles_layout.addWidget(tile, row, col)
-                self.tile_widgets[item_data['id']] = tile
                 col += 1
                 if col >= max_cols:
                     col = 0
                     row += 1
 
-    def prompt_and_send_order(self, item_id):
+    @pyqtSlot(str, int, str)
+    def send_order_request(self, item_id, quantity, customer_name):
+        """A slot that receives order details from a tile and sends it to the server."""
         if not self.network_thread.isRunning():
             QMessageBox.warning(self, "Not Connected", "Could not place order: not connected to the server.")
+            # If not connected, reset the tile's UI back to browsing mode
+            if item_id in self.tile_widgets:
+                self.tile_widgets[item_id]._enter_browsing_mode()
             return
-
-        item = self.items_cache.get(item_id)
-        if not item: return
-
-        quantity, ok = QInputDialog.getInt(self, "Order Quantity", f"Enter quantity for {item['name']}:", 1, 1, 99)
-        if not ok: return
-
-        customer_name, ok = QInputDialog.getText(self, "Customer Name", "Enter customer name (optional):")
-        if not ok: customer_name = "Anonymous"
         
         order_id = f"{config.CLIENT_HOSTNAME}_{int(time.time())}_{item_id}"
         order_payload = {
@@ -309,12 +392,8 @@ class AppClientWindow(QMainWindow):
         
         self.network_worker.send_message("ORDER_ITEM", order_payload)
         
-        tile = self.tile_widgets.get(item_id)
-        if tile:
-            tile.order_button.setEnabled(False)
-            tile.order_button.setText("Ordering...")
-
-        self.log_message(f"Sent order for {quantity} of {item['name']} (ID: {order_id}).")
+        item_name = self.items_cache.get(item_id, {}).get('name', 'Unknown Item')
+        self.log_message(f"Sent order for {quantity} of {item_name} (ID: {order_id}).")
 
     @pyqtSlot(str)
     def log_message(self, message):
@@ -325,20 +404,20 @@ class AppClientWindow(QMainWindow):
     @pyqtSlot(dict)
     def handle_order_ack(self, payload):
         item_id = payload.get('item_id')
-        QMessageBox.information(self, "Order Confirmed", f"Order for item '{self.items_cache.get(item_id, {}).get('name', item_id)}' was processed successfully!")
+        item_name = self.items_cache.get(item_id, {}).get('name', item_id)
+        #QMessageBox.information(self, "Order Confirmed", f"Your order for '{item_name}' was received successfully!")
         tile = self.tile_widgets.get(item_id)
-        if tile: # UX: Re-enable button
-            tile.order_button.setEnabled(True)
-            tile.order_button.setText("Order Now")
+        if tile: # UX: Reset the tile back to its default browsing state
+            tile._enter_browsing_mode()
 
     @pyqtSlot(dict)
     def handle_order_nack(self, payload):
         item_id = payload.get('item_id')
-        QMessageBox.critical(self, "Order Rejected", f"Order for item '{self.items_cache.get(item_id, {}).get('name', item_id)}' was rejected: {payload.get('reason')}")
+        item_name = self.items_cache.get(item_id, {}).get('name', item_id)
+        #QMessageBox.critical(self, "Order Rejected", f"Your order for '{item_name}' was rejected: {payload.get('reason')}")
         tile = self.tile_widgets.get(item_id)
-        if tile: # UX: Re-enable button
-            tile.order_button.setEnabled(True)
-            tile.order_button.setText("Order Now")
+        if tile: # UX: Reset the tile back to its default browsing state
+            tile._enter_browsing_mode()
 
     @pyqtSlot(str)
     def handle_server_error(self, message):
