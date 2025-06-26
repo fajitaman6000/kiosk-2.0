@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QLabel, QScrollArea, QGridLayout,
     QTextEdit, QPushButton, QHBoxLayout, QMessageBox, QTabWidget, QListWidget, QListWidgetItem
 )
-from PyQt5.QtCore import Qt, QThread, pyqtSlot
+from PyQt5.QtCore import Qt, QThread, pyqtSlot, QTimer
 from PyQt5.QtGui import QIcon
 
 import socket
@@ -19,12 +19,13 @@ from client_handler import ClientHandler
 from app_widgets import TileWidget, ItemDialog
 from order_manager import OrderManager
 from discovery_broadcaster import DiscoveryBroadcaster
+from bar_audio_manager import AudioManager # --- NEW ---
 
 class BarManagerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle(f"Bar Order Manager - {config.SERVER_HOSTNAME}")
+        self.setWindowTitle(f"Room Order Manager")
         self.setGeometry(100, 100, 1000, 800)
 
         # Set the application window icon
@@ -42,6 +43,7 @@ class BarManagerWindow(QMainWindow):
         self.client_handlers = {} # {socket: ClientHandler}
 
         self.order_manager = OrderManager()
+        self.audio_manager = AudioManager() # --- NEW ---
         self._setup_network_server()
 
         self._setup_ui()
@@ -286,12 +288,36 @@ class BarManagerWindow(QMainWindow):
     def handle_order_request(self, client_handler, order_data):
         processed_order = self.order_manager.add_order(order_data, self.items_map)
         if processed_order:
-            self.tile_widgets_map[processed_order["item_id"]].indicate_order()
+            self.trigger_order_notification() # --- MODIFIED ---
             ack_payload = {"order_id": processed_order["order_id"], "item_id": processed_order["item_id"]}
             client_handler.send_message("ORDER_ACK", ack_payload)
         else:
             nack_payload = {"order_id": order_data["order_id"], "item_id": order_data["item_id"], "reason": "Item not found"}
             client_handler.send_message("ORDER_NACK", nack_payload)
+
+    # --- NEW METHOD ---
+    def trigger_order_notification(self):
+        """ Plays a sound and flashes the UI to alert the user of a new order. """
+        # 1. Play sound
+        self.audio_manager.play_order_notification()
+        
+        # 2. Visual Flash
+        original_style = self.tabs.styleSheet()
+        # A style that makes the content pane of the tab widget flash.
+        flash_style_addon = "QTabWidget::pane { background-color: #fff3cd; border: 2px solid #ffeeba; }"
+
+        def apply_flash():
+            self.tabs.setStyleSheet(original_style + flash_style_addon)
+        
+        def revert_style():
+            self.tabs.setStyleSheet(original_style)
+
+        # Create a blink effect: On, Off, On, Off
+        apply_flash()
+        QTimer.singleShot(250, revert_style)
+        QTimer.singleShot(500, apply_flash)
+        QTimer.singleShot(750, revert_style)
+
 
     def send_item_list_to_client(self, client_handler, msg_type="AVAILABLE_ITEMS"):
         client_item_list = [

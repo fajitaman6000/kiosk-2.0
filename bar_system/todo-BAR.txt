@@ -9,7 +9,9 @@ images created in parent directory, not same directory as main.py
 bartender needs:
 
 room name
-order quantity
+
+
+order notification
 
 
 

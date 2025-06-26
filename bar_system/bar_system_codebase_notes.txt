@@ -1,7 +1,7 @@
 Hello! If you're reading this, this file is both for YOU (the LLM) to gain context from AND for you to write notes into yourself
 to help future iterations of yourself to refine this codebase and maintain a central program philosophy.
 
-You are encouraged to put important context notes here, please!
+You are encouraged to put important context notes here, please! As always, your help is greatly appreciated in my project and feel free to ask questions out of genuine curiosity.
 
 
 
@@ -28,3 +28,5 @@ The following will be notes regarding specifics in the code. If you see anything
   - Communication from worker threads back to the main UI thread is handled by Qt's signal/slot mechanism, which is also thread-safe.
   - Both `data_manager.py` and `order_manager.py` use an atomic write pattern (save to `.tmp` file, then `os.replace`). This prevents data corruption on crash.
   - Optimized the client UI refresh logic. Instead of redrawing all item tiles when a single image arrives, `app_client_window.py` now finds the specific tile and updates its pixmap directly, which is far more efficient.
+  - The server now uses a dedicated `AudioManager` class (`audio_manager.py`) to handle sound playback, maintaining SRP. A new `app_sounds` directory is expected at the root of the server application.
+  - Order notifications on the server have been changed from a single-item flash to a global UI flash and an audible alert, triggered from `app_main_window.py`.

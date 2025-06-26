@@ -1,5 +1,5 @@
 # bar_server/app_widgets.py
-import os  # --- NEW --- Direct import for clarity
+import os
 from PyQt5.QtWidgets import (
     QFrame, QVBoxLayout, QLabel, QHBoxLayout, QLineEdit, QFileDialog,
     QDialog, QFormLayout, QPushButton, QTextEdit, QDoubleSpinBox
@@ -32,7 +32,6 @@ class TileWidget(QFrame):
         image_label = QLabel()
         image_label.setAlignment(Qt.AlignCenter)
         
-        # --- MODIFIED BLOCK START ---
         image_full_path = os.path.join(config.IMAGE_DIR, item_data.get("image_file", ""))
         
         if os.path.exists(image_full_path):
@@ -47,7 +46,6 @@ class TileWidget(QFrame):
             else:
                 # If even the placeholder is missing, show text.
                 image_label.setText("No Image\n(placeholder missing)")
-        # --- MODIFIED BLOCK END ---
 
         layout.addWidget(image_label)
 
@@ -83,11 +81,7 @@ class TileWidget(QFrame):
         else:
             self.setStyleSheet(self._original_stylesheet)
 
-    def indicate_order(self):
-        original_style = self.styleSheet()
-        self.setStyleSheet(f"background-color: #dff0d8; border: 3px solid #3c763d;")
-        from PyQt5.QtCore import QTimer
-        QTimer.singleShot(750, lambda: self.setStyleSheet(original_style))
+# --- REMOVED --- The `indicate_order` method is no longer needed.
 
 # ... ItemDialog class remains unchanged ...
 class ItemDialog(QDialog):

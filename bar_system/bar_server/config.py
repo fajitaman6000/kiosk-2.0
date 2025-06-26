@@ -14,8 +14,13 @@ SERVER_HOSTNAME = socket.gethostname()
 # --- Files & Directories ---
 IMAGE_DIR_NAME = "images"
 IMAGE_DIR = os.path.join(APP_ROOT, IMAGE_DIR_NAME)
+SOUNDS_DIR_NAME = "app_sounds"
+SOUNDS_DIR = os.path.join(APP_ROOT, SOUNDS_DIR_NAME)
 ITEMS_CONFIG_FILE = os.path.join(APP_ROOT, "items_config.json")
 ORDER_LOG_FILE = os.path.join(APP_ROOT, "order_history.json")
 
 # --- UI ---
 MAX_TILE_COLUMNS = 4
+
+# --- Audio ---
+DEFAULT_NOTIFICATION_SOUND = "order_notification.mp3"
