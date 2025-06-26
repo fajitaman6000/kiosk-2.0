@@ -9,12 +9,13 @@ from PyQt5.QtWidgets import (
     QTextEdit, QPushButton, QHBoxLayout, QMessageBox, QTabWidget, QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSlot
+from PyQt5.QtGui import QIcon
 
 import socket
 import config
 import data_manager
 from network_server import ServerWorker
-from client_handler import ClientHandler # NEW: Import the client handler
+from client_handler import ClientHandler
 from app_widgets import TileWidget, ItemDialog
 from order_manager import OrderManager
 from discovery_broadcaster import DiscoveryBroadcaster
@@ -22,15 +23,21 @@ from discovery_broadcaster import DiscoveryBroadcaster
 class BarManagerWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle(f"Bar Order Manager - {config.SERVER_HOSTNAME}")
         self.setGeometry(100, 100, 1000, 800)
+
+        # Set the application window icon
+        icon_path = os.path.join(config.APP_ROOT, 'icon_bar.ico')
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
         self.items_data = []
         self.items_map = {}
         self.tile_widgets_map = {}
         self.selected_item_id = None
         
-        # --- NEW --- State for managing client threads and handlers
+        # State for managing client threads and handlers
         self.client_threads = {} # {socket: QThread}
         self.client_handlers = {} # {socket: ClientHandler}
 
@@ -44,7 +51,6 @@ class BarManagerWindow(QMainWindow):
         self.start_server()
 
     def _setup_ui(self):
-        # ... (UI setup is unchanged, so I'll omit it for brevity)
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
         self.item_management_tab = QWidget()
