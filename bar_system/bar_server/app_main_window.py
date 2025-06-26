@@ -343,10 +343,10 @@ class BarManagerWindow(QMainWindow):
             stats = order.get("sender_stats", {})
             quantity = stats.get("quantity", 1)
             customer = stats.get("customer_name", "N/A")
-            # --- MODIFIED --- Get room name from order data
-            room = stats.get("room", "Unknown Room")
-            # --- MODIFIED --- Add room name to the display text
-            text = f"[{quantity}x] {order['item_name']} for {customer} in {room} (from: {order['sender_hostname']})"
+            # --- MODIFIED --- Use sender_hostname as the room identifier
+            room = order.get("sender_hostname", "Unknown Room")
+            # --- MODIFIED --- Display room name clearly in the order text
+            text = f"[{quantity}x] {order['item_name']} for {customer} (Room: {room})"
             item = QListWidgetItem(text)
             item.setData(Qt.UserRole, order['order_id'])
             self.pending_orders_list.addItem(item)

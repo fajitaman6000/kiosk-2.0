@@ -45,7 +45,6 @@ class OrderHistoryView(QDialog):
 
         # Orders table
         self.history_table = QTableWidget()
-        # --- MODIFIED --- Increased column count for the new "Room" column
         self.history_table.setColumnCount(7)
         self.history_table.setHorizontalHeaderLabels([
             "Received Time", "Item", "Quantity", "Customer", "Room", "Status", "Completed Time"
@@ -60,7 +59,6 @@ class OrderHistoryView(QDialog):
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        # --- MODIFIED --- Added resize mode for the new "Room" column
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
@@ -124,7 +122,8 @@ class OrderHistoryView(QDialog):
             self.history_table.setItem(row_position, 3, QTableWidgetItem(customer))
 
             # --- Column 4: Room ---
-            room = order.get("sender_stats", {}).get("room", "N/A")
+            # --- MODIFIED --- Use sender_hostname as the room identifier
+            room = order.get("sender_hostname", "N/A")
             self.history_table.setItem(row_position, 4, QTableWidgetItem(room))
 
             # --- Column 5: Status ---
