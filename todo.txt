@@ -19,7 +19,6 @@ kiosk stability AND watchdog stability
 
 add auto ffmpeg installer to whatever runs through requirements.txt
 
-move video player to c++ (python-vlc/libvlc)
 
 Admin app appears to stall when all(?) rooms are powered off. Timeout handling needs to not be blocking.
 
@@ -28,6 +27,13 @@ Admin app appears to stall when all(?) rooms are powered off. Timeout handling n
 microphone input device list has way too many entries
 
 film video solutions
+
+##############################################################################################################################
+# Recode
+
+ZeroMQ library for network_broadcast_handler ack resend logic
+
+move video player to c++ (python-vlc/libvlc)
 
 ##############################################################################################################################
 # Todo
