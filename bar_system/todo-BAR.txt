@@ -2,6 +2,8 @@
 # Current Issues
 
 
+Halt development until further notice (create visual example of both interfaces for demonstration)
+
 ########################
 # To do 
 
