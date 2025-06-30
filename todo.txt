@@ -1,14 +1,22 @@
 ##############################################################################################################################
 # Test notes
 
-"clear hints" doesn't remove "HINT REQUESTED" on co-admins
-
 loss sound replays when resetting a lost room
+victory sounds may not be playing per detecting room pause (which occurs upon victory) and falsely evaluating it to be an inactive game
 
 ##############################################################################################################################
 # Priority
 
-bar script
+Moating
+    Create a tiny, simple microservice—a small web app that runs on a free or cheap cloud provider (like PythonAnywhere, Heroku, or Vercel).
+        The kiosk software no longer calls ElevenLabs directly.
+        Instead, when it needs to generate a hint, it makes an API call to microservice. It sends the text to be spoken.
+        Microservice receives the text. It then uses private ElevenLabs API key (which is stored securely in cloud environment, not on the kiosk) to make the call to ElevenLabs.
+        ElevenLabs returns the audio file to microservice.
+        Microservice streams that audio file back to the kiosk that requested it.
+    Environmental Coupling
+        Hardcoded Assumptions
+            IP address scheme, computer names, or network topology
 
 update sync to be simple and nuke current contents to avoid dealing with file hashing.
 
